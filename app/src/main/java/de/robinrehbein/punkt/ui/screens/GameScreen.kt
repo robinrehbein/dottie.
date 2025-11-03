@@ -51,6 +51,7 @@ fun GameScreen(
     val score by viewModel.score.collectAsState()
     val currentLevel by viewModel.currentLevel.collectAsState()
     val lives by viewModel.lives.collectAsState()
+    val streak by viewModel.streak.collectAsState()
 
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
@@ -103,6 +104,7 @@ fun GameScreen(
             score = score,
             currentLevel = currentLevel,
             lives = lives,
+            streak = streak,
             modifier = Modifier.align(Alignment.TopStart)
         )
 
@@ -184,6 +186,7 @@ fun GameOverlay(
     score: Int,
     currentLevel: Int,
     lives: Int,
+    streak: Int,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -197,36 +200,49 @@ fun GameOverlay(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "Score: $score",
+                text = "SCORE: $score",
                 color = Color.White,
                 fontFamily = Bytesized,
                 fontSize = 16.sp
             )
 
             Text(
-                text = "Level: $currentLevel",
+                text = "LEVEL: $currentLevel",
                 color = Color.White,
                 fontFamily = Bytesized,
                 fontSize = 14.sp
             )
+
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         // Lives
-        Row {
+        Row (
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row {
+                Text(
+                    text = "LIVES: ",
+                    color = Color.White,
+                    fontFamily = Bytesized,
+                    fontSize = 14.sp
+                )
+                repeat(lives) {
+                    Text(
+                        text = "❤️",
+                        fontSize = 16.sp
+                    )
+                }
+            }
+
             Text(
-                text = "Lives: ",
+                text = "STREAK: $streak",
                 color = Color.White,
                 fontFamily = Bytesized,
                 fontSize = 14.sp
             )
-            repeat(lives) {
-                Text(
-                    text = "❤️",
-                    fontSize = 16.sp
-                )
-            }
         }
 
         // No state-specific UI needed since game auto-starts

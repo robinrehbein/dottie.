@@ -49,7 +49,7 @@ fun StartScreen(
         ) {
             // Game Title
             Text(
-                text = "PUNKT",
+                text = "PUNKT.",
                 fontFamily = Bytesized,
                 fontWeight = FontWeight.Normal,
                 fontSize = 48.sp,
