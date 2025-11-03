@@ -341,8 +341,19 @@ fun GameCenterMessage(
                 )
             }
 
+            is GameState.Countdown -> {
+                Text(
+                    text = gameState.number.toString(),
+                    color = Color.White,
+                    fontFamily = Bytesized,
+                    fontSize = 48.sp
+                )
+            }
+
             is GameState.Feedback -> {
-                // ToDo hitresult.points oder score?
+                val reactionTimeSeconds = gameState.hitResult.reactionTimeMs / 1000.0
+                val reactionTimeText = String.format("%.1fs", reactionTimeSeconds)
+                
                 val message = when (gameState.hitResult.hitType) {
                     HitType.PERFECT -> "PERFECT! +${gameState.hitResult.points}"
                     HitType.GOOD -> "GOOD! +${gameState.hitResult.points}"
@@ -357,12 +368,24 @@ fun GameCenterMessage(
                     HitType.MISS -> Color(0xFF888888)
                 }
 
-                Text(
-                    text = message,
-                    color = color,
-                    fontFamily = Bytesized,
-                    fontSize = 18.sp
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = message,
+                        color = color,
+                        fontFamily = Bytesized,
+                        fontSize = 18.sp
+                    )
+                    if (gameState.hitResult.reactionTimeMs > 0) {
+                        Text(
+                            text = reactionTimeText,
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontFamily = Bytesized,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
             }
 
             else -> {

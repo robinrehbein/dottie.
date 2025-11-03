@@ -48,6 +48,7 @@ class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: 
     private val scoreCalculator = ScoreCalculator()
 
     private var gameScope: CoroutineScope? = null
+    private var tapStartTime: Long = 0L
 
     fun updateScreenSize(width: Float, height: Float) {
         screenWidth = width
@@ -59,7 +60,16 @@ class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: 
         _currentLevel.value = 1
         _score.value = 0
         _lives.value = 3
-        startLevel()
+        
+        gameScope?.launch {
+            // Countdown Phase (3, 2, 1) - only before first level
+            for (countdownNumber in 3 downTo 1) {
+                _gameState.value = GameState.Countdown(countdownNumber)
+                timingController.waitForDuration(1000L)
+            }
+            
+            startLevel()
+        }
     }
 
     fun handleTap(x: Float, y: Float) {
@@ -100,6 +110,7 @@ class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: 
             timingController.waitForDuration(config.finalWaitDuration)
 
             // Phase 3: Bereit für Tap
+            tapStartTime = System.currentTimeMillis()
             _gameState.value = GameState.WaitingForTap(point)
 
             val timeout = config.tapTimeLimit
@@ -114,7 +125,8 @@ class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: 
 
     private suspend fun processHit(targetPoint: Point, tapX: Float, tapY: Float) {
         val config = levelManager.getConfigForLevel(_currentLevel.value)
-        val hitResult = hitDetection.checkHit(targetPoint, tapX, tapY, config.finalHitTolerance)
+        val reactionTime = System.currentTimeMillis() - tapStartTime
+        val hitResult = hitDetection.checkHit(targetPoint, tapX, tapY, config.finalHitTolerance, reactionTime)
         vibrationManager?.vibrateForHit(hitResult.hitType)
 
         if (hitResult.isHit) {

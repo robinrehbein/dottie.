@@ -7,6 +7,7 @@ import de.robinrehbein.punkt.game.models.HitResult
 sealed class GameState {
     object Menu : GameState()
     object Ready : GameState()
+    data class Countdown(val number: Int) : GameState()
     object Paused : GameState()
     data class ShowingPoint(val point: Point) : GameState()
     data class WaitingPhase(val targetPoint:Point) : GameState()

@@ -4,7 +4,7 @@ import de.robinrehbein.punkt.game.models.*
 import kotlin.math.*
 
 class HitDetection {
-    fun checkHit(targetPoint: Point, tapX: Float, tapY: Float, tolerance: Float): HitResult {
+    fun checkHit(targetPoint: Point, tapX: Float, tapY: Float, tolerance: Float, reactionTimeMs: Long = 0L): HitResult {
         val distance = calculateDistance(targetPoint.x, targetPoint.y, tapX, tapY)
         val isHit = distance <= tolerance
 
@@ -24,7 +24,7 @@ class HitDetection {
 
         val points = calculatePoints(hitType, accuracy)
 
-        return HitResult(isHit, distance, accuracy, points, hitType)
+        return HitResult(isHit, distance, accuracy, points, hitType, reactionTimeMs)
     }
 
     private fun calculatePoints(hitType: HitType, accuracy: Float): Int {
