@@ -156,4 +156,4 @@ val GameConfig.pointCount: Int
     get() = levelVariations.maxOfOrNull { it.pointCount } ?: 1
 
 val GameConfig.backgroundColor: Color
-    get() = levelVariations.lastOrNull { it.background != Color.Black }?.background ?: Color.Black
+    get() = levelVariations.lastOrNull { it.background != Color(0xFF1A1A2E) }?.background ?: Color(0xFF1A1A2E)

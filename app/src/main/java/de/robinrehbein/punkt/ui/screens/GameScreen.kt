@@ -15,19 +15,32 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.engine.GameState
 import de.robinrehbein.punkt.game.logic.LevelManager
 import de.robinrehbein.punkt.game.models.HitType
 import de.robinrehbein.punkt.game.models.backgroundColor
+import de.robinrehbein.punkt.ui.components.PixelArtButton
 import de.robinrehbein.punkt.viewmodels.GameViewModel
+
+/**
+ * Bytesized FontFamily for consistent typography
+ */
+private val Bytesized = FontFamily(
+    Font(R.font.bytesized_regular, FontWeight.Normal)
+)
 
 @Composable
 fun GameScreen(
@@ -114,10 +127,9 @@ fun GameCanvas(
         
         when (gameState) {
             is GameState.ShowingPoint -> {
-                drawCircle(
-                    color = Color.White,
-                    radius = gameState.point.radius,
-                    center = Offset(gameState.point.x, gameState.point.y)
+                drawPixelArtPoint(
+                    center = Offset(gameState.point.x, gameState.point.y),
+                    radius = gameState.point.radius
                 )
             }
             is GameState.Feedback -> {
@@ -134,10 +146,10 @@ fun GameCanvas(
                     center = Offset(gameState.targetPoint.x, gameState.targetPoint.y)
                 )
 
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.3f),
+                drawPixelArtPoint(
+                    center = Offset(gameState.targetPoint.x, gameState.targetPoint.y),
                     radius = gameState.targetPoint.radius,
-                    center = Offset(gameState.targetPoint.x, gameState.targetPoint.y)
+                    alpha = 0.3f
                 )
                 
                 // Draw animations from GameState
@@ -187,13 +199,15 @@ fun GameOverlay(
             Text(
                 text = "Score: $score",
                 color = Color.White,
-                style = MaterialTheme.typography.titleMedium
+                fontFamily = Bytesized,
+                fontSize = 16.sp
             )
 
             Text(
                 text = "Level: $currentLevel",
                 color = Color.White,
-                style = MaterialTheme.typography.bodyLarge
+                fontFamily = Bytesized,
+                fontSize = 14.sp
             )
         }
 
@@ -204,7 +218,8 @@ fun GameOverlay(
             Text(
                 text = "Lives: ",
                 color = Color.White,
-                style = MaterialTheme.typography.bodyLarge
+                fontFamily = Bytesized,
+                fontSize = 14.sp
             )
             repeat(lives) {
                 Text(
@@ -233,43 +248,39 @@ fun GameCenterMessage(
             is GameState.GameOver -> {
                 Text(
                     text = "GAME OVER",
-                    color = Color.Red,
-                    style = MaterialTheme.typography.headlineLarge
+                    color = Color(0xFFFF5555),
+                    fontFamily = Bytesized,
+                    fontSize = 32.sp
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Final Score: ${gameState.finalScore}",
                     color = Color.White,
-                    style = MaterialTheme.typography.titleLarge
+                    fontFamily = Bytesized,
+                    fontSize = 20.sp
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Button(
+                    PixelArtButton(
+                        text = "NOCHMAL",
                         onClick = onStartGame,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Text(
-                            text = "NOCHMAL",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-                    Button(
+                        backgroundColor = Color(0xFFE8B4E8),
+                        borderColor = Color(0xFF5555FF),
+                        textColor = Color(0xFF5555FF),
+                        width = 140.dp,
+                        height = 50.dp
+                    )
+                    PixelArtButton(
+                        text = "HAUPTMENÜ",
                         onClick = onBackToStart,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Gray,
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Text(
-                            text = "HAUPTMENÜ",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
+                        backgroundColor = Color(0xFFB0B0B0),
+                        borderColor = Color(0xFF666666),
+                        textColor = Color(0xFF666666),
+                        width = 140.dp,
+                        height = 50.dp
+                    )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -278,8 +289,9 @@ fun GameCenterMessage(
             is GameState.WaitingForTap -> {
                 Text(
                     text = "TAP NOW!",
-                    color = Color.Yellow,
-                    style = MaterialTheme.typography.titleLarge
+                    color = Color(0xFFFFDD55),
+                    fontFamily = Bytesized,
+                    fontSize = 22.sp
                 )
             }
 
@@ -292,16 +304,17 @@ fun GameCenterMessage(
                 }
 
                 val color = when (gameState.hitResult.hitType) {
-                    HitType.PERFECT -> Color.Green
-                    HitType.GOOD -> Color.Yellow
-                    HitType.BAD -> Color.Red
-                    HitType.MISS -> Color.Black
+                    HitType.PERFECT -> Color(0xFF55FF55)
+                    HitType.GOOD -> Color(0xFFFFDD55)
+                    HitType.BAD -> Color(0xFFFF5555)
+                    HitType.MISS -> Color(0xFF888888)
                 }
 
                 Text(
                     text = message,
                     color = color,
-                    style = MaterialTheme.typography.headlineSmall
+                    fontFamily = Bytesized,
+                    fontSize = 18.sp
                 )
             }
 
@@ -310,4 +323,97 @@ fun GameCenterMessage(
             }
         }
     }
+}
+
+/**
+ * Draws a pixel-art styled point with pixelated edges
+ */
+fun DrawScope.drawPixelArtPoint(
+    center: Offset,
+    radius: Float,
+    backgroundColor: Color = Color(0xFFE8B4E8),
+    borderColor: Color = Color(0xFF5555FF),
+    alpha: Float = 1.0f
+) {
+    val pixelSize = (radius * 0.15f).coerceAtLeast(2f)
+    val adjustedBackgroundColor = backgroundColor.copy(alpha = alpha)
+    val adjustedBorderColor = borderColor.copy(alpha = alpha)
+    
+    // Draw main body (slightly smaller than radius to leave room for border)
+    val bodyRadius = radius - pixelSize
+    drawRect(
+        color = adjustedBackgroundColor,
+        topLeft = Offset(center.x - bodyRadius, center.y - bodyRadius),
+        size = Size(bodyRadius * 2, bodyRadius * 2)
+    )
+    
+    // Draw pixelated border - top and bottom
+    drawRect(
+        color = adjustedBorderColor,
+        topLeft = Offset(center.x - radius, center.y - radius),
+        size = Size(radius * 2, pixelSize)
+    )
+    drawRect(
+        color = adjustedBorderColor,
+        topLeft = Offset(center.x - radius, center.y + radius - pixelSize),
+        size = Size(radius * 2, pixelSize)
+    )
+    
+    // Draw pixelated border - left and right with stepped pattern
+    val steps = ((radius * 2 - 2 * pixelSize) / pixelSize).toInt().coerceAtLeast(1)
+    val stepHeight = (radius * 2 - 2 * pixelSize) / steps
+    
+    for (i in 0 until steps) {
+        val y = center.y - radius + pixelSize + i * stepHeight
+        val stepWidth = when {
+            i < steps / 4 -> pixelSize * 1.5f // Wider at top
+            i < steps * 3 / 4 -> pixelSize // Normal width in middle
+            else -> pixelSize * 1.5f // Wider at bottom
+        }
+        
+        // Left border
+        drawRect(
+            color = adjustedBorderColor,
+            topLeft = Offset(center.x - radius, y),
+            size = Size(stepWidth, stepHeight + 1f)
+        )
+        
+        // Right border
+        drawRect(
+            color = adjustedBorderColor,
+            topLeft = Offset(center.x + radius - stepWidth, y),
+            size = Size(stepWidth, stepHeight + 1f)
+        )
+    }
+    
+    // Add corner pixels for more authentic pixel-art look
+    val cornerSize = pixelSize * 0.7f
+    
+    // Top-left corner
+    drawRect(
+        color = adjustedBorderColor,
+        topLeft = Offset(center.x - radius + pixelSize, center.y - radius + pixelSize),
+        size = Size(cornerSize, cornerSize)
+    )
+    
+    // Top-right corner
+    drawRect(
+        color = adjustedBorderColor,
+        topLeft = Offset(center.x + radius - pixelSize - cornerSize, center.y - radius + pixelSize),
+        size = Size(cornerSize, cornerSize)
+    )
+    
+    // Bottom-left corner
+    drawRect(
+        color = adjustedBorderColor,
+        topLeft = Offset(center.x - radius + pixelSize, center.y + radius - pixelSize - cornerSize),
+        size = Size(cornerSize, cornerSize)
+    )
+    
+    // Bottom-right corner
+    drawRect(
+        color = adjustedBorderColor,
+        topLeft = Offset(center.x + radius - pixelSize - cornerSize, center.y + radius - pixelSize - cornerSize),
+        size = Size(cornerSize, cornerSize)
+    )
 }
