@@ -16,6 +16,10 @@ import de.robinrehbein.punkt.game.models.finalShowDuration
 import de.robinrehbein.punkt.game.models.finalWaitDuration
 import de.robinrehbein.punkt.game.models.hasWaitingPhase
 import de.robinrehbein.punkt.game.models.tapTimeLimit
+import de.robinrehbein.punkt.game.models.movementSpeed
+import de.robinrehbein.punkt.game.models.movementType
+import de.robinrehbein.punkt.game.models.vibrationIntensity
+import de.robinrehbein.punkt.game.models.shrinkingRate
 import de.robinrehbein.punkt.scoring.ScoreCalculator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -237,9 +241,21 @@ class GameEngine(
     }
 
     private fun generateRandomPoint(radius: Float): Point {
+        val config = levelManager.getConfigForLevel(_currentLevel.value, gameMode)
         val margin = radius + 50f
         val x = Random.nextFloat() * (screenWidth - 2 * margin) + margin
         val y = Random.nextFloat() * (screenHeight - 2 * margin) + margin
-        return Point(x, y, radius)
+        
+        return Point(
+            initialX = x,
+            initialY = y,
+            radius = radius,
+            movementSpeed = config.movementSpeed,
+            movementType = config.movementType,
+            vibrationIntensity = config.vibrationIntensity,
+            shrinkingRate = config.shrinkingRate,
+            screenWidth = screenWidth,
+            screenHeight = screenHeight
+        )
     }
 }

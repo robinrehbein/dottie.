@@ -179,9 +179,11 @@ fun GameCanvas(
         
         when (gameState) {
             is GameState.ShowingPoint -> {
+                val currentPosition = gameState.point.getCurrentPosition()
+                val currentRadius = gameState.point.getCurrentRadius()
                 drawPixelPoint(
-                    center = Offset(gameState.point.x, gameState.point.y),
-                    radius = gameState.point.radius
+                    center = currentPosition,
+                    radius = currentRadius
                 )
             }
             is GameState.Feedback -> {
@@ -192,15 +194,18 @@ fun GameCanvas(
                     HitType.PERFECT -> Color.Green
                 }
 
+                val targetPosition = gameState.targetPoint.getCurrentPosition()
+                val targetRadius = gameState.targetPoint.getCurrentRadius()
+                
                 drawCircle(
                     color = feedbackColor.copy(alpha = 0.6f),
-                    radius = gameState.targetPoint.radius + 10f,
-                    center = Offset(gameState.targetPoint.x, gameState.targetPoint.y)
+                    radius = targetRadius + 10f,
+                    center = targetPosition
                 )
 
                 drawPixelPoint(
-                    center = Offset(gameState.targetPoint.x, gameState.targetPoint.y),
-                    radius = gameState.targetPoint.radius,
+                    center = targetPosition,
+                    radius = targetRadius,
                     alpha = 0.3f
                 )
                 

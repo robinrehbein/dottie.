@@ -5,7 +5,9 @@ import kotlin.math.*
 
 class HitDetection {
     fun checkHit(targetPoint: Point, tapX: Float, tapY: Float, tolerance: Float, reactionTimeMs: Long = 0L): HitResult {
-        val distance = calculateDistance(targetPoint.x, targetPoint.y, tapX, tapY)
+        val currentPosition = targetPoint.getCurrentPosition()
+        val currentRadius = targetPoint.getCurrentRadius()
+        val distance = calculateDistance(currentPosition.x, currentPosition.y, tapX, tapY)
         val isHit = distance <= tolerance
 
         val accuracy = if (isHit) {
@@ -16,9 +18,9 @@ class HitDetection {
         }
 
         val hitType = when {
-            distance <= targetPoint.radius * 0.8f -> HitType.PERFECT
-            distance <= targetPoint.radius * 1.2f -> HitType.GOOD
-            distance <= tolerance + targetPoint.radius -> HitType.BAD
+            distance <= currentRadius * 0.8f -> HitType.PERFECT
+            distance <= currentRadius * 1.2f -> HitType.GOOD
+            distance <= tolerance + currentRadius -> HitType.BAD
             else -> HitType.MISS
         }
 

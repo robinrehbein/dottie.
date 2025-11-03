@@ -2,6 +2,13 @@ package de.robinrehbein.punkt.game.models
 
 import androidx.compose.ui.graphics.Color
 
+enum class MovementType {
+    LINEAR,
+    CIRCULAR,
+    ZIGZAG,
+    SINE_WAVE
+}
+
 data class GameConfig(
     val level: Int,
     val gameMode: GameMode = GameMode.CLASSIC,
@@ -17,6 +24,7 @@ sealed class LevelVariation {
     open val movementSpeed: Float = 0f
     open val shrinkingRate: Float = 0f
     open val vibrationIntensity: Float = 0f // New property for vibrating points
+    open val movementType: MovementType = MovementType.LINEAR // New property for movement patterns
     open val tapTimeLimit: Long = 2000L
     open val requiredTaps: Int = 1
     open val pointCount: Int = 1
@@ -89,6 +97,25 @@ sealed class LevelVariation {
         override val background: Color = Color(0xFF2D4A1B) // Dark olive
     }
 
+    // New non-linear movement variations
+    data object CircularMovement : LevelVariation() {
+        override val movementSpeed: Float = 15f
+        override val movementType: MovementType = MovementType.CIRCULAR
+        override val background: Color = Color(0xFF1B3D69) // Dark blue
+    }
+
+    data object ZigzagMovement : LevelVariation() {
+        override val movementSpeed: Float = 20f
+        override val movementType: MovementType = MovementType.ZIGZAG
+        override val background: Color = Color(0xFF691B3D) // Dark magenta
+    }
+
+    data object SineWaveMovement : LevelVariation() {
+        override val movementSpeed: Float = 18f
+        override val movementType: MovementType = MovementType.SINE_WAVE
+        override val background: Color = Color(0xFF3D691B) // Dark lime
+    }
+
     // Multiple challenges combined
     data object ChaosMode : LevelVariation() {
         override val pointSizeMultiplier: Float = 0.7f
@@ -100,14 +127,18 @@ sealed class LevelVariation {
 
     // Enhanced Nightmare - much more challenging
     data object Nightmare : LevelVariation() {
-        override val pointSizeMultiplier: Float = 0.2f // Even smaller
-        override val showDurationMultiplier: Float = 0.3f // Even faster
-        override val waitDurationMultiplier: Float = 4.0f // Longer wait
-        override val movementSpeed: Float = 80f // Much faster movement
-        override val shrinkingRate: Float = 8f // Faster shrinking
-        override val vibrationIntensity: Float = 10f // High vibration
-        override val hitToleranceMultiplier: Float = 0.3f // Much smaller hit area
-        override val background: Color = Color(0xFF8B0000) // Dark red
+        override val pointSizeMultiplier: Float = 0.15f // Even smaller than before
+        override val showDurationMultiplier: Float = 0.2f // Much faster
+        override val waitDurationMultiplier: Float = 5.0f // Even longer wait
+        override val movementSpeed: Float = 120f // Extremely fast movement
+        override val movementType: MovementType = MovementType.ZIGZAG // Unpredictable movement
+        override val shrinkingRate: Float = 12f // Much faster shrinking
+        override val vibrationIntensity: Float = 15f // Maximum vibration
+        override val hitToleranceMultiplier: Float = 0.2f // Extremely small hit area
+        override val tapTimeLimit: Long = 800L // Very short time limit
+        override val requiredTaps: Int = 3 // Multiple taps required
+        override val pointCount: Int = 2 // Multiple points
+        override val background: Color = Color(0xFF660000) // Darker red
     }
 }
 
@@ -189,6 +220,9 @@ val GameConfig.shrinkingRate: Float
 
 val GameConfig.vibrationIntensity: Float
     get() = levelVariations.sumOf { it.vibrationIntensity.toDouble() }.toFloat()
+
+val GameConfig.movementType: MovementType
+    get() = levelVariations.lastOrNull { it.movementType != MovementType.LINEAR }?.movementType ?: MovementType.LINEAR
 
 // ===== OVERRIDE PROPERTIES (letzter gewinnt) =====
 
