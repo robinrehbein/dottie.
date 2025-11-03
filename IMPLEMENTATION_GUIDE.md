@@ -581,12 +581,12 @@ fun GameOverlay(
                     onClick = onStartGame,
                     modifier = Modifier.padding(top = 16.dp)
                 ) {
-                    Text("Start Game")
+                    Text("START GAME")
                 }
             }
             is GameState.GameOver -> {
                 Text(
-                    text = "Game Over!",
+                    text = "GAME OVER!",
                     color = Color.Red,
                     fontSize = 24.sp,
                     modifier = Modifier.padding(top = 16.dp)
@@ -595,7 +595,7 @@ fun GameOverlay(
                     onClick = onStartGame,
                     modifier = Modifier.padding(top = 8.dp)
                 ) {
-                    Text("Restart")
+                    Text("RESTART")
                 }
             }
             else -> {

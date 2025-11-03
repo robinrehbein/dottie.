@@ -31,7 +31,8 @@ import de.robinrehbein.punkt.viewmodels.GameViewModel
 
 @Composable
 fun GameScreen(
-    viewModel: GameViewModel = viewModel()
+    viewModel: GameViewModel = viewModel(),
+    onBackToStart: () -> Unit = {}
 ) {
     val gameState by viewModel.gameState.collectAsState()
     val score by viewModel.score.collectAsState()
@@ -64,6 +65,11 @@ fun GameScreen(
         viewModel.updateScreenSize(screenWidth, screenHeight)
     }
 
+    // Auto-start game when screen is displayed
+    LaunchedEffect(Unit) {
+        viewModel.startGame()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -84,15 +90,13 @@ fun GameScreen(
             score = score,
             currentLevel = currentLevel,
             lives = lives,
-            gameState = gameState,
-            onStartGame = { viewModel.startGame() },
-            onPauseGame = { viewModel.pauseGame() },
             modifier = Modifier.align(Alignment.TopStart)
         )
 
         GameCenterMessage(
             gameState = gameState,
             onStartGame = { viewModel.startGame() },
+            onBackToStart = onBackToStart,
             modifier = Modifier.align(Alignment.Center)
         )
 
@@ -105,7 +109,9 @@ fun GameCanvas(
     animationTime: Float,
     modifier: Modifier
 ) {
-    Canvas(modifier = modifier) {
+    Canvas(modifier = modifier) {        // Use animationTime to trigger recomposition for smooth animations
+        val currentTime = animationTime // This ensures Canvas recomposes when animationTime changes
+        
         when (gameState) {
             is GameState.ShowingPoint -> {
                 drawCircle(
@@ -133,6 +139,9 @@ fun GameCanvas(
                     radius = gameState.targetPoint.radius,
                     center = Offset(gameState.targetPoint.x, gameState.targetPoint.y)
                 )
+                
+                // Draw animations from GameState
+                // Use animationTime to trigger recomposition for smooth animations
                 gameState.animations.forEach { animation ->
                     if (animation.isActive) {
                         animation.draw(this)
@@ -146,10 +155,13 @@ fun GameCanvas(
                     radius = gameState.targetPoint.radius,
                     center = Offset(gameState.targetPoint.x, gameState.targetPoint.y)
                 ) */
+
+
             }
 
             else -> {
                 // Leerer Bildschirm
+
             }
         }
     }
@@ -160,9 +172,6 @@ fun GameOverlay(
     score: Int,
     currentLevel: Int,
     lives: Int,
-    gameState: GameState,
-    onStartGame: () -> Unit,
-    onPauseGame: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -178,14 +187,13 @@ fun GameOverlay(
             Text(
                 text = "Score: $score",
                 color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleMedium
             )
 
             Text(
                 text = "Level: $currentLevel",
                 color = Color.White,
-                fontSize = 16.sp
+                style = MaterialTheme.typography.bodyLarge
             )
         }
 
@@ -196,7 +204,7 @@ fun GameOverlay(
             Text(
                 text = "Lives: ",
                 color = Color.White,
-                fontSize = 16.sp
+                style = MaterialTheme.typography.bodyLarge
             )
             repeat(lives) {
                 Text(
@@ -206,28 +214,7 @@ fun GameOverlay(
             }
         }
 
-        // State-specific UI
-        when (gameState) {
-            is GameState.Menu -> {
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(
-                    onClick = onStartGame,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = Color.Black
-                    )
-                ) {
-                    Text(
-                        text = "Start Game",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            else -> {
-                // Andere States
-            }
-        }
+        // No state-specific UI needed since game auto-starts
     }
 }
 
@@ -235,6 +222,7 @@ fun GameOverlay(
 fun GameCenterMessage(
     gameState: GameState,
     onStartGame: () -> Unit,
+    onBackToStart: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -246,37 +234,52 @@ fun GameCenterMessage(
                 Text(
                     text = "GAME OVER",
                     color = Color.Red,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineLarge
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Final Score: ${gameState.finalScore}",
                     color = Color.White,
-                    fontSize = 20.sp
+                    style = MaterialTheme.typography.titleLarge
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = onStartGame,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = Color.Black
-                    )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        text = "Start Game",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Button(
+                        onClick = onStartGame,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color.Black
+                        )
+                    ) {
+                        Text(
+                            text = "NOCHMAL",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    Button(
+                        onClick = onBackToStart,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Gray,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text(
+                            text = "HAUPTMENÜ",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+
             }
 
             is GameState.WaitingForTap -> {
                 Text(
                     text = "TAP NOW!",
                     color = Color.Yellow,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleLarge
                 )
             }
 
@@ -298,8 +301,7 @@ fun GameCenterMessage(
                 Text(
                     text = message,
                     color = color,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineSmall
                 )
             }
 

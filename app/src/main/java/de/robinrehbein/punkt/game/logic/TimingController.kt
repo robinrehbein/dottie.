@@ -1,6 +1,8 @@
-package de.robinrehbein.punkt.game.engine
+package de.robinrehbein.punkt.game.logic
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 class TimingController {
     private var job: Job? = null

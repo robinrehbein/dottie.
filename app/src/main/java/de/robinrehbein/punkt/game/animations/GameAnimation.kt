@@ -19,37 +19,45 @@ sealed class GameAnimation {
 }
 
 data class Particle(
-    val startX: Float,
-    val startY: Float,
-    val velocityX: Float,
-    val velocityY: Float,
+    val position: Offset,
+    val velocity: Offset,
     val color: Color,
     val size: Float,
-    val lifespan: Long = 500L
+    val lifespan: Long = 1000L
 )
 
 data class ExplosionAnimation(
     override val position: Offset,
     override val startTime: Long = System.currentTimeMillis(),
     override val duration: Long = 1000L,
-    val particles: List<Particle>
+    private val initialParticles: List<Particle>
 ) : GameAnimation() {
 
     override fun draw(drawScope: DrawScope) {
-        val elapsed = (System.currentTimeMillis() - startTime) / 1000f
-
-        particles.forEach { particle ->
-            val currentX = position.x + (particle.velocityX * elapsed)
-            val currentY = position.y + (particle.velocityY * elapsed) + (0.5f * 500f * elapsed * elapsed)
-
-            val alpha = (1f - progress).coerceIn(0f, 1f)
-
-            val currentSize = particle.size * (1f - progress * 0.3f).coerceAtLeast(0.1f)
+        if (!isActive) return
+        
+        val elapsed = progress // Use normalized progress (0f to 1f)
+        val deltaTime = elapsed * duration / 1000f // Convert to seconds for physics
+        
+        // Calculate current particle positions based on initial state and elapsed time
+        initialParticles.forEach { particle ->
+            // Physics: position = initial_position + velocity * time + 0.5 * gravity * time^2
+            val gravity = 200f // Gravity in pixels per second squared
+            val currentPosition = Offset(
+                x = particle.position.x + particle.velocity.x * deltaTime,
+                y = particle.position.y + particle.velocity.y * deltaTime + 0.5f * gravity * deltaTime * deltaTime
+            )
+            
+            // Fade out over time
+            val alpha = (1f - elapsed).coerceIn(0f, 1f)
+            
+            // Shrink particles over time
+            val currentSize = particle.size * (1f - elapsed * 0.3f).coerceAtLeast(0.5f)
 
             drawScope.drawCircle(
                 color = particle.color.copy(alpha = alpha),
                 radius = currentSize,
-                center = Offset(currentX, currentY)
+                center = currentPosition
             )
         }
     }

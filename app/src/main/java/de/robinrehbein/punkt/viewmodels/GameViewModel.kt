@@ -14,6 +14,8 @@ class GameViewModel : ViewModel() {
 
     val score: StateFlow<Int> = gameEngine.score
 
+    val streak: StateFlow<Int> = gameEngine.streak
+
     val currentLevel: StateFlow<Int> = gameEngine.currentLevel
 
     val lives: StateFlow<Int> = gameEngine.lives
@@ -62,9 +64,10 @@ class GameViewModel : ViewModel() {
     fun getDebugInfo(): String {
         return """
             Current State: ${gameState.value}
-            Score: ${score.value}
-            Level: ${currentLevel.value}
-            Lives: ${lives.value}
+            SCORE: ${score.value}
+            LEVEL: ${currentLevel.value}
+            LIVES: ${lives.value}
+            STREAK: ${streak.value}
         """.trimIndent()
     }
 
