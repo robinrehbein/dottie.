@@ -3,12 +3,10 @@ package de.robinrehbein.punkt.game.models
 import androidx.compose.ui.graphics.Color
 
 data class GameConfig(
-    val level: Int, val gameMode: GameMode = GameMode.CLASSIC, val levelVariations: List<LevelVariation> = emptyList()
+    val level: Int,
+    val gameMode: GameMode = GameMode.CLASSIC,
+    val levelVariations: List<LevelVariation> = emptyList()
 )
-
-enum class GameMode {
-    CLASSIC, GHOST_POINT, MOVING_TARGET, VIBRATING_POINT, BOCCIA
-}
 
 sealed class LevelVariation {
     open val pointSizeMultiplier: Float = 1f
@@ -159,3 +157,9 @@ val GameConfig.pointCount: Int
 
 val GameConfig.backgroundColor: Color
     get() = levelVariations.lastOrNull { it.background != Color(0xFF1A1A2E) }?.background ?: Color(0xFF1A1A2E)
+
+val GameConfig.hasWaitingPhase: Boolean
+    get() = when (gameMode) {
+        GameMode.CLASSIC -> true
+        GameMode.SPEEDRUN -> false
+    }

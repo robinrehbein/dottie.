@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import de.robinrehbein.punkt.game.models.GameMode
 import de.robinrehbein.punkt.ui.screens.GameScreen
 import de.robinrehbein.punkt.ui.screens.StartScreen
 import de.robinrehbein.punkt.ui.theme.PunktTheme
@@ -24,12 +25,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PunktTheme {
-                val gameViewModel = remember { GameViewModel(this@MainActivity) }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    PunktApp(gameViewModel = gameViewModel)
+                    PunktApp()
                 }
             }
         }
@@ -37,12 +37,15 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun PunktApp(gameViewModel: GameViewModel) {
+fun PunktApp() {
     var currentScreen by remember { mutableStateOf("start") }
+    var selectedGameMode by remember { mutableStateOf(GameMode.CLASSIC) }
 
     when (currentScreen) {
         "start" -> {
             StartScreen(
+                selectedGameMode = selectedGameMode,
+                onGameModeChanged = { selectedGameMode = it },
                 onStartGame = {
                     currentScreen = "game"
                 }
@@ -50,7 +53,7 @@ fun PunktApp(gameViewModel: GameViewModel) {
         }
         "game" -> {
             GameScreen(
-                viewModel = gameViewModel,
+                gameMode = selectedGameMode,
                 onBackToStart = {
                     currentScreen = "start"
                 }

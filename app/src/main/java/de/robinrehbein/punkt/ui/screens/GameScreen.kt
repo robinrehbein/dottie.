@@ -1,5 +1,6 @@
 package de.robinrehbein.punkt.ui.screens
 
+import android.content.Context
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -27,10 +29,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.engine.GameState
 import de.robinrehbein.punkt.game.logic.LevelManager
+import de.robinrehbein.punkt.game.models.GameMode
 import de.robinrehbein.punkt.game.models.HitType
 import de.robinrehbein.punkt.game.models.backgroundColor
 import de.robinrehbein.punkt.ui.components.PixelButton
@@ -43,11 +48,31 @@ private val Bytesized = FontFamily(
     Font(R.font.bytesized_regular, FontWeight.Normal)
 )
 
+/**
+ * Factory for creating GameViewModel with gameMode parameter
+ */
+class GameViewModelFactory(
+    private val context: Context,
+    private val gameMode: GameMode
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(GameViewModel::class.java)) {
+            return GameViewModel(context, gameMode) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
 @Composable
 fun GameScreen(
-    viewModel: GameViewModel = viewModel(),
+    gameMode: GameMode,
     onBackToStart: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val viewModel: GameViewModel = viewModel(
+        factory = GameViewModelFactory(context, gameMode)
+    )
     val gameState by viewModel.gameState.collectAsState()
     val score by viewModel.score.collectAsState()
     val currentLevel by viewModel.currentLevel.collectAsState()

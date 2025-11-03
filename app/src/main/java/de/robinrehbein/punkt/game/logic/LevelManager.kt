@@ -1,15 +1,17 @@
 package de.robinrehbein.punkt.game.logic
 
 import de.robinrehbein.punkt.game.models.GameConfig
+import de.robinrehbein.punkt.game.models.GameMode
 import de.robinrehbein.punkt.game.models.LevelVariation
 
 class LevelManager {
-    fun getConfigForLevel(level: Int): GameConfig {
+    fun getConfigForLevel(level: Int, gameMode: GameMode = GameMode.CLASSIC): GameConfig {
 
         val variations = getVariationsForLevel(level)
 
         return GameConfig(
             level = level,
+            gameMode = gameMode,
             levelVariations = variations
         )
 

@@ -6,6 +6,7 @@ import de.robinrehbein.punkt.game.animations.AnimationFactory
 import de.robinrehbein.punkt.game.logic.TimingController
 import de.robinrehbein.punkt.game.logic.HitDetection
 import de.robinrehbein.punkt.game.logic.LevelManager
+import de.robinrehbein.punkt.game.models.GameMode
 import de.robinrehbein.punkt.game.models.HitResult
 import de.robinrehbein.punkt.game.models.HitType
 import de.robinrehbein.punkt.game.models.Point
@@ -13,6 +14,7 @@ import de.robinrehbein.punkt.game.models.finalHitTolerance
 import de.robinrehbein.punkt.game.models.finalPointSize
 import de.robinrehbein.punkt.game.models.finalShowDuration
 import de.robinrehbein.punkt.game.models.finalWaitDuration
+import de.robinrehbein.punkt.game.models.hasWaitingPhase
 import de.robinrehbein.punkt.game.models.tapTimeLimit
 import de.robinrehbein.punkt.scoring.ScoreCalculator
 import kotlinx.coroutines.CoroutineScope
@@ -26,7 +28,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
-class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: Float = 0f, private val vibrationManager: VibrationManager? = null) {
+class GameEngine(
+    private var screenWidth: Float = 0f,
+    private var screenHeight: Float = 0f,
+    private val vibrationManager: VibrationManager? = null,
+    private val gameMode: GameMode = GameMode.CLASSIC
+) {
     private val _gameState = MutableStateFlow<GameState>(GameState.Menu)
     val gameState: StateFlow<GameState> = _gameState.asStateFlow()
 
@@ -74,9 +81,24 @@ class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: 
 
     fun handleTap(x: Float, y: Float) {
         val currentState = _gameState.value
-        if (currentState is GameState.WaitingForTap) {
-            gameScope?.launch {
-                processHit(currentState.targetPoint, x, y)
+        when (currentState) {
+            is GameState.WaitingForTap -> {
+                // Classic mode: tap during "TAP NOW!" phase
+                gameScope?.launch {
+                    processHit(currentState.targetPoint, x, y)
+                }
+            }
+            is GameState.ShowingPoint -> {
+                // Speedrun mode: tap directly on visible point
+                val config = levelManager.getConfigForLevel(_currentLevel.value, gameMode)
+                if (!config.hasWaitingPhase) {
+                    gameScope?.launch {
+                        processHit(currentState.point, x, y)
+                    }
+                }
+            }
+            else -> {
+                // Ignore taps in other states
             }
         }
     }
@@ -98,33 +120,45 @@ class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: 
 
     private fun startLevel() {
         gameScope?.launch {
-            val config = levelManager.getConfigForLevel(_currentLevel.value)
+            val config = levelManager.getConfigForLevel(_currentLevel.value, gameMode)
             val point = generateRandomPoint(config.finalPointSize)
 
             // Phase 1: Punkt anzeigen
             _gameState.value = GameState.ShowingPoint(point)
+            tapStartTime = System.currentTimeMillis() // Set tap start time for Speedrun mode
             timingController.waitForDuration(config.finalShowDuration)
 
-            // Phase 2: Warten
-            _gameState.value = GameState.WaitingPhase(point)
-            timingController.waitForDuration(config.finalWaitDuration)
+            // Phase 2: Conditional waiting phase and tap state
+            if (config.hasWaitingPhase) {
+                // Classic mode: waiting phase + "TAP NOW!"
+                _gameState.value = GameState.WaitingPhase(point)
+                timingController.waitForDuration(config.finalWaitDuration)
+                tapStartTime = System.currentTimeMillis() // Reset tap start time for Classic mode
+                _gameState.value = GameState.WaitingForTap(point)
+                
+                val timeout = config.tapTimeLimit
+                delay(timeout)
 
-            // Phase 3: Bereit für Tap
-            tapStartTime = System.currentTimeMillis()
-            _gameState.value = GameState.WaitingForTap(point)
+                // Prüfen ob immer noch auf Tap gewartet wird
+                if (_gameState.value is GameState.WaitingForTap) {
+                    processTimeout()
+                }
+            } else {
+                // Speedrun mode: point stays visible and clickable
+                // No state change needed - stays in ShowingPoint
+                val timeout = config.tapTimeLimit
+                delay(timeout)
 
-            val timeout = config.tapTimeLimit
-            delay(timeout)
-
-            // Prüfen ob immer noch auf Tap gewartet wird
-            if (_gameState.value is GameState.WaitingForTap) {
-                processTimeout()
+                // Prüfen ob immer noch im ShowingPoint state (nicht getappt)
+                if (_gameState.value is GameState.ShowingPoint) {
+                    processTimeout()
+                }
             }
         }
     }
 
     private suspend fun processHit(targetPoint: Point, tapX: Float, tapY: Float) {
-        val config = levelManager.getConfigForLevel(_currentLevel.value)
+        val config = levelManager.getConfigForLevel(_currentLevel.value, gameMode)
         val reactionTime = System.currentTimeMillis() - tapStartTime
         val hitResult = hitDetection.checkHit(targetPoint, tapX, tapY, config.finalHitTolerance, reactionTime)
         vibrationManager?.vibrateForHit(hitResult.hitType)
@@ -158,18 +192,38 @@ class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: 
     private suspend fun processTimeout() {
         val missResult = HitResult(false, Float.MAX_VALUE, 0f, 0, HitType.MISS)
         val currentState = _gameState.value
-        if (currentState is GameState.WaitingForTap) {
-            vibrationManager?.vibrateForHit(HitType.MISS)
+        when (currentState) {
+            is GameState.WaitingForTap -> {
+                // Classic mode timeout
+                vibrationManager?.vibrateForHit(HitType.MISS)
 
-            _streak.value = 0
+                _streak.value = 0
 
-            val earnedPoints = scoreCalculator.calculateScore(missResult, _currentLevel.value, _streak.value)
-            _score.value += earnedPoints
+                val earnedPoints = scoreCalculator.calculateScore(missResult, _currentLevel.value, _streak.value)
+                _score.value += earnedPoints
 
-            _gameState.value = GameState.Feedback(missResult, currentState.targetPoint)
-            delay(1000)
+                _gameState.value = GameState.Feedback(missResult, currentState.targetPoint)
+                delay(1000)
 
-            loseLive()
+                loseLive()
+            }
+            is GameState.ShowingPoint -> {
+                // Speedrun mode timeout
+                vibrationManager?.vibrateForHit(HitType.MISS)
+
+                _streak.value = 0
+
+                val earnedPoints = scoreCalculator.calculateScore(missResult, _currentLevel.value, _streak.value)
+                _score.value += earnedPoints
+
+                _gameState.value = GameState.Feedback(missResult, currentState.point)
+                delay(1000)
+
+                loseLive()
+            }
+            else -> {
+                // No timeout handling needed for other states
+            }
         }
     }
 

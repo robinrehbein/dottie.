@@ -6,13 +6,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.robinrehbein.punkt.game.engine.GameEngine
 import de.robinrehbein.punkt.game.engine.GameState
+import de.robinrehbein.punkt.game.models.GameMode
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class GameViewModel(private val context: Context) : ViewModel() {
+class GameViewModel(
+    private val context: Context,
+    private val gameMode: GameMode = GameMode.CLASSIC
+) : ViewModel() {
     private val vibrationManager = VibrationManager(context)
 
-    private val gameEngine = GameEngine(vibrationManager = vibrationManager)
+    private val gameEngine = GameEngine(vibrationManager = vibrationManager, gameMode = gameMode)
 
     val gameState: StateFlow<GameState> = gameEngine.gameState
 
