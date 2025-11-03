@@ -1,5 +1,6 @@
 package de.robinrehbein.punkt.game.engine
 
+import VibrationManager
 import androidx.compose.ui.geometry.Offset
 import de.robinrehbein.punkt.game.animations.AnimationFactory
 import de.robinrehbein.punkt.game.logic.TimingController
@@ -25,7 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
-class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: Float = 0f) {
+class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: Float = 0f, private val vibrationManager: VibrationManager? = null) {
     private val _gameState = MutableStateFlow<GameState>(GameState.Menu)
     val gameState: StateFlow<GameState> = _gameState.asStateFlow()
 
@@ -114,6 +115,7 @@ class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: 
     private suspend fun processHit(targetPoint: Point, tapX: Float, tapY: Float) {
         val config = levelManager.getConfigForLevel(_currentLevel.value)
         val hitResult = hitDetection.checkHit(targetPoint, tapX, tapY, config.finalHitTolerance)
+        vibrationManager?.vibrateForHit(hitResult.hitType)
 
         if (hitResult.isHit) {
             _streak.value++
@@ -145,6 +147,7 @@ class GameEngine(private var screenWidth: Float = 0f, private var screenHeight: 
         val missResult = HitResult(false, Float.MAX_VALUE, 0f, 0, HitType.MISS)
         val currentState = _gameState.value
         if (currentState is GameState.WaitingForTap) {
+            vibrationManager?.vibrateForHit(HitType.MISS)
 
             _streak.value = 0
 

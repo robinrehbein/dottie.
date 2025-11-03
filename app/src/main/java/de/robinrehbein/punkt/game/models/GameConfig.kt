@@ -72,7 +72,8 @@ sealed class LevelVariation {
 
 private fun getBaseSizeForLevel(level: Int): Float {
     return when {
-        level <= 10 -> 50f - (level * 2f).coerceAtMost(20f)
+        level <= 10 -> 50f - (level * 1f).coerceAtMost(20f)
+        // level <= 10 -> 50f - (level * 2f).coerceAtMost(20f)
         level <= 30 -> 30f - ((level - 10) * 1f).coerceAtMost(15f)
         else -> 15f
     }
@@ -95,11 +96,12 @@ private fun getBaseWaitDurationForLevel(level: Int): Long {
 }
 
 private fun getBaseToleranceForLevel(level: Int): Float {
-    return when {
-        level <= 10 -> 60f - (level * 2f).coerceAtMost(20f)
-        level <= 30 -> 40f - ((level - 10) * 1f).coerceAtMost(15f)
-        else -> 25f
-    }
+    return 50f
+//    return when {
+//        level <= 10 -> 60f - (level * 2f).coerceAtMost(20f)
+//        level <= 30 -> 40f - ((level - 10) * 1f).coerceAtMost(15f)
+//        else -> 25f
+//    }
 }
 
 val GameConfig.finalPointSize: Float

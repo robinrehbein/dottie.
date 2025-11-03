@@ -15,7 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.R
-import de.robinrehbein.punkt.ui.components.PixelArtButton
+import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.theme.PunktTheme
 
 /**
@@ -39,7 +39,8 @@ fun StartScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF1A1A2E)), // Dark blue background similar to game
+            .background(Color(0xFF1A1A2E)) // Dark blue background similar to game
+            .windowInsetsPadding(WindowInsets.systemBars),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -70,7 +71,7 @@ fun StartScreen(
             )
             
             // Start Game Button using PixelArtButton
-            PixelArtButton(
+            PixelButton(
                 text = "SPIEL STARTEN",
                 onClick = onStartGame,
                 backgroundColor = Color(0xFFE8B4E8), // Light pink/purple

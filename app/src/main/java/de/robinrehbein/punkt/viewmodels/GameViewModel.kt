@@ -1,5 +1,7 @@
 package de.robinrehbein.punkt.viewmodels
 
+import VibrationManager
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.robinrehbein.punkt.game.engine.GameEngine
@@ -7,8 +9,10 @@ import de.robinrehbein.punkt.game.engine.GameState
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class GameViewModel : ViewModel() {
-    private val gameEngine = GameEngine()
+class GameViewModel(private val context: Context) : ViewModel() {
+    private val vibrationManager = VibrationManager(context)
+
+    private val gameEngine = GameEngine(vibrationManager = vibrationManager)
 
     val gameState: StateFlow<GameState> = gameEngine.gameState
 

@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -32,7 +33,7 @@ import de.robinrehbein.punkt.game.engine.GameState
 import de.robinrehbein.punkt.game.logic.LevelManager
 import de.robinrehbein.punkt.game.models.HitType
 import de.robinrehbein.punkt.game.models.backgroundColor
-import de.robinrehbein.punkt.ui.components.PixelArtButton
+import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.viewmodels.GameViewModel
 
 /**
@@ -73,10 +74,24 @@ fun GameScreen(
         label = "animation_time"
     )
 
-    LaunchedEffect(configuration) {
+    // Get system bar insets for safe area calculations
+    val systemBarsInsets = WindowInsets.systemBars
+    val statusBarHeight = with(density) { systemBarsInsets.getTop(density).toDp() }
+    val navigationBarHeight = with(density) { systemBarsInsets.getBottom(density).toDp() }
+    
+    // Calculate UI overlay height (approximate height of GameOverlay)
+    val overlayHeight = 80.dp // Approximate height for score, level, lives display
+    
+    LaunchedEffect(configuration, systemBarsInsets) {
         val screenWidth = with(density) { configuration.screenWidthDp.dp.toPx() }
         val screenHeight = with(density) { configuration.screenHeightDp.dp.toPx() }
-        viewModel.updateScreenSize(screenWidth, screenHeight)
+        
+        // Calculate playable area dimensions (excluding system UI and game overlay)
+        val playableHeight = screenHeight - with(density) {
+            (statusBarHeight + navigationBarHeight + overlayHeight).toPx()
+        }
+        
+        viewModel.updateScreenSize(screenWidth, playableHeight)
     }
 
     // Auto-start game when screen is displayed
@@ -84,37 +99,46 @@ fun GameScreen(
         viewModel.startGame()
     }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(config.backgroundColor)
-            .pointerInput(gameState) {
-                detectTapGestures { offset ->
-                    viewModel.handleTap(offset.x, offset.y)
-                }
-            }
+            .windowInsetsPadding(WindowInsets.systemBars)
     ) {
-        GameCanvas(
-            gameState = gameState,
-            animationTime = animationTime,
-            modifier = Modifier.fillMaxSize(),
-        )
-
+        // UI Overlay at the top
         GameOverlay(
             score = score,
             currentLevel = currentLevel,
             lives = lives,
             streak = streak,
-            modifier = Modifier.align(Alignment.TopStart)
+            statusBarHeight = statusBarHeight,
+            modifier = Modifier.fillMaxWidth()
         )
 
-        GameCenterMessage(
-            gameState = gameState,
-            onStartGame = { viewModel.startGame() },
-            onBackToStart = onBackToStart,
-            modifier = Modifier.align(Alignment.Center)
-        )
+        // Game Canvas takes remaining space
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(gameState) {
+                    detectTapGestures { offset ->
+                        // Adjust tap coordinates to account for overlay offset
+                        viewModel.handleTap(offset.x, offset.y)
+                    }
+                }
+        ) {
+            GameCanvas(
+                gameState = gameState,
+                animationTime = animationTime,
+                modifier = Modifier.fillMaxSize(),
+            )
 
+            GameCenterMessage(
+                gameState = gameState,
+                onStartGame = { viewModel.startGame() },
+                onBackToStart = onBackToStart,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
     }
 }
 
@@ -129,7 +153,7 @@ fun GameCanvas(
         
         when (gameState) {
             is GameState.ShowingPoint -> {
-                drawPixelArtPoint(
+                drawPixelPoint(
                     center = Offset(gameState.point.x, gameState.point.y),
                     radius = gameState.point.radius
                 )
@@ -148,7 +172,7 @@ fun GameCanvas(
                     center = Offset(gameState.targetPoint.x, gameState.targetPoint.y)
                 )
 
-                drawPixelArtPoint(
+                drawPixelPoint(
                     center = Offset(gameState.targetPoint.x, gameState.targetPoint.y),
                     radius = gameState.targetPoint.radius,
                     alpha = 0.3f
@@ -187,11 +211,17 @@ fun GameOverlay(
     currentLevel: Int,
     lives: Int,
     streak: Int,
+    statusBarHeight: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
-            .padding(16.dp)
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = 16.dp
+            )
             .fillMaxWidth()
     ) {
         // Game Stats
@@ -279,7 +309,7 @@ fun GameCenterMessage(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    PixelArtButton(
+                    PixelButton(
                         text = "NOCHMAL",
                         onClick = onStartGame,
                         backgroundColor = Color(0xFFE8B4E8),
@@ -288,7 +318,7 @@ fun GameCenterMessage(
                         width = 140.dp,
                         height = 50.dp
                     )
-                    PixelArtButton(
+                    PixelButton(
                         text = "HAUPTMENÜ",
                         onClick = onBackToStart,
                         backgroundColor = Color(0xFFB0B0B0),
@@ -312,6 +342,7 @@ fun GameCenterMessage(
             }
 
             is GameState.Feedback -> {
+                // ToDo hitresult.points oder score?
                 val message = when (gameState.hitResult.hitType) {
                     HitType.PERFECT -> "PERFECT! +${gameState.hitResult.points}"
                     HitType.GOOD -> "GOOD! +${gameState.hitResult.points}"
@@ -344,7 +375,7 @@ fun GameCenterMessage(
 /**
  * Draws a pixel-art styled point with pixelated edges
  */
-fun DrawScope.drawPixelArtPoint(
+fun DrawScope.drawPixelPoint(
     center: Offset,
     radius: Float,
     backgroundColor: Color = Color(0xFFE8B4E8),

@@ -46,7 +46,7 @@ private val BytesizedFont = FontFamily(
  * @param borderWidth Width of the pixel border
  */
 @Composable
-fun PixelArtButton(
+fun PixelButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -67,7 +67,7 @@ fun PixelArtButton(
         Canvas(
             modifier = Modifier.size(width, height)
         ) {
-            drawPixelArtBorder(
+            drawPixelBorder(
                 backgroundColor = backgroundColor,
                 borderColor = borderColor,
                 borderWidth = borderWidth.toPx()
@@ -90,7 +90,7 @@ fun PixelArtButton(
 /**
  * Draws the pixel art border with stepped/staircase pattern on the sides
  */
-private fun DrawScope.drawPixelArtBorder(
+private fun DrawScope.drawPixelBorder(
     backgroundColor: Color,
     borderColor: Color,
     borderWidth: Float
@@ -102,6 +102,7 @@ private fun DrawScope.drawPixelArtBorder(
     // Fill background
     drawRect(
         color = backgroundColor,
+        
         topLeft = Offset(0f, 0f),
         size = Size(width, height)
     )
@@ -194,7 +195,7 @@ private fun PixelArtButtonPreview() {
             modifier = Modifier.padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            PixelArtButton(
+            PixelButton(
                 text = "START GAME",
                 onClick = { /* Preview action */ }
             )
@@ -213,7 +214,7 @@ private fun PixelArtButtonCustomColorsPreview() {
             modifier = Modifier.padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            PixelArtButton(
+            PixelButton(
                 text = "SETTINGS",
                 onClick = { /* Preview action */ },
                 backgroundColor = Color(0xFFFFB4B4), // Light red
@@ -239,7 +240,7 @@ private fun PixelArtButtonSizesPreview() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp)
             ) {
-                PixelArtButton(
+                PixelButton(
                     text = "SMALL",
                     onClick = { },
                     width = 120.dp,
@@ -247,14 +248,14 @@ private fun PixelArtButtonSizesPreview() {
                     borderWidth = 3.dp
                 )
                 
-                PixelArtButton(
+                PixelButton(
                     text = "MEDIUM",
                     onClick = { },
                     width = 160.dp,
                     height = 50.dp
                 )
                 
-                PixelArtButton(
+                PixelButton(
                     text = "LARGE",
                     onClick = { },
                     width = 240.dp,

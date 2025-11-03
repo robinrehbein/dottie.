@@ -16,9 +16,9 @@ class HitDetection {
         }
 
         val hitType = when {
-            distance <= targetPoint.radius * 0.2f -> HitType.PERFECT
-            distance <= targetPoint.radius * 0.4f -> HitType.GOOD
-            distance <= tolerance -> HitType.BAD
+            distance <= targetPoint.radius * 0.8f -> HitType.PERFECT
+            distance <= targetPoint.radius * 1.2f -> HitType.GOOD
+            distance <= tolerance + targetPoint.radius -> HitType.BAD
             else -> HitType.MISS
         }
 
@@ -32,7 +32,7 @@ class HitDetection {
             HitType.PERFECT -> (100 + (accuracy * 50)).toInt()
             HitType.GOOD -> (50 + (accuracy * 25)).toInt()
             HitType.BAD -> (10 + (accuracy * 10)).toInt()
-            HitType.MISS -> (10 - (accuracy * 10)).toInt()
+            HitType.MISS -> (-(accuracy * 10)).toInt()
         }
     }
     private fun calculateDistance(x1: Float, y1: Float, x2: Float, y2: Float): Float {

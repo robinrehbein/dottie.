@@ -8,58 +8,53 @@ object AnimationFactory {
 
     fun createPerfectHitAnimation(position: Offset): List<GameAnimation> {
         return listOf(
-            ExplosionAnimation(position = position, initialParticles = createGoldenParticles(position))
+            ExplosionAnimation(position = position, initialParticles = createPerfectParticles(position))
         )
     }
 
     fun createGoodHitAnimation(position: Offset): List<GameAnimation> {
         return listOf(
-            ExplosionAnimation(position = position, initialParticles = createRainbowParticles(position))
+            ExplosionAnimation(position = position, initialParticles = createParticles(position))
         )
     }
 
-    private fun createGoldenParticles(position: Offset): List<Particle> {
+    private fun createParticles(position: Offset): List<Particle> {
         return (0..15).map {
             val angle = (it * 24f) * (Math.PI / 180f)
-            val speed = Random.nextFloat() * 3f + 2f // Reasonable speed for per-frame movement
+            val speed = Random.nextFloat() * 300f + 200f // Reasonable speed for per-frame movement
             val velocityX = (Math.cos(angle) * speed).toFloat()
-            val velocityY = (Math.sin(angle) * speed).toFloat() - 1f // Slight upward bias
+            val velocityY = (Math.sin(angle) * speed).toFloat() - 30f // Slight upward bias
 
             Particle(
                 position = position,
                 velocity = Offset(velocityX, velocityY),
                 color = when (Random.nextInt(4)) {
-                    0 -> Color.Yellow
-                    1 -> Color(0xFFFFD700) // Gold
-                    2 -> Color(0xFFFFA500) // Orange
-                    else -> Color(0xFFFFE55C) // Light Gold
+                    0 -> Color.White
+                    1 -> Color.LightGray
+                    else -> Color.Gray
                 },
-                size = Random.nextFloat() * 6f + 3f
+                size = Random.nextFloat() * 6f + 6f
             )
         }
     }
 
-    private fun createRainbowParticles(position: Offset): List<Particle> {
+    private fun createPerfectParticles(position: Offset): List<Particle> {
         val colors = listOf(
-            Color.Red,
-            Color.Yellow,
-            Color.Green,
-            Color.Blue,
             Color.Magenta,
             Color.Cyan
         )
 
         return (0..12).map {
             val angle = (it * 30f) * (Math.PI / 180f)
-            val speed = Random.nextFloat() * 4f + 1.5f // Reasonable speed for per-frame movement
+            val speed = Random.nextFloat() * 400f + 200f // Reasonable speed for per-frame movement
             val velocityX = (Math.cos(angle) * speed).toFloat()
-            val velocityY = (Math.sin(angle) * speed).toFloat() - 0.5f // Slight upward bias
+            val velocityY = (Math.sin(angle) * speed).toFloat() - 30f // Slight upward bias
 
             Particle(
                 position = position,
                 velocity = Offset(velocityX, velocityY),
                 color = colors.random(),
-                size = Random.nextFloat() * 8f + 4f
+                size = Random.nextFloat() * 8f + 8f
             )
         }
     }
