@@ -16,6 +16,7 @@ sealed class LevelVariation {
 
     open val movementSpeed: Float = 0f
     open val shrinkingRate: Float = 0f
+    open val vibrationIntensity: Float = 0f // New property for vibrating points
     open val tapTimeLimit: Long = 2000L
     open val requiredTaps: Int = 1
     open val pointCount: Int = 1
@@ -23,14 +24,17 @@ sealed class LevelVariation {
 
     data object LightningFast : LevelVariation() {
         override val showDurationMultiplier: Float = 0.4f
+        override val background: Color = Color(0xFF1B4332) // Dark green
     }
 
     data object MemoryChallenge : LevelVariation() {
         override val waitDurationMultiplier: Float = 2.5f
+        override val background: Color = Color(0xFF6A1B1B) // Dark red
     }
 
     data object TinyDot : LevelVariation() {
         override val pointSizeMultiplier: Float = 0.5f
+        override val background: Color = Color(0xFF2D1B69) // Dark purple
     }
 
     data object TinyHitTolerance : LevelVariation() {
@@ -58,13 +62,52 @@ sealed class LevelVariation {
         override val pointCount: Int = 2
     }
 
+    // New early-level variations with background colors
+    data object EarlyBlue : LevelVariation() {
+        override val background: Color = Color(0xFF1B2951) // Dark blue
+    }
+
+    data object EarlyTeal : LevelVariation() {
+        override val background: Color = Color(0xFF1B4D4D) // Dark teal
+    }
+
+    // Vibrating point variation
+    data object VibratingDot : LevelVariation() {
+        override val vibrationIntensity: Float = 5f
+        override val background: Color = Color(0xFF4A1B69) // Dark violet
+    }
+
+    // Fast moving point
+    data object FastMovement : LevelVariation() {
+        override val movementSpeed: Float = 25f
+        override val background: Color = Color(0xFF1B6951) // Dark emerald
+    }
+
+    // Slow moving point
+    data object SlowMovement : LevelVariation() {
+        override val movementSpeed: Float = 8f
+        override val background: Color = Color(0xFF2D4A1B) // Dark olive
+    }
+
+    // Multiple challenges combined
+    data object ChaosMode : LevelVariation() {
+        override val pointSizeMultiplier: Float = 0.7f
+        override val showDurationMultiplier: Float = 0.8f
+        override val movementSpeed: Float = 15f
+        override val vibrationIntensity: Float = 3f
+        override val background: Color = Color(0xFF6A4C1B) // Dark orange
+    }
+
+    // Enhanced Nightmare - much more challenging
     data object Nightmare : LevelVariation() {
-        override val pointSizeMultiplier: Float = 0.3f
-        override val showDurationMultiplier: Float = 0.4f
-        override val waitDurationMultiplier: Float = 3.0f
-        override val movementSpeed: Float = 50f
-        override val shrinkingRate: Float = 5f
-        override val background: Color = Color(0xFF2d1b69)
+        override val pointSizeMultiplier: Float = 0.2f // Even smaller
+        override val showDurationMultiplier: Float = 0.3f // Even faster
+        override val waitDurationMultiplier: Float = 4.0f // Longer wait
+        override val movementSpeed: Float = 80f // Much faster movement
+        override val shrinkingRate: Float = 8f // Faster shrinking
+        override val vibrationIntensity: Float = 10f // High vibration
+        override val hitToleranceMultiplier: Float = 0.3f // Much smaller hit area
+        override val background: Color = Color(0xFF8B0000) // Dark red
     }
 }
 
@@ -143,6 +186,9 @@ val GameConfig.movementSpeed: Float
 
 val GameConfig.shrinkingRate: Float
     get() = levelVariations.sumOf { it.shrinkingRate.toDouble() }.toFloat()
+
+val GameConfig.vibrationIntensity: Float
+    get() = levelVariations.sumOf { it.vibrationIntensity.toDouble() }.toFloat()
 
 // ===== OVERRIDE PROPERTIES (letzter gewinnt) =====
 

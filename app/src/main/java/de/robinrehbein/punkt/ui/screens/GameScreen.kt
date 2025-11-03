@@ -71,6 +71,7 @@ fun GameScreen(
 ) {
     val context = LocalContext.current
     val viewModel: GameViewModel = viewModel(
+        key = "GameViewModel_${gameMode.name}",
         factory = GameViewModelFactory(context, gameMode)
     )
     val gameState by viewModel.gameState.collectAsState()
