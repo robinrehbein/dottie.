@@ -281,7 +281,7 @@ internal fun GameOverOverlay(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "oder tippe irgendwo",
+                text = "oder tippe irgendwo — sofort weiter",
                 fontFamily = Bytesized,
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = blink)

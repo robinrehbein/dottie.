@@ -3,6 +3,7 @@ package de.robinrehbein.punkt.ui.screens
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
@@ -64,6 +65,9 @@ private fun twistBannerText(twist: TimingGame.Twist): String = when (twist) {
 private class BannerState {
     var timeLeft = 0f
 
+    /** Priorität des laufenden Banners — höher gewinnt, gleich überschreibt. */
+    var priority = 0
+
     /** Zuletzt gesehene Himmels-Stufe (score / 5), für Stufen-Feedback. */
     var lastStage = 0
 }
@@ -101,6 +105,15 @@ fun TimingGameScreen(
     var showPerfect by remember { mutableStateOf(false) }
     var bannerText by remember { mutableStateOf("") }
 
+    // Banner mit Priorität: Ein wichtigeres Banner (Twist-Ankündigung)
+    // wird nicht von einem beiläufigen ("NOCH EINE!") überschrieben.
+    fun showBanner(text: String, seconds: Float, priority: Int) {
+        if (bannerState.timeLeft > 0f && bannerState.priority > priority) return
+        bannerText = text
+        bannerState.timeLeft = seconds
+        bannerState.priority = priority
+    }
+
     // Game-Loop: ein Update pro gerendertem Frame.
     LaunchedEffect(Unit) {
         var lastFrameNanos = 0L
@@ -121,16 +134,21 @@ fun TimingGameScreen(
                 var twistUnlockedThisFrame = false
                 events.forEach { event ->
                     when (event) {
+                        is TimingGame.GameEvent.Started -> {
+                            // Auch beim Sofort-Neustart aus dem Game-Over:
+                            // Banner und Stufen-Zähler auf Anfang.
+                            bannerState.lastStage = 0
+                            bannerState.timeLeft = 0f
+                            bannerText = ""
+                        }
                         is TimingGame.GameEvent.Hit -> haptics.score()
                         is TimingGame.GameEvent.PerfectHit -> haptics.perfect()
                         is TimingGame.GameEvent.ChainNext -> {
-                            bannerText = "NOCH EINE!"
-                            bannerState.timeLeft = 1.2f
+                            showBanner("NOCH EINE!", 1.2f, priority = 1)
                         }
                         is TimingGame.GameEvent.TwistUnlocked -> {
                             twistUnlockedThisFrame = true
-                            bannerText = twistBannerText(event.twist)
-                            bannerState.timeLeft = 2.2f
+                            showBanner(twistBannerText(event.twist), 2.2f, priority = 2)
                             fx.celebrateTime = CELEBRATE_SECONDS
                             haptics.unlock()
                         }
@@ -158,8 +176,7 @@ fun TimingGameScreen(
                 if (game.phase == TimingGame.Phase.RUNNING && stage > bannerState.lastStage) {
                     bannerState.lastStage = stage
                     if (!twistUnlockedThisFrame) {
-                        bannerText = "NEUE STUFE!"
-                        bannerState.timeLeft = 1.6f
+                        showBanner("NEUE STUFE!", 1.6f, priority = 1)
                         fx.celebrateTime = CELEBRATE_SECONDS
                         haptics.unlock()
                     }
@@ -177,7 +194,7 @@ fun TimingGameScreen(
         }
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(Unit) {
@@ -191,6 +208,9 @@ fun TimingGameScreen(
             drawTimingWorld(game, fx)
         }
 
+        // Positionen relativ zur Bildhöhe: Die Bahn endet spätestens bei
+        // 72% der Höhe, der Perfekt-Text sitzt knapp darunter — auf jedem
+        // Display, statt auf festen dp-Werten.
         if (showPerfect) {
             Text(
                 text = "PERFEKT! +2",
@@ -198,8 +218,8 @@ fun TimingGameScreen(
                 fontSize = 28.sp,
                 color = Color(0xFFFFE95E),
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(top = 260.dp)
+                    .align(Alignment.TopCenter)
+                    .padding(top = maxHeight * 0.74f)
             )
         }
 
@@ -212,7 +232,7 @@ fun TimingGameScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 160.dp)
+                    .padding(top = maxHeight * 0.16f)
             )
         }
 
@@ -230,7 +250,10 @@ fun TimingGameScreen(
                 bestScore = bestScore,
                 isNewRecord = isNewRecord,
                 taunt = taunt,
-                onRestart = { game.reset() },
+                onRestart = {
+                    game.reset()
+                    game.tap()
+                },
                 switchLabel = "WECHSEL ZU: ${GameMode.GRAVITY_FLIP.displayName}",
                 onSwitchMode = onSwitchMode
             )

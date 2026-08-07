@@ -125,7 +125,10 @@ fun GravityGameScreen(
                 bestScore = bestScore,
                 isNewRecord = isNewRecord,
                 taunt = taunt,
-                onRestart = { game.reset() },
+                onRestart = {
+                    game.reset()
+                    game.tap()
+                },
                 switchLabel = "WECHSEL ZU: ${GameMode.TIME_STOP.displayName}",
                 onSwitchMode = onSwitchMode
             )

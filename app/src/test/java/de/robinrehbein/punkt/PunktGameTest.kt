@@ -168,9 +168,47 @@ class PunktGameTest {
         game.tap() // sofortiger Wut-Tap innerhalb der Sperrzeit
         assertEquals(PunktGame.Phase.OVER, game.phase)
 
+        // Nach der Sperre startet ein Tap sofort den nächsten Lauf.
         game.tick(PunktGame.RESTART_LOCK_SECONDS + 0.1f)
+        val event = game.tap()
+        assertEquals(PunktGame.GameEvent.STARTED, event)
+        assertEquals(PunktGame.Phase.RUNNING, game.phase)
+        assertEquals(0, game.score)
+        assertTrue(game.obstacles.isNotEmpty())
+    }
+
+    @Test
+    fun `circle collision lets the dot squeeze past block corners`() {
+        val game = newGame()
         game.tap()
-        assertEquals(PunktGame.Phase.READY, game.phase)
+        val hitRadius = PunktGame.DOT_RADIUS * PunktGame.HITBOX_FORGIVENESS
+
+        // Block-Ecke diagonal ~1.13 * hitRadius vom Mittelpunkt entfernt:
+        // Eine eckige Hitbox hätte getroffen, der runde Punkt kommt vorbei.
+        game.obstacles.clear()
+        val nearMiss = 0.8f * hitRadius
+        game.obstacles.add(
+            PunktGame.Obstacle(
+                x = game.dotX + nearMiss,
+                floorHeight = game.playBottom() - (game.dotY + nearMiss),
+                ceilingHeight = 0f
+            )
+        )
+        game.update(0.0001f)
+        assertEquals(PunktGame.Phase.RUNNING, game.phase)
+
+        // Ecke diagonal ~0.71 * hitRadius entfernt: Jetzt trifft auch der Kreis.
+        game.obstacles.clear()
+        val realHit = 0.5f * hitRadius
+        game.obstacles.add(
+            PunktGame.Obstacle(
+                x = game.dotX + realHit,
+                floorHeight = game.playBottom() - (game.dotY + realHit),
+                ceilingHeight = 0f
+            )
+        )
+        game.update(0.0001f)
+        assertEquals(PunktGame.Phase.DYING, game.phase)
     }
 
     @Test
