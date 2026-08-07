@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.data.ScoreStore
@@ -36,10 +37,40 @@ import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.sin
 
+/** Fallen-Zone: klar als Gefahr lesbar, aber unter Zeitdruck verwechselbar. */
+private val FakeZoneColor = Color(0xFFB44FD8)
+private val FakeZoneCoreColor = Color(0xFF8A2FB0)
+
+/** Himmelsfarbe pro 5er-Stufe: von Tag über Abendrot bis Nacht. */
+private val SkyStages = listOf(
+    Color(0xFF4EC0CA), // 0+  Tag (türkis)
+    Color(0xFF5B9BD5), // 5+  Blau
+    Color(0xFF7B6FD0), // 10+ Lila
+    Color(0xFFC0616F), // 15+ Altrosa
+    Color(0xFFD98A3D), // 20+ Sonnenuntergang
+    Color(0xFF3D4A8C), // 25+ Dämmerung
+    Color(0xFF2A2640)  // 30+ Nacht
+)
+
+private fun twistBannerText(twist: TimingGame.Twist): String = when (twist) {
+    TimingGame.Twist.PULSE -> "NEU: PULS-ZONE!"
+    TimingGame.Twist.DRIFT -> "NEU: WANDERNDE ZONE!"
+    TimingGame.Twist.GHOST -> "NEU: GEISTER-PUNKT!"
+    TimingGame.Twist.FAKE -> "NEU: FALLEN-ZONE!"
+    TimingGame.Twist.CHAIN -> "NEU: KETTEN-ZONE!"
+}
+
+/** Nicht-Compose-Zeitgeber für das Twist-Banner. */
+private class BannerState {
+    var timeLeft = 0f
+}
+
 /**
  * Spielprinzip "STOPP": Der Punkt kreist automatisch auf einer Bahn.
  * Ein Tap, während er in der Zielzone ist, zählt — daneben getappt oder
  * die Zone überfahren ist sofort das Ende. Präzision statt Dauerfeuer.
+ * Mit steigendem Score schalten sich Twists frei (Puls, Drift, Geist,
+ * Falle, Kette), die pro Zone zufällig gemischt werden.
  */
 @Composable
 fun TimingGameScreen(
@@ -51,6 +82,7 @@ fun TimingGameScreen(
     val store = remember { ScoreStore(context) }
     val game = remember { TimingGame() }
     val fx = remember { FxState() }
+    val bannerState = remember { BannerState() }
     val mode = GameMode.TIME_STOP
 
     var frameTick by remember { mutableLongStateOf(0L) }
@@ -61,6 +93,7 @@ fun TimingGameScreen(
     var isNewRecord by remember { mutableStateOf(false) }
     var taunt by remember { mutableStateOf("") }
     var showPerfect by remember { mutableStateOf(false) }
+    var bannerText by remember { mutableStateOf("") }
 
     // Game-Loop: ein Update pro gerendertem Frame.
     LaunchedEffect(Unit) {
@@ -73,12 +106,25 @@ fun TimingGameScreen(
                 val events = game.update(dt)
                 fx.flashAlpha = (fx.flashAlpha - dt * 3.5f).coerceAtLeast(0f)
                 fx.shakeTime = (fx.shakeTime - dt).coerceAtLeast(0f)
+                bannerState.timeLeft = (bannerState.timeLeft - dt).coerceAtLeast(0f)
+                if (bannerState.timeLeft <= 0f && bannerText.isNotEmpty()) {
+                    bannerText = ""
+                }
 
                 events.forEach { event ->
                     when (event) {
-                        TimingGame.GameEvent.HIT -> haptics.score()
-                        TimingGame.GameEvent.PERFECT_HIT -> haptics.perfect()
-                        TimingGame.GameEvent.DIED -> {
+                        is TimingGame.GameEvent.Hit -> haptics.score()
+                        is TimingGame.GameEvent.PerfectHit -> haptics.perfect()
+                        is TimingGame.GameEvent.ChainNext -> {
+                            bannerText = "NOCH EINE!"
+                            bannerState.timeLeft = 1.2f
+                        }
+                        is TimingGame.GameEvent.TwistUnlocked -> {
+                            bannerText = twistBannerText(event.twist)
+                            bannerState.timeLeft = 2.2f
+                            haptics.newRecord()
+                        }
+                        is TimingGame.GameEvent.Died -> {
                             haptics.death()
                             fx.flashAlpha = 1f
                             fx.shakeTime = 0.4f
@@ -89,7 +135,7 @@ fun TimingGameScreen(
                             runNumber = store.runCount(mode)
                             if (isNewRecord) haptics.newRecord()
                         }
-                        TimingGame.GameEvent.SETTLED -> haptics.thud()
+                        is TimingGame.GameEvent.Settled -> haptics.thud()
                         else -> Unit
                     }
                 }
@@ -119,13 +165,26 @@ fun TimingGameScreen(
 
         if (showPerfect) {
             Text(
-                text = "PERFEKT!",
+                text = "PERFEKT! +2",
                 style = ScoreShadowStyle,
                 fontSize = 28.sp,
                 color = Color(0xFFFFE95E),
                 modifier = Modifier
                     .align(Alignment.Center)
                     .padding(top = 260.dp)
+            )
+        }
+
+        if (bannerText.isNotEmpty() && phase == TimingGame.Phase.RUNNING) {
+            Text(
+                text = bannerText,
+                style = ScoreShadowStyle,
+                fontSize = 30.sp,
+                color = Color(0xFFFF8A3C),
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 160.dp)
             )
         }
 
@@ -170,8 +229,9 @@ private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState) {
     }
 
     translate(shake.x, shake.y) {
-        // Himmel
-        drawRect(color = SkyColor, topLeft = Offset(-40f, -40f), size = Size(w + 80f, h + 80f))
+        // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht.
+        val sky = SkyStages[(game.score / 5).coerceAtMost(SkyStages.size - 1)]
+        drawRect(color = sky, topLeft = Offset(-40f, -40f), size = Size(w + 80f, h + 80f))
 
         // Langsam driftende Wolken
         val drift = game.elapsed * h * 0.01f
@@ -180,12 +240,14 @@ private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState) {
 
         drawStaticGround(cell)
 
-        // Kreisbahn mit Zielzone und Punkt
+        // Kreisbahn mit Zielzone, ggf. Fallen-Zone und Punkt
         val cx = w / 2f
         val cy = h * 0.44f
         val radius = min(w * 0.36f, h * 0.28f)
         drawTrack(game, cx, cy, radius, cell)
-        drawTimingDot(game, cx, cy, radius, cell)
+        if (game.isDotVisible) {
+            drawTimingDot(game, cx, cy, radius)
+        }
     }
 
     // Weißer Blitz beim Aufprall
@@ -244,8 +306,8 @@ private fun DrawScope.drawStaticGround(cell: Float) {
 }
 
 /**
- * Die Kreisbahn als Kette blockiger Zellen. Die Zielzone ist grün,
- * ihr Perfekt-Kern hell — alles im selben Pixel-Raster.
+ * Die Kreisbahn als Kette blockiger Zellen. Die Zielzone ist grün mit
+ * hellem Perfekt-Kern, die Fallen-Zone violett — alles im Pixel-Raster.
  */
 private fun DrawScope.drawTrack(
     game: TimingGame,
@@ -255,20 +317,30 @@ private fun DrawScope.drawTrack(
     cell: Float
 ) {
     val segments = 72
+    val zoneHalf = game.effectiveZoneHalf()
     for (k in 0 until segments) {
         val a = k.toFloat() / segments * (2f * Math.PI.toFloat())
         val px = cx + cos(a) * radius
         val py = cy + sin(a) * radius
 
-        val relative = TimingGame.wrapToPi(a - game.zoneCenter)
-        val inZone = abs(relative) <= game.zoneHalfWidth
-        val inPerfectCore = abs(relative) <= game.zoneHalfWidth * TimingGame.PERFECT_SHARE
+        val relativeZone = TimingGame.wrapToPi(a - game.zoneCenter)
+        val inZone = abs(relativeZone) <= zoneHalf
+        val inPerfectCore = abs(relativeZone) <= zoneHalf * TimingGame.PERFECT_SHARE
 
-        val outer = if (inZone) cell * 5f else cell * 3f
-        val inner = if (inZone) cell * 3.4f else cell * 1.8f
+        val inFake = game.hasFakeZone &&
+            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= game.zoneHalfWidth
+        val inFakeCore = game.hasFakeZone &&
+            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <=
+            game.zoneHalfWidth * TimingGame.PERFECT_SHARE
+
+        val highlighted = inZone || inFake
+        val outer = if (highlighted) cell * 5f else cell * 3f
+        val inner = if (highlighted) cell * 3.4f else cell * 1.8f
         val innerColor = when {
             inPerfectCore -> GrassLight
             inZone -> GrassDark
+            inFakeCore -> FakeZoneCoreColor
+            inFake -> FakeZoneColor
             else -> GroundSandShade
         }
 
@@ -289,8 +361,7 @@ private fun DrawScope.drawTimingDot(
     game: TimingGame,
     cx: Float,
     cy: Float,
-    radius: Float,
-    cell: Float
+    radius: Float
 ) {
     val h = size.height
     val px = cx + cos(game.angle) * radius
