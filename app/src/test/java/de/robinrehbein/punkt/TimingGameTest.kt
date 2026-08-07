@@ -182,9 +182,76 @@ class TimingGameTest {
         game.tap() // sofortiger Wut-Tap innerhalb der Sperrzeit
         assertEquals(TimingGame.Phase.OVER, game.phase)
 
+        // Nach der Sperre startet ein Tap sofort den nächsten Lauf.
         game.tick(TimingGame.RESTART_LOCK_SECONDS + 0.1f)
+        val event = game.tap()
+        assertEquals(TimingGame.GameEvent.Started, event)
+        assertEquals(TimingGame.Phase.RUNNING, game.phase)
+        assertEquals(0, game.score)
+    }
+
+    @Test
+    fun `slightly late tap on the exit side still counts as a hit`() {
+        val game = newGame()
         game.tap()
-        assertEquals(TimingGame.Phase.READY, game.phase)
+        assertTrue(game.runUntilInZone())
+
+        // Bis knapp hinter die Zonenkante laufen — innerhalb des Gnadenfensters.
+        var guard = 0
+        while (game.relativeToZone() <= game.effectiveZoneHalf() && guard++ < 2000) {
+            game.update(1f / 240f)
+        }
+        assertEquals(TimingGame.Phase.RUNNING, game.phase)
+
+        val event = game.tap()
+
+        assertEquals(TimingGame.GameEvent.Hit, event)
+        assertEquals(TimingGame.Phase.RUNNING, game.phase)
+        assertTrue(game.score >= 1)
+    }
+
+    @Test
+    fun `clearly late tap is still a miss`() {
+        val game = newGame()
+        game.tap()
+        assertTrue(game.runUntilInZone())
+
+        // Über das Gnadenfenster hinauslaufen (aber vor dem Überfahren-Tod).
+        val lateLimit = game.effectiveZoneHalf() +
+            game.currentSpeed() * TimingGame.LATE_TAP_FORGIVENESS_SECONDS
+        var guard = 0
+        while (game.relativeToZone() <= lateLimit && guard++ < 2000) {
+            game.update(1f / 240f)
+        }
+        assertEquals(TimingGame.Phase.RUNNING, game.phase)
+
+        val event = game.tap()
+
+        assertEquals(TimingGame.GameEvent.Died, event)
+        assertEquals(TimingGame.Phase.DYING, game.phase)
+    }
+
+    @Test
+    fun `zone distance keeps minimum reaction time even at high speed`() {
+        val game = newGame()
+        game.tap()
+
+        repeat(60) {
+            val event = game.hitZone()
+            assertTrue(
+                "Zone nicht getroffen",
+                event == TimingGame.GameEvent.Hit || event == TimingGame.GameEvent.PerfectHit
+            )
+            val rel = game.relativeToZone()
+            assertTrue(rel < 0f)
+            val reactionSeconds = abs(rel) / game.currentSpeed()
+            assertTrue(
+                "Reaktionszeit zu kurz: $reactionSeconds s",
+                reactionSeconds >= TimingGame.MIN_REACTION_SECONDS - 0.0001f
+            )
+        }
+        // Der Lauf muss das Maximaltempo wirklich erreicht haben.
+        assertEquals(TimingGame.MAX_SPEED, game.currentSpeed(), 0.0001f)
     }
 
     @Test

@@ -146,6 +146,14 @@ class TimingGame(private val random: Random = Random.Default) {
                     val perfect = abs(rel) <= half * PERFECT_SHARE
                     registerHit(perfect)
                     if (perfect) GameEvent.PerfectHit else GameEvent.Hit
+                } else if (rel > half && rel <= half + currentSpeed() * LATE_TAP_FORGIVENESS_SECONDS) {
+                    // Touch-Latenz-Gnade: Auf der Auslauf-Seite zählt ein
+                    // minimal verspäteter Tap noch als normaler Treffer —
+                    // Android braucht ~60-90ms, bis ein Tap ankommt, und in
+                    // der Zeit ist der Punkt sonst längst aus der Zone.
+                    // Wer zu früh tappt, war dagegen wirklich zu früh.
+                    registerHit(perfect = false)
+                    GameEvent.Hit
                 } else {
                     // Auch ein Tap in der Fallen-Zone landet hier: Sie ist
                     // mechanisch einfach "daneben" — ihre Gefahr ist optisch.
@@ -156,9 +164,15 @@ class TimingGame(private val random: Random = Random.Default) {
             Phase.DYING -> null
             Phase.OVER -> {
                 if (elapsed >= RESTART_LOCK_SECONDS) {
+                    // Sofort-Neustart: aus der Wut direkt in den nächsten Lauf.
                     reset()
+                    phase = Phase.RUNNING
+                    elapsed = 0f
+                    spawnZone()
+                    GameEvent.Started
+                } else {
+                    null
                 }
-                null
             }
         }
         if (event != null) pendingEvents.add(event)
@@ -207,7 +221,10 @@ class TimingGame(private val random: Random = Random.Default) {
                 }
                 // Zone ohne Tap überfahren → vorbei. Geprüft wird gegen die
                 // volle Basisbreite, damit eine pulsierende Zone fair bleibt.
-                if (relativeToZone() > zoneHalfWidth + PASS_BUFFER) {
+                // Der Puffer ist zeitbasiert (und größer als die Tap-Gnade),
+                // damit sich das Überfahren auf jeder Tempo-Stufe gleich
+                // anfühlt und späte Taps nicht vom Tod überholt werden.
+                if (relativeToZone() > zoneHalfWidth + currentSpeed() * PASS_BUFFER_SECONDS) {
                     die()
                     events.add(GameEvent.Died)
                 }
@@ -246,8 +263,12 @@ class TimingGame(private val random: Random = Random.Default) {
     }
 
     private fun spawnZone() {
-        val distance = MIN_ZONE_DISTANCE +
-            random.nextFloat() * (MAX_ZONE_DISTANCE - MIN_ZONE_DISTANCE)
+        // Der Mindestabstand ist zeitbasiert: Egal wie schnell der Punkt
+        // schon kreist, bleiben immer mindestens MIN_REACTION_SECONDS bis
+        // zur neuen Zone — sonst stirbt man an Physik statt an Skill.
+        val minDistance = maxOf(MIN_ZONE_DISTANCE, currentSpeed() * MIN_REACTION_SECONDS)
+        val maxDistance = maxOf(MAX_ZONE_DISTANCE, minDistance + 0.4f)
+        val distance = minDistance + random.nextFloat() * (maxDistance - minDistance)
         zoneCenter = wrapTwoPi(angle + direction * distance)
         chooseTwists()
 
@@ -268,8 +289,9 @@ class TimingGame(private val random: Random = Random.Default) {
 
     /** Folge-Zone einer Kette: näher dran, keine neue Twist-Auswahl. */
     private fun spawnChainZone() {
-        val distance = CHAIN_MIN_DISTANCE +
-            random.nextFloat() * (CHAIN_MAX_DISTANCE - CHAIN_MIN_DISTANCE)
+        val minDistance = maxOf(CHAIN_MIN_DISTANCE, currentSpeed() * MIN_REACTION_SECONDS)
+        val maxDistance = maxOf(CHAIN_MAX_DISTANCE, minDistance + 0.3f)
+        val distance = minDistance + random.nextFloat() * (maxDistance - minDistance)
         zoneCenter = wrapTwoPi(angle + direction * distance)
     }
 
@@ -319,12 +341,19 @@ class TimingGame(private val random: Random = Random.Default) {
 
         // Zielzone (Radiant)
         const val BASE_ZONE_HALF = 0.40f
-        const val ZONE_SHRINK_PER_HIT = 0.006f
+        const val ZONE_SHRINK_PER_HIT = 0.005f
         const val MIN_ZONE_HALF = 0.15f
         const val PERFECT_SHARE = 0.35f
-        const val PASS_BUFFER = 0.05f
         const val MIN_ZONE_DISTANCE = 1.1f
         const val MAX_ZONE_DISTANCE = 2.8f
+
+        // Fairness (Sekunden): Reaktionszeit bis zur Zone, Gnadenfenster
+        // für Touch-Latenz und Puffer vor dem Überfahren-Tod. Der Puffer
+        // muss größer als das Gnadenfenster sein, sonst überholt der Tod
+        // einen noch gültigen späten Tap.
+        const val MIN_REACTION_SECONDS = 0.45f
+        const val LATE_TAP_FORGIVENESS_SECONDS = 0.07f
+        const val PASS_BUFFER_SECONDS = 0.09f
 
         // Scoring
         const val PERFECT_SCORE = 2

@@ -123,9 +123,15 @@ class PunktGame(private val random: Random = Random.Default) {
             Phase.DYING -> null
             Phase.OVER -> {
                 if (elapsed >= RESTART_LOCK_SECONDS) {
+                    // Sofort-Neustart: aus der Wut direkt in den nächsten Lauf.
                     reset()
+                    phase = Phase.RUNNING
+                    elapsed = 0f
+                    spawnInitialObstacle()
+                    GameEvent.STARTED
+                } else {
+                    null
                 }
-                null
             }
         }
     }
@@ -221,15 +227,39 @@ class PunktGame(private val random: Random = Random.Default) {
         obstacles.forEach { obstacle ->
             val left = obstacle.x
             val right = obstacle.x + OBSTACLE_WIDTH
-            if (dotX + hitRadius > left && dotX - hitRadius < right) {
-                val floorBlockTop = playBottom() - obstacle.floorHeight
-                val ceilingBlockBottom = playTop() + obstacle.ceilingHeight
-                if (dotY + hitRadius > floorBlockTop || dotY - hitRadius < ceilingBlockBottom) {
-                    die(events)
-                    return
-                }
+            val hitsFloorBlock = obstacle.floorHeight > 0f && circleHitsRect(
+                dotX, dotY, hitRadius,
+                left, playBottom() - obstacle.floorHeight, right, playBottom()
+            )
+            val hitsCeilingBlock = obstacle.ceilingHeight > 0f && circleHitsRect(
+                dotX, dotY, hitRadius,
+                left, playTop(), right, playTop() + obstacle.ceilingHeight
+            )
+            if (hitsFloorBlock || hitsCeilingBlock) {
+                die(events)
+                return
             }
         }
+    }
+
+    /**
+     * Echte Kreis-gegen-Rechteck-Kollision: knapp an einer Block-Ecke
+     * vorbei ist wirklich vorbei — der Punkt ist rund, nicht eckig.
+     */
+    private fun circleHitsRect(
+        cx: Float,
+        cy: Float,
+        r: Float,
+        left: Float,
+        top: Float,
+        right: Float,
+        bottom: Float
+    ): Boolean {
+        val nearestX = cx.coerceIn(left, right)
+        val nearestY = cy.coerceIn(top, bottom)
+        val dx = cx - nearestX
+        val dy = cy - nearestY
+        return dx * dx + dy * dy < r * r
     }
 
     private fun die(events: MutableList<GameEvent>) {
