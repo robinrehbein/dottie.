@@ -17,12 +17,12 @@ class GameHaptics(context: Context) {
         vibratorManager.defaultVibrator
     }
 
-    /** Ganz leichter Tick bei jedem Flügelschlag. */
-    fun flap() {
+    /** Ganz leichter Tick bei jedem Schwerkraft-Kippen. */
+    fun flip() {
         vibrate(VibrationEffect.createOneShot(12, 35))
     }
 
-    /** Kurzer, satter Blip beim Passieren einer Röhre. */
+    /** Kurzer, satter Blip beim Passieren eines Hindernisses. */
     fun score() {
         vibrate(VibrationEffect.createOneShot(28, 140))
     }

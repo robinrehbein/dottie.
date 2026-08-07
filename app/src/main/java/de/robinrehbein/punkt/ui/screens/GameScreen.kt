@@ -45,7 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.data.ScoreStore
-import de.robinrehbein.punkt.game.FlappyGame
+import de.robinrehbein.punkt.game.PunktGame
 import de.robinrehbein.punkt.game.GameHaptics
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.theme.Bytesized
@@ -53,7 +53,7 @@ import kotlinx.coroutines.isActive
 import kotlin.math.floor
 import kotlin.math.sin
 
-// ===== Farbpalette im Flappy-Bird-Stil =====
+// ===== Retro-Farbpalette =====
 private val SkyColor = Color(0xFF4EC0CA)
 private val CloudColor = Color(0xFFE9FCFD)
 private val BushColor = Color(0xFF71C837)
@@ -63,13 +63,13 @@ private val GroundSandShade = Color(0xFFD3C87E)
 private val GrassLight = Color(0xFF9DE85A)
 private val GrassDark = Color(0xFF74BF2E)
 private val OutlineColor = Color(0xFF543847)
-private val PipeBody = Color(0xFF74BF2E)
-private val PipeLight = Color(0xFF9DE85A)
-private val PipeDark = Color(0xFF547F22)
+private val BlockBody = Color(0xFFE0862E)
+private val BlockLight = Color(0xFFF2A959)
+private val BlockDark = Color(0xFFA65E1E)
+private val BlockCap = Color(0xFFFFD28A)
 private val DotBody = Color(0xFFFFD847)
 private val DotShade = Color(0xFFF5A623)
-private val DotWing = Color(0xFFFAF3DC)
-private val BeakColor = Color(0xFFFF7043)
+private val DotShine = Color(0xFFFFF3B8)
 private val PanelSand = Color(0xFFDED895)
 private val TextDark = Color(0xFF543847)
 private val RecordRed = Color(0xFFE53935)
@@ -94,11 +94,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val haptics = remember { GameHaptics(context) }
     val store = remember { ScoreStore(context) }
-    val game = remember { FlappyGame() }
+    val game = remember { PunktGame() }
     val fx = remember { FxState() }
 
     var frameTick by remember { mutableLongStateOf(0L) }
-    var phase by remember { mutableStateOf(FlappyGame.Phase.READY) }
+    var phase by remember { mutableStateOf(PunktGame.Phase.READY) }
     var score by remember { mutableIntStateOf(0) }
     var bestScore by remember { mutableIntStateOf(store.bestScore) }
     var runNumber by remember { mutableIntStateOf(store.runCount) }
@@ -119,8 +119,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
                 events.forEach { event ->
                     when (event) {
-                        FlappyGame.GameEvent.SCORED -> haptics.score()
-                        FlappyGame.GameEvent.DIED -> {
+                        PunktGame.GameEvent.SCORED -> haptics.score()
+                        PunktGame.GameEvent.DIED -> {
                             haptics.death()
                             fx.flashAlpha = 1f
                             fx.shakeTime = 0.4f
@@ -131,7 +131,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                             runNumber = store.runCount
                             if (isNewRecord) haptics.newRecord()
                         }
-                        FlappyGame.GameEvent.LANDED -> haptics.thud()
+                        PunktGame.GameEvent.LANDED -> haptics.thud()
                         else -> Unit
                     }
                 }
@@ -149,10 +149,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
             .pointerInput(Unit) {
                 detectTapGestures(onPress = {
                     val event = game.tap()
-                    if (event == FlappyGame.GameEvent.FLAPPED ||
-                        event == FlappyGame.GameEvent.STARTED
+                    if (event == PunktGame.GameEvent.FLIPPED ||
+                        event == PunktGame.GameEvent.STARTED
                     ) {
-                        haptics.flap()
+                        haptics.flip()
                     }
                 })
             }
@@ -164,12 +164,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
 
         when (phase) {
-            FlappyGame.Phase.READY -> ReadyOverlay(
+            PunktGame.Phase.READY -> ReadyOverlay(
                 bestScore = bestScore,
                 runNumber = runNumber
             )
-            FlappyGame.Phase.RUNNING, FlappyGame.Phase.DYING -> ScoreHud(score = score)
-            FlappyGame.Phase.OVER -> GameOverOverlay(
+            PunktGame.Phase.RUNNING, PunktGame.Phase.DYING -> ScoreHud(score = score)
+            PunktGame.Phase.OVER -> GameOverOverlay(
                 score = score,
                 bestScore = bestScore,
                 isNewRecord = isNewRecord,
@@ -197,7 +197,7 @@ private fun ScoreHud(score: Int) {
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 24.dp)
+                .padding(top = 40.dp)
         )
     }
 }
@@ -223,7 +223,7 @@ private fun ReadyOverlay(bestScore: Int, runNumber: Int) {
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 64.dp)
+                .padding(top = 80.dp)
         ) {
             Text(
                 text = "PUNKT.",
@@ -248,10 +248,12 @@ private fun ReadyOverlay(bestScore: Int, runNumber: Int) {
                 .padding(top = 140.dp)
         ) {
             Text(
-                text = "TIPPE ZUM FLIEGEN",
+                text = "TIPPEN = SCHWERKRAFT KIPPEN",
                 style = ScoreShadowStyle,
-                fontSize = 26.sp,
-                color = Color.White.copy(alpha = blink)
+                fontSize = 22.sp,
+                color = Color.White.copy(alpha = blink),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp)
             )
         }
 
@@ -374,7 +376,7 @@ private fun GameOverOverlay(
     }
 }
 
-/** Beiger Panel-Hintergrund mit dunklem Pixelrahmen wie im Original. */
+/** Beiger Panel-Hintergrund mit dunklem Pixelrahmen. */
 @Composable
 private fun PixelPanel(content: @Composable () -> Unit) {
     Box(contentAlignment = Alignment.Center) {
@@ -448,7 +450,7 @@ private fun pickTaunt(score: Int, previousBest: Int, isNewRecord: Boolean): Stri
     val pool = when {
         score == 0 -> listOf(
             "ERNSTHAFT?",
-            "DIE ERSTE ROEHRE...",
+            "DER ERSTE BLOCK...",
             "DAS GING SCHNELL.",
             "WAR DAS ABSICHT?"
         )
@@ -465,7 +467,7 @@ private fun pickTaunt(score: Int, previousBest: Int, isNewRecord: Boolean): Stri
         else -> listOf(
             "NOCHMAL!",
             "GLEICH KLAPPTS!",
-            "DIE ROEHRE KAM AUS DEM NICHTS.",
+            "DER BLOCK KAM AUS DEM NICHTS.",
             "NICHT AUFGEBEN!"
         )
     }
@@ -474,7 +476,7 @@ private fun pickTaunt(score: Int, previousBest: Int, isNewRecord: Boolean): Stri
 
 // ===== Welt-Rendering =====
 
-private fun DrawScope.drawWorld(game: FlappyGame, fx: FxState) {
+private fun DrawScope.drawWorld(game: PunktGame, fx: FxState) {
     val h = size.height
     val w = size.width
     val cell = floor(h / 220f).coerceAtLeast(2f) // "Pixel"-Größe des Retro-Rasters
@@ -494,12 +496,14 @@ private fun DrawScope.drawWorld(game: FlappyGame, fx: FxState) {
         // Himmel
         drawRect(color = SkyColor, topLeft = Offset(-40f, -40f), size = Size(w + 80f, h + 80f))
 
-        val groundTopPx = game.groundTop() * h
+        val groundTopPx = game.playBottom() * h
+        val ceilingBottomPx = game.playTop() * h
 
         drawClouds(game, cell, groundTopPx)
         drawBushes(game, cell, groundTopPx)
-        drawPipes(game, cell, groundTopPx)
+        drawObstacles(game, cell, groundTopPx, ceilingBottomPx)
         drawGround(game, cell, groundTopPx)
+        drawCeiling(game, cell, ceilingBottomPx)
         drawDot(game, cell)
     }
 
@@ -509,7 +513,7 @@ private fun DrawScope.drawWorld(game: FlappyGame, fx: FxState) {
     }
 }
 
-private fun DrawScope.drawClouds(game: FlappyGame, cell: Float, groundTopPx: Float) {
+private fun DrawScope.drawClouds(game: PunktGame, cell: Float, groundTopPx: Float) {
     val h = size.height
     val w = size.width
     val spacing = w * 0.55f
@@ -532,7 +536,7 @@ private fun DrawScope.drawCloud(x: Float, y: Float, cell: Float) {
     drawRect(color = CloudColor, topLeft = Offset(x + u * 4, y - u * 1.5f), size = Size(u * 4, u * 1.5f))
 }
 
-private fun DrawScope.drawBushes(game: FlappyGame, cell: Float, groundTopPx: Float) {
+private fun DrawScope.drawBushes(game: PunktGame, cell: Float, groundTopPx: Float) {
     val h = size.height
     val w = size.width
     val spacing = w * 0.3f
@@ -567,67 +571,67 @@ private fun DrawScope.drawBush(x: Float, groundTopPx: Float, width: Float, heigh
     )
 }
 
-private fun DrawScope.drawPipes(game: FlappyGame, cell: Float, groundTopPx: Float) {
+private fun DrawScope.drawObstacles(
+    game: PunktGame,
+    cell: Float,
+    groundTopPx: Float,
+    ceilingBottomPx: Float
+) {
     val h = size.height
-    game.pipes.forEach { pipe ->
-        val x = pipe.x * h
-        val pw = FlappyGame.PIPE_WIDTH * h
-        val gapTopPx = pipe.gapTop * h
-        val gapBottomPx = pipe.gapBottom * h
-        val rimH = cell * 10f
-        val rimOverhang = cell * 2.5f
+    game.obstacles.forEach { obstacle ->
+        val x = obstacle.x * h
+        val bw = PunktGame.OBSTACLE_WIDTH * h
 
-        // Obere Röhre
-        drawPipeBody(x, 0f, pw, gapTopPx - rimH, cell)
-        drawPipeRim(x - rimOverhang, gapTopPx - rimH, pw + 2 * rimOverhang, rimH, cell)
-
-        // Untere Röhre
-        drawPipeRim(x - rimOverhang, gapBottomPx, pw + 2 * rimOverhang, rimH, cell)
-        drawPipeBody(x, gapBottomPx + rimH, pw, groundTopPx - gapBottomPx - rimH, cell)
+        if (obstacle.floorHeight > 0f) {
+            val blockH = obstacle.floorHeight * h
+            drawBlock(x, groundTopPx - blockH, bw, blockH, cell, capOnTop = true)
+        }
+        if (obstacle.ceilingHeight > 0f) {
+            val blockH = obstacle.ceilingHeight * h
+            drawBlock(x, ceilingBottomPx, bw, blockH, cell, capOnTop = false)
+        }
     }
 }
 
-private fun DrawScope.drawPipeBody(x: Float, y: Float, width: Float, height: Float, cell: Float) {
-    if (height <= 0f) return
+/**
+ * Eine Hindernis-Säule im Kisten-Look: Umriss, Körper, Licht/Schatten
+ * und eine helle Kappe an der Seite, die in den Korridor zeigt.
+ */
+private fun DrawScope.drawBlock(
+    x: Float,
+    y: Float,
+    width: Float,
+    height: Float,
+    cell: Float,
+    capOnTop: Boolean
+) {
     drawRect(color = OutlineColor, topLeft = Offset(x, y), size = Size(width, height))
     drawRect(
-        color = PipeBody,
-        topLeft = Offset(x + cell, y),
-        size = Size(width - 2 * cell, height)
-    )
-    // Highlight links, Schatten rechts
-    drawRect(
-        color = PipeLight,
-        topLeft = Offset(x + cell * 2, y),
-        size = Size(cell * 3, height)
-    )
-    drawRect(
-        color = PipeDark,
-        topLeft = Offset(x + width - cell * 4, y),
-        size = Size(cell * 3, height)
-    )
-}
-
-private fun DrawScope.drawPipeRim(x: Float, y: Float, width: Float, height: Float, cell: Float) {
-    drawRect(color = OutlineColor, topLeft = Offset(x, y), size = Size(width, height))
-    drawRect(
-        color = PipeBody,
+        color = BlockBody,
         topLeft = Offset(x + cell, y + cell),
         size = Size(width - 2 * cell, height - 2 * cell)
     )
+    // Highlight links, Schatten rechts
     drawRect(
-        color = PipeLight,
-        topLeft = Offset(x + cell * 2, y + cell),
-        size = Size(cell * 3, height - 2 * cell)
+        color = BlockLight,
+        topLeft = Offset(x + cell, y + cell),
+        size = Size(cell * 2, height - 2 * cell)
     )
     drawRect(
-        color = PipeDark,
-        topLeft = Offset(x + width - cell * 5, y + cell),
-        size = Size(cell * 3, height - 2 * cell)
+        color = BlockDark,
+        topLeft = Offset(x + width - cell * 3, y + cell),
+        size = Size(cell * 2, height - 2 * cell)
+    )
+    // Helle Kappe an der gefährlichen Kante
+    val capY = if (capOnTop) y + cell else y + height - cell * 4
+    drawRect(
+        color = BlockCap,
+        topLeft = Offset(x + cell, capY),
+        size = Size(width - 2 * cell, cell * 3)
     )
 }
 
-private fun DrawScope.drawGround(game: FlappyGame, cell: Float, groundTopPx: Float) {
+private fun DrawScope.drawGround(game: PunktGame, cell: Float, groundTopPx: Float) {
     val h = size.height
     val w = size.width
 
@@ -661,23 +665,58 @@ private fun DrawScope.drawGround(game: FlappyGame, cell: Float, groundTopPx: Flo
     drawRect(color = OutlineColor, topLeft = Offset(0f, groundTopPx - cell), size = Size(w, cell))
 }
 
-private fun DrawScope.drawDot(game: FlappyGame, cell: Float) {
+/** Die Decke: ein gespiegelter Boden, an dem der Punkt ebenfalls rollt. */
+private fun DrawScope.drawCeiling(game: PunktGame, cell: Float, ceilingBottomPx: Float) {
     val h = size.height
-    val cx = game.birdX * h
-    val cy = game.birdY * h
-    val r = FlappyGame.BIRD_RADIUS * h
+    val w = size.width
 
+    // Sandband vom oberen Bildschirmrand bis zur Spielfeld-Oberkante
+    drawRect(
+        color = GroundSand,
+        topLeft = Offset(0f, -40f),
+        size = Size(w, ceilingBottomPx + 40f)
+    )
+    drawRect(
+        color = GroundSandShade,
+        topLeft = Offset(0f, ceilingBottomPx - cell * 10),
+        size = Size(w, cell * 2)
+    )
+
+    // Gespiegelte Grasnarbe: Zähne zeigen nach unten
+    val toothW = cell * 5f
+    val scrollPx = (game.scrollOffset * h) % (toothW * 2)
+    drawRect(
+        color = GrassDark,
+        topLeft = Offset(0f, ceilingBottomPx - cell * 5),
+        size = Size(w, cell * 5)
+    )
+    var x = -scrollPx + toothW
+    while (x < w) {
+        drawRect(
+            color = GrassLight,
+            topLeft = Offset(x, ceilingBottomPx - cell * 4),
+            size = Size(toothW, cell * 4)
+        )
+        x += toothW * 2
+    }
+    // Dunkle Kontur unter dem Gras
+    drawRect(color = OutlineColor, topLeft = Offset(0f, ceilingBottomPx), size = Size(w, cell))
+}
+
+private fun DrawScope.drawDot(game: PunktGame, cell: Float) {
+    val h = size.height
+    val cx = game.dotX * h
+    val cy = game.dotY * h
+    val r = PunktGame.DOT_RADIUS * h
+
+    // Leichte Neigung in Fallrichtung, gespiegelt bei umgekehrter Schwerkraft
     val angle = when (game.phase) {
-        FlappyGame.Phase.RUNNING, FlappyGame.Phase.DYING ->
-            (game.birdVelocity * 70f).coerceIn(-25f, 90f)
+        PunktGame.Phase.RUNNING, PunktGame.Phase.DYING ->
+            (game.dotVelocity * 30f).coerceIn(-30f, 30f)
         else -> 0f
     }
 
-    val wingUp = when (game.phase) {
-        FlappyGame.Phase.READY -> sin(game.elapsed * 10f) > 0f
-        FlappyGame.Phase.RUNNING -> game.timeSinceFlap < 0.18f
-        else -> false
-    }
+    val inverted = game.gravityDir < 0
 
     rotate(degrees = angle, pivot = Offset(cx, cy)) {
         drawPixelCircle(
@@ -691,25 +730,21 @@ private fun DrawScope.drawDot(game: FlappyGame, cell: Float) {
 
         val u = (r * 2f) / GRID // Zellgröße des Punkt-Rasters
         fun rect(col: Float, row: Float, cols: Float, rows: Float, color: Color) {
+            // Bei umgedrehter Schwerkraft steht der Punkt "auf dem Kopf".
+            val actualRow = if (inverted) GRID - row - rows else row
             drawRect(
                 color = color,
-                topLeft = Offset(cx - r + col * u, cy - r + row * u),
+                topLeft = Offset(cx - r + col * u, cy - r + actualRow * u),
                 size = Size(cols * u, rows * u)
             )
         }
 
-        // Flügel
-        val wingRow = if (wingUp) 4.5f else 7f
-        rect(1.5f, wingRow, 4f, 3f, OutlineColor)
-        rect(2f, wingRow + 0.5f, 3f, 2f, DotWing)
+        // Glanzpunkt oben links
+        rect(2.5f, 2.5f, 2f, 2f, DotShine)
 
-        // Auge mit Pupille
-        rect(7.5f, 2.5f, 3f, 3.5f, Color.White)
-        rect(9f, 3.5f, 1.3f, 1.8f, OutlineColor)
-
-        // Schnabel
-        rect(10.5f, 6.5f, 3.5f, 2.2f, OutlineColor)
-        rect(10.8f, 6.8f, 3f, 1.6f, BeakColor)
+        // Auge mit Pupille, blickt in Laufrichtung
+        rect(7.5f, 3f, 3.5f, 4f, Color.White)
+        rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
     }
 }
 
