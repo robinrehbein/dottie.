@@ -11,6 +11,13 @@ class ScoreStore(context: Context) {
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+    /** Zuletzt gespielter Modus — damit die App darin wieder startet. */
+    var lastMode: GameMode
+        get() = prefs.getString(KEY_LAST_MODE, null)
+            ?.let { stored -> GameMode.entries.firstOrNull { it.name == stored } }
+            ?: GameMode.GRAVITY_FLIP
+        set(value) = prefs.edit().putString(KEY_LAST_MODE, value.name).apply()
+
     fun bestScore(mode: GameMode): Int = prefs.getInt(bestKey(mode), 0)
 
     fun runCount(mode: GameMode): Int = prefs.getInt(runKey(mode), 0)
@@ -41,5 +48,6 @@ class ScoreStore(context: Context) {
         const val KEY_RUNS_GRAVITY = "run_count"
         const val KEY_BEST_TIMING = "best_score_timing"
         const val KEY_RUNS_TIMING = "run_count_timing"
+        const val KEY_LAST_MODE = "last_mode"
     }
 }

@@ -116,7 +116,7 @@ fun GravityGameScreen(
                 bestScore = bestScore,
                 runNumber = runNumber,
                 hint = "TIPPEN = SCHWERKRAFT KIPPEN",
-                switchLabel = "MODUS: ${GameMode.TIME_STOP.displayName}",
+                switchLabel = "WECHSEL ZU: ${GameMode.TIME_STOP.displayName}",
                 onSwitchMode = onSwitchMode
             )
             PunktGame.Phase.RUNNING, PunktGame.Phase.DYING -> ScoreHud(score = score)
@@ -126,7 +126,7 @@ fun GravityGameScreen(
                 isNewRecord = isNewRecord,
                 taunt = taunt,
                 onRestart = { game.reset() },
-                switchLabel = "MODUS: ${GameMode.TIME_STOP.displayName}",
+                switchLabel = "WECHSEL ZU: ${GameMode.TIME_STOP.displayName}",
                 onSwitchMode = onSwitchMode
             )
         }

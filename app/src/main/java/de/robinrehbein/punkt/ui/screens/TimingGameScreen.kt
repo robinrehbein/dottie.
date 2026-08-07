@@ -193,7 +193,7 @@ fun TimingGameScreen(
                 bestScore = bestScore,
                 runNumber = runNumber,
                 hint = "STOPPE DEN PUNKT IN DER GRUENEN ZONE",
-                switchLabel = "MODUS: ${GameMode.GRAVITY_FLIP.displayName}",
+                switchLabel = "WECHSEL ZU: ${GameMode.GRAVITY_FLIP.displayName}",
                 onSwitchMode = onSwitchMode
             )
             TimingGame.Phase.RUNNING, TimingGame.Phase.DYING -> ScoreHud(score = score)
@@ -203,7 +203,7 @@ fun TimingGameScreen(
                 isNewRecord = isNewRecord,
                 taunt = taunt,
                 onRestart = { game.reset() },
-                switchLabel = "MODUS: ${GameMode.GRAVITY_FLIP.displayName}",
+                switchLabel = "WECHSEL ZU: ${GameMode.GRAVITY_FLIP.displayName}",
                 onSwitchMode = onSwitchMode
             )
         }
