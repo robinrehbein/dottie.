@@ -27,6 +27,13 @@ class GameHaptics(context: Context) {
         vibrate(VibrationEffect.createOneShot(28, 140))
     }
 
+    /** Doppel-Tick für einen perfekten Treffer im Stopp-Modus. */
+    fun perfect() {
+        val timings = longArrayOf(0, 20, 40, 35)
+        val amplitudes = intArrayOf(0, 120, 0, 220)
+        vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+    }
+
     /** Harter Schlag beim Aufprall — der Rage-Moment. */
     fun death() {
         val timings = longArrayOf(0, 70, 40, 130)
