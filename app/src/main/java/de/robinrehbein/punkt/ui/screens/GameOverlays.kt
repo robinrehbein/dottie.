@@ -1,0 +1,446 @@
+package de.robinrehbein.punkt.ui.screens
+
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.ui.components.PixelButton
+import de.robinrehbein.punkt.ui.theme.Bytesized
+
+// ===== Gemeinsame Retro-Farbpalette =====
+internal val SkyColor = Color(0xFF4EC0CA)
+internal val CloudColor = Color(0xFFE9FCFD)
+internal val BushColor = Color(0xFF71C837)
+internal val BushShadeColor = Color(0xFF5AA82C)
+internal val GroundSand = Color(0xFFDED895)
+internal val GroundSandShade = Color(0xFFD3C87E)
+internal val GrassLight = Color(0xFF9DE85A)
+internal val GrassDark = Color(0xFF74BF2E)
+internal val OutlineColor = Color(0xFF543847)
+internal val BlockBody = Color(0xFFE0862E)
+internal val BlockLight = Color(0xFFF2A959)
+internal val BlockDark = Color(0xFFA65E1E)
+internal val BlockCap = Color(0xFFFFD28A)
+internal val DotBody = Color(0xFFFFD847)
+internal val DotShade = Color(0xFFF5A623)
+internal val DotShine = Color(0xFFFFF3B8)
+internal val PanelSand = Color(0xFFDED895)
+internal val TextDark = Color(0xFF543847)
+internal val RecordRed = Color(0xFFE53935)
+
+internal val ScoreShadowStyle = TextStyle(
+    fontFamily = Bytesized,
+    shadow = Shadow(color = OutlineColor, offset = Offset(4f, 4f), blurRadius = 0f)
+)
+
+/** Nicht-Compose-State für Effekte, wird pro Frame im Canvas gelesen. */
+internal class FxState {
+    var flashAlpha = 0f
+    var shakeTime = 0f
+}
+
+// ===== Overlays =====
+
+@Composable
+internal fun ScoreHud(score: Int) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.systemBars)
+    ) {
+        Text(
+            text = score.toString(),
+            style = ScoreShadowStyle,
+            fontSize = 72.sp,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 40.dp)
+        )
+    }
+}
+
+@Composable
+internal fun ReadyOverlay(
+    bestScore: Int,
+    runNumber: Int,
+    hint: String,
+    switchLabel: String,
+    onSwitchMode: () -> Unit
+) {
+    val blink by rememberInfiniteTransition(label = "blink").animateFloat(
+        initialValue = 1f,
+        targetValue = 0.25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 600, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "blinkAlpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.systemBars)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 80.dp)
+        ) {
+            Text(
+                text = "PUNKT.",
+                style = ScoreShadowStyle,
+                fontSize = 64.sp,
+                color = Color.White
+            )
+            if (bestScore > 0) {
+                Text(
+                    text = "REKORD: $bestScore",
+                    style = ScoreShadowStyle,
+                    fontSize = 22.sp,
+                    color = Color.White
+                )
+            }
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(top = 140.dp)
+        ) {
+            Text(
+                text = hint,
+                style = ScoreShadowStyle,
+                fontSize = 22.sp,
+                color = Color.White.copy(alpha = blink),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 48.dp)
+        ) {
+            if (runNumber > 0) {
+                Text(
+                    text = "VERSUCH #${runNumber + 1}",
+                    style = ScoreShadowStyle,
+                    fontSize = 16.sp,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            PixelButton(
+                text = switchLabel,
+                onClick = onSwitchMode,
+                backgroundColor = PanelSand,
+                borderColor = TextDark,
+                textColor = TextDark,
+                width = 220.dp,
+                height = 48.dp,
+                borderWidth = 3.dp
+            )
+        }
+    }
+}
+
+@Composable
+internal fun GameOverOverlay(
+    score: Int,
+    bestScore: Int,
+    isNewRecord: Boolean,
+    taunt: String,
+    onRestart: () -> Unit,
+    switchLabel: String,
+    onSwitchMode: () -> Unit
+) {
+    val blink by rememberInfiniteTransition(label = "overBlink").animateFloat(
+        initialValue = 1f,
+        targetValue = 0.3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "overBlinkAlpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.systemBars)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Text(
+                text = "GAME OVER",
+                style = ScoreShadowStyle,
+                fontSize = 48.sp,
+                color = Color(0xFFFF8A3C)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            PixelPanel {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MedalBadge(score = score)
+                    Spacer(modifier = Modifier.width(20.dp))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "PUNKTE",
+                            fontFamily = Bytesized,
+                            fontSize = 16.sp,
+                            color = TextDark
+                        )
+                        Text(
+                            text = score.toString(),
+                            fontFamily = Bytesized,
+                            fontSize = 40.sp,
+                            color = TextDark
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "REKORD",
+                            fontFamily = Bytesized,
+                            fontSize = 16.sp,
+                            color = if (isNewRecord) RecordRed else TextDark
+                        )
+                        Text(
+                            text = bestScore.toString(),
+                            fontFamily = Bytesized,
+                            fontSize = 40.sp,
+                            color = if (isNewRecord) RecordRed else TextDark
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = if (isNewRecord) "NEUER REKORD!" else taunt,
+                style = ScoreShadowStyle,
+                fontSize = 24.sp,
+                color = if (isNewRecord) Color(0xFFFFE95E) else Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            PixelButton(
+                text = "NOCHMAL!",
+                onClick = onRestart,
+                backgroundColor = PanelSand,
+                borderColor = TextDark,
+                textColor = TextDark,
+                width = 200.dp,
+                height = 60.dp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "oder tippe irgendwo",
+                fontFamily = Bytesized,
+                fontSize = 14.sp,
+                color = Color.White.copy(alpha = blink)
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            PixelButton(
+                text = switchLabel,
+                onClick = onSwitchMode,
+                backgroundColor = PanelSand,
+                borderColor = TextDark,
+                textColor = TextDark,
+                width = 220.dp,
+                height = 48.dp,
+                borderWidth = 3.dp
+            )
+        }
+    }
+}
+
+/** Beiger Panel-Hintergrund mit dunklem Pixelrahmen. */
+@Composable
+internal fun PixelPanel(content: @Composable () -> Unit) {
+    Box(contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.matchParentSize()
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val border = 4.dp.toPx()
+                drawRect(color = OutlineColor)
+                drawRect(
+                    color = PanelSand,
+                    topLeft = Offset(border, border),
+                    size = Size(size.width - 2 * border, size.height - 2 * border)
+                )
+            }
+        }
+        Box(modifier = Modifier.padding(horizontal = 32.dp, vertical = 24.dp)) {
+            content()
+        }
+    }
+}
+
+/** Medaille ab 10 Punkten: Bronze, Silber, Gold, Platin. */
+@Composable
+internal fun MedalBadge(score: Int) {
+    val medalColor = when {
+        score >= 40 -> Color(0xFFE5E4E2) // Platin
+        score >= 30 -> Color(0xFFFFD700) // Gold
+        score >= 20 -> Color(0xFFC0C0C0) // Silber
+        score >= 10 -> Color(0xFFCD7F32) // Bronze
+        else -> null
+    }
+    Box(
+        modifier = Modifier.size(72.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val border = 3.dp.toPx()
+            drawRect(color = OutlineColor)
+            drawRect(
+                color = GroundSandShade,
+                topLeft = Offset(border, border),
+                size = Size(size.width - 2 * border, size.height - 2 * border)
+            )
+            if (medalColor != null) {
+                drawPixelCircle(
+                    color = medalColor,
+                    outline = OutlineColor,
+                    centerX = size.width / 2f,
+                    centerY = size.height / 2f,
+                    radius = size.width * 0.3f
+                )
+            }
+        }
+        if (medalColor == null) {
+            Text(
+                text = "-",
+                fontFamily = Bytesized,
+                fontSize = 24.sp,
+                color = TextDark
+            )
+        }
+    }
+}
+
+// ===== Spott-Texte für den Rage-Faktor =====
+
+internal fun pickTaunt(score: Int, previousBest: Int, isNewRecord: Boolean): String {
+    if (isNewRecord) return "NEUER REKORD!"
+    val gap = previousBest - score
+    val pool = when {
+        score == 0 -> listOf(
+            "ERNSTHAFT?",
+            "DAS GING SCHNELL.",
+            "WAR DAS ABSICHT?",
+            "AUFWAERMEN ZAEHLT NICHT."
+        )
+        gap in 1..3 -> listOf(
+            "SO NAH! NUR $gap GEFEHLT!",
+            "FAST! NOCH $gap!",
+            "AAARGH! $gap ZU WENIG!"
+        )
+        score < previousBest / 2 -> listOf(
+            "DAS WAR NIX.",
+            "DU KANNST MEHR.",
+            "SCHON VERGESSEN WIE?"
+        )
+        else -> listOf(
+            "NOCHMAL!",
+            "GLEICH KLAPPTS!",
+            "DAS KAM AUS DEM NICHTS.",
+            "NICHT AUFGEBEN!"
+        )
+    }
+    return pool[(score + previousBest) % pool.size]
+}
+
+// ===== Gemeinsame Zeichen-Helfer =====
+
+internal const val GRID = 13f
+
+/** Zeichnet einen blockigen "Pixel"-Kreis aus Rasterzellen. */
+internal fun DrawScope.drawPixelCircle(
+    color: Color,
+    outline: Color,
+    centerX: Float,
+    centerY: Float,
+    radius: Float,
+    shade: Color = color
+) {
+    val n = GRID.toInt()
+    val u = (radius * 2f) / GRID
+    val mid = (GRID - 1f) / 2f
+    val rr = GRID / 2f - 0.25f
+
+    for (row in 0 until n) {
+        for (col in 0 until n) {
+            val dx = col - mid
+            val dy = row - mid
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (dist <= rr) {
+                val cellColor = when {
+                    dist > rr - 1.1f -> outline
+                    row + col > GRID * 1.15f -> shade
+                    else -> color
+                }
+                drawRect(
+                    color = cellColor,
+                    topLeft = Offset(centerX - radius + col * u, centerY - radius + row * u),
+                    size = Size(u + 0.5f, u + 0.5f)
+                )
+            }
+        }
+    }
+}
+
+/** Blockige Retro-Wolke aus drei gestapelten Rechtecken. */
+internal fun DrawScope.drawCloud(x: Float, y: Float, cell: Float) {
+    val u = cell * 2f
+    drawRect(color = CloudColor, topLeft = Offset(x, y + u * 2), size = Size(u * 14, u * 3))
+    drawRect(color = CloudColor, topLeft = Offset(x + u * 2, y), size = Size(u * 7, u * 2))
+    drawRect(color = CloudColor, topLeft = Offset(x + u * 4, y - u * 1.5f), size = Size(u * 4, u * 1.5f))
+}
