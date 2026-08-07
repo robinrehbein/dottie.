@@ -96,6 +96,13 @@ class PunktGame(private val random: Random = Random.Default) {
         (BASE_GAP - score * GAP_SHRINK_PER_POINT).coerceAtLeast(MIN_GAP)
 
     /**
+     * Abstand zwischen zwei Säulen — in Sekunden gedacht: Er wächst mit
+     * dem Tempo mit, damit die Reaktionszeit für einen Seitenwechsel
+     * konstant bleibt, egal wie schnell die Welt schon scrollt.
+     */
+    fun currentSpacing(): Float = currentSpeed() * OBSTACLE_SPACING_SECONDS
+
+    /**
      * Verarbeitet einen Tap. In READY startet er den Lauf, in RUNNING
      * kippt er die Schwerkraft, in OVER (nach kurzer Sperre gegen
      * Wut-Taps) geht es zurück in den READY-Zustand.
@@ -196,7 +203,7 @@ class PunktGame(private val random: Random = Random.Default) {
         obstacles.removeAll { it.x + OBSTACLE_WIDTH < -0.1f }
 
         val last = obstacles.lastOrNull()
-        if (last == null || last.x <= worldWidth - OBSTACLE_SPACING) {
+        if (last == null || last.x <= worldWidth - currentSpacing()) {
             spawnObstacle(worldWidth + OBSTACLE_WIDTH)
         }
 
@@ -275,8 +282,8 @@ class PunktGame(private val random: Random = Random.Default) {
 
     companion object {
         // Physik (Einheiten: Bildschirmhöhen bzw. Bildschirmhöhen pro Sekunde)
-        const val GRAVITY = 5.2f
-        const val TERMINAL_VELOCITY = 1.9f
+        const val GRAVITY = 7.0f
+        const val TERMINAL_VELOCITY = 2.3f
         const val DEATH_BOUNCE_VELOCITY = 0.42f
         const val MAX_DELTA = 1f / 30f
         const val EPSILON = 0.001f
@@ -288,19 +295,19 @@ class PunktGame(private val random: Random = Random.Default) {
         const val CEILING_HEIGHT = 0.08f
         const val GROUND_HEIGHT = 0.12f
         const val OBSTACLE_WIDTH = 0.09f
-        const val OBSTACLE_SPACING = 0.46f
-        const val FIRST_OBSTACLE_DISTANCE = 0.6f
+        const val OBSTACLE_SPACING_SECONDS = 1.5f
+        const val FIRST_OBSTACLE_DISTANCE = 0.7f
         const val MIN_BLOCK_HEIGHT = 0.1f
         const val MIN_SPLIT_SHARE = 0.25f
-        const val EASY_OBSTACLE_COUNT = 3
+        const val EASY_OBSTACLE_COUNT = 4
 
         // Schwierigkeitskurve
-        const val BASE_SPEED = 0.36f
-        const val SPEED_PER_POINT = 0.004f
-        const val MAX_SPEED = 0.56f
-        const val BASE_GAP = 0.34f
+        const val BASE_SPEED = 0.34f
+        const val SPEED_PER_POINT = 0.003f
+        const val MAX_SPEED = 0.52f
+        const val BASE_GAP = 0.36f
         const val GAP_SHRINK_PER_POINT = 0.002f
-        const val MIN_GAP = 0.24f
+        const val MIN_GAP = 0.27f
 
         // Sperre gegen versehentliches Überspringen des Game-Over-Screens
         const val RESTART_LOCK_SECONDS = 0.55f

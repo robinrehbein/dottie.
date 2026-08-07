@@ -63,7 +63,13 @@ private fun twistBannerText(twist: TimingGame.Twist): String = when (twist) {
 /** Nicht-Compose-Zeitgeber für das Twist-Banner. */
 private class BannerState {
     var timeLeft = 0f
+
+    /** Zuletzt gesehene Himmels-Stufe (score / 5), für Stufen-Feedback. */
+    var lastStage = 0
 }
+
+/** Dauer der Freischalt-Zelebration (goldener Ring + Schimmer). */
+private const val CELEBRATE_SECONDS = 1.1f
 
 /**
  * Spielprinzip "STOPP": Der Punkt kreist automatisch auf einer Bahn.
@@ -106,11 +112,13 @@ fun TimingGameScreen(
                 val events = game.update(dt)
                 fx.flashAlpha = (fx.flashAlpha - dt * 3.5f).coerceAtLeast(0f)
                 fx.shakeTime = (fx.shakeTime - dt).coerceAtLeast(0f)
+                fx.celebrateTime = (fx.celebrateTime - dt).coerceAtLeast(0f)
                 bannerState.timeLeft = (bannerState.timeLeft - dt).coerceAtLeast(0f)
                 if (bannerState.timeLeft <= 0f && bannerText.isNotEmpty()) {
                     bannerText = ""
                 }
 
+                var twistUnlockedThisFrame = false
                 events.forEach { event ->
                     when (event) {
                         is TimingGame.GameEvent.Hit -> haptics.score()
@@ -120,14 +128,17 @@ fun TimingGameScreen(
                             bannerState.timeLeft = 1.2f
                         }
                         is TimingGame.GameEvent.TwistUnlocked -> {
+                            twistUnlockedThisFrame = true
                             bannerText = twistBannerText(event.twist)
                             bannerState.timeLeft = 2.2f
-                            haptics.newRecord()
+                            fx.celebrateTime = CELEBRATE_SECONDS
+                            haptics.unlock()
                         }
                         is TimingGame.GameEvent.Died -> {
                             haptics.death()
                             fx.flashAlpha = 1f
                             fx.shakeTime = 0.4f
+                            fx.celebrateTime = 0f
                             val previousBest = store.bestScore(mode)
                             isNewRecord = store.submitRun(mode, game.score)
                             taunt = pickTaunt(game.score, previousBest, isNewRecord)
@@ -138,6 +149,23 @@ fun TimingGameScreen(
                         is TimingGame.GameEvent.Settled -> haptics.thud()
                         else -> Unit
                     }
+                }
+
+                // Stufen-Feedback: jede 5er-Stufe färbt den Himmel um — das
+                // wird gefeiert, sofern nicht ohnehin gerade ein Twist-Banner
+                // die große Bühne bekommt.
+                val stage = game.score / 5
+                if (game.phase == TimingGame.Phase.RUNNING && stage > bannerState.lastStage) {
+                    bannerState.lastStage = stage
+                    if (!twistUnlockedThisFrame) {
+                        bannerText = "NEUE STUFE!"
+                        bannerState.timeLeft = 1.6f
+                        fx.celebrateTime = CELEBRATE_SECONDS
+                        haptics.unlock()
+                    }
+                }
+                if (game.phase == TimingGame.Phase.READY) {
+                    bannerState.lastStage = 0
                 }
 
                 phase = game.phase
@@ -248,6 +276,9 @@ private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState) {
         if (game.isDotVisible) {
             drawTimingDot(game, cx, cy, radius)
         }
+        if (fx.celebrateTime > 0f) {
+            drawUnlockBurst(fx.celebrateTime, cx, cy, radius, cell)
+        }
     }
 
     // Weißer Blitz beim Aufprall
@@ -354,6 +385,49 @@ private fun DrawScope.drawTrack(
             topLeft = Offset(px - inner / 2f, py - inner / 2f),
             size = Size(inner, inner)
         )
+    }
+}
+
+/**
+ * Freischalt-Zelebration: ein goldener Ring aus Pixel-Blöcken, der von der
+ * Bahn nach außen aufsteigt und dabei verblasst — plus kurzer Goldschimmer
+ * über dem ganzen Bild direkt am Anfang.
+ */
+private fun DrawScope.drawUnlockBurst(
+    timeLeft: Float,
+    cx: Float,
+    cy: Float,
+    radius: Float,
+    cell: Float
+) {
+    val progress = 1f - (timeLeft / CELEBRATE_SECONDS).coerceIn(0f, 1f)
+    val fade = 1f - progress
+
+    // Goldschimmer, nur im ersten Drittel spürbar
+    val glow = (fade - 0.66f).coerceAtLeast(0f) * 0.9f
+    if (glow > 0f) {
+        drawRect(color = DotBody.copy(alpha = glow))
+    }
+
+    // Zwei versetzte Pixel-Ringe wandern nach außen
+    val sparks = 20
+    for (ring in 0 until 2) {
+        val ringProgress = (progress - ring * 0.15f).coerceIn(0f, 1f)
+        if (ringProgress <= 0f) continue
+        val burstRadius = radius * (0.55f + ringProgress * 0.9f)
+        val blockSize = cell * (3.5f - ring) * fade
+        if (blockSize <= 0f) continue
+        val color = (if (ring == 0) DotBody else DotShine).copy(alpha = fade)
+        for (k in 0 until sparks) {
+            val a = (k.toFloat() / sparks + ring * 0.025f) * (2f * Math.PI.toFloat())
+            val px = cx + cos(a) * burstRadius
+            val py = cy + sin(a) * burstRadius
+            drawRect(
+                color = color,
+                topLeft = Offset(px - blockSize / 2f, py - blockSize / 2f),
+                size = Size(blockSize, blockSize)
+            )
+        }
     }
 }
 

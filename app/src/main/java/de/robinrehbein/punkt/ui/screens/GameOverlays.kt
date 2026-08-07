@@ -66,6 +66,9 @@ internal val ScoreShadowStyle = TextStyle(
 internal class FxState {
     var flashAlpha = 0f
     var shakeTime = 0f
+
+    /** Restzeit der Freischalt-Zelebration (goldener Ring + Schimmer). */
+    var celebrateTime = 0f
 }
 
 // ===== Overlays =====

@@ -46,6 +46,13 @@ class GameHaptics(context: Context) {
         vibrate(VibrationEffect.createOneShot(50, 90))
     }
 
+    /** Aufsteigende Fanfare, wenn ein Twist oder eine neue Stufe freigeschaltet wird. */
+    fun unlock() {
+        val timings = longArrayOf(0, 25, 45, 25, 45, 25, 45, 90)
+        val amplitudes = intArrayOf(0, 90, 0, 140, 0, 200, 0, 255)
+        vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+    }
+
     /** Feier-Muster für einen neuen Rekord. */
     fun newRecord() {
         val timings = longArrayOf(0, 40, 60, 40, 60, 80)
