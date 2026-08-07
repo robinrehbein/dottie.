@@ -121,6 +121,22 @@ class PunktGameTest {
     }
 
     @Test
+    fun `obstacle spacing scales with speed to keep reaction time constant`() {
+        val game = newGame()
+        assertEquals(
+            PunktGame.BASE_SPEED * PunktGame.OBSTACLE_SPACING_SECONDS,
+            game.currentSpacing(),
+            0.0001f
+        )
+        // Verhältnis Abstand zu Tempo = konstante Reaktionszeit in Sekunden
+        assertEquals(
+            PunktGame.OBSTACLE_SPACING_SECONDS,
+            game.currentSpacing() / game.currentSpeed(),
+            0.0001f
+        )
+    }
+
+    @Test
     fun `taps during dying phase are ignored`() {
         val game = newGame()
         game.tap()
