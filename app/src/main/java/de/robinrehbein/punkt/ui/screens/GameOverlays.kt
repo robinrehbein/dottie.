@@ -120,7 +120,9 @@ internal fun ReadyOverlay(
     bestScore: Int,
     runNumber: Int,
     hint: String,
-    onHelp: () -> Unit
+    onHelp: () -> Unit,
+    soundOn: Boolean,
+    onToggleSound: () -> Unit
 ) {
     val blink by rememberInfiniteTransition(label = "blink").animateFloat(
         initialValue = 1f,
@@ -141,6 +143,20 @@ internal fun ReadyOverlay(
             onHelp = onHelp,
             modifier = Modifier
                 .align(Alignment.TopEnd)
+                .padding(16.dp)
+        )
+
+        PixelButton(
+            text = if (soundOn) "TON: AN" else "TON: AUS",
+            onClick = onToggleSound,
+            backgroundColor = PanelSand,
+            borderColor = TextDark,
+            textColor = TextDark,
+            width = 116.dp,
+            height = 48.dp,
+            borderWidth = 3.dp,
+            modifier = Modifier
+                .align(Alignment.TopStart)
                 .padding(16.dp)
         )
 
@@ -422,7 +438,8 @@ private fun StopHelpContent() {
     HelpHeading("SO GEHT STOPP")
     HelpLine("DER PUNKT KREIST VON ALLEIN.")
     HelpLine("TIPPE, WENN ER IN DER GRUENEN ZONE IST — DANEBEN GETIPPT ODER ZONE VERPASST = AUS.")
-    HelpLine("HELLE MITTE DER ZONE = PERFEKT, ZAEHLT +2.", DotBody)
+    HelpLine("HELLE MITTE DER ZONE = PERFEKT: +2 PUNKTE.", DotBody)
+    HelpLine("PERFEKT IN SERIE? +3, +4, BIS ZU +5 PRO TREFFER!", DotBody)
 
     Spacer(modifier = Modifier.height(18.dp))
     Text(

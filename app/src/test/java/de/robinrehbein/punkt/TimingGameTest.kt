@@ -43,6 +43,20 @@ class TimingGameTest {
         return tap()
     }
 
+    /** Simuliert Frames bis in den Perfekt-Kern und tappt dort. */
+    private fun TimingGame.hitPerfect(): TimingGame.GameEvent? {
+        var time = 0f
+        while (time < 10f) {
+            update(1f / 240f)
+            time += 1f / 240f
+            if (phase != TimingGame.Phase.RUNNING) return null
+            if (abs(relativeToZone()) <= effectiveZoneHalf() * TimingGame.PERFECT_SHARE) {
+                return tap()
+            }
+        }
+        return null
+    }
+
     @Test
     fun `starts in ready phase and first tap starts the run`() {
         val game = newGame()
@@ -74,21 +88,68 @@ class TimingGameTest {
     fun `perfect hit scores double`() {
         val game = newGame()
         game.tap()
-        // Bis exakt in den Perfekt-Kern simulieren
-        var time = 0f
-        while (time < 10f) {
-            game.update(1f / 240f)
-            time += 1f / 240f
-            if (abs(game.relativeToZone()) <=
-                game.effectiveZoneHalf() * TimingGame.PERFECT_SHARE
-            ) {
-                break
-            }
-        }
-        val event = game.tap()
+
+        val event = game.hitPerfect()
 
         assertEquals(TimingGame.GameEvent.PerfectHit, event)
-        assertEquals(TimingGame.PERFECT_SCORE, game.score)
+        assertEquals(TimingGame.PERFECT_BASE_SCORE, game.score)
+        assertEquals(1, game.perfectStreak)
+    }
+
+    @Test
+    fun `perfect streak ramps the bonus up to the cap`() {
+        val game = newGame()
+        game.tap()
+
+        // +2, +3, +4, +5, +5 — die Serie klettert und deckelt bei +5.
+        val expected = listOf(2, 3, 4, 5, 5)
+        for ((index, points) in expected.withIndex()) {
+            val event = game.hitPerfect()
+            assertEquals("Treffer ${index + 1}", TimingGame.GameEvent.PerfectHit, event)
+            assertEquals("Treffer ${index + 1}", points, game.lastHitPoints)
+        }
+        assertEquals(expected.sum(), game.score)
+        assertEquals(expected.size, game.hits)
+    }
+
+    @Test
+    fun `normal hit resets the perfect streak without punishment`() {
+        val game = newGame()
+        game.tap()
+
+        game.hitPerfect() // +2, Serie 1
+        game.hitPerfect() // +3, Serie 2
+        // hitZone tappt an der Zonenkante — sicher außerhalb des Kerns.
+        val normal = game.hitZone()
+        assertEquals(TimingGame.GameEvent.Hit, normal)
+        assertEquals(1, game.lastHitPoints)
+        assertEquals(0, game.perfectStreak)
+
+        // Die nächste Serie beginnt wieder bei +2.
+        game.hitPerfect()
+        assertEquals(2, game.lastHitPoints)
+        assertEquals(2 + 3 + 1 + 2, game.score)
+    }
+
+    @Test
+    fun `difficulty scales with hits not score`() {
+        val game = newGame()
+        game.tap()
+
+        game.hitPerfect() // Score +2, aber nur EIN Treffer
+
+        assertEquals(TimingGame.PERFECT_BASE_SCORE, game.score)
+        assertEquals(1, game.hits)
+        assertEquals(
+            TimingGame.BASE_SPEED + 1 * TimingGame.SPEED_PER_HIT,
+            game.currentSpeed(),
+            0.0001f
+        )
+        assertEquals(
+            TimingGame.BASE_ZONE_HALF - 1 * TimingGame.ZONE_SHRINK_PER_HIT,
+            game.zoneHalfWidth,
+            0.0001f
+        )
     }
 
     @Test
@@ -265,6 +326,8 @@ class TimingGameTest {
 
         assertEquals(TimingGame.Phase.READY, game.phase)
         assertEquals(0, game.score)
+        assertEquals(0, game.hits)
+        assertEquals(0, game.perfectStreak)
         assertEquals(1, game.direction)
         assertEquals(TimingGame.BASE_ZONE_HALF, game.zoneHalfWidth, 0.0001f)
         assertTrue(game.activeTwists.isEmpty())
@@ -402,6 +465,36 @@ class TimingGameTest {
         assertEquals(15, TimingGame.unlockScore(TimingGame.Twist.GHOST))
         assertEquals(20, TimingGame.unlockScore(TimingGame.Twist.FAKE))
         assertEquals(25, TimingGame.unlockScore(TimingGame.Twist.CHAIN))
+    }
+
+    @Test
+    fun `ghost and fake twists never spawn together`() {
+        // Kuratiertes Kombi-Verbot: unsichtbarer Punkt plus Köder-Zone
+        // wäre Zufalls-Tod. Über viele Seeds und Zonen prüfen.
+        var spawnsWithBothUnlocked = 0
+        for (seed in 0 until 20) {
+            val game = TimingGame(random = Random(seed))
+            game.tap()
+            var guard = 0
+            while (game.phase == TimingGame.Phase.RUNNING &&
+                game.score < 45 && guard++ < 200
+            ) {
+                game.hitZone() ?: break
+                assertFalse(
+                    "GEIST + FALLE gleichzeitig aktiv (Seed $seed, Score ${game.score})",
+                    game.activeTwists.contains(TimingGame.Twist.GHOST) &&
+                        game.activeTwists.contains(TimingGame.Twist.FAKE)
+                )
+                if (game.score >= TimingGame.unlockScore(TimingGame.Twist.FAKE)) {
+                    spawnsWithBothUnlocked++
+                }
+            }
+        }
+        // Der Test muss den kritischen Bereich wirklich erreicht haben.
+        assertTrue(
+            "Zu wenige Zonen im kritischen Bereich: $spawnsWithBothUnlocked",
+            spawnsWithBothUnlocked > 50
+        )
     }
 
     @Test

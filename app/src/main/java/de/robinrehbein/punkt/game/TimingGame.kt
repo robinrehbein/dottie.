@@ -13,7 +13,17 @@ import kotlin.random.Random
  * zählt einen Treffer: Die Laufrichtung dreht um, die Zone springt an
  * eine neue Position, das Tempo steigt und die Zone schrumpft. Ein Tap
  * außerhalb der Zone oder ein Überfahren der Zone ohne Tap ist sofort
- * das Ende. Perfekte Treffer (Zonenmitte) zählen doppelt.
+ * das Ende.
+ *
+ * Scoring: Ein normaler Treffer zählt +1. Perfekte Treffer (Zonenmitte)
+ * bauen eine Serie auf: +2 für den ersten, +3, +4, +5 für jeden weiteren
+ * in Folge (Deckel bei +5). Ein normaler Treffer beendet die Serie —
+ * ohne Strafe, aber der Bonus beginnt von vorn.
+ *
+ * Die physische Schwierigkeit (Tempo, Zonenbreite) hängt an der Anzahl
+ * der TREFFER, nicht am Score: Perfekte Treffer sind reiner Bonus und
+ * beschleunigen das Spiel nicht doppelt. Twist-Freischaltungen und
+ * Himmelsstufen bleiben dagegen Score-basiert — sie sind Belohnung.
  *
  * Damit es nicht langweilig wird, schalten sich mit steigendem Score
  * "Twists" frei, die pro Zone zufällig gemischt werden:
@@ -60,6 +70,18 @@ class TimingGame(private val random: Random = Random.Default) {
         private set
 
     var score: Int = 0
+        private set
+
+    /** Anzahl der Treffer — die Basis für Tempo und Zonenbreite. */
+    var hits: Int = 0
+        private set
+
+    /** Aktuelle Serie perfekter Treffer in Folge. */
+    var perfectStreak: Int = 0
+        private set
+
+    /** Punkte des letzten Treffers, für die Anzeige ("PERFEKT! +3"). */
+    var lastHitPoints: Int = 0
         private set
 
     var elapsed: Float = 0f
@@ -124,7 +146,7 @@ class TimingGame(private val random: Random = Random.Default) {
             (elapsed * GHOST_BLINK_SPEED) % 1f < GHOST_VISIBLE_SHARE
 
     fun currentSpeed(): Float =
-        (BASE_SPEED + score * SPEED_PER_HIT).coerceAtMost(MAX_SPEED)
+        (BASE_SPEED + hits * SPEED_PER_HIT).coerceAtMost(MAX_SPEED)
 
     /**
      * Verarbeitet einen Tap. In READY startet er den Lauf, in RUNNING ist
@@ -187,6 +209,9 @@ class TimingGame(private val random: Random = Random.Default) {
         zoneCenter = 1.8f
         zoneHalfWidth = BASE_ZONE_HALF
         score = 0
+        hits = 0
+        perfectStreak = 0
+        lastHitPoints = 0
         elapsed = 0f
         timeSinceHit = 99f
         lastHitPerfect = false
@@ -243,10 +268,19 @@ class TimingGame(private val random: Random = Random.Default) {
     }
 
     private fun registerHit(perfect: Boolean) {
-        score += if (perfect) PERFECT_SCORE else 1
+        hits++
+        if (perfect) {
+            perfectStreak++
+            lastHitPoints = (PERFECT_BASE_SCORE - 1 + perfectStreak)
+                .coerceAtMost(PERFECT_MAX_SCORE)
+        } else {
+            perfectStreak = 0
+            lastHitPoints = 1
+        }
+        score += lastHitPoints
         timeSinceHit = 0f
         lastHitPerfect = perfect
-        zoneHalfWidth = (BASE_ZONE_HALF - score * ZONE_SHRINK_PER_HIT)
+        zoneHalfWidth = (BASE_ZONE_HALF - hits * ZONE_SHRINK_PER_HIT)
             .coerceAtLeast(MIN_ZONE_HALF)
 
         if (chainRemaining > 0) {
@@ -318,11 +352,23 @@ class TimingGame(private val random: Random = Random.Default) {
         for (twist in shuffled) {
             if (activeTwists.size >= MAX_ACTIVE_TWISTS) break
             if (twist in activeTwists) continue
+            if (conflictsWithActive(twist)) continue
             if (random.nextFloat() < TWIST_PROBABILITY) {
                 activeTwists.add(twist)
             }
         }
     }
+
+    /**
+     * Kuratierte Kombis: GEIST + FALLE stapelt fehlende Information
+     * (unsichtbarer Punkt) mit tödlicher Fehlinformation (Köder-Zone) —
+     * Tode daraus fühlen sich nach Zufall an, nicht nach Skill. Alle
+     * anderen Paare bleiben erlaubt, Härte ist sonst gewollt.
+     */
+    private fun conflictsWithActive(candidate: Twist): Boolean =
+        FORBIDDEN_COMBOS.any { pair ->
+            candidate in pair && activeTwists.any { it != candidate && it in pair }
+        }
 
     private fun die() {
         if (phase != Phase.RUNNING) return
@@ -355,11 +401,15 @@ class TimingGame(private val random: Random = Random.Default) {
         const val LATE_TAP_FORGIVENESS_SECONDS = 0.07f
         const val PASS_BUFFER_SECONDS = 0.09f
 
-        // Scoring
-        const val PERFECT_SCORE = 2
+        // Scoring: erster Perfekt +2, jeder weitere in Serie +1 mehr, Deckel +5.
+        const val PERFECT_BASE_SCORE = 2
+        const val PERFECT_MAX_SCORE = 5
 
         // Twists
         const val MAX_ACTIVE_TWISTS = 2
+
+        /** Nie zusammen aktive Twist-Paare (siehe conflictsWithActive). */
+        val FORBIDDEN_COMBOS = listOf(setOf(Twist.GHOST, Twist.FAKE))
         const val TWIST_PROBABILITY = 0.45f
         const val PULSE_SPEED = 5f
         const val PULSE_MIN_SHARE = 0.62f
