@@ -86,3 +86,14 @@ Festgehaltene Design-Ideen für ein FLIP-Comeback („FLIP-Münzen"):
 CI (GitHub Actions) baut bei jedem Push auf `main` beide APKs, führt die
 Unit-Tests aus und veröffentlicht sie als Pre-Release
 (`apk-build-N`-Tags) unter Releases.
+
+### ⚠️ Vor einem echten Store-Release: Keystore rotieren
+
+Der Release-Keystore und seine Passwörter lagen bis v2.7 im Klartext im
+Repo (und stehen weiterhin in der Git-Historie). Für Test-Builds ist das
+egal — **vor einer Play-Store-Veröffentlichung** muss:
+
+1. ein neuer Keystore erzeugt werden (der alte gilt als kompromittiert),
+2. die GitHub Secrets `PUNKT_KEYSTORE_PASSWORD`, `PUNKT_KEY_ALIAS` und
+   `PUNKT_KEY_PASSWORD` gesetzt werden (die CI reicht sie schon durch),
+3. der Klartext-Fallback in `app/build.gradle.kts` entfernt werden.
