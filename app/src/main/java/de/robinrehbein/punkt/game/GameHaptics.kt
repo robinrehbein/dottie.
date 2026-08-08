@@ -17,17 +17,12 @@ class GameHaptics(context: Context) {
         vibratorManager.defaultVibrator
     }
 
-    /** Ganz leichter Tick bei jedem Schwerkraft-Kippen. */
-    fun flip() {
-        vibrate(VibrationEffect.createOneShot(12, 35))
-    }
-
-    /** Kurzer, satter Blip beim Passieren eines Hindernisses. */
+    /** Kurzer, satter Blip bei einem Treffer in der Zone. */
     fun score() {
         vibrate(VibrationEffect.createOneShot(28, 140))
     }
 
-    /** Doppel-Tick für einen perfekten Treffer im Stopp-Modus. */
+    /** Doppel-Tick für einen perfekten Treffer. */
     fun perfect() {
         val timings = longArrayOf(0, 20, 40, 35)
         val amplitudes = intArrayOf(0, 120, 0, 220)
@@ -41,7 +36,7 @@ class GameHaptics(context: Context) {
         vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
     }
 
-    /** Dumpfer Thud, wenn der Punkt am Boden aufschlägt. */
+    /** Dumpfer Thud, wenn der Punkt nach dem Aus am Boden aufschlägt. */
     fun thud() {
         vibrate(VibrationEffect.createOneShot(50, 90))
     }

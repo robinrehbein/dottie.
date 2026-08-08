@@ -39,7 +39,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import de.robinrehbein.punkt.game.GameMode
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.theme.Bytesized
 
@@ -121,8 +120,6 @@ internal fun ReadyOverlay(
     bestScore: Int,
     runNumber: Int,
     hint: String,
-    switchLabel: String,
-    onSwitchMode: () -> Unit,
     onHelp: () -> Unit
 ) {
     val blink by rememberInfiniteTransition(label = "blink").animateFloat(
@@ -198,18 +195,7 @@ internal fun ReadyOverlay(
                     fontSize = 16.sp,
                     color = Color.White.copy(alpha = 0.8f)
                 )
-                Spacer(modifier = Modifier.height(16.dp))
             }
-            PixelButton(
-                text = switchLabel,
-                onClick = onSwitchMode,
-                backgroundColor = PanelSand,
-                borderColor = TextDark,
-                textColor = TextDark,
-                width = 220.dp,
-                height = 48.dp,
-                borderWidth = 3.dp
-            )
         }
     }
 }
@@ -221,8 +207,6 @@ internal fun GameOverOverlay(
     isNewRecord: Boolean,
     taunt: String,
     onRestart: () -> Unit,
-    switchLabel: String,
-    onSwitchMode: () -> Unit,
     onHelp: () -> Unit
 ) {
     val blink by rememberInfiniteTransition(label = "overBlink").animateFloat(
@@ -325,19 +309,6 @@ internal fun GameOverOverlay(
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = blink)
             )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            PixelButton(
-                text = switchLabel,
-                onClick = onSwitchMode,
-                backgroundColor = PanelSand,
-                borderColor = TextDark,
-                textColor = TextDark,
-                width = 220.dp,
-                height = 48.dp,
-                borderWidth = 3.dp
-            )
         }
     }
 }
@@ -416,7 +387,7 @@ internal fun MedalBadge(score: Int) {
  * als Spiel-Tap (Sofort-Neustart!) durchschlägt.
  */
 @Composable
-internal fun HelpOverlay(mode: GameMode, onClose: () -> Unit) {
+internal fun HelpOverlay(onClose: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -433,10 +404,7 @@ internal fun HelpOverlay(mode: GameMode, onClose: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = 32.dp)
         ) {
-            when (mode) {
-                GameMode.GRAVITY_FLIP -> FlipHelpContent()
-                GameMode.TIME_STOP -> StopHelpContent()
-            }
+            StopHelpContent()
 
             Spacer(modifier = Modifier.height(28.dp))
             Text(
@@ -447,16 +415,6 @@ internal fun HelpOverlay(mode: GameMode, onClose: () -> Unit) {
             )
         }
     }
-}
-
-@Composable
-private fun FlipHelpContent() {
-    HelpHeading("SO GEHT FLIP")
-    HelpLine("TIPPEN KIPPT DIE SCHWERKRAFT: DER PUNKT FAELLT ZUR DECKE — ODER ZURUECK.")
-    HelpLine("BODEN UND DECKE SIND SICHER. NUR DIE ORANGEN BLOECKE TOETEN.")
-    HelpLine("BLOECKE WACHSEN VON UNTEN, VON OBEN — ODER VON BEIDEN SEITEN GLEICHZEITIG.")
-    HelpLine("JEDE PASSIERTE SAEULE = 1 PUNKT. MIT DEM TEMPO WIRD DER KORRIDOR ENGER.")
-    HelpLine("IM FLUG GIBT ES KEIN ZURUECK — KIPPEN IST EIN VERSPRECHEN.", DotBody)
 }
 
 @Composable
