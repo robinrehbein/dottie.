@@ -7,18 +7,23 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,10 +34,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.game.GameMode
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.theme.Bytesized
 
@@ -93,13 +100,30 @@ internal fun ScoreHud(score: Int) {
     }
 }
 
+/** Kleiner "?"-Knopf oben rechts, öffnet die Spiel-Erklärung. */
+@Composable
+private fun HelpCornerButton(onHelp: () -> Unit, modifier: Modifier = Modifier) {
+    PixelButton(
+        text = "?",
+        onClick = onHelp,
+        backgroundColor = PanelSand,
+        borderColor = TextDark,
+        textColor = TextDark,
+        width = 48.dp,
+        height = 48.dp,
+        borderWidth = 3.dp,
+        modifier = modifier
+    )
+}
+
 @Composable
 internal fun ReadyOverlay(
     bestScore: Int,
     runNumber: Int,
     hint: String,
     switchLabel: String,
-    onSwitchMode: () -> Unit
+    onSwitchMode: () -> Unit,
+    onHelp: () -> Unit
 ) {
     val blink by rememberInfiniteTransition(label = "blink").animateFloat(
         initialValue = 1f,
@@ -116,6 +140,13 @@ internal fun ReadyOverlay(
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
+        HelpCornerButton(
+            onHelp = onHelp,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        )
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -191,7 +222,8 @@ internal fun GameOverOverlay(
     taunt: String,
     onRestart: () -> Unit,
     switchLabel: String,
-    onSwitchMode: () -> Unit
+    onSwitchMode: () -> Unit,
+    onHelp: () -> Unit
 ) {
     val blink by rememberInfiniteTransition(label = "overBlink").animateFloat(
         initialValue = 1f,
@@ -208,6 +240,13 @@ internal fun GameOverOverlay(
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
+        HelpCornerButton(
+            onHelp = onHelp,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        )
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.align(Alignment.Center)
@@ -364,6 +403,137 @@ internal fun MedalBadge(score: Int) {
                 fontFamily = Bytesized,
                 fontSize = 24.sp,
                 color = TextDark
+            )
+        }
+    }
+}
+
+// ===== Hilfe / Anleitung =====
+
+/**
+ * Vollflächige Spiel-Erklärung über dunklem Scrim. Ein Tap irgendwo
+ * schließt sie — und wird dabei konsumiert, damit er nicht gleichzeitig
+ * als Spiel-Tap (Sofort-Neustart!) durchschlägt.
+ */
+@Composable
+internal fun HelpOverlay(mode: GameMode, onClose: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(OutlineColor.copy(alpha = 0.92f))
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onClose() })
+            }
+            .windowInsetsPadding(WindowInsets.systemBars),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 32.dp)
+        ) {
+            when (mode) {
+                GameMode.GRAVITY_FLIP -> FlipHelpContent()
+                GameMode.TIME_STOP -> StopHelpContent()
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+            Text(
+                text = "TIPPEN ZUM SCHLIESSEN",
+                fontFamily = Bytesized,
+                fontSize = 14.sp,
+                color = Color.White.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun FlipHelpContent() {
+    HelpHeading("SO GEHT FLIP")
+    HelpLine("TIPPEN KIPPT DIE SCHWERKRAFT: DER PUNKT FAELLT ZUR DECKE — ODER ZURUECK.")
+    HelpLine("BODEN UND DECKE SIND SICHER. NUR DIE ORANGEN BLOECKE TOETEN.")
+    HelpLine("BLOECKE WACHSEN VON UNTEN, VON OBEN — ODER VON BEIDEN SEITEN GLEICHZEITIG.")
+    HelpLine("JEDE PASSIERTE SAEULE = 1 PUNKT. MIT DEM TEMPO WIRD DER KORRIDOR ENGER.")
+    HelpLine("IM FLUG GIBT ES KEIN ZURUECK — KIPPEN IST EIN VERSPRECHEN.", DotBody)
+}
+
+@Composable
+private fun StopHelpContent() {
+    HelpHeading("SO GEHT STOPP")
+    HelpLine("DER PUNKT KREIST VON ALLEIN.")
+    HelpLine("TIPPE, WENN ER IN DER GRUENEN ZONE IST — DANEBEN GETIPPT ODER ZONE VERPASST = AUS.")
+    HelpLine("HELLE MITTE DER ZONE = PERFEKT, ZAEHLT +2.", DotBody)
+
+    Spacer(modifier = Modifier.height(18.dp))
+    Text(
+        text = "DIE TWISTS",
+        style = ScoreShadowStyle,
+        fontSize = 24.sp,
+        color = Color(0xFFFF8A3C)
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+
+    TwistHelpRow(GrassLight, "PULS (AB 5)", "DIE ZONE ATMET — WIRD GROESSER UND KLEINER.")
+    TwistHelpRow(Color(0xFF5B9BD5), "DRIFT (AB 10)", "DIE ZONE WANDERT LANGSAM UEBER DIE BAHN.")
+    TwistHelpRow(CloudColor, "GEIST (AB 15)", "DER PUNKT BLINKT WEG — BAHN IM KOPF BEHALTEN.")
+    TwistHelpRow(Color(0xFFB44FD8), "FALLE (AB 20)", "VIOLETTE KOEDER-ZONE: NIE HINEINTIPPEN!")
+    TwistHelpRow(Color(0xFFFF8A3C), "KETTE (AB 25)", "ZWEI ZONEN NACHEINANDER — GLEICHE RICHTUNG.")
+
+    Spacer(modifier = Modifier.height(10.dp))
+    HelpLine("MAXIMAL ZWEI TWISTS GLEICHZEITIG — ZUFAELLIG GEMISCHT.")
+}
+
+@Composable
+private fun HelpHeading(text: String) {
+    Text(
+        text = text,
+        style = ScoreShadowStyle,
+        fontSize = 32.sp,
+        color = Color.White,
+        modifier = Modifier.padding(bottom = 12.dp)
+    )
+}
+
+@Composable
+private fun HelpLine(text: String, color: Color = Color.White) {
+    Text(
+        text = text,
+        fontFamily = Bytesized,
+        fontSize = 15.sp,
+        color = color,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.padding(horizontal = 32.dp, vertical = 4.dp)
+    )
+}
+
+@Composable
+private fun TwistHelpRow(color: Color, title: String, text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 40.dp, vertical = 5.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(16.dp)
+                .background(color)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(
+                text = title,
+                fontFamily = Bytesized,
+                fontSize = 15.sp,
+                color = color
+            )
+            Text(
+                text = text,
+                fontFamily = Bytesized,
+                fontSize = 14.sp,
+                color = Color.White.copy(alpha = 0.85f)
             )
         }
     }

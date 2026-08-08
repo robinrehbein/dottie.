@@ -52,6 +52,7 @@ fun GravityGameScreen(
     var runNumber by remember { mutableIntStateOf(store.runCount(mode)) }
     var isNewRecord by remember { mutableStateOf(false) }
     var taunt by remember { mutableStateOf("") }
+    var showHelp by remember { mutableStateOf(false) }
 
     // Game-Loop: ein Update pro gerendertem Frame.
     LaunchedEffect(Unit) {
@@ -117,7 +118,8 @@ fun GravityGameScreen(
                 runNumber = runNumber,
                 hint = "TIPPEN = SCHWERKRAFT KIPPEN",
                 switchLabel = "WECHSEL ZU: ${GameMode.TIME_STOP.displayName}",
-                onSwitchMode = onSwitchMode
+                onSwitchMode = onSwitchMode,
+                onHelp = { showHelp = true }
             )
             PunktGame.Phase.RUNNING, PunktGame.Phase.DYING -> ScoreHud(score = score)
             PunktGame.Phase.OVER -> GameOverOverlay(
@@ -130,8 +132,13 @@ fun GravityGameScreen(
                     game.tap()
                 },
                 switchLabel = "WECHSEL ZU: ${GameMode.TIME_STOP.displayName}",
-                onSwitchMode = onSwitchMode
+                onSwitchMode = onSwitchMode,
+                onHelp = { showHelp = true }
             )
+        }
+
+        if (showHelp) {
+            HelpOverlay(mode = mode, onClose = { showHelp = false })
         }
     }
 }
