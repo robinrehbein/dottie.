@@ -104,6 +104,7 @@ fun TimingGameScreen(
     var taunt by remember { mutableStateOf("") }
     var showPerfect by remember { mutableStateOf(false) }
     var bannerText by remember { mutableStateOf("") }
+    var showHelp by remember { mutableStateOf(false) }
 
     // Banner mit Priorität: Ein wichtigeres Banner (Twist-Ankündigung)
     // wird nicht von einem beiläufigen ("NOCH EINE!") überschrieben.
@@ -242,7 +243,8 @@ fun TimingGameScreen(
                 runNumber = runNumber,
                 hint = "STOPPE DEN PUNKT IN DER GRUENEN ZONE",
                 switchLabel = "WECHSEL ZU: ${GameMode.GRAVITY_FLIP.displayName}",
-                onSwitchMode = onSwitchMode
+                onSwitchMode = onSwitchMode,
+                onHelp = { showHelp = true }
             )
             TimingGame.Phase.RUNNING, TimingGame.Phase.DYING -> ScoreHud(score = score)
             TimingGame.Phase.OVER -> GameOverOverlay(
@@ -255,8 +257,13 @@ fun TimingGameScreen(
                     game.tap()
                 },
                 switchLabel = "WECHSEL ZU: ${GameMode.GRAVITY_FLIP.displayName}",
-                onSwitchMode = onSwitchMode
+                onSwitchMode = onSwitchMode,
+                onHelp = { showHelp = true }
             )
+        }
+
+        if (showHelp) {
+            HelpOverlay(mode = mode, onClose = { showHelp = false })
         }
     }
 }
