@@ -8,7 +8,14 @@ wieder ein Versuch: kurze Runs, hoher Rage-Faktor, Highscore-Jagd.
 
 Der Punkt kreist von allein auf einer Bahn. Ein Tap, während er in der
 grünen Zone ist, zählt — daneben getippt oder die Zone überfahren ist
-sofort das Ende. Die helle Zonen-Mitte zählt als PERFEKT (+2).
+sofort das Ende. Die helle Zonen-Mitte zählt als PERFEKT: +2 Punkte,
+und in Serie steigt der Bonus auf +3, +4 bis maximal +5 pro Treffer
+(ein normaler Treffer setzt die Serie zurück, ohne Strafe).
+
+Die physische Schwierigkeit (Tempo, Zonenbreite) wächst mit der Anzahl
+der Treffer, nicht mit dem Score — perfekte Serien sind reiner Bonus
+und beschleunigen das Spiel nicht doppelt. Twist-Freischaltungen und
+Himmelsstufen bleiben Score-basiert, sie sind Belohnung.
 
 Mit steigendem Score schalten sich Twists frei, die pro Zone zufällig
 gemischt werden (maximal zwei gleichzeitig):
@@ -21,9 +28,29 @@ gemischt werden (maximal zwei gleichzeitig):
 | FALLE | 20 | Violette Köder-Zone: nie hineintippen |
 | KETTE | 25 | Zwei Zonen nacheinander in gleicher Richtung |
 
+Kuratierte Ausnahme: GEIST + FALLE erscheinen nie gleichzeitig —
+unsichtbarer Punkt plus tödliche Köder-Zone wäre Zufalls-Tod statt
+Skill. Alle anderen Kombinationen bleiben erlaubt.
+
 Dazu: Himmel färbt sich pro 5er-Stufe Richtung Nacht, Medaillen ab
 10/20/30/40 Punkten, Spott-Texte beim Tod, Haptik-Feedback, „?"-Button
-mit Spielerklärung.
+mit Spielerklärung. Wer den eigenen Rekord im Lauf überholt, bekommt
+das sofort gefeiert („REKORD GEKNACKT!") — nicht erst beim Tod.
+
+## Sound (ab v2.7)
+
+Chiptune-Soundeffekte im NES-Stil, komplett zur Laufzeit im Code
+synthetisiert (Rechteckwellen + Rauschen, `ChipSynth`) — es gibt keine
+Audio-Assets im Repo. Die WAVs werden einmalig in den App-Cache
+geschrieben und laufen latenzarm über einen `SoundPool`:
+
+- Treffer-Blip klettert innerhalb jeder 5er-Stufe eine Pentatonik hoch —
+  jeder Lauf spielt seine eigene kleine Melodie
+- PERFEKT ist ein Münz-Sound, der pro Serien-Stufe höher klingt
+- Tod = fallender Sweep + Rausch-Burst, Twists/Stufen = Fanfare,
+  neuer Rekord = eigener Jingle
+- Ton-Schalter auf dem Startscreen („TON: AN/AUS"), Einstellung bleibt
+  gespeichert
 
 ## Ehemaliger zweiter Modus: FLIP (entfernt in v2.6)
 

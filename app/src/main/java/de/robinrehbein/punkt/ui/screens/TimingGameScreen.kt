@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.data.ScoreStore
+import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
 import de.robinrehbein.punkt.game.TimingGame
 import kotlinx.coroutines.isActive
@@ -69,6 +71,9 @@ private class BannerState {
 
     /** Zuletzt gesehene Himmels-Stufe (score / 5), für Stufen-Feedback. */
     var lastStage = 0
+
+    /** Wurde der Rekord in diesem Lauf schon live gefeiert? */
+    var recordCelebrated = false
 }
 
 /** Dauer der Freischalt-Zelebration (goldener Ring + Schimmer). */
@@ -86,6 +91,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val haptics = remember { GameHaptics(context) }
     val store = remember { ScoreStore(context) }
+    val audio = remember { GameAudio(context).apply { muted = store.soundMuted } }
     val game = remember { TimingGame() }
     val fx = remember { FxState() }
     val bannerState = remember { BannerState() }
@@ -98,8 +104,14 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     var isNewRecord by remember { mutableStateOf(false) }
     var taunt by remember { mutableStateOf("") }
     var showPerfect by remember { mutableStateOf(false) }
+    var perfectPoints by remember { mutableIntStateOf(2) }
     var bannerText by remember { mutableStateOf("") }
     var showHelp by remember { mutableStateOf(false) }
+    var soundOn by remember { mutableStateOf(!store.soundMuted) }
+
+    DisposableEffect(Unit) {
+        onDispose { audio.release() }
+    }
 
     // Banner mit Priorität: Ein wichtigeres Banner (Twist-Ankündigung)
     // wird nicht von einem beiläufigen ("NOCH EINE!") überschrieben.
@@ -132,24 +144,36 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     when (event) {
                         is TimingGame.GameEvent.Started -> {
                             // Auch beim Sofort-Neustart aus dem Game-Over:
-                            // Banner und Stufen-Zähler auf Anfang.
+                            // Banner, Stufen-Zähler und Rekord-Feier auf Anfang.
                             bannerState.lastStage = 0
+                            bannerState.recordCelebrated = false
                             bannerState.timeLeft = 0f
                             bannerText = ""
+                            audio.start()
                         }
-                        is TimingGame.GameEvent.Hit -> haptics.score()
-                        is TimingGame.GameEvent.PerfectHit -> haptics.perfect()
+                        is TimingGame.GameEvent.Hit -> {
+                            haptics.score()
+                            audio.hit(game.score)
+                        }
+                        is TimingGame.GameEvent.PerfectHit -> {
+                            haptics.perfect()
+                            audio.perfect(game.perfectStreak)
+                            perfectPoints = game.lastHitPoints
+                        }
                         is TimingGame.GameEvent.ChainNext -> {
                             showBanner("NOCH EINE!", 1.2f, priority = 1)
+                            audio.chain()
                         }
                         is TimingGame.GameEvent.TwistUnlocked -> {
                             twistUnlockedThisFrame = true
                             showBanner(twistBannerText(event.twist), 2.2f, priority = 2)
                             fx.celebrateTime = CELEBRATE_SECONDS
                             haptics.unlock()
+                            audio.unlock()
                         }
                         is TimingGame.GameEvent.Died -> {
                             haptics.death()
+                            audio.death()
                             fx.flashAlpha = 1f
                             fx.shakeTime = 0.4f
                             fx.celebrateTime = 0f
@@ -158,11 +182,35 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             taunt = pickTaunt(game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
                             runNumber = store.runCount
-                            if (isNewRecord) haptics.newRecord()
+                            if (isNewRecord && !bannerState.recordCelebrated) {
+                                haptics.newRecord()
+                            }
                         }
-                        is TimingGame.GameEvent.Settled -> haptics.thud()
+                        is TimingGame.GameEvent.Settled -> {
+                            haptics.thud()
+                            // Der Rekord-Jingle lief meist schon live im Lauf;
+                            // sonst (z. B. allererster Lauf) kommt er jetzt.
+                            if (isNewRecord && !bannerState.recordCelebrated) {
+                                audio.newRecord()
+                            } else {
+                                audio.thud()
+                            }
+                        }
                         else -> Unit
                     }
+                }
+
+                // Rekord live feiern: In dem Moment, in dem der Lauf den
+                // alten Bestwert überholt — nicht erst beim Tod.
+                if (game.phase == TimingGame.Phase.RUNNING &&
+                    !bannerState.recordCelebrated &&
+                    bestScore > 0 && game.score > bestScore
+                ) {
+                    bannerState.recordCelebrated = true
+                    showBanner("REKORD GEKNACKT!", 2.2f, priority = 2)
+                    fx.celebrateTime = CELEBRATE_SECONDS
+                    haptics.newRecord()
+                    audio.newRecord()
                 }
 
                 // Stufen-Feedback: jede 5er-Stufe färbt den Himmel um — das
@@ -175,6 +223,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                         showBanner("NEUE STUFE!", 1.6f, priority = 1)
                         fx.celebrateTime = CELEBRATE_SECONDS
                         haptics.unlock()
+                        audio.unlock()
                     }
                 }
                 if (game.phase == TimingGame.Phase.READY) {
@@ -209,7 +258,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         // Display, statt auf festen dp-Werten.
         if (showPerfect) {
             Text(
-                text = "PERFEKT! +2",
+                text = "PERFEKT! +$perfectPoints",
                 style = ScoreShadowStyle,
                 fontSize = 28.sp,
                 color = Color(0xFFFFE95E),
@@ -237,7 +286,13 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 bestScore = bestScore,
                 runNumber = runNumber,
                 hint = "STOPPE DEN PUNKT IN DER GRUENEN ZONE",
-                onHelp = { showHelp = true }
+                onHelp = { showHelp = true },
+                soundOn = soundOn,
+                onToggleSound = {
+                    soundOn = !soundOn
+                    store.soundMuted = !soundOn
+                    audio.muted = !soundOn
+                }
             )
             TimingGame.Phase.RUNNING, TimingGame.Phase.DYING -> ScoreHud(score = score)
             TimingGame.Phase.OVER -> GameOverOverlay(

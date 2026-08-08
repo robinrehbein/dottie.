@@ -20,6 +20,13 @@ class ScoreStore(context: Context) {
     val runCount: Int
         get() = prefs.getInt(KEY_RUNS, 0)
 
+    /** Ton an/aus — überlebt App-Neustarts. */
+    var soundMuted: Boolean
+        get() = prefs.getBoolean(KEY_MUTED, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_MUTED, value).apply()
+        }
+
     /** Meldet einen beendeten Lauf; liefert true, wenn es ein neuer Rekord war. */
     fun submitRun(score: Int): Boolean {
         prefs.edit().putInt(KEY_RUNS, runCount + 1).apply()
@@ -34,5 +41,6 @@ class ScoreStore(context: Context) {
         const val PREFS_NAME = "punkt_scores"
         const val KEY_BEST = "best_score_timing"
         const val KEY_RUNS = "run_count_timing"
+        const val KEY_MUTED = "sound_muted"
     }
 }
