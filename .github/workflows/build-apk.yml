@@ -16,29 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Einmaliger Step (wird nach Erledigung wieder entfernt):
-      # Archiv-Tag v2.5-mit-flip auf den letzten Stand MIT FLIP-Modus setzen.
-      - name: Archiv-Tag v2.5-mit-flip anlegen
-        run: |
-          if git ls-remote --exit-code --tags origin v2.5-mit-flip >/dev/null 2>&1; then
-            echo "Tag existiert schon — nichts zu tun."
-            exit 0
-          fi
-          git fetch --depth=1 origin defaab2453aa3c798b40dd7eaf491b1b73702623
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a v2.5-mit-flip defaab2453aa3c798b40dd7eaf491b1b73702623 -m "v2.5 – letzter Stand MIT FLIP-Modus
-
-          Ab hier wird der FLIP-Modus (Gravity-Flip-Runner) entfernt, um sich
-          erstmal voll auf STOPP zu konzentrieren.
-
-          Falls FLIP zurueckkommen soll: Dieser Tag enthaelt den kompletten,
-          funktionierenden FLIP-Code inkl. Modus-Umschalter, Fairness-Tuning
-          (v2.3/v2.4) und Hilfe-Overlay-Erklaerung. Die Design-Ideen fuer
-          FLIP-Muenzen stehen in der README unter 'Ehemaliger zweiter Modus'.
-          Letzte APK mit FLIP: Release apk-build-13 (v2.5)."
-          git push origin v2.5-mit-flip
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
