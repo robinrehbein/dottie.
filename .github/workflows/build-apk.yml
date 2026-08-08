@@ -25,6 +25,12 @@ jobs:
         run: ./gradlew --no-daemon testDebugUnitTest
 
       - name: Build APKs
+        # Signing-Credentials kommen aus GitHub Secrets, sobald gesetzt;
+        # sonst greift der (zu rotierende) Fallback in build.gradle.kts.
+        env:
+          PUNKT_KEYSTORE_PASSWORD: ${{ secrets.PUNKT_KEYSTORE_PASSWORD }}
+          PUNKT_KEY_ALIAS: ${{ secrets.PUNKT_KEY_ALIAS }}
+          PUNKT_KEY_PASSWORD: ${{ secrets.PUNKT_KEY_PASSWORD }}
         run: ./gradlew --no-daemon assembleDebug assembleRelease
 
       - name: Upload debug APK

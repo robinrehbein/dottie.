@@ -12,18 +12,26 @@ android {
         applicationId = "de.robinrehbein.punkt"
         minSdk = 28
         targetSdk = 36
-        versionCode = 12
-        versionName = "2.7"
+        versionCode = 13
+        versionName = "2.7.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
         create("release") {
+            // Credentials kommen bevorzugt aus der Umgebung (CI: GitHub
+            // Secrets PUNKT_KEYSTORE_PASSWORD / PUNKT_KEY_PASSWORD). Der
+            // Fallback hält lokale Test-Builds am Laufen — vor einem
+            // echten Store-Release MUSS der Keystore rotiert und der
+            // Fallback entfernt werden (Passwort stand im Repo-Verlauf).
+            fun secret(name: String, fallback: String): String =
+                System.getenv(name)?.takeUnless { it.isBlank() } ?: fallback
+
             storeFile = file("../punkt-release-key.keystore")
-            storePassword = "punktapp123"
-            keyAlias = "punkt"
-            keyPassword = "punktapp123"
+            storePassword = secret("PUNKT_KEYSTORE_PASSWORD", "punktapp123")
+            keyAlias = secret("PUNKT_KEY_ALIAS", "punkt")
+            keyPassword = secret("PUNKT_KEY_PASSWORD", "punktapp123")
         }
     }
 

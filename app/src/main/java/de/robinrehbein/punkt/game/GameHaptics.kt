@@ -1,6 +1,7 @@
 package de.robinrehbein.punkt.game
 
 import android.content.Context
+import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -11,10 +12,18 @@ import android.os.VibratorManager
  */
 class GameHaptics(context: Context) {
 
-    private val vibrator: Vibrator by lazy {
-        val vibratorManager =
-            context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-        vibratorManager.defaultVibrator
+    // VibratorManager gibt es erst ab API 31 — auf Android 9-11 (minSdk 28)
+    // führt der alte Weg über VIBRATOR_SERVICE. Nullable + as?, damit ein
+    // Gerät ganz ohne Vibrator niemals crasht, sondern nur still bleibt.
+    private val vibrator: Vibrator? by lazy {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE)
+                as? VibratorManager
+            manager?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
     }
 
     /** Kurzer, satter Blip bei einem Treffer in der Zone. */
@@ -56,8 +65,9 @@ class GameHaptics(context: Context) {
     }
 
     private fun vibrate(effect: VibrationEffect) {
-        if (vibrator.hasVibrator()) {
-            vibrator.vibrate(effect)
+        val v = vibrator ?: return
+        if (v.hasVibrator()) {
+            v.vibrate(effect)
         }
     }
 }
