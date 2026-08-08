@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.data.ScoreStore
 import de.robinrehbein.punkt.game.GameHaptics
-import de.robinrehbein.punkt.game.GameMode
 import de.robinrehbein.punkt.game.TimingGame
 import kotlinx.coroutines.isActive
 import kotlin.math.abs
@@ -83,23 +82,19 @@ private const val CELEBRATE_SECONDS = 1.1f
  * Falle, Kette), die pro Zone zufällig gemischt werden.
  */
 @Composable
-fun TimingGameScreen(
-    onSwitchMode: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun TimingGameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val haptics = remember { GameHaptics(context) }
     val store = remember { ScoreStore(context) }
     val game = remember { TimingGame() }
     val fx = remember { FxState() }
     val bannerState = remember { BannerState() }
-    val mode = GameMode.TIME_STOP
 
     var frameTick by remember { mutableLongStateOf(0L) }
     var phase by remember { mutableStateOf(TimingGame.Phase.READY) }
     var score by remember { mutableIntStateOf(0) }
-    var bestScore by remember { mutableIntStateOf(store.bestScore(mode)) }
-    var runNumber by remember { mutableIntStateOf(store.runCount(mode)) }
+    var bestScore by remember { mutableIntStateOf(store.bestScore) }
+    var runNumber by remember { mutableIntStateOf(store.runCount) }
     var isNewRecord by remember { mutableStateOf(false) }
     var taunt by remember { mutableStateOf("") }
     var showPerfect by remember { mutableStateOf(false) }
@@ -158,11 +153,11 @@ fun TimingGameScreen(
                             fx.flashAlpha = 1f
                             fx.shakeTime = 0.4f
                             fx.celebrateTime = 0f
-                            val previousBest = store.bestScore(mode)
-                            isNewRecord = store.submitRun(mode, game.score)
+                            val previousBest = store.bestScore
+                            isNewRecord = store.submitRun(game.score)
                             taunt = pickTaunt(game.score, previousBest, isNewRecord)
-                            bestScore = store.bestScore(mode)
-                            runNumber = store.runCount(mode)
+                            bestScore = store.bestScore
+                            runNumber = store.runCount
                             if (isNewRecord) haptics.newRecord()
                         }
                         is TimingGame.GameEvent.Settled -> haptics.thud()
@@ -242,8 +237,6 @@ fun TimingGameScreen(
                 bestScore = bestScore,
                 runNumber = runNumber,
                 hint = "STOPPE DEN PUNKT IN DER GRUENEN ZONE",
-                switchLabel = "WECHSEL ZU: ${GameMode.GRAVITY_FLIP.displayName}",
-                onSwitchMode = onSwitchMode,
                 onHelp = { showHelp = true }
             )
             TimingGame.Phase.RUNNING, TimingGame.Phase.DYING -> ScoreHud(score = score)
@@ -256,14 +249,12 @@ fun TimingGameScreen(
                     game.reset()
                     game.tap()
                 },
-                switchLabel = "WECHSEL ZU: ${GameMode.GRAVITY_FLIP.displayName}",
-                onSwitchMode = onSwitchMode,
                 onHelp = { showHelp = true }
             )
         }
 
         if (showHelp) {
-            HelpOverlay(mode = mode, onClose = { showHelp = false })
+            HelpOverlay(onClose = { showHelp = false })
         }
     }
 }
@@ -490,7 +481,7 @@ private fun DrawScope.drawTimingDot(
         )
     }
 
-    // Glanzpunkt und Auge wie beim Flip-Punkt
+    // Glanzpunkt und Auge
     rect(2.5f, 2.5f, 2f, 2f, DotShine)
     rect(7.5f, 3f, 3.5f, 4f, Color.White)
     rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
