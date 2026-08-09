@@ -20,18 +20,28 @@ android {
 
     signingConfigs {
         create("release") {
-            // Credentials kommen bevorzugt aus der Umgebung (CI: GitHub
-            // Secrets PUNKT_KEYSTORE_PASSWORD / PUNKT_KEY_PASSWORD). Der
-            // Fallback hält lokale Test-Builds am Laufen — vor einem
-            // echten Store-Release MUSS der Keystore rotiert und der
-            // Fallback entfernt werden (Passwort stand im Repo-Verlauf).
-            fun secret(name: String, fallback: String): String =
-                System.getenv(name)?.takeUnless { it.isBlank() } ?: fallback
+            // Ein über PUNKT_KEYSTORE_FILE gesetzter Keystore (CI nach der
+            // Rotation, siehe PUBLISHING.md) gewinnt immer; dann sind alle
+            // Credentials Pflicht und es gibt keinen Fallback. Ohne diese
+            // Variable signiert der eingecheckte Test-Keystore, dessen
+            // Passwort öffentlich ist — er darf NIE in den Play Store.
+            fun env(name: String): String? =
+                System.getenv(name)?.takeUnless { it.isBlank() }
 
-            storeFile = file("../punkt-release-key.keystore")
-            storePassword = secret("PUNKT_KEYSTORE_PASSWORD", "punktapp123")
-            keyAlias = secret("PUNKT_KEY_ALIAS", "punkt")
-            keyPassword = secret("PUNKT_KEY_PASSWORD", "punktapp123")
+            val envStorePath = env("PUNKT_KEYSTORE_FILE")
+            if (envStorePath != null) {
+                storeFile = file(envStorePath)
+                storePassword = env("PUNKT_KEYSTORE_PASSWORD")
+                    ?: error("PUNKT_KEYSTORE_FILE gesetzt, aber PUNKT_KEYSTORE_PASSWORD fehlt")
+                keyAlias = env("PUNKT_KEY_ALIAS") ?: "punkt"
+                keyPassword = env("PUNKT_KEY_PASSWORD")
+                    ?: error("PUNKT_KEYSTORE_FILE gesetzt, aber PUNKT_KEY_PASSWORD fehlt")
+            } else {
+                storeFile = file("../punkt-release-key.keystore")
+                storePassword = "punktapp123"
+                keyAlias = "punkt"
+                keyPassword = "punktapp123"
+            }
         }
     }
 
