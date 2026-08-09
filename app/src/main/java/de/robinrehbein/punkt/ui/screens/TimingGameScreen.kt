@@ -29,13 +29,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.data.ScoreStore
+import de.robinrehbein.punkt.game.DailyChallenge
+import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
 import de.robinrehbein.punkt.game.TimingGame
+import de.robinrehbein.punkt.share.ScoreCard
 import kotlinx.coroutines.isActive
+import java.time.LocalDate
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -79,6 +84,15 @@ private class BannerState {
 /** Dauer der Freischalt-Zelebration (goldener Ring + Schimmer). */
 private const val CELEBRATE_SECONDS = 1.1f
 
+/** Nicht-Compose-Zustand des laufenden Versuchs. */
+private class RunState {
+    /** Tag, dem der Lauf zugerechnet wird (fixiert beim Start). */
+    var epochDay = 0L
+
+    /** Höchste Perfekt-Serie dieses Laufs, für die Bestleistung. */
+    var maxPerfect = 0
+}
+
 /**
  * Spielprinzip "STOPP": Der Punkt kreist automatisch auf einer Bahn.
  * Ein Tap, während er in der Zielzone ist, zählt — daneben getappt oder
@@ -95,6 +109,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     val game = remember { TimingGame() }
     val fx = remember { FxState() }
     val bannerState = remember { BannerState() }
+    val runState = remember { RunState() }
 
     var frameTick by remember { mutableLongStateOf(0L) }
     var phase by remember { mutableStateOf(TimingGame.Phase.READY) }
@@ -108,9 +123,28 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     var bannerText by remember { mutableStateOf("") }
     var showHelp by remember { mutableStateOf(false) }
     var soundOn by remember { mutableStateOf(!store.soundMuted) }
+    var dailyMode by remember { mutableStateOf(false) }
+    var skin by remember { mutableStateOf(store.selectedSkin) }
+    var showSkins by remember { mutableStateOf(false) }
+    var skinUnlockedThisRun by remember { mutableStateOf(false) }
+    var dailyBestToday by remember {
+        mutableIntStateOf(store.dailyBestFor(LocalDate.now().toEpochDay()))
+    }
+    var dailyStreak by remember {
+        mutableIntStateOf(store.dailyStreakPreviewFor(LocalDate.now().toEpochDay()))
+    }
 
     DisposableEffect(Unit) {
         onDispose { audio.release() }
+    }
+
+    // Vor jedem Lauf-Start: Tag fixieren und die Zufallsquelle passend zum
+    // Modus setzen — die Daily bekommt den Tages-Seed, damit jeder Versuch
+    // des Tages dieselbe Zonen-Abfolge spielt.
+    fun prepareRun() {
+        val today = LocalDate.now().toEpochDay()
+        runState.epochDay = today
+        game.reseed(if (dailyMode) DailyChallenge.seedFor(today) else null)
     }
 
     // Banner mit Priorität: Ein wichtigeres Banner (Twist-Ankündigung)
@@ -149,6 +183,8 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             bannerState.recordCelebrated = false
                             bannerState.timeLeft = 0f
                             bannerText = ""
+                            runState.maxPerfect = 0
+                            skinUnlockedThisRun = false
                             audio.start()
                         }
                         is TimingGame.GameEvent.Hit -> {
@@ -159,6 +195,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             haptics.perfect()
                             audio.perfect(game.perfectStreak)
                             perfectPoints = game.lastHitPoints
+                            runState.maxPerfect = max(runState.maxPerfect, game.perfectStreak)
                         }
                         is TimingGame.GameEvent.ChainNext -> {
                             showBanner("NOCH EINE!", 1.2f, priority = 1)
@@ -178,7 +215,16 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             fx.shakeTime = 0.4f
                             fx.celebrateTime = 0f
                             val previousBest = store.bestScore
+                            val unlockedBefore = DotSkin.unlockedCount(store.stats())
                             isNewRecord = store.submitRun(game.score)
+                            store.submitPerfectStreak(runState.maxPerfect)
+                            if (dailyMode) {
+                                store.submitDailyRun(runState.epochDay, game.score)
+                                dailyBestToday = store.dailyBestFor(runState.epochDay)
+                                dailyStreak = store.dailyStreak
+                            }
+                            skinUnlockedThisRun =
+                                DotSkin.unlockedCount(store.stats()) > unlockedBefore
                             taunt = pickTaunt(game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
                             runNumber = store.runCount
@@ -244,13 +290,20 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures(onPress = {
+                    // Ein Tap in READY/OVER startet gleich einen Lauf —
+                    // vorher Seed und Tag für den aktuellen Modus setzen.
+                    if (game.phase == TimingGame.Phase.READY ||
+                        game.phase == TimingGame.Phase.OVER
+                    ) {
+                        prepareRun()
+                    }
                     game.tap()
                 })
             }
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             frameTick // Frame-Abhängigkeit: erzwingt Neuzeichnen pro Tick.
-            drawTimingWorld(game, fx)
+            drawTimingWorld(game, fx, skin)
         }
 
         // Positionen relativ zur Bildhöhe: Die Bahn endet spätestens bei
@@ -286,6 +339,14 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 bestScore = bestScore,
                 runNumber = runNumber,
                 hint = "STOPPE DEN PUNKT IN DER GRUENEN ZONE",
+                dailyBest = dailyBestToday,
+                dailyStreak = dailyStreak,
+                onDaily = {
+                    dailyMode = true
+                    prepareRun()
+                    game.tap()
+                },
+                onSkins = { showSkins = true },
                 onHelp = { showHelp = true },
                 soundOn = soundOn,
                 onToggleSound = {
@@ -294,15 +355,36 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     audio.muted = !soundOn
                 }
             )
-            TimingGame.Phase.RUNNING, TimingGame.Phase.DYING -> ScoreHud(score = score)
+            TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
+                ScoreHud(score = score, daily = dailyMode)
             TimingGame.Phase.OVER -> GameOverOverlay(
                 score = score,
                 bestScore = bestScore,
                 isNewRecord = isNewRecord,
                 taunt = taunt,
+                daily = dailyMode,
+                dailyBest = dailyBestToday,
+                dailyStreak = dailyStreak,
+                skinUnlocked = skinUnlockedThisRun,
                 onRestart = {
+                    prepareRun()
                     game.reset()
                     game.tap()
+                },
+                onShare = {
+                    ScoreCard.share(
+                        context = context,
+                        score = score,
+                        bestScore = bestScore,
+                        isNewRecord = isNewRecord,
+                        skin = skin,
+                        daily = dailyMode,
+                        dailyStreak = dailyStreak
+                    )
+                },
+                onMenu = {
+                    dailyMode = false
+                    game.reset()
                 },
                 onHelp = { showHelp = true }
             )
@@ -311,12 +393,25 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         if (showHelp) {
             HelpOverlay(onClose = { showHelp = false })
         }
+
+        if (showSkins) {
+            SkinOverlay(
+                stats = store.stats(),
+                selected = skin,
+                onSelect = {
+                    skin = it
+                    store.selectedSkin = it
+                    showSkins = false
+                },
+                onClose = { showSkins = false }
+            )
+        }
     }
 }
 
 // ===== Welt-Rendering =====
 
-private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState) {
+private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState, skin: DotSkin) {
     val h = size.height
     val w = size.width
     val cell = floor(h / 220f).coerceAtLeast(2f)
@@ -350,7 +445,7 @@ private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState) {
         val radius = min(w * 0.36f, h * 0.28f)
         drawTrack(game, cx, cy, radius, cell)
         if (game.isDotVisible) {
-            drawTimingDot(game, cx, cy, radius)
+            drawTimingDot(game, cx, cy, radius, skin)
         }
         if (fx.celebrateTime > 0f) {
             drawUnlockBurst(fx.celebrateTime, cx, cy, radius, cell)
@@ -511,7 +606,8 @@ private fun DrawScope.drawTimingDot(
     game: TimingGame,
     cx: Float,
     cy: Float,
-    radius: Float
+    radius: Float,
+    skin: DotSkin
 ) {
     val h = size.height
     val px = cx + cos(game.angle) * radius
@@ -519,12 +615,12 @@ private fun DrawScope.drawTimingDot(
     val r = h * 0.026f
 
     drawPixelCircle(
-        color = DotBody,
+        color = Color(skin.body),
         outline = OutlineColor,
         centerX = px,
         centerY = py,
         radius = r,
-        shade = DotShade
+        shade = Color(skin.shade)
     )
 
     val u = (r * 2f) / GRID
@@ -537,7 +633,7 @@ private fun DrawScope.drawTimingDot(
     }
 
     // Glanzpunkt und Auge
-    rect(2.5f, 2.5f, 2f, 2f, DotShine)
+    rect(2.5f, 2.5f, 2f, 2f, Color(skin.shine))
     rect(7.5f, 3f, 3.5f, 4f, Color.White)
     rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
 }

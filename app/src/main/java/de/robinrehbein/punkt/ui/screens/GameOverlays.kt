@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.theme.Bytesized
 
@@ -80,22 +82,34 @@ internal class FxState {
 // ===== Overlays =====
 
 @Composable
-internal fun ScoreHud(score: Int) {
+internal fun ScoreHud(score: Int, daily: Boolean = false) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
-        Text(
-            text = score.toString(),
-            style = ScoreShadowStyle,
-            fontSize = 72.sp,
-            color = Color.White,
-            textAlign = TextAlign.Center,
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 40.dp)
-        )
+        ) {
+            Text(
+                text = score.toString(),
+                style = ScoreShadowStyle,
+                fontSize = 72.sp,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+            if (daily) {
+                Text(
+                    text = "DAILY",
+                    style = ScoreShadowStyle,
+                    fontSize = 18.sp,
+                    color = DotBody
+                )
+            }
+        }
     }
 }
 
@@ -120,6 +134,10 @@ internal fun ReadyOverlay(
     bestScore: Int,
     runNumber: Int,
     hint: String,
+    dailyBest: Int,
+    dailyStreak: Int,
+    onDaily: () -> Unit,
+    onSkins: () -> Unit,
     onHelp: () -> Unit,
     soundOn: Boolean,
     onToggleSound: () -> Unit
@@ -204,7 +222,44 @@ internal fun ReadyOverlay(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 48.dp)
         ) {
+            Row {
+                PixelButton(
+                    text = "DAILY",
+                    onClick = onDaily,
+                    backgroundColor = DotBody,
+                    borderColor = TextDark,
+                    textColor = TextDark,
+                    width = 116.dp,
+                    height = 52.dp,
+                    borderWidth = 3.dp
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                PixelButton(
+                    text = "SKINS",
+                    onClick = onSkins,
+                    backgroundColor = PanelSand,
+                    borderColor = TextDark,
+                    textColor = TextDark,
+                    width = 116.dp,
+                    height = 52.dp,
+                    borderWidth = 3.dp
+                )
+            }
+            if (dailyBest > 0 || dailyStreak > 0) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = buildString {
+                        if (dailyBest > 0) append("HEUTE: $dailyBest")
+                        if (dailyBest > 0 && dailyStreak > 0) append("  ·  ")
+                        if (dailyStreak > 0) append("SERIE: $dailyStreak ${if (dailyStreak == 1) "TAG" else "TAGE"}")
+                    },
+                    style = ScoreShadowStyle,
+                    fontSize = 15.sp,
+                    color = DotBody
+                )
+            }
             if (runNumber > 0) {
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "VERSUCH #${runNumber + 1}",
                     style = ScoreShadowStyle,
@@ -222,7 +277,13 @@ internal fun GameOverOverlay(
     bestScore: Int,
     isNewRecord: Boolean,
     taunt: String,
+    daily: Boolean,
+    dailyBest: Int,
+    dailyStreak: Int,
+    skinUnlocked: Boolean,
     onRestart: () -> Unit,
+    onShare: () -> Unit,
+    onMenu: () -> Unit,
     onHelp: () -> Unit
 ) {
     val blink by rememberInfiniteTransition(label = "overBlink").animateFloat(
@@ -305,6 +366,31 @@ internal fun GameOverOverlay(
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
 
+            if (daily) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = buildString {
+                        append("DAILY  ·  HEUTE: $dailyBest")
+                        if (dailyStreak > 0) {
+                            append("  ·  SERIE: $dailyStreak ${if (dailyStreak == 1) "TAG" else "TAGE"}")
+                        }
+                    },
+                    style = ScoreShadowStyle,
+                    fontSize = 16.sp,
+                    color = DotBody
+                )
+            }
+
+            if (skinUnlocked) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "NEUER SKIN FREIGESCHALTET!",
+                    style = ScoreShadowStyle,
+                    fontSize = 18.sp,
+                    color = Color(0xFFFFE95E)
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             PixelButton(
@@ -316,6 +402,32 @@ internal fun GameOverOverlay(
                 width = 200.dp,
                 height = 60.dp
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row {
+                PixelButton(
+                    text = "TEILEN",
+                    onClick = onShare,
+                    backgroundColor = DotBody,
+                    borderColor = TextDark,
+                    textColor = TextDark,
+                    width = 116.dp,
+                    height = 48.dp,
+                    borderWidth = 3.dp
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                PixelButton(
+                    text = "MENUE",
+                    onClick = onMenu,
+                    backgroundColor = PanelSand,
+                    borderColor = TextDark,
+                    textColor = TextDark,
+                    width = 116.dp,
+                    height = 48.dp,
+                    borderWidth = 3.dp
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -509,6 +621,101 @@ private fun TwistHelpRow(color: Color, title: String, text: String) {
                 fontFamily = Bytesized,
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.85f)
+            )
+        }
+    }
+}
+
+// ===== Skin-Auswahl =====
+
+/**
+ * Vollflächiger Skin-Picker über dunklem Scrim, im Stil der Hilfe.
+ * Freigeschaltete Skins lassen sich antippen, gesperrte zeigen ihre
+ * Freischalt-Bedingung. Ein Tap außerhalb schließt (und wird konsumiert,
+ * damit er nicht als Spiel-Tap durchschlägt).
+ */
+@Composable
+internal fun SkinOverlay(
+    stats: DotSkin.Stats,
+    selected: DotSkin,
+    onSelect: (DotSkin) -> Unit,
+    onClose: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(OutlineColor.copy(alpha = 0.92f))
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onClose() })
+            }
+            .windowInsetsPadding(WindowInsets.systemBars),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 32.dp)
+        ) {
+            Text(
+                text = "SKINS",
+                style = ScoreShadowStyle,
+                fontSize = 32.sp,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            DotSkin.entries.forEach { skin ->
+                val unlocked = skin.isUnlocked(stats)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = unlocked) { onSelect(skin) }
+                        .padding(horizontal = 48.dp, vertical = 10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(OutlineColor)
+                            .padding(4.dp)
+                            .background(
+                                if (unlocked) Color(skin.body)
+                                else Color(skin.body).copy(alpha = 0.25f)
+                            )
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = skin.title,
+                            fontFamily = Bytesized,
+                            fontSize = 20.sp,
+                            color = if (unlocked) Color.White else Color.White.copy(alpha = 0.45f)
+                        )
+                        Text(
+                            text = when {
+                                skin == selected -> "AUSGEWAEHLT"
+                                unlocked -> "TIPPEN ZUM WAEHLEN"
+                                else -> skin.unlockHint
+                            },
+                            fontFamily = Bytesized,
+                            fontSize = 14.sp,
+                            color = when {
+                                skin == selected -> DotBody
+                                unlocked -> Color.White.copy(alpha = 0.7f)
+                                else -> Color.White.copy(alpha = 0.45f)
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = "TIPPEN ZUM SCHLIESSEN",
+                fontFamily = Bytesized,
+                fontSize = 14.sp,
+                color = Color.White.copy(alpha = 0.6f)
             )
         }
     }

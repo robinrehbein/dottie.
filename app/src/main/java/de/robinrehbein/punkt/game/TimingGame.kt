@@ -35,7 +35,7 @@ import kotlin.random.Random
  *
  * Winkel sind in Radiant, Geschwindigkeiten in Radiant pro Sekunde.
  */
-class TimingGame(private val random: Random = Random.Default) {
+class TimingGame(private var random: Random = Random.Default) {
 
     enum class Phase { READY, RUNNING, DYING, OVER }
 
@@ -199,6 +199,15 @@ class TimingGame(private val random: Random = Random.Default) {
         }
         if (event != null) pendingEvents.add(event)
         return event
+    }
+
+    /**
+     * Ersetzt die Zufallsquelle — vor jedem Daily-Lauf mit dem Tages-Seed
+     * aufgerufen, damit jeder Versuch des Tages dieselbe Zonen- und
+     * Twist-Abfolge bekommt. `null` stellt echten Zufall wieder her.
+     */
+    fun reseed(seed: Long?) {
+        random = if (seed != null) Random(seed) else Random.Default
     }
 
     /** Setzt alles auf den READY-Zustand zurück (Rekord bleibt beim Store). */
