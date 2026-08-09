@@ -80,20 +80,21 @@ Festgehaltene Design-Ideen für ein FLIP-Comeback („FLIP-Münzen"):
 ## Build
 
 ```
-./gradlew assembleDebug assembleRelease
+./gradlew assembleDebug assembleRelease bundleRelease
 ```
 
-CI (GitHub Actions) baut bei jedem Push auf `main` beide APKs, führt die
-Unit-Tests aus und veröffentlicht sie als Pre-Release
-(`apk-build-N`-Tags) unter Releases.
+CI (GitHub Actions) baut bei jedem Push auf `main` beide APKs sowie das
+App Bundle (`.aab`) für den Play Store, führt die Unit-Tests aus und
+veröffentlicht alles als Pre-Release (`apk-build-N`-Tags) unter
+Releases.
 
-### ⚠️ Vor einem echten Store-Release: Keystore rotieren
+## Veröffentlichung
 
-Der Release-Keystore und seine Passwörter lagen bis v2.7 im Klartext im
-Repo (und stehen weiterhin in der Git-Historie). Für Test-Builds ist das
-egal — **vor einer Play-Store-Veröffentlichung** muss:
+Der komplette Fahrplan Richtung Play Store — Keystore-Rotation,
+Play-Console-Schritte, Datenschutz-URL (GitHub Pages aus `docs/`) und
+die Store-Texte — steht in [PUBLISHING.md](PUBLISHING.md).
 
-1. ein neuer Keystore erzeugt werden (der alte gilt als kompromittiert),
-2. die GitHub Secrets `PUNKT_KEYSTORE_PASSWORD`, `PUNKT_KEY_ALIAS` und
-   `PUNKT_KEY_PASSWORD` gesetzt werden (die CI reicht sie schon durch),
-3. der Klartext-Fallback in `app/build.gradle.kts` entfernt werden.
+Der eingecheckte `punkt-release-key.keystore` ist ein reiner
+Test-Keystore (Passwort öffentlich in der Git-Historie). Sobald das
+Secret `PUNKT_KEYSTORE_BASE64` gesetzt ist, signiert die CI stattdessen
+mit dem rotierten Keystore; Details in PUBLISHING.md.

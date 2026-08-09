@@ -24,14 +24,28 @@ jobs:
       - name: Run unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
 
-      - name: Build APKs
-        # Signing-Credentials kommen aus GitHub Secrets, sobald gesetzt;
-        # sonst greift der (zu rotierende) Fallback in build.gradle.kts.
+      - name: Prepare release keystore
+        # Sobald das Secret PUNKT_KEYSTORE_BASE64 gesetzt ist (Keystore-
+        # Rotation, siehe PUBLISHING.md), signiert der Build mit dem echten
+        # Keystore. Ohne das Secret bleibt es beim eingecheckten
+        # Test-Keystore — gut genug für Test-APKs, tabu für den Store.
+        env:
+          PUNKT_KEYSTORE_BASE64: ${{ secrets.PUNKT_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$PUNKT_KEYSTORE_BASE64" ]; then
+            printf '%s' "$PUNKT_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/punkt-release.keystore"
+            echo "PUNKT_KEYSTORE_FILE=$RUNNER_TEMP/punkt-release.keystore" >> "$GITHUB_ENV"
+            echo "Signiere mit rotiertem Keystore aus Secret."
+          else
+            echo "Kein PUNKT_KEYSTORE_BASE64-Secret gesetzt — Test-Keystore wird verwendet."
+          fi
+
+      - name: Build APKs and App Bundle
         env:
           PUNKT_KEYSTORE_PASSWORD: ${{ secrets.PUNKT_KEYSTORE_PASSWORD }}
           PUNKT_KEY_ALIAS: ${{ secrets.PUNKT_KEY_ALIAS }}
           PUNKT_KEY_PASSWORD: ${{ secrets.PUNKT_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon assembleDebug assembleRelease
+        run: ./gradlew --no-daemon assembleDebug assembleRelease bundleRelease
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -45,6 +59,12 @@ jobs:
           name: punkt-release-apk
           path: app/build/outputs/apk/release/app-release.apk
 
+      - name: Upload release App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: punkt-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+
       - name: Publish APKs as release
         uses: softprops/action-gh-release@v2
         with:
@@ -54,3 +74,4 @@ jobs:
           files: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
