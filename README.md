@@ -124,7 +124,9 @@ Festgehaltene Design-Ideen für ein FLIP-Comeback („FLIP-Münzen"):
 CI (GitHub Actions) baut bei jedem Push auf `main` beide APKs sowie das
 App Bundle (`.aab`) für den Play Store, führt die Unit-Tests aus und
 veröffentlicht alles als Pre-Release (`apk-build-N`-Tags) unter
-Releases.
+Releases. Pushes auf den Arbeits-Branch laufen nur als Check (Tests +
+Debug-Build); die Debug-APK hängt dort als Workflow-Artefakt am Run,
+ein Release entsteht erst nach dem Merge auf `main`.
 
 ## Veröffentlichung
 

@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.ui.components.PixelButton
+import de.robinrehbein.punkt.ui.components.PixelIcon
+import de.robinrehbein.punkt.ui.components.PixelIconButton
 import de.robinrehbein.punkt.ui.theme.Bytesized
 
 // ===== Gemeinsame Retro-Farbpalette =====
@@ -173,30 +175,30 @@ internal fun ReadyOverlay(
                 .padding(16.dp)
         )
 
-        Column(modifier = Modifier
+        Row(modifier = Modifier
             .align(Alignment.TopStart)
             .padding(16.dp)
         ) {
-            PixelButton(
-                text = stringResource(if (soundOn) R.string.sound_on else R.string.sound_off),
+            PixelIconButton(
+                icon = if (soundOn) PixelIcon.SPEAKER_ON else PixelIcon.SPEAKER_OFF,
+                contentDescription = stringResource(if (soundOn) R.string.sound_on else R.string.sound_off),
                 onClick = onToggleSound,
                 backgroundColor = PanelSand,
                 borderColor = TextDark,
-                textColor = TextDark,
-                width = 116.dp,
-                height = 48.dp,
+                strikeColor = RecordRed,
+                buttonSize = 48.dp,
                 borderWidth = 3.dp
             )
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             // Tägliche Daily-Challenge-Erinnerung (Opt-in, lokal).
-            PixelButton(
-                text = stringResource(if (reminderOn) R.string.reminder_on else R.string.reminder_off),
+            PixelIconButton(
+                icon = if (reminderOn) PixelIcon.BELL_ON else PixelIcon.BELL_OFF,
+                contentDescription = stringResource(if (reminderOn) R.string.reminder_on else R.string.reminder_off),
                 onClick = onToggleReminder,
                 backgroundColor = PanelSand,
                 borderColor = TextDark,
-                textColor = TextDark,
-                width = 168.dp,
-                height = 48.dp,
+                strikeColor = RecordRed,
+                buttonSize = 48.dp,
                 borderWidth = 3.dp
             )
         }

@@ -14,6 +14,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -84,6 +87,79 @@ fun PixelButton(
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
+    }
+}
+
+/** Icon motifs for [PixelIconButton], drawn as blocky shapes on a 16-unit grid. */
+enum class PixelIcon { SPEAKER_ON, SPEAKER_OFF, BELL_ON, BELL_OFF }
+
+/**
+ * A square pixel art button showing an icon instead of text — same border
+ * style as [PixelButton]. The "off" variants draw a stepped diagonal strike.
+ */
+@Composable
+fun PixelIconButton(
+    icon: PixelIcon,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = Color(0xFFE8B4E8),
+    borderColor: Color = Color(0xFF5555FF),
+    iconColor: Color = borderColor,
+    strikeColor: Color = Color(0xFFE53935),
+    buttonSize: Dp = 48.dp,
+    borderWidth: Dp = 4.dp
+) {
+    val cd = contentDescription
+    Box(
+        modifier = modifier
+            .size(buttonSize)
+            .clickable(role = Role.Button) { onClick() }
+            .semantics { this.contentDescription = cd },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(buttonSize)) {
+            drawPixelBorder(
+                backgroundColor = backgroundColor,
+                borderColor = borderColor,
+                borderWidth = borderWidth.toPx()
+            )
+            drawPixelIcon(icon, iconColor, strikeColor)
+        }
+    }
+}
+
+private fun DrawScope.drawPixelIcon(icon: PixelIcon, color: Color, strikeColor: Color) {
+    val u = size.minDimension / 16f
+    fun block(x: Float, y: Float, w: Float, h: Float, c: Color = color) {
+        drawRect(color = c, topLeft = Offset(x * u, y * u), size = Size(w * u, h * u))
+    }
+    when (icon) {
+        PixelIcon.SPEAKER_ON, PixelIcon.SPEAKER_OFF -> {
+            // Driver box plus cone opening to the right
+            block(3f, 6f, 2.5f, 4f)
+            block(5.5f, 5f, 1.5f, 6f)
+            block(7f, 4f, 1.5f, 8f)
+            if (icon == PixelIcon.SPEAKER_ON) {
+                // Two blocky sound waves
+                block(10f, 6f, 1.2f, 4f)
+                block(12f, 4.5f, 1.2f, 7f)
+            }
+        }
+        PixelIcon.BELL_ON, PixelIcon.BELL_OFF -> {
+            // Knob, dome, body, lip, clapper
+            block(7.2f, 2.5f, 1.6f, 1.5f)
+            block(5.5f, 3.8f, 5f, 2.2f)
+            block(4.5f, 6f, 7f, 3.5f)
+            block(3.5f, 9.3f, 9f, 1.6f)
+            block(7.2f, 11.2f, 1.6f, 1.6f)
+        }
+    }
+    if (icon == PixelIcon.SPEAKER_OFF || icon == PixelIcon.BELL_OFF) {
+        // Stepped diagonal strike, top-left to bottom-right
+        for (i in 0 until 6) {
+            block(2.5f + i * 1.9f, 2.5f + i * 1.9f, 2.2f, 2.2f, strikeColor)
+        }
     }
 }
 
