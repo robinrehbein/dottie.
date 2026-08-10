@@ -12,8 +12,8 @@ android {
         applicationId = "de.robinrehbein.punkt"
         minSdk = 28
         targetSdk = 36
-        versionCode = 14
-        versionName = "2.8"
+        versionCode = 15
+        versionName = "2.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -87,6 +87,9 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    // Play Games Services v2 (Bestenlisten) — inaktiv, bis in
+    // res/values/games.xml echte IDs stehen (siehe PUBLISHING.md).
+    implementation(libs.play.services.games)
 
     // ViewModel und Lifecycle
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")

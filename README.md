@@ -57,6 +57,11 @@ Wachstum ein:
   als PNG (komplett im Code, wie alles hier) und öffnet den
   System-Share-Dialog — Score, Medaille, Skin und Daily-Serie inklusive.
 
+Ab v2.9 sind außerdem **Play-Games-Bestenlisten** (Rekord + Daily)
+vorbereitet — hart deaktiviert, bis in `res/values/games.xml` echte IDs
+aus der Play Console stehen (Anleitung in PUBLISHING.md). Die
+Store-Feature-Grafik liegt generiert unter `store/feature-graphic.png`.
+
 ## Sound (ab v2.7)
 
 Chiptune-Soundeffekte im NES-Stil, komplett zur Laufzeit im Code

@@ -1,5 +1,6 @@
 package de.robinrehbein.punkt.ui.screens
 
+import android.app.Activity
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -34,6 +35,7 @@ import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
 import de.robinrehbein.punkt.game.TimingGame
+import de.robinrehbein.punkt.play.Leaderboards
 import de.robinrehbein.punkt.share.ScoreCard
 import kotlinx.coroutines.isActive
 import java.time.LocalDate
@@ -110,6 +112,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     val fx = remember { FxState() }
     val bannerState = remember { BannerState() }
     val runState = remember { RunState() }
+    val leaderboards = remember { Leaderboards(context as? Activity) }
 
     var frameTick by remember { mutableLongStateOf(0L) }
     var phase by remember { mutableStateOf(TimingGame.Phase.READY) }
@@ -137,6 +140,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     DisposableEffect(Unit) {
         onDispose { audio.release() }
     }
+
+    // Play-Games-Sign-in (No-op, solange keine IDs konfiguriert sind).
+    LaunchedEffect(Unit) { leaderboards.connect() }
 
     // Vor jedem Lauf-Start: Tag fixieren und die Zufallsquelle passend zum
     // Modus setzen — die Daily bekommt den Tages-Seed, damit jeder Versuch
@@ -222,7 +228,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                                 store.submitDailyRun(runState.epochDay, game.score)
                                 dailyBestToday = store.dailyBestFor(runState.epochDay)
                                 dailyStreak = store.dailyStreak
+                                leaderboards.submitDaily(game.score)
                             }
+                            leaderboards.submitBest(game.score)
                             skinUnlockedThisRun =
                                 DotSkin.unlockedCount(store.stats()) > unlockedBefore
                             taunt = pickTaunt(game.score, previousBest, isNewRecord)
@@ -347,6 +355,8 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     game.tap()
                 },
                 onSkins = { showSkins = true },
+                leaderboardAvailable = leaderboards.available,
+                onLeaderboard = { leaderboards.show() },
                 onHelp = { showHelp = true },
                 soundOn = soundOn,
                 onToggleSound = {

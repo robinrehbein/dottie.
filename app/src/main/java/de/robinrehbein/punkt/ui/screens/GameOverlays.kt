@@ -138,6 +138,8 @@ internal fun ReadyOverlay(
     dailyStreak: Int,
     onDaily: () -> Unit,
     onSkins: () -> Unit,
+    leaderboardAvailable: Boolean,
+    onLeaderboard: () -> Unit,
     onHelp: () -> Unit,
     soundOn: Boolean,
     onToggleSound: () -> Unit
@@ -222,6 +224,20 @@ internal fun ReadyOverlay(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 48.dp)
         ) {
+            // Nur sichtbar, wenn Play Games konfiguriert und angemeldet ist.
+            if (leaderboardAvailable) {
+                PixelButton(
+                    text = "RANGLISTE",
+                    onClick = onLeaderboard,
+                    backgroundColor = PanelSand,
+                    borderColor = TextDark,
+                    textColor = TextDark,
+                    width = 244.dp,
+                    height = 48.dp,
+                    borderWidth = 3.dp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
             Row {
                 PixelButton(
                     text = "DAILY",

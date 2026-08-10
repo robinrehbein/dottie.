@@ -13,6 +13,12 @@
             android:roundIcon="@mipmap/ic_launcher"
             android:supportsRtl="true"
             android:theme="@style/Theme.Punkt">
+        <!-- Play Games Services: solange games_app_id "0" ist, wird das
+             SDK nie initialisiert und dieser Eintrag bleibt wirkungslos. -->
+        <meta-data
+                android:name="com.google.android.gms.games.APP_ID"
+                android:value="@string/games_app_id" />
+
         <provider
                 android:name="androidx.core.content.FileProvider"
                 android:authorities="${applicationId}.fileprovider"

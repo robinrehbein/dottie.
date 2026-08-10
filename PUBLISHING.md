@@ -1,6 +1,6 @@
 # PUNKT. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.7.1.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.9.
 
 ## Checkliste
 
@@ -8,7 +8,9 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.7.1.
 - [ ] Play-Console-Konto anlegen (25 $ einmalig, [play.google.com/console](https://play.google.com/console))
 - [ ] GitHub Pages aktivieren → Datenschutz-URL (Anleitung unten)
 - [ ] Store-Eintrag anlegen (Texte unten, Icons liegen im Repo)
-- [ ] Feature-Grafik 1024×500 px + mind. 2 Screenshots hochladen
+- [x] Feature-Grafik 1024×500 px (`store/feature-graphic.png`, Generator daneben)
+- [ ] Mind. 2 Screenshots hochladen
+- [ ] Optional: Play Games Services einrichten → Bestenlisten (Anleitung unten)
 - [ ] Data-Safety-Formular: „Es werden keine Daten erhoben"
 - [ ] IARC-Fragebogen (Content-Rating) ausfüllen
 - [ ] `app-release.aab` in den **geschlossenen Test** hochladen
@@ -116,14 +118,37 @@ wird öffentlich sichtbar.
 
 **Kategorie:** Spiele → Arcade · **Tags:** Casual, Arcade, One-Tap
 
-**Noch zu erstellen:**
+**Assets:**
 
-- Feature-Grafik 1024×500 px (kann aus den Spiel-Farben gebaut werden)
-- Mind. 2 Screenshots (16:9 oder 9:16, am besten direkt vom Gerät:
-  Startscreen, Lauf mit Twist, Game-Over mit Medaille)
+- Feature-Grafik 1024×500: liegt fertig unter `store/feature-graphic.png`
+  (Generator: `python3 store/generate_feature_graphic.py`)
+- Noch offen: mind. 2 Screenshots (16:9 oder 9:16, am besten direkt vom
+  Gerät: Startscreen, Lauf mit Twist, Game-Over mit Medaille)
+
+## Play Games Services: Bestenlisten aktivieren
+
+Der Code für die Bestenlisten (Rekord + Daily) ist ab v2.9 eingebaut,
+aber **hart deaktiviert**, solange in `app/src/main/res/values/games.xml`
+die Platzhalter stehen — ohne echte IDs wird das SDK nie initialisiert
+und die App bleibt komplett offline. So wird es scharf geschaltet:
+
+1. Play Console → **Grow → Play Games Services → Einrichtung** →
+   Projekt anlegen (nutzt ein Google-Cloud-Projekt, die Console führt
+   durch OAuth-Consent + Anmeldedaten; als Signatur zählt der
+   App-Signing-Key aus Play App Signing).
+2. Zwei **Bestenlisten** anlegen: „REKORD" und „DAILY" — die IDs
+   (Format `CgkI…`) notieren.
+3. In `games.xml` eintragen: `games_app_id` (die numerische Projekt-ID
+   aus der Games-Einrichtung), `leaderboard_rekord_id`,
+   `leaderboard_daily_id`. Committen, bauen, fertig — der
+   RANGLISTE-Button erscheint automatisch nach erfolgreichem Sign-in.
+4. ⚠️ **Datenschutz**: Mit Play Games meldet sich die App bei Google an —
+   die Aussage „keine Datenerhebung" in `docs/index.html` und im
+   Data-Safety-Formular muss dann angepasst werden (Google-Play-Games-
+   Profil, Scores an Google). Ohne Aktivierung ändert sich nichts.
 
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 13` / `versionName
-"2.7.1"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 15` / `versionName
+"2.9"`. Vor jedem Store-Upload beides anheben und committen.
