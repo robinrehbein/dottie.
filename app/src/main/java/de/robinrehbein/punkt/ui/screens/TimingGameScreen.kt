@@ -42,6 +42,7 @@ import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
+import de.robinrehbein.punkt.game.MedalTier
 import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.notify.DailyReminder
 import de.robinrehbein.punkt.play.Leaderboards
@@ -156,6 +157,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     var skin by remember { mutableStateOf(store.selectedSkin) }
     var showSkins by remember { mutableStateOf(false) }
     var skinUnlockedThisRun by remember { mutableStateOf(false) }
+    var newMedalThisRun by remember { mutableStateOf(false) }
     var dailyBestToday by remember {
         mutableIntStateOf(store.dailyBestFor(LocalDate.now().toEpochDay()))
     }
@@ -237,6 +239,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             bannerText = ""
                             runState.maxPerfect = 0
                             skinUnlockedThisRun = false
+                            newMedalThisRun = false
                             fx.deathTime = -1f
                             audio.start()
                         }
@@ -269,6 +272,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             fx.celebrateTime = 0f
                             fx.deathTime = 0f
                             val previousBest = store.bestScore
+                            newMedalThisRun = MedalTier.isUpgrade(game.score, previousBest)
                             val unlockedBefore = DotSkin.unlockedCount(store.stats())
                             isNewRecord = store.submitRun(game.score)
                             store.submitPerfectStreak(runState.maxPerfect)
@@ -377,19 +381,6 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             )
         }
 
-        if (bannerText.isNotEmpty() && phase == TimingGame.Phase.RUNNING) {
-            Text(
-                text = bannerText,
-                style = ScoreShadowStyle,
-                fontSize = 30.sp,
-                color = Color(0xFFFF8A3C),
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = maxHeight * 0.16f)
-            )
-        }
-
         when (phase) {
             TimingGame.Phase.READY -> ReadyOverlay(
                 bestScore = bestScore,
@@ -431,7 +422,11 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 }
             )
             TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
-                ScoreHud(score = score, daily = dailyMode)
+                ScoreHud(
+                    score = score,
+                    daily = dailyMode,
+                    banner = if (phase == TimingGame.Phase.RUNNING) bannerText else ""
+                )
             TimingGame.Phase.OVER -> GameOverOverlay(
                 score = score,
                 bestScore = bestScore,
@@ -441,6 +436,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 dailyBest = dailyBestToday,
                 dailyStreak = dailyStreak,
                 skinUnlocked = skinUnlockedThisRun,
+                newMedal = newMedalThisRun,
                 onShare = {
                     ScoreCard.share(
                         context = context,

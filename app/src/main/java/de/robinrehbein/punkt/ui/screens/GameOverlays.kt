@@ -1,11 +1,14 @@
 package de.robinrehbein.punkt.ui.screens
 
 import android.content.Context
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -28,9 +31,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -44,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.MedalTier
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.components.PixelIcon
 import de.robinrehbein.punkt.ui.components.PixelIconButton
@@ -92,7 +99,7 @@ internal class FxState {
 // ===== Overlays =====
 
 @Composable
-internal fun ScoreHud(score: Int, daily: Boolean = false) {
+internal fun ScoreHud(score: Int, daily: Boolean = false, banner: String = "") {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -117,6 +124,19 @@ internal fun ScoreHud(score: Int, daily: Boolean = false) {
                     style = ScoreShadowStyle,
                     fontSize = 18.sp,
                     color = DotBody
+                )
+            }
+            // Twist-Banner direkt unter der Punktzahl statt an einer festen
+            // Bildschirmhöhe — so können sich beide nie überlappen.
+            if (banner.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = banner,
+                    style = ScoreShadowStyle,
+                    fontSize = 30.sp,
+                    color = Color(0xFFFF8A3C),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 24.dp)
                 )
             }
         }
@@ -322,6 +342,7 @@ internal fun GameOverOverlay(
     dailyBest: Int,
     dailyStreak: Int,
     skinUnlocked: Boolean,
+    newMedal: Boolean,
     onShare: () -> Unit,
     onMenu: () -> Unit,
     onHelp: () -> Unit
@@ -364,14 +385,40 @@ internal fun GameOverOverlay(
             PixelPanel {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        MedalBadge(score = score)
+                        // Medaille ploppt mit kleinem Überschwinger ein.
+                        val pop = remember { Animatable(0f) }
+                        LaunchedEffect(Unit) {
+                            pop.animateTo(
+                                targetValue = 1f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow
+                                )
+                            )
+                        }
+                        MedalBadge(score = score, modifier = Modifier.scale(pop.value))
                         Spacer(modifier = Modifier.height(4.dp))
+                        val tier = MedalTier.forScore(score)
                         Text(
-                            text = stringResource(R.string.medal),
+                            text = tier?.let { stringResource(it.nameRes) }
+                                ?: stringResource(R.string.medal),
                             fontFamily = Bytesized,
                             fontSize = 12.sp,
                             color = TextDark
                         )
+                        // Nahziel: "NOCH 4 BIS GOLD" — gibt jedem Run ein Ziel.
+                        MedalTier.next(score)?.let { next ->
+                            Text(
+                                text = stringResource(
+                                    R.string.medal_next,
+                                    next.threshold - score,
+                                    stringResource(next.nameRes)
+                                ),
+                                fontFamily = Bytesized,
+                                fontSize = 10.sp,
+                                color = Color(0xFF8A7F5A)
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(20.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -426,6 +473,16 @@ internal fun GameOverOverlay(
                     style = ScoreShadowStyle,
                     fontSize = 16.sp,
                     color = DotBody
+                )
+            }
+
+            if (newMedal) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.new_medal),
+                    style = ScoreShadowStyle,
+                    fontSize = 18.sp,
+                    color = Color(0xFFFFE95E)
                 )
             }
 
@@ -503,45 +560,77 @@ internal fun PixelPanel(content: @Composable () -> Unit) {
     }
 }
 
-/** Medaille ab 10 Punkten: Bronze, Silber, Gold, Platin. */
+/** Körper- und Schattenfarbe pro Medaillen-Stufe. */
+internal fun medalColors(tier: MedalTier): Pair<Color, Color> = when (tier) {
+    MedalTier.BRONZE -> Color(0xFFCD7F32) to Color(0xFF9C5A1E)
+    MedalTier.SILVER -> Color(0xFFC0C0C0) to Color(0xFF8F8F9C)
+    MedalTier.GOLD -> Color(0xFFFFD700) to Color(0xFFC9A400)
+    MedalTier.PLATINUM -> Color(0xFFE5E4E2) to Color(0xFFADB5C4)
+}
+
+/**
+ * Medaille ab 10 Punkten: rotes Band im V, Münze mit geprägtem Stern und
+ * Glanzpunkt; Platin funkelt. Unterhalb von Bronze erscheint dieselbe
+ * Form als Sand-Silhouette — man sieht, dass es hier etwas zu holen gibt.
+ */
 @Composable
-internal fun MedalBadge(score: Int) {
-    val medalColor = when {
-        score >= 40 -> Color(0xFFE5E4E2) // Platin
-        score >= 30 -> Color(0xFFFFD700) // Gold
-        score >= 20 -> Color(0xFFC0C0C0) // Silber
-        score >= 10 -> Color(0xFFCD7F32) // Bronze
-        else -> null
-    }
-    Box(
-        modifier = Modifier.size(72.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val border = 3.dp.toPx()
-            drawRect(color = OutlineColor)
-            drawRect(
-                color = GroundSandShade,
-                topLeft = Offset(border, border),
-                size = Size(size.width - 2 * border, size.height - 2 * border)
-            )
-            if (medalColor != null) {
-                drawPixelCircle(
-                    color = medalColor,
-                    outline = OutlineColor,
-                    centerX = size.width / 2f,
-                    centerY = size.height / 2f,
-                    radius = size.width * 0.3f
+internal fun MedalBadge(score: Int, modifier: Modifier = Modifier) {
+    val tier = MedalTier.forScore(score)
+    val (body, shade) = tier?.let { medalColors(it) }
+        ?: (Color(0xFFBDB48A) to Color(0xFFA89E74))
+    val ribbon = if (tier != null) RecordRed else Color(0xFFBDB48A)
+    val ribbonDark = if (tier != null) Color(0xFFB02A28) else Color(0xFFA89E74)
+
+    Canvas(modifier = modifier.size(72.dp)) {
+        val u = size.minDimension / 16f
+        fun block(c: Float, r: Float, w: Float, h: Float, color: Color) {
+            drawRect(color, Offset(c * u, r * u), Size(w * u, h * u))
+        }
+
+        // Band im V: erst Outline-Pass, dann Farbe (links hell, rechts dunkel)
+        val leftBand = listOf(3.5f to 0f, 4.5f to 1.5f, 5.5f to 3f)
+        val rightBand = listOf(9.5f to 0f, 8.5f to 1.5f, 7.5f to 3f)
+        for ((c, r) in leftBand + rightBand) block(c - 0.5f, r - 0.5f, 3f, 2.5f, OutlineColor)
+        for ((c, r) in leftBand) block(c, r, 2f, 1.5f, ribbon)
+        for ((c, r) in rightBand) block(c, r, 2f, 1.5f, ribbonDark)
+
+        // Münze
+        val coinR = size.minDimension * 0.33f
+        val coinCx = size.minDimension * 0.5f
+        val coinCy = size.minDimension * 0.6f
+        drawPixelCircle(
+            color = body,
+            outline = OutlineColor,
+            centerX = coinCx,
+            centerY = coinCy,
+            radius = coinR,
+            shade = shade
+        )
+
+        // Geprägter Stern (Plus-Form in Schattenfarbe) und Glanzpunkt
+        val cu = coinR * 2f / GRID
+        fun emboss(c: Float, r: Float, w: Float, h: Float) {
+            drawRect(shade, Offset(coinCx - coinR + c * cu, coinCy - coinR + r * cu), Size(w * cu, h * cu))
+        }
+        emboss(5f, 5f, 3f, 3f)
+        emboss(5.5f, 3.5f, 2f, 2f)
+        emboss(5.5f, 7.5f, 2f, 2f)
+        emboss(3.5f, 5.5f, 2f, 2f)
+        emboss(7.5f, 5.5f, 2f, 2f)
+        drawRect(
+            if (tier != null) DotShine else Color(0xFFEFE7C0),
+            Offset(coinCx - coinR + 2.5f * cu, coinCy - coinR + 2.5f * cu),
+            Size(2f * cu, 2f * cu)
+        )
+
+        if (tier == MedalTier.PLATINUM) {
+            for ((sc, sr) in listOf(0.2f to 4f, 12.6f to 7f, 10.5f to 0.2f)) {
+                drawRect(
+                    DotShine,
+                    Offset(coinCx - coinR + sc * cu, coinCy - coinR + sr * cu),
+                    Size(cu, cu)
                 )
             }
-        }
-        if (medalColor == null) {
-            Text(
-                text = "-",
-                fontFamily = Bytesized,
-                fontSize = 24.sp,
-                color = TextDark
-            )
         }
     }
 }

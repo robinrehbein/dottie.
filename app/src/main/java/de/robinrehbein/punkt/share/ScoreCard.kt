@@ -138,15 +138,15 @@ object ScoreCard {
         }
         drawShadowed(recordLine, cx, H * 0.68f, 68f, if (isNewRecord) RECORD_YELLOW else Color.WHITE)
 
-        val medal = when {
-            score >= 40 -> 0xFFE5E4E2.toInt()
-            score >= 30 -> 0xFFFFD700.toInt()
-            score >= 20 -> 0xFFC0C0C0.toInt()
-            score >= 10 -> 0xFFCD7F32.toInt()
+        val medal: Pair<Int, Int>? = when {
+            score >= 40 -> 0xFFE5E4E2.toInt() to 0xFFADB5C4.toInt()
+            score >= 30 -> 0xFFFFD700.toInt() to 0xFFC9A400.toInt()
+            score >= 20 -> 0xFFC0C0C0.toInt() to 0xFF8F8F9C.toInt()
+            score >= 10 -> 0xFFCD7F32.toInt() to 0xFF9C5A1E.toInt()
             else -> null
         }
         if (medal != null) {
-            drawPixelCircle(canvas, paint, cx, H * 0.755f, 62f, medal)
+            drawMedal(canvas, paint, cx, H * 0.755f, 62f, medal.first, medal.second)
         }
 
         drawShadowed(context.getString(R.string.card_challenge), cx, H * 0.945f, 72f, ACCENT)
@@ -160,6 +160,56 @@ object ScoreCard {
         canvas.drawRect(x, y + u * 2, x + u * 14, y + u * 5, paint)
         canvas.drawRect(x + u * 2, y, x + u * 9, y + u * 2, paint)
         canvas.drawRect(x + u * 4, y - u * 1.5f, x + u * 8, y, paint)
+    }
+
+    /**
+     * Medaille wie im Game-Over: rotes Band im V, Münze mit geprägtem
+     * Stern und Glanzpunkt. cy ist die Münz-Mitte, das Band sitzt darüber.
+     */
+    private fun drawMedal(
+        canvas: Canvas,
+        paint: Paint,
+        cx: Float,
+        cy: Float,
+        radius: Float,
+        color: Int,
+        shade: Int
+    ) {
+        val u = radius * 2f / 10f
+        fun block(c: Float, r: Float, w: Float, h: Float, col: Int) {
+            paint.color = col
+            canvas.drawRect(
+                cx - 8f * u + c * u, cy - radius - 4.5f * u + r * u,
+                cx - 8f * u + (c + w) * u, cy - radius - 4.5f * u + (r + h) * u,
+                paint
+            )
+        }
+        val leftBand = listOf(3.5f to 0f, 4.5f to 1.5f, 5.5f to 3f)
+        val rightBand = listOf(9.5f to 0f, 8.5f to 1.5f, 7.5f to 3f)
+        for ((c, r) in leftBand + rightBand) block(c - 0.5f, r - 0.5f, 3f, 2.5f, OUTLINE)
+        for ((c, r) in leftBand) block(c, r, 2f, 1.5f, 0xFFE53935.toInt())
+        for ((c, r) in rightBand) block(c, r, 2f, 1.5f, 0xFFB02A28.toInt())
+
+        drawPixelCircle(canvas, paint, cx, cy, radius, color, shade)
+
+        val cu = radius * 2f / 13f
+        fun emboss(c: Float, r: Float, w: Float, h: Float) {
+            paint.color = shade
+            canvas.drawRect(
+                cx - radius + c * cu, cy - radius + r * cu,
+                cx - radius + (c + w) * cu, cy - radius + (r + h) * cu, paint
+            )
+        }
+        emboss(5f, 5f, 3f, 3f)
+        emboss(5.5f, 3.5f, 2f, 2f)
+        emboss(5.5f, 7.5f, 2f, 2f)
+        emboss(3.5f, 5.5f, 2f, 2f)
+        emboss(7.5f, 5.5f, 2f, 2f)
+        paint.color = 0xFFFFF3B8.toInt()
+        canvas.drawRect(
+            cx - radius + 2.5f * cu, cy - radius + 2.5f * cu,
+            cx - radius + 4.5f * cu, cy - radius + 4.5f * cu, paint
+        )
     }
 
     /** Pixel-Kreis mit Outline und Schattenseite, wie drawPixelCircle im Spiel. */
