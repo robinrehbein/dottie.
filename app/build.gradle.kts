@@ -12,8 +12,8 @@ android {
         applicationId = "de.robinrehbein.punkt"
         minSdk = 28
         targetSdk = 36
-        versionCode = 13
-        versionName = "2.7.1"
+        versionCode = 14
+        versionName = "2.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -37,6 +37,26 @@ Dazu: Himmel färbt sich pro 5er-Stufe Richtung Nacht, Medaillen ab
 mit Spielerklärung. Wer den eigenen Rekord im Lauf überholt, bekommt
 das sofort gefeiert („REKORD GEKNACKT!") — nicht erst beim Tod.
 
+## Retention & Teilen (ab v2.8)
+
+Drei Features zahlen auf tägliches Wiederkommen und organisches
+Wachstum ein:
+
+- **Daily Challenge**: Ein Button auf dem Startscreen startet die
+  Tages-Challenge — der Kalendertag bestimmt den Zufalls-Seed, alle
+  Versuche des Tages (und alle Spieler:innen) bekommen dieselbe Zonen-
+  und Twist-Abfolge. Gespeichert werden Tagesbest und die Tages-Serie
+  („SERIE: 5 TAGE"); nur der erste Lauf des Tages schreibt die Serie
+  fort, eine Lücke reißt sie.
+- **Skins**: Sieben Punkt-Skins (Klassik, Minze, Lava, Gold, Frost,
+  Schatten, Prisma), freigeschaltet über Medaillen-Schwellen (Rekord
+  10/20/30/40), die beste Perfekt-Serie (4) oder die Daily-Serie
+  (3 Tage). Auswahl über den SKINS-Button, gesperrte Skins zeigen ihre
+  Bedingung.
+- **Teilen**: Der TEILEN-Button im Game-Over rendert eine Score-Card
+  als PNG (komplett im Code, wie alles hier) und öffnet den
+  System-Share-Dialog — Score, Medaille, Skin und Daily-Serie inklusive.
+
 ## Sound (ab v2.7)
 
 Chiptune-Soundeffekte im NES-Stil, komplett zur Laufzeit im Code
