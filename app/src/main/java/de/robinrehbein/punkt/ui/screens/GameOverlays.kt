@@ -297,7 +297,6 @@ internal fun GameOverOverlay(
     dailyBest: Int,
     dailyStreak: Int,
     skinUnlocked: Boolean,
-    onRestart: () -> Unit,
     onShare: () -> Unit,
     onMenu: () -> Unit,
     onHelp: () -> Unit
@@ -339,7 +338,16 @@ internal fun GameOverOverlay(
 
             PixelPanel {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    MedalBadge(score = score)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        MedalBadge(score = score)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "MEDAILLE",
+                            fontFamily = Bytesized,
+                            fontSize = 12.sp,
+                            color = TextDark
+                        )
+                    }
                     Spacer(modifier = Modifier.width(20.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
@@ -409,17 +417,17 @@ internal fun GameOverOverlay(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            PixelButton(
-                text = "NOCHMAL!",
-                onClick = onRestart,
-                backgroundColor = PanelSand,
-                borderColor = TextDark,
-                textColor = TextDark,
-                width = 200.dp,
-                height = 60.dp
+            // Kein NOCHMAL-Button: Tap irgendwo startet sofort neu (nach
+            // kurzer Wut-Tap-Sperre) — der blinkende Hinweis ist die
+            // einzige Restart-Affordanz und darf deshalb auffallen.
+            Text(
+                text = "TIPPEN = NOCHMAL",
+                style = ScoreShadowStyle,
+                fontSize = 26.sp,
+                color = Color.White.copy(alpha = blink)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Row {
                 PixelButton(
@@ -444,15 +452,6 @@ internal fun GameOverOverlay(
                     borderWidth = 3.dp
                 )
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "oder tippe irgendwo — sofort weiter",
-                fontFamily = Bytesized,
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = blink)
-            )
         }
     }
 }
@@ -568,6 +567,7 @@ private fun StopHelpContent() {
     HelpLine("TIPPE, WENN ER IN DER GRUENEN ZONE IST — DANEBEN GETIPPT ODER ZONE VERPASST = AUS.")
     HelpLine("HELLE MITTE DER ZONE = PERFEKT: +2 PUNKTE.", DotBody)
     HelpLine("PERFEKT IN SERIE? +3, +4, BIS ZU +5 PRO TREFFER!", DotBody)
+    HelpLine("MEDAILLEN: BRONZE AB 10, SILBER AB 20, GOLD AB 30, PLATIN AB 40.")
 
     Spacer(modifier = Modifier.height(18.dp))
     Text(
