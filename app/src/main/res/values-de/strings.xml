@@ -31,6 +31,12 @@
     <!-- Game Over -->
     <string name="game_over">GAME OVER</string>
     <string name="medal">MEDAILLE</string>
+    <string name="medal_bronze">BRONZE</string>
+    <string name="medal_silver">SILBER</string>
+    <string name="medal_gold">GOLD</string>
+    <string name="medal_platinum">PLATIN</string>
+    <string name="medal_next">NOCH %1$d BIS %2$s</string>
+    <string name="new_medal">NEUE MEDAILLE!</string>
     <string name="points_label">PUNKTE</string>
     <string name="record_label">REKORD</string>
     <string name="new_record">NEUER REKORD!</string>
