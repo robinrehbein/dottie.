@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Play Games Services (Bestenlisten).
+
+     "0" bzw. leer = Integration komplett deaktiviert: kein SDK-Init,
+     kein Button, keine Google-Verbindung. Nach dem Setup in der Play
+     Console (siehe PUBLISHING.md) hier die echten IDs eintragen —
+     mehr ist zum Aktivieren nicht noetig. -->
+<resources>
+    <string name="games_app_id" translatable="false">0</string>
+    <string name="leaderboard_rekord_id" translatable="false"></string>
+    <string name="leaderboard_daily_id" translatable="false"></string>
+</resources>
