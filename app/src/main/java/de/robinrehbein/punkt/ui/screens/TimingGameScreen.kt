@@ -442,7 +442,8 @@ private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState, skin: DotSk
         drawCloud(w * 0.1f - drift % (w * 1.4f), h * 0.16f, cell)
         drawCloud(w * 0.75f - drift % (w * 1.4f), h * 0.24f, cell)
 
-        drawStaticGround(cell)
+        drawScenery(game, cell)
+        drawGroundStrip(cell)
 
         // Kreisbahn mit Zielzone, ggf. Fallen-Zone und Punkt
         val cx = w / 2f
@@ -463,31 +464,134 @@ private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState, skin: DotSk
     }
 }
 
-private fun DrawScope.drawStaticGround(cell: Float) {
+/**
+ * Bäume und Sträucher vor dem Boden. Die Szenerie driftet wie die Wolken
+ * nach links — nur schneller, weil sie näher am Betrachter ist
+ * (Parallaxe) — und wickelt rechts wieder ein. Dazu wiegt ein leichter
+ * Wind die Kronen, pro Pflanze phasenversetzt, oben stärker als unten.
+ */
+private fun DrawScope.drawScenery(game: TimingGame, cell: Float) {
+    val h = size.height
+    val w = size.width
+    // Basis knapp unter der Grasnarben-Oberkante — der Boden-Streifen
+    // wird danach gezeichnet und verdeckt die Wurzeln sauber.
+    val groundY = h * 0.88f + cell * 2f
+
+    val drift = game.elapsed * h * 0.016f
+    val spacing = w * 0.26f
+    val count = (w / spacing).toInt() + 3
+    val total = spacing * count
+    for (k in 0 until count) {
+        val x = ((k * spacing - drift) % total + total) % total - spacing
+        val sway = sin(game.elapsed * 1.4f + k * 1.7f) * cell * 0.6f
+        when (k % 4) {
+            0 -> drawPixelTree(x, groundY, h * 0.075f, sway, cell)
+            1 -> drawPixelBush(x, groundY, h * 0.030f, sway * 0.4f, cell, withFlower = true)
+            2 -> drawPixelTree(x, groundY, h * 0.058f, -sway, cell)
+            else -> drawPixelBush(x, groundY, h * 0.024f, sway * 0.4f, cell, withFlower = false)
+        }
+    }
+}
+
+/** Pixel-Baum: Stamm mit Schattenseite, dreistufige Krone im Wind. */
+private fun DrawScope.drawPixelTree(
+    cx: Float,
+    groundY: Float,
+    s: Float,
+    sway: Float,
+    cell: Float
+) {
+    val trunkW = s * 0.30f
+    val trunkH = s * 0.60f
+    drawRect(
+        color = OutlineColor,
+        topLeft = Offset(cx - trunkW / 2f - cell, groundY - trunkH - cell),
+        size = Size(trunkW + cell * 2f, trunkH + cell)
+    )
+    drawRect(
+        color = TrunkColor,
+        topLeft = Offset(cx - trunkW / 2f, groundY - trunkH),
+        size = Size(trunkW, trunkH)
+    )
+    drawRect(
+        color = TrunkShade,
+        topLeft = Offset(cx, groundY - trunkH),
+        size = Size(trunkW / 2f, trunkH)
+    )
+
+    // Krone: von unten (breit, dunkel) nach oben (schmal, hell); der Wind
+    // greift oben stärker.
+    val layers = listOf(
+        Triple(s * 1.6f, s * 0.45f, BushShadeColor),
+        Triple(s * 1.2f, s * 0.40f, BushColor),
+        Triple(s * 0.7f, s * 0.35f, GrassLight)
+    )
+    var layerTop = groundY - trunkH
+    layers.forEachIndexed { i, (lw, lh, color) ->
+        layerTop -= lh
+        val lx = cx + sway * (0.35f + 0.35f * i)
+        drawRect(
+            color = OutlineColor,
+            topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
+            size = Size(lw + cell * 2f, lh + cell * 2f)
+        )
+        drawRect(
+            color = color,
+            topLeft = Offset(lx - lw / 2f, layerTop),
+            size = Size(lw, lh)
+        )
+    }
+}
+
+/** Pixel-Strauch: gestufter Hügel, optional mit Blüte obendrauf. */
+private fun DrawScope.drawPixelBush(
+    cx: Float,
+    groundY: Float,
+    s: Float,
+    sway: Float,
+    cell: Float,
+    withFlower: Boolean
+) {
+    val layers = listOf(
+        Triple(s * 2.4f, s * 0.70f, BushShadeColor),
+        Triple(s * 1.8f, s * 0.60f, BushColor),
+        Triple(s * 1.0f, s * 0.50f, GrassLight)
+    )
+    var layerTop = groundY
+    var topX = cx
+    layers.forEachIndexed { i, (lw, lh, color) ->
+        layerTop -= lh
+        val lx = cx + sway * (0.2f + 0.3f * i)
+        topX = lx
+        drawRect(
+            color = OutlineColor,
+            topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
+            size = Size(lw + cell * 2f, lh + cell * 2f)
+        )
+        drawRect(
+            color = color,
+            topLeft = Offset(lx - lw / 2f, layerTop),
+            size = Size(lw, lh)
+        )
+    }
+
+    if (withFlower) {
+        // Kleine Blüte: rotes Kreuz mit goldener Mitte, wippt mit der Spitze.
+        val u = cell * 1.5f
+        val fx = topX + s * 0.3f
+        val fy = layerTop - u * 2f
+        drawRect(color = RecordRed, topLeft = Offset(fx - u, fy), size = Size(u * 3f, u))
+        drawRect(color = RecordRed, topLeft = Offset(fx, fy - u), size = Size(u, u * 3f))
+        drawRect(color = DotBody, topLeft = Offset(fx, fy), size = Size(u, u))
+    }
+}
+
+/** Sand-Streifen mit Grasnarbe — der statische Boden unter allem. */
+private fun DrawScope.drawGroundStrip(cell: Float) {
     val h = size.height
     val w = size.width
     val groundTop = h * 0.88f
 
-    // Büsche vor dem Boden
-    var bx = -w * 0.05f
-    var i = 0
-    while (bx < w) {
-        val bushH = if (i % 3 == 0) h * 0.07f else h * 0.045f
-        drawRect(
-            color = BushShadeColor,
-            topLeft = Offset(bx, groundTop - bushH),
-            size = Size(w * 0.36f, bushH)
-        )
-        drawRect(
-            color = BushColor,
-            topLeft = Offset(bx + w * 0.04f, groundTop - bushH * 1.35f),
-            size = Size(w * 0.28f, bushH * 1.35f)
-        )
-        bx += w * 0.3f
-        i++
-    }
-
-    // Sand + Grasnarbe
     drawRect(
         color = GroundSand,
         topLeft = Offset(0f, groundTop),
