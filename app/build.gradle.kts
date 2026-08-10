@@ -12,8 +12,8 @@ android {
         applicationId = "de.robinrehbein.punkt"
         minSdk = 28
         targetSdk = 36
-        versionCode = 17
-        versionName = "2.10"
+        versionCode = 18
+        versionName = "2.11"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -90,6 +90,8 @@ dependencies {
     // Play Games Services v2 (Bestenlisten) — inaktiv, bis in
     // res/values/games.xml echte IDs stehen (siehe PUBLISHING.md).
     implementation(libs.play.services.games)
+    // WorkManager für die tägliche Daily-Challenge-Erinnerung
+    implementation(libs.androidx.work.runtime)
 
     // ViewModel und Lifecycle
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")

@@ -62,6 +62,19 @@ vorbereitet — hart deaktiviert, bis in `res/values/games.xml` echte IDs
 aus der Play Console stehen (Anleitung in PUBLISHING.md). Die
 Store-Feature-Grafik liegt generiert unter `store/feature-graphic.png`.
 
+Ab v2.11 gibt es zusätzlich eine optionale **tägliche Erinnerung** an
+die Daily Challenge (Opt-in über den Startscreen, komplett lokal per
+WorkManager, ab Android 13 hinter der Notification-Permission).
+
+## Sprachen (ab v2.11)
+
+Die App ist zweisprachig: **Englisch** ist die Standardsprache,
+**Deutsch** liegt in `values-de/` und wird auf deutschen Geräten
+automatisch gewählt. Alle UI-Texte kommen aus `strings.xml` — neue
+Strings immer in beiden Dateien ergänzen. Store-Texte in beiden
+Sprachen sowie generierte Screenshots (je 4 Motive DE/EN unter
+`store/screenshots/`) stehen bereit, siehe PUBLISHING.md.
+
 ## Sound (ab v2.7)
 
 Chiptune-Soundeffekte im NES-Stil, komplett zur Laufzeit im Code

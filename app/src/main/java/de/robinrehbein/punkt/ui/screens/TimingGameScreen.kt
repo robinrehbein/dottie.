@@ -1,6 +1,11 @@
 package de.robinrehbein.punkt.ui.screens
 
+import android.Manifest
 import android.app.Activity
+import android.content.Context
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -26,15 +31,18 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.data.ScoreStore
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
 import de.robinrehbein.punkt.game.TimingGame
+import de.robinrehbein.punkt.notify.DailyReminder
 import de.robinrehbein.punkt.play.Leaderboards
 import de.robinrehbein.punkt.share.ScoreCard
 import kotlinx.coroutines.isActive
@@ -61,13 +69,16 @@ private val SkyStages = listOf(
     Color(0xFF2A2640)  // 30+ Nacht
 )
 
-private fun twistBannerText(twist: TimingGame.Twist): String = when (twist) {
-    TimingGame.Twist.PULSE -> "NEU: PULS-ZONE!"
-    TimingGame.Twist.DRIFT -> "NEU: WANDERNDE ZONE!"
-    TimingGame.Twist.GHOST -> "NEU: GEISTER-PUNKT!"
-    TimingGame.Twist.FAKE -> "NEU: FALLEN-ZONE!"
-    TimingGame.Twist.CHAIN -> "NEU: KETTEN-ZONE!"
-}
+private fun twistBannerText(context: Context, twist: TimingGame.Twist): String =
+    context.getString(
+        when (twist) {
+            TimingGame.Twist.PULSE -> R.string.banner_twist_pulse
+            TimingGame.Twist.DRIFT -> R.string.banner_twist_drift
+            TimingGame.Twist.GHOST -> R.string.banner_twist_ghost
+            TimingGame.Twist.FAKE -> R.string.banner_twist_fake
+            TimingGame.Twist.CHAIN -> R.string.banner_twist_chain
+        }
+    )
 
 /** Nicht-Compose-Zeitgeber für das Twist-Banner. */
 private class BannerState {
@@ -136,6 +147,19 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     var dailyStreak by remember {
         mutableIntStateOf(store.dailyStreakPreviewFor(LocalDate.now().toEpochDay()))
     }
+    var reminderOn by remember { mutableStateOf(store.reminderEnabled) }
+
+    // Ab Android 13 braucht die Erinnerung die Notification-Permission —
+    // erst nach erteilter Erlaubnis wird der Schalter wirklich aktiv.
+    val notifPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            reminderOn = true
+            store.reminderEnabled = true
+            DailyReminder.schedule(context)
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose { audio.release() }
@@ -143,6 +167,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
 
     // Play-Games-Sign-in (No-op, solange keine IDs konfiguriert sind).
     LaunchedEffect(Unit) { leaderboards.connect() }
+
+    // Falls die Erinnerung aktiv ist: Planung idempotent auffrischen
+    // (übersteht App-Updates und gelöschte WorkManager-Jobs).
+    LaunchedEffect(Unit) {
+        if (store.reminderEnabled) DailyReminder.schedule(context)
+    }
 
     // Vor jedem Lauf-Start: Tag fixieren und die Zufallsquelle passend zum
     // Modus setzen — die Daily bekommt den Tages-Seed, damit jeder Versuch
@@ -204,12 +234,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             runState.maxPerfect = max(runState.maxPerfect, game.perfectStreak)
                         }
                         is TimingGame.GameEvent.ChainNext -> {
-                            showBanner("NOCH EINE!", 1.2f, priority = 1)
+                            showBanner(context.getString(R.string.banner_chain), 1.2f, priority = 1)
                             audio.chain()
                         }
                         is TimingGame.GameEvent.TwistUnlocked -> {
                             twistUnlockedThisFrame = true
-                            showBanner(twistBannerText(event.twist), 2.2f, priority = 2)
+                            showBanner(twistBannerText(context, event.twist), 2.2f, priority = 2)
                             fx.celebrateTime = CELEBRATE_SECONDS
                             haptics.unlock()
                             audio.unlock()
@@ -233,7 +263,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             leaderboards.submitBest(game.score)
                             skinUnlockedThisRun =
                                 DotSkin.unlockedCount(store.stats()) > unlockedBefore
-                            taunt = pickTaunt(game.score, previousBest, isNewRecord)
+                            taunt = pickTaunt(context, game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
                             runNumber = store.runCount
                             if (isNewRecord && !bannerState.recordCelebrated) {
@@ -261,7 +291,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     bestScore > 0 && game.score > bestScore
                 ) {
                     bannerState.recordCelebrated = true
-                    showBanner("REKORD GEKNACKT!", 2.2f, priority = 2)
+                    showBanner(context.getString(R.string.banner_record), 2.2f, priority = 2)
                     fx.celebrateTime = CELEBRATE_SECONDS
                     haptics.newRecord()
                     audio.newRecord()
@@ -274,7 +304,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 if (game.phase == TimingGame.Phase.RUNNING && stage > bannerState.lastStage) {
                     bannerState.lastStage = stage
                     if (!twistUnlockedThisFrame) {
-                        showBanner("NEUE STUFE!", 1.6f, priority = 1)
+                        showBanner(context.getString(R.string.banner_stage), 1.6f, priority = 1)
                         fx.celebrateTime = CELEBRATE_SECONDS
                         haptics.unlock()
                         audio.unlock()
@@ -319,7 +349,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         // Display, statt auf festen dp-Werten.
         if (showPerfect) {
             Text(
-                text = "PERFEKT! +$perfectPoints",
+                text = stringResource(R.string.perfect_plus, perfectPoints),
                 style = ScoreShadowStyle,
                 fontSize = 28.sp,
                 color = Color(0xFFFFE95E),
@@ -346,7 +376,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             TimingGame.Phase.READY -> ReadyOverlay(
                 bestScore = bestScore,
                 runNumber = runNumber,
-                hint = "STOPPE DEN PUNKT IN DER GRUENEN ZONE",
+                hint = stringResource(R.string.ready_hint),
                 dailyBest = dailyBestToday,
                 dailyStreak = dailyStreak,
                 onDaily = {
@@ -363,6 +393,23 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     soundOn = !soundOn
                     store.soundMuted = !soundOn
                     audio.muted = !soundOn
+                },
+                reminderOn = reminderOn,
+                onToggleReminder = {
+                    when {
+                        reminderOn -> {
+                            reminderOn = false
+                            store.reminderEnabled = false
+                            DailyReminder.cancel(context)
+                        }
+                        Build.VERSION.SDK_INT >= 33 && DailyReminder.needsPermission(context) ->
+                            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        else -> {
+                            reminderOn = true
+                            store.reminderEnabled = true
+                            DailyReminder.schedule(context)
+                        }
+                    }
                 }
             )
             TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
@@ -486,9 +533,12 @@ private fun DrawScope.drawScenery(game: TimingGame, cell: Float) {
         val sway = sin(game.elapsed * 1.4f + k * 1.7f) * cell * 0.6f
         when (k % 4) {
             0 -> drawPixelTree(x, groundY, h * 0.075f, sway, cell)
-            1 -> drawPixelBush(x, groundY, h * 0.030f, sway * 0.4f, cell, withFlower = true)
+            1 -> drawPixelFlower(
+                x, groundY, h * 0.032f, sway * 0.8f, cell,
+                petal = if ((k / 4) % 2 == 0) RecordRed else CloudColor
+            )
             2 -> drawPixelTree(x, groundY, h * 0.058f, -sway, cell)
-            else -> drawPixelBush(x, groundY, h * 0.024f, sway * 0.4f, cell, withFlower = false)
+            else -> drawPixelBush(x, groundY, h * 0.026f, sway * 0.4f, cell)
         }
     }
 }
@@ -543,26 +593,27 @@ private fun DrawScope.drawPixelTree(
     }
 }
 
-/** Pixel-Strauch: gestufter Hügel, optional mit Blüte obendrauf. */
+/**
+ * Pixel-Strauch: runde Beeren-Silhouette statt Torten-Stufen — der Bauch
+ * in der Mitte ist die breiteste Lage, oben sitzt eine helle Kuppe, und
+ * zwei Licht-Tupfer geben dem Grün Textur.
+ */
 private fun DrawScope.drawPixelBush(
     cx: Float,
     groundY: Float,
     s: Float,
     sway: Float,
-    cell: Float,
-    withFlower: Boolean
+    cell: Float
 ) {
     val layers = listOf(
-        Triple(s * 2.4f, s * 0.70f, BushShadeColor),
-        Triple(s * 1.8f, s * 0.60f, BushColor),
-        Triple(s * 1.0f, s * 0.50f, GrassLight)
+        Triple(s * 2.1f, s * 0.55f, BushShadeColor), // Sockel
+        Triple(s * 2.7f, s * 0.70f, BushColor),      // Bauch — am breitesten
+        Triple(s * 1.5f, s * 0.55f, GrassLight)      // Kuppe
     )
     var layerTop = groundY
-    var topX = cx
     layers.forEachIndexed { i, (lw, lh, color) ->
         layerTop -= lh
         val lx = cx + sway * (0.2f + 0.3f * i)
-        topX = lx
         drawRect(
             color = OutlineColor,
             topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
@@ -575,15 +626,87 @@ private fun DrawScope.drawPixelBush(
         )
     }
 
-    if (withFlower) {
-        // Kleine Blüte: rotes Kreuz mit goldener Mitte, wippt mit der Spitze.
-        val u = cell * 1.5f
-        val fx = topX + s * 0.3f
-        val fy = layerTop - u * 2f
-        drawRect(color = RecordRed, topLeft = Offset(fx - u, fy), size = Size(u * 3f, u))
-        drawRect(color = RecordRed, topLeft = Offset(fx, fy - u), size = Size(u, u * 3f))
-        drawRect(color = DotBody, topLeft = Offset(fx, fy), size = Size(u, u))
+    // Licht-Tupfer auf dem Bauch
+    val u = cell * 1.5f
+    drawRect(
+        color = GrassLight,
+        topLeft = Offset(cx - s * 1.0f + sway * 0.4f, groundY - s * 1.05f),
+        size = Size(u * 2f, u)
+    )
+    drawRect(
+        color = GrassLight,
+        topLeft = Offset(cx + s * 0.35f + sway * 0.4f, groundY - s * 0.8f),
+        size = Size(u, u)
+    )
+}
+
+/**
+ * Pixel-Blume: Stiel mit Blättern und großer Blüte (vier Blütenblätter
+ * um eine goldene Mitte). Die Blüte wiegt im Wind, der Stiel bleibt
+ * unten verwurzelt.
+ */
+private fun DrawScope.drawPixelFlower(
+    cx: Float,
+    groundY: Float,
+    s: Float,
+    sway: Float,
+    cell: Float,
+    petal: Color
+) {
+    val stemH = s * 1.15f
+    val bx = cx + sway
+    val by = groundY - stemH
+
+    // Stiel (mit Outline), oben leicht zur Blüte versetzt gezeichnet
+    drawRect(
+        color = OutlineColor,
+        topLeft = Offset(cx - cell * 1.5f, by),
+        size = Size(cell * 3f, stemH)
+    )
+    drawRect(
+        color = BushShadeColor,
+        topLeft = Offset(cx - cell * 0.75f, by),
+        size = Size(cell * 1.5f, stemH)
+    )
+
+    // Zwei Blätter auf halber Höhe
+    val leafY = groundY - stemH * 0.45f
+    drawRect(
+        color = OutlineColor,
+        topLeft = Offset(cx - s * 0.6f - cell, leafY - cell),
+        size = Size(s * 0.6f + cell * 2f, cell * 3f)
+    )
+    drawRect(
+        color = BushColor,
+        topLeft = Offset(cx - s * 0.6f, leafY),
+        size = Size(s * 0.6f, cell * 1.5f)
+    )
+    drawRect(
+        color = OutlineColor,
+        topLeft = Offset(cx - cell, leafY + cell * 3f),
+        size = Size(s * 0.55f + cell * 2f, cell * 3f)
+    )
+    drawRect(
+        color = BushColor,
+        topLeft = Offset(cx, leafY + cell * 4f),
+        size = Size(s * 0.55f, cell * 1.5f)
+    )
+
+    // Blüte: Plus aus vier Blütenblättern um die goldene Mitte
+    val u = s * 0.38f
+    fun block(x: Float, y: Float, color: Color) {
+        drawRect(
+            color = OutlineColor,
+            topLeft = Offset(x - cell, y - cell),
+            size = Size(u + cell * 2f, u + cell * 2f)
+        )
+        drawRect(color = color, topLeft = Offset(x, y), size = Size(u, u))
     }
+    block(bx - u / 2f, by - u * 1.5f, petal)          // oben
+    block(bx - u * 1.5f, by - u / 2f, petal)          // links
+    block(bx + u / 2f, by - u / 2f, petal)            // rechts
+    block(bx - u / 2f, by + u / 2f, petal)            // unten
+    block(bx - u / 2f, by - u / 2f, DotBody)          // Mitte
 }
 
 /** Sand-Streifen mit Grasnarbe — der statische Boden unter allem. */
@@ -627,7 +750,10 @@ private fun DrawScope.drawTrack(
     radius: Float,
     cell: Float
 ) {
-    val segments = 72
+    // 60 statt 72 Segmente: Die einzelnen Kettenglieder bekommen sichtbaren
+    // Abstand (Perlenketten-Look), statt sich zu überlappen. Die Zonen
+    // bleiben durch ihre größeren Blöcke bewusst ein durchgehendes Band.
+    val segments = 60
     val zoneHalf = game.effectiveZoneHalf()
     for (k in 0 until segments) {
         val a = k.toFloat() / segments * (2f * Math.PI.toFloat())
@@ -636,7 +762,13 @@ private fun DrawScope.drawTrack(
 
         val relativeZone = TimingGame.wrapToPi(a - game.zoneCenter)
         val inZone = abs(relativeZone) <= zoneHalf
-        val inPerfectCore = abs(relativeZone) <= zoneHalf * TimingGame.PERFECT_SHARE
+        // Kern fürs Zeichnen auf mindestens einen Rasterschritt aufrunden:
+        // Schrumpft das PERFEKT-Fenster unter das Segment-Raster (Zonen-
+        // Minimum plus PULS-Wellental), würde sonst zeitweise gar kein Block
+        // hell leuchten. Die Tap-Wertung rechnet weiter exakt.
+        val coreHalf = (zoneHalf * TimingGame.PERFECT_SHARE)
+            .coerceAtLeast(Math.PI.toFloat() / segments)
+        val inPerfectCore = abs(relativeZone) <= coreHalf
 
         val inFake = game.hasFakeZone &&
             abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= game.zoneHalfWidth

@@ -1,21 +1,29 @@
 # PUNKT. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.9.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.11.
 
 ## Checkliste
 
 - [ ] Keystore rotieren (Anleitung unten) — **vor dem ersten Store-Upload Pflicht**
-- [ ] Play-Console-Konto anlegen (25 $ einmalig, [play.google.com/console](https://play.google.com/console))
+- [x] Play-Console-Konto anlegen (25 $ einmalig, [play.google.com/console](https://play.google.com/console))
+- [ ] Play-API-Service-Konto anlegen → Secret `PLAY_SERVICE_ACCOUNT_JSON` (Anleitung unten)
 - [ ] GitHub Pages aktivieren → Datenschutz-URL (Anleitung unten)
-- [ ] Store-Eintrag anlegen (Texte unten, Icons liegen im Repo)
+- [ ] Store-Eintrag anlegen (Texte unten in Deutsch UND Englisch, Icons liegen im Repo)
 - [x] Feature-Grafik 1024×500 px (`store/feature-graphic.png`, Generator daneben)
-- [ ] Mind. 2 Screenshots hochladen
+- [x] Screenshots 1080×1920: je 4 in DE und EN unter `store/screenshots/`
+      (Generator: `python3 store/generate_screenshots.py`)
 - [ ] Optional: Play Games Services einrichten → Bestenlisten (Anleitung unten)
 - [ ] Data-Safety-Formular: „Es werden keine Daten erhoben"
 - [ ] IARC-Fragebogen (Content-Rating) ausfüllen
-- [ ] `app-release.aab` in den **geschlossenen Test** hochladen
+- [ ] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
+      oder per CI-Job `play-internal`, siehe unten)
 - [ ] 12 Tester einladen, 14 Tage testen lassen (Pflicht bei neuen Privat-Konten)
 - [ ] Production-Freigabe beantragen
+
+Die App ist ab v2.11 **zweisprachig**: Englisch ist die Standardsprache,
+Deutsch wird auf deutschen Geräten automatisch gewählt. Im Play-Listing
+also am besten `en-US` als Standard anlegen und `de-DE` als Übersetzung
+hinzufügen — beide Textfassungen stehen unten.
 
 ## Keystore-Rotation
 
@@ -118,12 +126,82 @@ wird öffentlich sichtbar.
 
 **Kategorie:** Spiele → Arcade · **Tags:** Casual, Arcade, One-Tap
 
+### Store-Eintrag Englisch (en-US)
+
+**App name** (max. 30 Zeichen):
+
+> PUNKT. — Timing Arcade
+
+**Short description** (max. 80 Zeichen):
+
+> A dot circles. One tap in the green zone counts. How far can you get?
+
+**Full description** (max. 4000 Zeichen):
+
+> **One dot. One thumb. No mercy.**
+>
+> PUNKT. is pure timing: a dot circles its track — tap exactly when it
+> crosses the green zone. Hit it and you keep going. Miss it and the run
+> is over on the spot. No tutorials, no waiting: the next attempt is one
+> tap away.
+>
+> **PERFECT pays extra**
+> The bright center of the zone counts as PERFECT and starts a streak:
+> +2, +3, +4 up to +5 points per hit. Difficulty grows with your hits,
+> not your score — perfect streaks are pure bonus, zero risk.
+>
+> **The twists arrive with your score**
+> ▪ PULSE — the zone breathes, growing and shrinking
+> ▪ DRIFT — the zone wanders along the track
+> ▪ GHOST — the dot blinks away, keep the track in your head
+> ▪ TRAP — a purple decoy zone: never tap into it
+> ▪ CHAIN — two zones back to back
+> At most two twists at once, fairly mixed.
+>
+> **Retro done right**
+> Pixel look, NES-style chiptune sounds — synthesized entirely in code.
+> The sky shifts towards night with every stage, medals reward your best
+> runs, and breaking your record gets celebrated the moment it happens.
+>
+> **Honest & lean**
+> No ads, no in-app purchases, no data collection, no internet needed.
+> Just you, the dot, and your high score.
+
 **Assets:**
 
 - Feature-Grafik 1024×500: liegt fertig unter `store/feature-graphic.png`
   (Generator: `python3 store/generate_feature_graphic.py`)
-- Noch offen: mind. 2 Screenshots (16:9 oder 9:16, am besten direkt vom
-  Gerät: Startscreen, Lauf mit Twist, Game-Over mit Medaille)
+- Screenshots 1080×1920 (9:16): je 4 Motive in Deutsch und Englisch
+  unter `store/screenshots/de/` und `store/screenshots/en/`
+  (Generator: `python3 store/generate_screenshots.py`) — Gameplay,
+  Twists, Daily Challenge, Skins. Gern zusätzlich echte Geräte-
+  Screenshots ergänzen.
+
+## Automatischer Upload in den internen Test-Track (CI)
+
+Der Workflow hat einen Job `play-internal`, der das gebaute AAB per
+Play Developer API in den **internen Test-Track** lädt (als Entwurf).
+Er läuft nur bei manuellem Start: **Actions → Build APK → Run
+workflow** (auf `main`). Einmalige Einrichtung:
+
+1. Play Console → **Einstellungen → API-Zugriff** → Google-Cloud-Projekt
+   verknüpfen und dort ein **Service-Konto** anlegen (die Console
+   verlinkt direkt in die Cloud Console).
+2. In der Cloud Console für das Service-Konto einen **JSON-Key**
+   erzeugen und herunterladen.
+3. Zurück in der Play Console dem Service-Konto Zugriff auf PUNKT.
+   geben — die Berechtigung „Releases in Tests verwalten" reicht.
+4. Den **kompletten JSON-Inhalt** als GitHub-Secret
+   `PLAY_SERVICE_ACCOUNT_JSON` anlegen (Settings → Secrets and
+   variables → Actions). Die Key-Datei danach lokal löschen, nie
+   committen, nie in Chats einfügen.
+
+Zwei Dinge kann die API nicht, die bleiben Handarbeit in der Console:
+die App selbst anlegen (Name „PUNKT.", Paket `de.robinrehbein.punkt`)
+und den allerersten Upload prüfen/freigeben. Außerdem gilt: Der Job
+verweigert den Start, solange der Keystore nicht rotiert ist
+(`PUNKT_KEYSTORE_BASE64` fehlt), und jeder Upload braucht einen noch
+nicht verwendeten `versionCode`.
 
 ## Play Games Services: Bestenlisten aktivieren
 
@@ -150,5 +228,5 @@ und die App bleibt komplett offline. So wird es scharf geschaltet:
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 15` / `versionName
-"2.9"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 18` / `versionName
+"2.11"`. Vor jedem Store-Upload beides anheben und committen.

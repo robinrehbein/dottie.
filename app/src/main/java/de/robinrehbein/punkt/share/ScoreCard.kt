@@ -62,12 +62,14 @@ object ScoreCard {
             putExtra(Intent.EXTRA_STREAM, uri)
             putExtra(
                 Intent.EXTRA_TEXT,
-                if (daily) "Daily Challenge in PUNKT.: $score Punkte — schaffst du mehr?"
-                else "$score Punkte in PUNKT. — schaffst du mehr?"
+                if (daily) context.getString(R.string.share_text_daily, score)
+                else context.getString(R.string.share_text, score)
             )
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(send, "Score teilen"))
+        context.startActivity(
+            Intent.createChooser(send, context.getString(R.string.share_chooser))
+        )
     }
 
     private fun render(
@@ -120,19 +122,19 @@ object ScoreCard {
         val cx = W / 2f
         drawShadowed("PUNKT.", cx, H * 0.14f, 130f, Color.WHITE)
         if (daily) {
-            drawShadowed("DAILY-CHALLENGE", cx, H * 0.20f, 56f, RECORD_YELLOW)
+            drawShadowed(context.getString(R.string.card_daily), cx, H * 0.20f, 56f, RECORD_YELLOW)
         }
 
         // Punkt im gewählten Skin, mittig über dem Score
         drawPixelDot(canvas, paint, cx, H * 0.32f, 110f, skin)
 
         drawShadowed(score.toString(), cx, H * 0.55f, 320f, Color.WHITE)
-        drawShadowed("PUNKTE", cx, H * 0.60f, 60f, Color.WHITE)
+        drawShadowed(context.getString(R.string.card_points), cx, H * 0.60f, 60f, Color.WHITE)
 
         val recordLine = when {
-            isNewRecord -> "NEUER REKORD!"
-            daily && dailyStreak > 1 -> "DAILY-SERIE: $dailyStreak TAGE"
-            else -> "REKORD: $bestScore"
+            isNewRecord -> context.getString(R.string.new_record)
+            daily && dailyStreak > 1 -> context.getString(R.string.card_daily_streak, dailyStreak)
+            else -> context.getString(R.string.card_record, bestScore)
         }
         drawShadowed(recordLine, cx, H * 0.68f, 68f, if (isNewRecord) RECORD_YELLOW else Color.WHITE)
 
@@ -147,7 +149,7 @@ object ScoreCard {
             drawPixelCircle(canvas, paint, cx, H * 0.755f, 62f, medal)
         }
 
-        drawShadowed("SCHAFFST DU MEHR?", cx, H * 0.945f, 72f, ACCENT)
+        drawShadowed(context.getString(R.string.card_challenge), cx, H * 0.945f, 72f, ACCENT)
         return bmp
     }
 
