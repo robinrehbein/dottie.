@@ -28,6 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -104,6 +105,12 @@ private const val CELEBRATE_SECONDS = 1.1f
  */
 private const val DEATH_HOP_SPEED = 1.6f
 private const val DEATH_GRAVITY = 6f
+
+/**
+ * Während des Hüpfers dreht sich der Vogel um 180° auf den Rücken und
+ * fällt kopfüber — die Drehung ist am Scheitelpunkt (~0,27s) fertig.
+ */
+private const val DEATH_FLIP_SECONDS = 0.3f
 
 /** Nicht-Compose-Zustand des laufenden Versuchs. */
 private class RunState {
@@ -867,46 +874,57 @@ private fun DrawScope.drawTimingDot(
     var py = cy + sin(game.angle) * radius
     val r = h * 0.026f
 
-    // Mario-Tod: Während des Todes-Freeze bleibt der Vogel stehen, danach
-    // hüpft er kurz nach oben und fällt mit Gravitation unten aus dem Bild.
+    // Mario-Tod: Während des Todes-Freeze bleibt der Vogel stehen, dann
+    // hüpft er nach oben, dreht sich dabei auf den Rücken und fällt
+    // kopfüber mit Gravitation unten aus dem Bild.
+    var flip = 0f
     if (fx.deathTime >= 0f) {
         val t = fx.deathTime - TimingGame.DEATH_FREEZE_SECONDS
         if (t > 0f) {
             py += (-DEATH_HOP_SPEED * t + 0.5f * DEATH_GRAVITY * t * t) * h
             if (py - r * 2f > h) return
+            flip = 180f * (t / DEATH_FLIP_SECONDS).coerceAtMost(1f)
         }
     }
 
-    drawPixelCircle(
-        color = Color(skin.body),
-        outline = OutlineColor,
-        centerX = px,
-        centerY = py,
-        radius = r,
-        shade = Color(skin.shade)
-    )
-
-    val u = (r * 2f) / GRID
-    fun rect(col: Float, row: Float, cols: Float, rows: Float, color: Color) {
-        drawRect(
-            color = color,
-            topLeft = Offset(px - r + col * u, py - r + row * u),
-            size = Size(cols * u, rows * u)
+    fun drawBird() {
+        drawPixelCircle(
+            color = Color(skin.body),
+            outline = OutlineColor,
+            centerX = px,
+            centerY = py,
+            radius = r,
+            shade = Color(skin.shade)
         )
+
+        val u = (r * 2f) / GRID
+        fun rect(col: Float, row: Float, cols: Float, rows: Float, color: Color) {
+            drawRect(
+                color = color,
+                topLeft = Offset(px - r + col * u, py - r + row * u),
+                size = Size(cols * u, rows * u)
+            )
+        }
+
+        // Glanzpunkt und Auge folgen der sichtbaren Flugrichtung: Die
+        // horizontale Geschwindigkeit ist ~ -sin(angle) * direction — zeigt
+        // sie nach links, wird das Gesicht gespiegelt. Der Wechsel passiert
+        // genau dort, wo der Vogel senkrecht fliegt, und fällt kaum auf.
+        val facingLeft = sin(game.angle) * game.direction > 0f
+        if (facingLeft) {
+            rect(GRID - 4.5f, 2.5f, 2f, 2f, Color(skin.shine))
+            rect(2f, 3f, 3.5f, 4f, Color.White)
+            rect(2f, 4f, 1.5f, 2f, OutlineColor)
+        } else {
+            rect(2.5f, 2.5f, 2f, 2f, Color(skin.shine))
+            rect(7.5f, 3f, 3.5f, 4f, Color.White)
+            rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
+        }
     }
 
-    // Glanzpunkt und Auge folgen der sichtbaren Flugrichtung: Die
-    // horizontale Geschwindigkeit ist ~ -sin(angle) * direction — zeigt
-    // sie nach links, wird das Gesicht gespiegelt. Der Wechsel passiert
-    // genau dort, wo der Vogel senkrecht fliegt, und fällt kaum auf.
-    val facingLeft = sin(game.angle) * game.direction > 0f
-    if (facingLeft) {
-        rect(GRID - 4.5f, 2.5f, 2f, 2f, Color(skin.shine))
-        rect(2f, 3f, 3.5f, 4f, Color.White)
-        rect(2f, 4f, 1.5f, 2f, OutlineColor)
+    if (flip > 0f) {
+        rotate(degrees = flip, pivot = Offset(px, py)) { drawBird() }
     } else {
-        rect(2.5f, 2.5f, 2f, 2f, Color(skin.shine))
-        rect(7.5f, 3f, 3.5f, 4f, Color.White)
-        rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
+        drawBird()
     }
 }
