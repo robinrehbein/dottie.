@@ -70,11 +70,14 @@ while x < W:
     x += 40
 d.rectangle([0, ground_top - 4, W, ground_top], fill=OUTLINE)
 
-# ===== Kreisbahn mit Zielzone, Fallen-Zone und Punkt (rechte Haelfte) =====
+# ===== Kreisbahn mit Zielzone und Punkt (rechte Haelfte) =====
+# Variante B: Der Punkt ist groesser (Held des Bildes) und steht sichtbar
+# kurz vor der Zone — die Kernmechanik "gleich musst du tippen" soll ohne
+# Nachdenken lesbar sein. Die Fallen-Zone ist raus: In der Statik wirft
+# sie nur Fragen auf. v1 liegt als store/feature-graphic-v1.png daneben.
 cx, cy, radius = 790, 218, 150
-zone_center = -0.55  # oben rechts
-zone_half = 0.42
-fake_center = 2.4
+zone_center = -0.9  # oben rechts
+zone_half = 0.5
 
 
 def wrap_pi(v):
@@ -90,19 +93,14 @@ for k in range(72):
     px = cx + math.cos(a) * radius
     py = cy + math.sin(a) * radius
     rel = abs(wrap_pi(a - zone_center))
-    rel_fake = abs(wrap_pi(a - fake_center))
     in_zone = rel <= zone_half
     in_core = rel <= zone_half * 0.35
-    in_fake = rel_fake <= 0.30
-    highlighted = in_zone or in_fake
-    outer = 20 if highlighted else 12
-    inner = 14 if highlighted else 7
+    outer = 20 if in_zone else 12
+    inner = 14 if in_zone else 7
     if in_core:
         color = GRASS_LIGHT
     elif in_zone:
         color = GRASS_DARK
-    elif in_fake:
-        color = FAKE
     else:
         color = SAND_SHADE
     d.rectangle([px - outer / 2, py - outer / 2, px + outer / 2, py + outer / 2], fill=OUTLINE)
@@ -140,10 +138,11 @@ def pixel_circle(cx_, cy_, r, body, shade, shine=None, eye=False):
                      cx_ - r + 11 * u, cy_ - r + 6 * u], fill=OUTLINE)
 
 
-# Der Punkt kurz vor der Zone, Blickrichtung zur Zone
-dot_a = zone_center - 1.15
+# Der Punkt kurz vor der Zone (laeuft im Uhrzeigersinn auf sie zu),
+# Auge blickt in Laufrichtung
+dot_a = zone_center - 1.25
 pixel_circle(
-    cx + math.cos(dot_a) * radius, cy + math.sin(dot_a) * radius, 34,
+    cx + math.cos(dot_a) * radius, cy + math.sin(dot_a) * radius, 46,
     DOT_BODY, DOT_SHADE, DOT_SHINE, eye=True,
 )
 
@@ -157,9 +156,11 @@ def shadowed(pos, text, font, color, shadow=6):
     d.text(pos, text, font=font, fill=color)
 
 
+# Tagline bewusst ohne "M": Der Bytesized-Font rendert das M so
+# eigenwillig, dass es auf einem Store-Asset unleserlich wird.
 shadowed((60, 100), "PUNKT.", font_big, WHITE)
-shadowed((66, 272), "EIN PUNKT. EIN DAUMEN.", font_small, WHITE)
-shadowed((66, 334), "KEIN ERBARMEN.", font_small, DOT_BODY)
+shadowed((66, 272), "EIN TAP ENTSCHEIDET.", font_small, WHITE)
+shadowed((66, 334), "PERFEKT ODER VORBEI.", font_small, DOT_BODY)
 
 img.save("store/feature-graphic.png")
 print("store/feature-graphic.png:", img.size)

@@ -376,11 +376,6 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 dailyBest = dailyBestToday,
                 dailyStreak = dailyStreak,
                 skinUnlocked = skinUnlockedThisRun,
-                onRestart = {
-                    prepareRun()
-                    game.reset()
-                    game.tap()
-                },
                 onShare = {
                     ScoreCard.share(
                         context = context,
