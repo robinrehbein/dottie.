@@ -24,11 +24,27 @@ jobs:
       - name: Run unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
 
+      # Auf dem Arbeits-Branch reicht ein Build-Check: Kompiliert alles?
+      # Die Debug-APK landet als Workflow-Artefakt (Actions → Run →
+      # Artifacts), falls ein Stand ausnahmsweise vor dem Merge aufs Gerät
+      # soll. Releases (apk-build-N) entstehen ausschließlich aus main.
+      - name: Build-Check (Branch)
+        if: github.ref != 'refs/heads/main'
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Upload debug APK (Branch-Artefakt)
+        if: github.ref != 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: punkt-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
       - name: Prepare release keystore
         # Sobald das Secret PUNKT_KEYSTORE_BASE64 gesetzt ist (Keystore-
         # Rotation, siehe PUBLISHING.md), signiert der Build mit dem echten
         # Keystore. Ohne das Secret bleibt es beim eingecheckten
         # Test-Keystore — gut genug für Test-APKs, tabu für den Store.
+        if: github.ref == 'refs/heads/main'
         env:
           PUNKT_KEYSTORE_BASE64: ${{ secrets.PUNKT_KEYSTORE_BASE64 }}
         run: |
@@ -41,6 +57,7 @@ jobs:
           fi
 
       - name: Build APKs and App Bundle
+        if: github.ref == 'refs/heads/main'
         env:
           PUNKT_KEYSTORE_PASSWORD: ${{ secrets.PUNKT_KEYSTORE_PASSWORD }}
           PUNKT_KEY_ALIAS: ${{ secrets.PUNKT_KEY_ALIAS }}
@@ -48,24 +65,28 @@ jobs:
         run: ./gradlew --no-daemon assembleDebug assembleRelease bundleRelease
 
       - name: Upload debug APK
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: punkt-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload release APK
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: punkt-release-apk
           path: app/build/outputs/apk/release/app-release.apk
 
       - name: Upload release App Bundle
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: punkt-release-aab
           path: app/build/outputs/bundle/release/app-release.aab
 
       - name: Publish APKs as release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: apk-build-${{ github.run_number }}
