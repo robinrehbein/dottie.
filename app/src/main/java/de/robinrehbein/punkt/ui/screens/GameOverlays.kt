@@ -84,6 +84,9 @@ internal class FxState {
 
     /** Restzeit der Freischalt-Zelebration (goldener Ring + Schimmer). */
     var celebrateTime = 0f
+
+    /** Sekunden seit dem Tod (Mario-Hüpfer), negativ = kein Tod aktiv. */
+    var deathTime = -1f
 }
 
 // ===== Overlays =====

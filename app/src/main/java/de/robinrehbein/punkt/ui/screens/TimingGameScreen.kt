@@ -97,6 +97,14 @@ private class BannerState {
 /** Dauer der Freischalt-Zelebration (goldener Ring + Schimmer). */
 private const val CELEBRATE_SECONDS = 1.1f
 
+/**
+ * Mario-Tod: Nach dem Todes-Freeze hüpft der Vogel mit dieser
+ * Anfangsgeschwindigkeit nach oben und fällt dann mit der Gravitation
+ * unten aus dem Bild — beides in Bildhöhen pro Sekunde(²).
+ */
+private const val DEATH_HOP_SPEED = 1.6f
+private const val DEATH_GRAVITY = 6f
+
 /** Nicht-Compose-Zustand des laufenden Versuchs. */
 private class RunState {
     /** Tag, dem der Lauf zugerechnet wird (fixiert beim Start). */
@@ -204,6 +212,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 fx.flashAlpha = (fx.flashAlpha - dt * 3.5f).coerceAtLeast(0f)
                 fx.shakeTime = (fx.shakeTime - dt).coerceAtLeast(0f)
                 fx.celebrateTime = (fx.celebrateTime - dt).coerceAtLeast(0f)
+                if (fx.deathTime >= 0f) fx.deathTime += dt
                 bannerState.timeLeft = (bannerState.timeLeft - dt).coerceAtLeast(0f)
                 if (bannerState.timeLeft <= 0f && bannerText.isNotEmpty()) {
                     bannerText = ""
@@ -221,6 +230,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             bannerText = ""
                             runState.maxPerfect = 0
                             skinUnlockedThisRun = false
+                            fx.deathTime = -1f
                             audio.start()
                         }
                         is TimingGame.GameEvent.Hit -> {
@@ -250,6 +260,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             fx.flashAlpha = 1f
                             fx.shakeTime = 0.4f
                             fx.celebrateTime = 0f
+                            fx.deathTime = 0f
                             val previousBest = store.bestScore
                             val unlockedBefore = DotSkin.unlockedCount(store.stats())
                             isNewRecord = store.submitRun(game.score)
@@ -498,7 +509,7 @@ private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState, skin: DotSk
         val radius = min(w * 0.36f, h * 0.28f)
         drawTrack(game, cx, cy, radius, cell)
         if (game.isDotVisible) {
-            drawTimingDot(game, cx, cy, radius, skin)
+            drawTimingDot(game, fx, cx, cy, radius, skin)
         }
         if (fx.celebrateTime > 0f) {
             drawUnlockBurst(fx.celebrateTime, cx, cy, radius, cell)
@@ -845,6 +856,7 @@ private fun DrawScope.drawUnlockBurst(
 
 private fun DrawScope.drawTimingDot(
     game: TimingGame,
+    fx: FxState,
     cx: Float,
     cy: Float,
     radius: Float,
@@ -852,8 +864,18 @@ private fun DrawScope.drawTimingDot(
 ) {
     val h = size.height
     val px = cx + cos(game.angle) * radius
-    val py = cy + sin(game.angle) * radius
+    var py = cy + sin(game.angle) * radius
     val r = h * 0.026f
+
+    // Mario-Tod: Während des Todes-Freeze bleibt der Vogel stehen, danach
+    // hüpft er kurz nach oben und fällt mit Gravitation unten aus dem Bild.
+    if (fx.deathTime >= 0f) {
+        val t = fx.deathTime - TimingGame.DEATH_FREEZE_SECONDS
+        if (t > 0f) {
+            py += (-DEATH_HOP_SPEED * t + 0.5f * DEATH_GRAVITY * t * t) * h
+            if (py - r * 2f > h) return
+        }
+    }
 
     drawPixelCircle(
         color = Color(skin.body),
@@ -873,8 +895,18 @@ private fun DrawScope.drawTimingDot(
         )
     }
 
-    // Glanzpunkt und Auge
-    rect(2.5f, 2.5f, 2f, 2f, Color(skin.shine))
-    rect(7.5f, 3f, 3.5f, 4f, Color.White)
-    rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
+    // Glanzpunkt und Auge folgen der sichtbaren Flugrichtung: Die
+    // horizontale Geschwindigkeit ist ~ -sin(angle) * direction — zeigt
+    // sie nach links, wird das Gesicht gespiegelt. Der Wechsel passiert
+    // genau dort, wo der Vogel senkrecht fliegt, und fällt kaum auf.
+    val facingLeft = sin(game.angle) * game.direction > 0f
+    if (facingLeft) {
+        rect(GRID - 4.5f, 2.5f, 2f, 2f, Color(skin.shine))
+        rect(2f, 3f, 3.5f, 4f, Color.White)
+        rect(2f, 4f, 1.5f, 2f, OutlineColor)
+    } else {
+        rect(2.5f, 2.5f, 2f, 2f, Color(skin.shine))
+        rect(7.5f, 3f, 3.5f, 4f, Color.White)
+        rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
+    }
 }
