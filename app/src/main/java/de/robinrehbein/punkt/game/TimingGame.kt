@@ -264,8 +264,10 @@ class TimingGame(private var random: Random = Random.Default) {
                 }
             }
             Phase.DYING -> {
-                // Kurzer Freeze für Flash und Shake, dann steht das Ergebnis.
-                if (elapsed >= DEATH_FREEZE_SECONDS) {
+                // Kurzer Freeze für Flash und Shake, dann der Mario-Hüpfer:
+                // Das Game-Over-Overlay erscheint erst, wenn der Vogel aus
+                // dem Bild gefallen ist (Settled = "aufgeschlagen").
+                if (elapsed >= DEATH_FREEZE_SECONDS + DEATH_FALL_SECONDS) {
                     phase = Phase.OVER
                     elapsed = 0f
                     events.add(GameEvent.Settled)
@@ -431,6 +433,14 @@ class TimingGame(private var random: Random = Random.Default) {
         const val CHAIN_MAX_DISTANCE = 1.8f
 
         const val DEATH_FREEZE_SECONDS = 0.5f
+
+        /**
+         * Dauer der Fall-Animation nach dem Freeze (Mario-Hüpfer, siehe
+         * drawTimingDot). Muss reichen, damit der Vogel auch von der
+         * höchsten Bahnposition aus unten aus dem Bild ist (~0,9s), erst
+         * danach erscheint das Game-Over-Overlay.
+         */
+        const val DEATH_FALL_SECONDS = 1.0f
         const val RESTART_LOCK_SECONDS = 0.55f
 
         /** Ab welchem Score ein Twist ins Spiel kommt. */
