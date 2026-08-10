@@ -228,5 +228,5 @@ und die App bleibt komplett offline. So wird es scharf geschaltet:
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 20` / `versionName
-"2.12.1"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 21` / `versionName
+"2.12.2"`. Vor jedem Store-Upload beides anheben und committen.
