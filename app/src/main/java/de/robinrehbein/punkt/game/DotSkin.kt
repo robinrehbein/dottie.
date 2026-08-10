@@ -1,27 +1,32 @@
 package de.robinrehbein.punkt.game
 
+import androidx.annotation.StringRes
+import de.robinrehbein.punkt.R
+
 /**
  * Freischaltbare Punkt-Skins. Die Farben sind ARGB-Werte (keine
  * Compose-Typen), damit die Unlock-Logik pur und in Unit-Tests prüfbar
- * bleibt — die UI wickelt sie in Color().
+ * bleibt — die UI wickelt sie in Color(). Name und Freischalt-Hinweis
+ * sind String-Ressourcen (DE/EN), die UI löst sie per stringResource auf.
  *
  * Freischaltungen hängen an dauerhaften Leistungen (Rekord, beste
  * Perfekt-Serie, Daily-Serie), nie an Käufen — Sammeln ist die Belohnung
  * fürs Spielen.
  */
 enum class DotSkin(
-    val title: String,
+    @StringRes val titleRes: Int,
+    @StringRes val unlockHintRes: Int?,
     val body: Long,
     val shade: Long,
     val shine: Long
 ) {
-    KLASSIK("KLASSIK", 0xFFFFD847, 0xFFF5A623, 0xFFFFF3B8),
-    MINZE("MINZE", 0xFF4BE38C, 0xFF2BA55E, 0xFFC8FFE0),
-    LAVA("LAVA", 0xFFFF5A36, 0xFFC22F12, 0xFFFFC9A3),
-    GOLD("GOLD", 0xFFFFC400, 0xFFCC8F00, 0xFFFFF7CC),
-    FROST("FROST", 0xFF8FD8FF, 0xFF4FA3D8, 0xFFE8F9FF),
-    SCHATTEN("SCHATTEN", 0xFF6B4F8A, 0xFF43315C, 0xFFCBB8E8),
-    PRISMA("PRISMA", 0xFFFF6FD8, 0xFFC93BAA, 0xFFB8F3FF);
+    KLASSIK(R.string.skin_klassik, null, 0xFFFFD847, 0xFFF5A623, 0xFFFFF3B8),
+    MINZE(R.string.skin_minze, R.string.skin_hint_minze, 0xFF4BE38C, 0xFF2BA55E, 0xFFC8FFE0),
+    LAVA(R.string.skin_lava, R.string.skin_hint_lava, 0xFFFF5A36, 0xFFC22F12, 0xFFFFC9A3),
+    GOLD(R.string.skin_gold, R.string.skin_hint_gold, 0xFFFFC400, 0xFFCC8F00, 0xFFFFF7CC),
+    FROST(R.string.skin_frost, R.string.skin_hint_frost, 0xFF8FD8FF, 0xFF4FA3D8, 0xFFE8F9FF),
+    SCHATTEN(R.string.skin_schatten, R.string.skin_hint_schatten, 0xFF6B4F8A, 0xFF43315C, 0xFFCBB8E8),
+    PRISMA(R.string.skin_prisma, R.string.skin_hint_prisma, 0xFFFF6FD8, 0xFFC93BAA, 0xFFB8F3FF);
 
     /** Dauerhafte Bestleistungen, gegen die Freischaltungen geprüft werden. */
     data class Stats(
@@ -39,18 +44,6 @@ enum class DotSkin(
         SCHATTEN -> stats.bestPerfectStreak >= 4
         PRISMA -> stats.bestDailyStreak >= 3
     }
-
-    /** Kurzer Hinweis, wie sich ein gesperrter Skin freischalten lässt. */
-    val unlockHint: String
-        get() = when (this) {
-            KLASSIK -> ""
-            MINZE -> "REKORD 10 (BRONZE)"
-            LAVA -> "REKORD 20 (SILBER)"
-            GOLD -> "REKORD 30 (GOLD)"
-            FROST -> "REKORD 40 (PLATIN)"
-            SCHATTEN -> "4 PERFEKTE IN SERIE"
-            PRISMA -> "DAILY-SERIE: 3 TAGE"
-        }
 
     companion object {
         /** Skin zu einem gespeicherten Namen, KLASSIK als Fallback. */

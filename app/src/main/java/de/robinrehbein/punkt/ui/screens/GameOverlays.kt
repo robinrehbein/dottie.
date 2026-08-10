@@ -1,5 +1,6 @@
 package de.robinrehbein.punkt.ui.screens
 
+import android.content.Context
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -36,10 +37,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.theme.Bytesized
@@ -105,7 +108,7 @@ internal fun ScoreHud(score: Int, daily: Boolean = false) {
             )
             if (daily) {
                 Text(
-                    text = "DAILY",
+                    text = stringResource(R.string.daily),
                     style = ScoreShadowStyle,
                     fontSize = 18.sp,
                     color = DotBody
@@ -144,7 +147,9 @@ internal fun ReadyOverlay(
     onLeaderboard: () -> Unit,
     onHelp: () -> Unit,
     soundOn: Boolean,
-    onToggleSound: () -> Unit
+    onToggleSound: () -> Unit,
+    reminderOn: Boolean,
+    onToggleReminder: () -> Unit
 ) {
     val blink by rememberInfiniteTransition(label = "blink").animateFloat(
         initialValue = 1f,
@@ -168,19 +173,33 @@ internal fun ReadyOverlay(
                 .padding(16.dp)
         )
 
-        PixelButton(
-            text = if (soundOn) "TON: AN" else "TON: AUS",
-            onClick = onToggleSound,
-            backgroundColor = PanelSand,
-            borderColor = TextDark,
-            textColor = TextDark,
-            width = 116.dp,
-            height = 48.dp,
-            borderWidth = 3.dp,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(16.dp)
-        )
+        Column(modifier = Modifier
+            .align(Alignment.TopStart)
+            .padding(16.dp)
+        ) {
+            PixelButton(
+                text = stringResource(if (soundOn) R.string.sound_on else R.string.sound_off),
+                onClick = onToggleSound,
+                backgroundColor = PanelSand,
+                borderColor = TextDark,
+                textColor = TextDark,
+                width = 116.dp,
+                height = 48.dp,
+                borderWidth = 3.dp
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            // Tägliche Daily-Challenge-Erinnerung (Opt-in, lokal).
+            PixelButton(
+                text = stringResource(if (reminderOn) R.string.reminder_on else R.string.reminder_off),
+                onClick = onToggleReminder,
+                backgroundColor = PanelSand,
+                borderColor = TextDark,
+                textColor = TextDark,
+                width = 168.dp,
+                height = 48.dp,
+                borderWidth = 3.dp
+            )
+        }
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -196,7 +215,7 @@ internal fun ReadyOverlay(
             )
             if (bestScore > 0) {
                 Text(
-                    text = "REKORD: $bestScore",
+                    text = stringResource(R.string.best_score, bestScore),
                     style = ScoreShadowStyle,
                     fontSize = 22.sp,
                     color = Color.White
@@ -229,7 +248,7 @@ internal fun ReadyOverlay(
             // Nur sichtbar, wenn Play Games konfiguriert und angemeldet ist.
             if (leaderboardAvailable) {
                 PixelButton(
-                    text = "RANGLISTE",
+                    text = stringResource(R.string.leaderboard),
                     onClick = onLeaderboard,
                     backgroundColor = PanelSand,
                     borderColor = TextDark,
@@ -242,7 +261,7 @@ internal fun ReadyOverlay(
             }
             Row {
                 PixelButton(
-                    text = "DAILY",
+                    text = stringResource(R.string.daily),
                     onClick = onDaily,
                     backgroundColor = DotBody,
                     borderColor = TextDark,
@@ -253,7 +272,7 @@ internal fun ReadyOverlay(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 PixelButton(
-                    text = "SKINS",
+                    text = stringResource(R.string.skins),
                     onClick = onSkins,
                     backgroundColor = PanelSand,
                     borderColor = TextDark,
@@ -266,11 +285,10 @@ internal fun ReadyOverlay(
             if (dailyBest > 0 || dailyStreak > 0) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = buildString {
-                        if (dailyBest > 0) append("HEUTE: $dailyBest")
-                        if (dailyBest > 0 && dailyStreak > 0) append("  ·  ")
-                        if (dailyStreak > 0) append("SERIE: $dailyStreak ${if (dailyStreak == 1) "TAG" else "TAGE"}")
-                    },
+                    text = listOfNotNull(
+                        if (dailyBest > 0) stringResource(R.string.today_score, dailyBest) else null,
+                        if (dailyStreak > 0) streakLabel(dailyStreak) else null
+                    ).joinToString("  ·  "),
                     style = ScoreShadowStyle,
                     fontSize = 15.sp,
                     color = DotBody
@@ -279,7 +297,7 @@ internal fun ReadyOverlay(
             if (runNumber > 0) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "VERSUCH #${runNumber + 1}",
+                    text = stringResource(R.string.run_number, runNumber + 1),
                     style = ScoreShadowStyle,
                     fontSize = 16.sp,
                     color = Color.White.copy(alpha = 0.8f)
@@ -330,7 +348,7 @@ internal fun GameOverOverlay(
             modifier = Modifier.align(Alignment.Center)
         ) {
             Text(
-                text = "GAME OVER",
+                text = stringResource(R.string.game_over),
                 style = ScoreShadowStyle,
                 fontSize = 48.sp,
                 color = Color(0xFFFF8A3C)
@@ -344,7 +362,7 @@ internal fun GameOverOverlay(
                         MedalBadge(score = score)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "MEDAILLE",
+                            text = stringResource(R.string.medal),
                             fontFamily = Bytesized,
                             fontSize = 12.sp,
                             color = TextDark
@@ -353,7 +371,7 @@ internal fun GameOverOverlay(
                     Spacer(modifier = Modifier.width(20.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "PUNKTE",
+                            text = stringResource(R.string.points_label),
                             fontFamily = Bytesized,
                             fontSize = 16.sp,
                             color = TextDark
@@ -366,7 +384,7 @@ internal fun GameOverOverlay(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "REKORD",
+                            text = stringResource(R.string.record_label),
                             fontFamily = Bytesized,
                             fontSize = 16.sp,
                             color = if (isNewRecord) RecordRed else TextDark
@@ -384,7 +402,7 @@ internal fun GameOverOverlay(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = if (isNewRecord) "NEUER REKORD!" else taunt,
+                text = if (isNewRecord) stringResource(R.string.new_record) else taunt,
                 style = ScoreShadowStyle,
                 fontSize = 24.sp,
                 color = if (isNewRecord) Color(0xFFFFE95E) else Color.White,
@@ -395,12 +413,11 @@ internal fun GameOverOverlay(
             if (daily) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = buildString {
-                        append("DAILY  ·  HEUTE: $dailyBest")
-                        if (dailyStreak > 0) {
-                            append("  ·  SERIE: $dailyStreak ${if (dailyStreak == 1) "TAG" else "TAGE"}")
-                        }
-                    },
+                    text = listOfNotNull(
+                        stringResource(R.string.daily),
+                        stringResource(R.string.today_score, dailyBest),
+                        if (dailyStreak > 0) streakLabel(dailyStreak) else null
+                    ).joinToString("  ·  "),
                     style = ScoreShadowStyle,
                     fontSize = 16.sp,
                     color = DotBody
@@ -410,7 +427,7 @@ internal fun GameOverOverlay(
             if (skinUnlocked) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "NEUER SKIN FREIGESCHALTET!",
+                    text = stringResource(R.string.new_skin_unlocked),
                     style = ScoreShadowStyle,
                     fontSize = 18.sp,
                     color = Color(0xFFFFE95E)
@@ -423,7 +440,7 @@ internal fun GameOverOverlay(
             // kurzer Wut-Tap-Sperre) — der blinkende Hinweis ist die
             // einzige Restart-Affordanz und darf deshalb auffallen.
             Text(
-                text = "TIPPEN = NOCHMAL",
+                text = stringResource(R.string.tap_retry),
                 style = ScoreShadowStyle,
                 fontSize = 26.sp,
                 color = Color.White.copy(alpha = blink)
@@ -433,7 +450,7 @@ internal fun GameOverOverlay(
 
             Row {
                 PixelButton(
-                    text = "TEILEN",
+                    text = stringResource(R.string.share),
                     onClick = onShare,
                     backgroundColor = DotBody,
                     borderColor = TextDark,
@@ -444,7 +461,7 @@ internal fun GameOverOverlay(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 PixelButton(
-                    text = "MENUE",
+                    text = stringResource(R.string.menu),
                     onClick = onMenu,
                     backgroundColor = PanelSand,
                     borderColor = TextDark,
@@ -553,7 +570,7 @@ internal fun HelpOverlay(onClose: () -> Unit) {
 
             Spacer(modifier = Modifier.height(28.dp))
             Text(
-                text = "TIPPEN ZUM SCHLIESSEN",
+                text = stringResource(R.string.tap_to_close),
                 fontFamily = Bytesized,
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.6f)
@@ -564,31 +581,57 @@ internal fun HelpOverlay(onClose: () -> Unit) {
 
 @Composable
 private fun StopHelpContent() {
-    HelpHeading("SO GEHT STOPP")
-    HelpLine("DER PUNKT KREIST VON ALLEIN.")
-    HelpLine("TIPPE, WENN ER IN DER GRUENEN ZONE IST — DANEBEN GETIPPT ODER ZONE VERPASST = AUS.")
-    HelpLine("HELLE MITTE DER ZONE = PERFEKT: +2 PUNKTE.", DotBody)
-    HelpLine("PERFEKT IN SERIE? +3, +4, BIS ZU +5 PRO TREFFER!", DotBody)
-    HelpLine("MEDAILLEN: BRONZE AB 10, SILBER AB 20, GOLD AB 30, PLATIN AB 40.")
+    HelpHeading(stringResource(R.string.help_title))
+    HelpLine(stringResource(R.string.help_line1))
+    HelpLine(stringResource(R.string.help_line2))
+    HelpLine(stringResource(R.string.help_line3), DotBody)
+    HelpLine(stringResource(R.string.help_line4), DotBody)
+    HelpLine(stringResource(R.string.help_line5))
 
     Spacer(modifier = Modifier.height(18.dp))
     Text(
-        text = "DIE TWISTS",
+        text = stringResource(R.string.help_twists),
         style = ScoreShadowStyle,
         fontSize = 24.sp,
         color = Color(0xFFFF8A3C)
     )
     Spacer(modifier = Modifier.height(8.dp))
 
-    TwistHelpRow(GrassLight, "PULS (AB 5)", "DIE ZONE ATMET — WIRD GROESSER UND KLEINER.")
-    TwistHelpRow(Color(0xFF5B9BD5), "DRIFT (AB 10)", "DIE ZONE WANDERT LANGSAM UEBER DIE BAHN.")
-    TwistHelpRow(CloudColor, "GEIST (AB 15)", "DER PUNKT BLINKT WEG — BAHN IM KOPF BEHALTEN.")
-    TwistHelpRow(Color(0xFFB44FD8), "FALLE (AB 20)", "VIOLETTE KOEDER-ZONE: NIE HINEINTIPPEN!")
-    TwistHelpRow(Color(0xFFFF8A3C), "KETTE (AB 25)", "ZWEI ZONEN NACHEINANDER — GLEICHE RICHTUNG.")
+    TwistHelpRow(
+        GrassLight,
+        stringResource(R.string.twist_pulse_title),
+        stringResource(R.string.twist_pulse_text)
+    )
+    TwistHelpRow(
+        Color(0xFF5B9BD5),
+        stringResource(R.string.twist_drift_title),
+        stringResource(R.string.twist_drift_text)
+    )
+    TwistHelpRow(
+        CloudColor,
+        stringResource(R.string.twist_ghost_title),
+        stringResource(R.string.twist_ghost_text)
+    )
+    TwistHelpRow(
+        Color(0xFFB44FD8),
+        stringResource(R.string.twist_fake_title),
+        stringResource(R.string.twist_fake_text)
+    )
+    TwistHelpRow(
+        Color(0xFFFF8A3C),
+        stringResource(R.string.twist_chain_title),
+        stringResource(R.string.twist_chain_text)
+    )
 
     Spacer(modifier = Modifier.height(10.dp))
-    HelpLine("MAXIMAL ZWEI TWISTS GLEICHZEITIG — ZUFAELLIG GEMISCHT.")
+    HelpLine(stringResource(R.string.help_max_twists))
 }
+
+/** "SERIE: n TAG/TAGE" bzw. "STREAK: n DAY/DAYS", sprachrichtig. */
+@Composable
+internal fun streakLabel(days: Int): String =
+    if (days == 1) stringResource(R.string.streak_one)
+    else stringResource(R.string.streak_many, days)
 
 @Composable
 private fun HelpHeading(text: String) {
@@ -676,7 +719,7 @@ internal fun SkinOverlay(
                 .padding(vertical = 32.dp)
         ) {
             Text(
-                text = "SKINS",
+                text = stringResource(R.string.skins),
                 style = ScoreShadowStyle,
                 fontSize = 32.sp,
                 color = Color.White,
@@ -705,16 +748,16 @@ internal fun SkinOverlay(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = skin.title,
+                            text = stringResource(skin.titleRes),
                             fontFamily = Bytesized,
                             fontSize = 20.sp,
                             color = if (unlocked) Color.White else Color.White.copy(alpha = 0.45f)
                         )
                         Text(
                             text = when {
-                                skin == selected -> "AUSGEWAEHLT"
-                                unlocked -> "TIPPEN ZUM WAEHLEN"
-                                else -> skin.unlockHint
+                                skin == selected -> stringResource(R.string.skin_selected)
+                                unlocked -> stringResource(R.string.skin_tap_select)
+                                else -> skin.unlockHintRes?.let { stringResource(it) } ?: ""
                             },
                             fontFamily = Bytesized,
                             fontSize = 14.sp,
@@ -730,7 +773,7 @@ internal fun SkinOverlay(
 
             Spacer(modifier = Modifier.height(20.dp))
             Text(
-                text = "TIPPEN ZUM SCHLIESSEN",
+                text = stringResource(R.string.tap_to_close),
                 fontFamily = Bytesized,
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.6f)
@@ -741,34 +784,25 @@ internal fun SkinOverlay(
 
 // ===== Spott-Texte für den Rage-Faktor =====
 
-internal fun pickTaunt(score: Int, previousBest: Int, isNewRecord: Boolean): String {
-    if (isNewRecord) return "NEUER REKORD!"
+internal fun pickTaunt(
+    context: Context,
+    score: Int,
+    previousBest: Int,
+    isNewRecord: Boolean
+): String {
+    if (isNewRecord) return context.getString(R.string.new_record)
     val gap = previousBest - score
-    val pool = when {
-        score == 0 -> listOf(
-            "ERNSTHAFT?",
-            "DAS GING SCHNELL.",
-            "WAR DAS ABSICHT?",
-            "AUFWAERMEN ZAEHLT NICHT."
-        )
-        gap in 1..3 -> listOf(
-            "SO NAH! NUR $gap GEFEHLT!",
-            "FAST! NOCH $gap!",
-            "AAARGH! $gap ZU WENIG!"
-        )
-        score < previousBest / 2 -> listOf(
-            "DAS WAR NIX.",
-            "DU KANNST MEHR.",
-            "SCHON VERGESSEN WIE?"
-        )
-        else -> listOf(
-            "NOCHMAL!",
-            "GLEICH KLAPPTS!",
-            "DAS KAM AUS DEM NICHTS.",
-            "NICHT AUFGEBEN!"
-        )
-    }
-    return pool[(score + previousBest) % pool.size]
+    val pool = context.resources.getStringArray(
+        when {
+            score == 0 -> R.array.taunts_zero
+            gap in 1..3 -> R.array.taunts_close
+            score < previousBest / 2 -> R.array.taunts_low
+            else -> R.array.taunts_default
+        }
+    )
+    val line = pool[(score + previousBest) % pool.size]
+    // Nur die "knapp daneben"-Zeilen tragen einen %1$d-Platzhalter.
+    return if (line.contains("%1\$d")) line.format(gap) else line
 }
 
 // ===== Gemeinsame Zeichen-Helfer =====

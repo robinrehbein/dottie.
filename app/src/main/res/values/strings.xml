@@ -1,3 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default = Englisch (weltweiter Play-Store-Markt), Deutsch liegt in
+     values-de/. Beide Dateien führen dieselben Keys in derselben
+     Reihenfolge — neue Strings bitte immer in beiden ergänzen. -->
 <resources>
-    <string name="app_name">Punkt.</string>
+    <string name="app_name" translatable="false">Punkt.</string>
+
+    <!-- Startscreen -->
+    <string name="ready_hint">STOP THE DOT IN THE GREEN ZONE</string>
+    <string name="sound_on">SOUND: ON</string>
+    <string name="sound_off">SOUND: OFF</string>
+    <string name="reminder_on">REMINDER: ON</string>
+    <string name="reminder_off">REMINDER: OFF</string>
+    <string name="best_score">BEST: %1$d</string>
+    <string name="leaderboard">LEADERBOARD</string>
+    <string name="daily">DAILY</string>
+    <string name="skins">SKINS</string>
+    <string name="today_score">TODAY: %1$d</string>
+    <string name="streak_one">STREAK: 1 DAY</string>
+    <string name="streak_many">STREAK: %1$d DAYS</string>
+    <string name="run_number">RUN #%1$d</string>
+
+    <!-- Lauf / Banner -->
+    <string name="perfect_plus">PERFECT! +%1$d</string>
+    <string name="banner_chain">ONE MORE!</string>
+    <string name="banner_record">RECORD BROKEN!</string>
+    <string name="banner_stage">NEW STAGE!</string>
+    <string name="banner_twist_pulse">NEW: PULSE ZONE!</string>
+    <string name="banner_twist_drift">NEW: DRIFTING ZONE!</string>
+    <string name="banner_twist_ghost">NEW: GHOST DOT!</string>
+    <string name="banner_twist_fake">NEW: TRAP ZONE!</string>
+    <string name="banner_twist_chain">NEW: CHAIN ZONE!</string>
+
+    <!-- Game Over -->
+    <string name="game_over">GAME OVER</string>
+    <string name="medal">MEDAL</string>
+    <string name="points_label">SCORE</string>
+    <string name="record_label">BEST</string>
+    <string name="new_record">NEW RECORD!</string>
+    <string name="new_skin_unlocked">NEW SKIN UNLOCKED!</string>
+    <string name="tap_retry">TAP = RETRY</string>
+    <string name="share">SHARE</string>
+    <string name="menu">MENU</string>
+
+    <!-- Spott-Texte (Auswahl deterministisch über score+best) -->
+    <string-array name="taunts_zero">
+        <item>SERIOUSLY?</item>
+        <item>THAT WAS FAST.</item>
+        <item>WAS THAT ON PURPOSE?</item>
+        <item>WARM-UPS DON\'T COUNT.</item>
+    </string-array>
+    <string-array name="taunts_close">
+        <item>SO CLOSE! ONLY %1$d SHORT!</item>
+        <item>ALMOST! JUST %1$d MORE!</item>
+        <item>AAARGH! %1$d TOO FEW!</item>
+    </string-array>
+    <string-array name="taunts_low">
+        <item>THAT WAS NOTHING.</item>
+        <item>YOU CAN DO BETTER.</item>
+        <item>FORGOT HOW ALREADY?</item>
+    </string-array>
+    <string-array name="taunts_default">
+        <item>AGAIN!</item>
+        <item>NEXT ONE\'S YOURS!</item>
+        <item>THAT CAME OUT OF NOWHERE.</item>
+        <item>DON\'T GIVE UP!</item>
+    </string-array>
+
+    <!-- Hilfe -->
+    <string name="help_title">HOW TO PLAY</string>
+    <string name="help_line1">THE DOT CIRCLES ON ITS OWN.</string>
+    <string name="help_line2">TAP WHILE IT IS IN THE GREEN ZONE — TAP OUTSIDE OR OVERSHOOT = GAME OVER.</string>
+    <string name="help_line3">BRIGHT ZONE CENTER = PERFECT: +2 POINTS.</string>
+    <string name="help_line4">PERFECT STREAK? +3, +4, UP TO +5 PER HIT!</string>
+    <string name="help_line5">MEDALS: BRONZE AT 10, SILVER AT 20, GOLD AT 30, PLATINUM AT 40.</string>
+    <string name="help_twists">THE TWISTS</string>
+    <string name="twist_pulse_title">PULSE (AT 5)</string>
+    <string name="twist_pulse_text">THE ZONE BREATHES — GROWS AND SHRINKS.</string>
+    <string name="twist_drift_title">DRIFT (AT 10)</string>
+    <string name="twist_drift_text">THE ZONE SLOWLY WANDERS ALONG THE TRACK.</string>
+    <string name="twist_ghost_title">GHOST (AT 15)</string>
+    <string name="twist_ghost_text">THE DOT BLINKS AWAY — KEEP THE TRACK IN YOUR HEAD.</string>
+    <string name="twist_fake_title">TRAP (AT 20)</string>
+    <string name="twist_fake_text">PURPLE DECOY ZONE: NEVER TAP INTO IT!</string>
+    <string name="twist_chain_title">CHAIN (AT 25)</string>
+    <string name="twist_chain_text">TWO ZONES IN A ROW — SAME DIRECTION.</string>
+    <string name="help_max_twists">AT MOST TWO TWISTS AT ONCE — RANDOMLY MIXED.</string>
+    <string name="tap_to_close">TAP TO CLOSE</string>
+
+    <!-- Skins -->
+    <string name="skin_selected">SELECTED</string>
+    <string name="skin_tap_select">TAP TO SELECT</string>
+    <string name="skin_klassik">CLASSIC</string>
+    <string name="skin_minze">MINT</string>
+    <string name="skin_lava">LAVA</string>
+    <string name="skin_gold">GOLD</string>
+    <string name="skin_frost">FROST</string>
+    <string name="skin_schatten">SHADOW</string>
+    <string name="skin_prisma">PRISM</string>
+    <string name="skin_hint_minze">BEST 10 (BRONZE)</string>
+    <string name="skin_hint_lava">BEST 20 (SILVER)</string>
+    <string name="skin_hint_gold">BEST 30 (GOLD)</string>
+    <string name="skin_hint_frost">BEST 40 (PLATINUM)</string>
+    <string name="skin_hint_schatten">4 PERFECTS IN A ROW</string>
+    <string name="skin_hint_prisma">DAILY STREAK: 3 DAYS</string>
+
+    <!-- Score-Card / Teilen -->
+    <string name="share_text">%1$d points in PUNKT. — can you beat that?</string>
+    <string name="share_text_daily">Daily Challenge in PUNKT.: %1$d points — can you beat that?</string>
+    <string name="share_chooser">Share score</string>
+    <string name="card_daily">DAILY CHALLENGE</string>
+    <string name="card_points">POINTS</string>
+    <string name="card_daily_streak">DAILY STREAK: %1$d DAYS</string>
+    <string name="card_record">BEST: %1$d</string>
+    <string name="card_challenge">CAN YOU BEAT IT?</string>
+
+    <!-- Daily-Reminder-Notification -->
+    <string name="notif_channel_name">Daily Challenge reminder</string>
+    <string name="notif_channel_desc">Reminds you once a day of the Daily Challenge.</string>
+    <string name="notif_title">Your Daily Challenge is waiting!</string>
+    <string name="notif_text">Today\'s pattern is ready. One tap decides.</string>
+    <string name="notif_text_streak_one">Streak: 1 day — don\'t let it break!</string>
+    <string name="notif_text_streak">Streak: %1$d days — don\'t let it break!</string>
 </resources>

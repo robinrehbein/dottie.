@@ -75,3 +75,41 @@ jobs:
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/bundle/release/app-release.aab
+
+  # Läuft nur bei manuellem Start (Actions → Build APK → "Run workflow"
+  # auf main) und lädt das AAB in den internen Test-Track der Play
+  # Console. Braucht die Secrets PLAY_SERVICE_ACCOUNT_JSON und den
+  # rotierten Keystore (PUNKT_KEYSTORE_BASE64) — Anleitung in
+  # PUBLISHING.md. Jeder Upload braucht einen frischen versionCode.
+  play-internal:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Play-Upload-Voraussetzungen
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          KEYSTORE: ${{ secrets.PUNKT_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$PLAY_JSON" ]; then
+            echo "::error::Secret PLAY_SERVICE_ACCOUNT_JSON fehlt — siehe PUBLISHING.md."
+            exit 1
+          fi
+          if [ -z "$KEYSTORE" ]; then
+            echo "::error::Keystore nicht rotiert (PUNKT_KEYSTORE_BASE64 fehlt) — der Test-Keystore darf nie in den Play Store."
+            exit 1
+          fi
+
+      - name: Download AAB
+        uses: actions/download-artifact@v4
+        with:
+          name: punkt-release-aab
+
+      - name: Upload in den internen Test-Track
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: de.robinrehbein.punkt
+          releaseFiles: app-release.aab
+          track: internal
+          status: draft

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Deutsche Texte — Default (Englisch) liegt in values/strings.xml.
+     Beide Dateien führen dieselben Keys in derselben Reihenfolge. -->
+<resources>
+    <!-- Startscreen -->
+    <string name="ready_hint">STOPPE DEN PUNKT IN DER GRUENEN ZONE</string>
+    <string name="sound_on">TON: AN</string>
+    <string name="sound_off">TON: AUS</string>
+    <string name="reminder_on">ERINNERUNG: AN</string>
+    <string name="reminder_off">ERINNERUNG: AUS</string>
+    <string name="best_score">REKORD: %1$d</string>
+    <string name="leaderboard">RANGLISTE</string>
+    <string name="daily">DAILY</string>
+    <string name="skins">SKINS</string>
+    <string name="today_score">HEUTE: %1$d</string>
+    <string name="streak_one">SERIE: 1 TAG</string>
+    <string name="streak_many">SERIE: %1$d TAGE</string>
+    <string name="run_number">VERSUCH #%1$d</string>
+
+    <!-- Lauf / Banner -->
+    <string name="perfect_plus">PERFEKT! +%1$d</string>
+    <string name="banner_chain">NOCH EINE!</string>
+    <string name="banner_record">REKORD GEKNACKT!</string>
+    <string name="banner_stage">NEUE STUFE!</string>
+    <string name="banner_twist_pulse">NEU: PULS-ZONE!</string>
+    <string name="banner_twist_drift">NEU: WANDERNDE ZONE!</string>
+    <string name="banner_twist_ghost">NEU: GEISTER-PUNKT!</string>
+    <string name="banner_twist_fake">NEU: FALLEN-ZONE!</string>
+    <string name="banner_twist_chain">NEU: KETTEN-ZONE!</string>
+
+    <!-- Game Over -->
+    <string name="game_over">GAME OVER</string>
+    <string name="medal">MEDAILLE</string>
+    <string name="points_label">PUNKTE</string>
+    <string name="record_label">REKORD</string>
+    <string name="new_record">NEUER REKORD!</string>
+    <string name="new_skin_unlocked">NEUER SKIN FREIGESCHALTET!</string>
+    <string name="tap_retry">TIPPEN = NOCHMAL</string>
+    <string name="share">TEILEN</string>
+    <string name="menu">MENUE</string>
+
+    <!-- Spott-Texte (Auswahl deterministisch über score+best) -->
+    <string-array name="taunts_zero">
+        <item>ERNSTHAFT?</item>
+        <item>DAS GING SCHNELL.</item>
+        <item>WAR DAS ABSICHT?</item>
+        <item>AUFWAERMEN ZAEHLT NICHT.</item>
+    </string-array>
+    <string-array name="taunts_close">
+        <item>SO NAH! NUR %1$d GEFEHLT!</item>
+        <item>FAST! NOCH %1$d!</item>
+        <item>AAARGH! %1$d ZU WENIG!</item>
+    </string-array>
+    <string-array name="taunts_low">
+        <item>DAS WAR NIX.</item>
+        <item>DU KANNST MEHR.</item>
+        <item>SCHON VERGESSEN WIE?</item>
+    </string-array>
+    <string-array name="taunts_default">
+        <item>NOCHMAL!</item>
+        <item>GLEICH KLAPPTS!</item>
+        <item>DAS KAM AUS DEM NICHTS.</item>
+        <item>NICHT AUFGEBEN!</item>
+    </string-array>
+
+    <!-- Hilfe -->
+    <string name="help_title">SO GEHT STOPP</string>
+    <string name="help_line1">DER PUNKT KREIST VON ALLEIN.</string>
+    <string name="help_line2">TIPPE, WENN ER IN DER GRUENEN ZONE IST — DANEBEN GETIPPT ODER ZONE VERPASST = AUS.</string>
+    <string name="help_line3">HELLE MITTE DER ZONE = PERFEKT: +2 PUNKTE.</string>
+    <string name="help_line4">PERFEKT IN SERIE? +3, +4, BIS ZU +5 PRO TREFFER!</string>
+    <string name="help_line5">MEDAILLEN: BRONZE AB 10, SILBER AB 20, GOLD AB 30, PLATIN AB 40.</string>
+    <string name="help_twists">DIE TWISTS</string>
+    <string name="twist_pulse_title">PULS (AB 5)</string>
+    <string name="twist_pulse_text">DIE ZONE ATMET — WIRD GROESSER UND KLEINER.</string>
+    <string name="twist_drift_title">DRIFT (AB 10)</string>
+    <string name="twist_drift_text">DIE ZONE WANDERT LANGSAM UEBER DIE BAHN.</string>
+    <string name="twist_ghost_title">GEIST (AB 15)</string>
+    <string name="twist_ghost_text">DER PUNKT BLINKT WEG — BAHN IM KOPF BEHALTEN.</string>
+    <string name="twist_fake_title">FALLE (AB 20)</string>
+    <string name="twist_fake_text">VIOLETTE KOEDER-ZONE: NIE HINEINTIPPEN!</string>
+    <string name="twist_chain_title">KETTE (AB 25)</string>
+    <string name="twist_chain_text">ZWEI ZONEN NACHEINANDER — GLEICHE RICHTUNG.</string>
+    <string name="help_max_twists">MAXIMAL ZWEI TWISTS GLEICHZEITIG — ZUFAELLIG GEMISCHT.</string>
+    <string name="tap_to_close">TIPPEN ZUM SCHLIESSEN</string>
+
+    <!-- Skins -->
+    <string name="skin_selected">AUSGEWAEHLT</string>
+    <string name="skin_tap_select">TIPPEN ZUM WAEHLEN</string>
+    <string name="skin_klassik">KLASSIK</string>
+    <string name="skin_minze">MINZE</string>
+    <string name="skin_lava">LAVA</string>
+    <string name="skin_gold">GOLD</string>
+    <string name="skin_frost">FROST</string>
+    <string name="skin_schatten">SCHATTEN</string>
+    <string name="skin_prisma">PRISMA</string>
+    <string name="skin_hint_minze">REKORD 10 (BRONZE)</string>
+    <string name="skin_hint_lava">REKORD 20 (SILBER)</string>
+    <string name="skin_hint_gold">REKORD 30 (GOLD)</string>
+    <string name="skin_hint_frost">REKORD 40 (PLATIN)</string>
+    <string name="skin_hint_schatten">4 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_prisma">DAILY-SERIE: 3 TAGE</string>
+
+    <!-- Score-Card / Teilen -->
+    <string name="share_text">%1$d Punkte in PUNKT. — schaffst du mehr?</string>
+    <string name="share_text_daily">Daily Challenge in PUNKT.: %1$d Punkte — schaffst du mehr?</string>
+    <string name="share_chooser">Score teilen</string>
+    <string name="card_daily">DAILY-CHALLENGE</string>
+    <string name="card_points">PUNKTE</string>
+    <string name="card_daily_streak">DAILY-SERIE: %1$d TAGE</string>
+    <string name="card_record">REKORD: %1$d</string>
+    <string name="card_challenge">SCHAFFST DU MEHR?</string>
+
+    <!-- Daily-Reminder-Notification -->
+    <string name="notif_channel_name">Daily-Challenge-Erinnerung</string>
+    <string name="notif_channel_desc">Erinnert einmal am Tag an die Daily Challenge.</string>
+    <string name="notif_title">Deine Daily Challenge wartet!</string>
+    <string name="notif_text">Die heutige Abfolge ist bereit. Ein Tap entscheidet.</string>
+    <string name="notif_text_streak_one">Serie: 1 Tag — nicht reißen lassen!</string>
+    <string name="notif_text_streak">Serie: %1$d Tage — nicht reißen lassen!</string>
+</resources>

@@ -34,6 +34,13 @@ class ScoreStore(context: Context) {
             prefs.edit().putBoolean(KEY_MUTED, value).apply()
         }
 
+    /** Tägliche Daily-Challenge-Erinnerung (Opt-in, lokal). */
+    var reminderEnabled: Boolean
+        get() = prefs.getBoolean(KEY_REMINDER, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_REMINDER, value).apply()
+        }
+
     /** Gewählter Punkt-Skin, KLASSIK als Fallback. */
     var selectedSkin: DotSkin
         get() = DotSkin.fromName(prefs.getString(KEY_SKIN, null))
@@ -126,6 +133,7 @@ class ScoreStore(context: Context) {
         const val KEY_BEST = "best_score_timing"
         const val KEY_RUNS = "run_count_timing"
         const val KEY_MUTED = "sound_muted"
+        const val KEY_REMINDER = "daily_reminder"
         const val KEY_BEST_PERFECT = "best_perfect_streak"
         const val KEY_SKIN = "selected_skin"
         const val KEY_DAILY_BEST = "daily_best"

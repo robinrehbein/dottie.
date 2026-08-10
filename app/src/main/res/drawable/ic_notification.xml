@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Statusleisten-Icon: der Punkt als blockiger Pixel-Kreis. Muss
+     einfarbig weiß sein — Android färbt die Silhouette selbst ein. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:width="24dp"
+        android:height="24dp"
+        android:viewportWidth="24"
+        android:viewportHeight="24">
+    <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M9,3h6v3h3v3h3v6h-3v3h-3v3h-6v-3h-3v-3h-3v-6h3v-3h3z"/>
+</vector>
