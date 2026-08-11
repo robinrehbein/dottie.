@@ -124,7 +124,9 @@ Festgehaltene Design-Ideen für ein FLIP-Comeback („FLIP-Münzen"):
 Im Modul `:wear` liegt ein eigenständiger Prototyp für runde Wear-OS-Uhren:
 eine schlanke, alleinstehende Watch-App, die die Spiellogik aus `:core`
 wiederverwendet, aber bewusst abgespeckt ist — nur der Classic-Modus, kein
-Daily, keine Skins, kein Teilen, keine Notifications, Haptik statt Sound.
+Daily, keine Skins, kein Teilen, keine Notifications. Feedback kommt über
+Haptik plus dieselben Chiptune-Sounds wie am Phone (`ChipSynth` liegt
+dafür in `:core`, abschaltbar über „TON: AN/AUS" auf dem Startscreen).
 Der Rekord wird lokal auf der Uhr gespeichert, getrennt vom Telefon-Store.
 Auf Uhren mit Zusatztasten (z. B. dem Quick-Button der Galaxy Watch Ultra)
 lässt sich statt per Touch auch per Tastendruck tappen — praktisch, weil

@@ -4,4 +4,6 @@
     <string name="app_name" translatable="false">POINTLESS.</string>
     <string name="tap">TAP</string>
     <string name="best">BEST: %1$d</string>
+    <string name="sound_on">SOUND: ON</string>
+    <string name="sound_off">SOUND: OFF</string>
 </resources>

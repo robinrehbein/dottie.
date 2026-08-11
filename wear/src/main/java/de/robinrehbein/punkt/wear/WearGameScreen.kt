@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
@@ -28,8 +29,9 @@ private val WearRecordRed = Color(0xFFE53935)
 
 /**
  * Wear-OS-Prototyp von "STOPP": nur der Classic-Modus aus :core, kein
- * Daily, keine Skins, kein Teilen — Haptik statt Sound. Der Rekord liegt
- * lokal auf der Uhr, unabhängig vom Telefon-Store.
+ * Daily, keine Skins, kein Teilen — Haptik plus dieselben Chiptune-Sounds
+ * wie am Phone (WearAudio). Der Rekord liegt lokal auf der Uhr,
+ * unabhängig vom Telefon-Store.
  *
  * `controller` lebt in MainActivity statt hier via remember{}, damit
  * onKeyDown (Hardware-Zusatztasten) und dieser Screen denselben Zustand
@@ -75,7 +77,9 @@ fun WearGameScreen(controller: WearGameController) {
             when (controller.phase) {
                 TimingGame.Phase.READY -> WearReadyOverlay(
                     blinkVisible = blinkVisible,
-                    bestScore = controller.bestScore
+                    bestScore = controller.bestScore,
+                    soundOn = controller.soundOn,
+                    onToggleSound = { controller.toggleSound() }
                 )
                 TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
                     WearRunningOverlay(score = controller.score)
@@ -92,7 +96,12 @@ fun WearGameScreen(controller: WearGameController) {
 }
 
 @Composable
-private fun WearReadyOverlay(blinkVisible: Boolean, bestScore: Int) {
+private fun WearReadyOverlay(
+    blinkVisible: Boolean,
+    bestScore: Int,
+    soundOn: Boolean,
+    onToggleSound: () -> Unit
+) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -111,6 +120,23 @@ private fun WearReadyOverlay(blinkVisible: Boolean, bestScore: Int) {
                     fontWeight = FontWeight.Bold
                 )
             }
+            // Ton-Schalter, dezent unter den Texten. Eigener Tap-Handler:
+            // detectTapGestures konsumiert das Up-Event, dadurch feuert der
+            // ganzflächige Start-Tap des Parent-Box hier nicht mit. Das
+            // Padding liegt INNERHALB des pointerInput-Knotens und
+            // vergrößert so die Tap-Fläche über den Text hinaus.
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(if (soundOn) R.string.sound_on else R.string.sound_off),
+                color = Color.White.copy(alpha = 0.55f),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { onToggleSound() })
+                    }
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            )
         }
     }
 }

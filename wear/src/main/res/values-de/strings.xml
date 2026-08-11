@@ -3,4 +3,6 @@
     <string name="app_name" translatable="false">POINTLESS.</string>
     <string name="tap">TIPP</string>
     <string name="best">REKORD: %1$d</string>
+    <string name="sound_on">TON: AN</string>
+    <string name="sound_off">TON: AUS</string>
 </resources>

@@ -35,6 +35,12 @@ class MainActivity : ComponentActivity() {
         controller.onAppPaused()
     }
 
+    override fun onDestroy() {
+        // SoundPool freigeben (WearAudio) — Ein-Activity-App, Destroy = Ende.
+        if (::controller.isInitialized) controller.release()
+        super.onDestroy()
+    }
+
     /**
      * Hardware-Zusatztasten (z. B. der Quick-Button der Galaxy Watch Ultra)
      * lösen denselben Tap aus wie ein Touch auf das Display — praktisch,
