@@ -93,9 +93,11 @@ class WatchScene:
             in_fake = has_fake and rel_fake <= ZONE_HALF
             in_fake_core = has_fake and rel_fake <= ZONE_HALF * PERFECT_SHARE
 
+            # Zonen-Bloecke wie in WearRenderer.kt: 7f/5f seit dem
+            # Geraete-Test (5f/3.4f waren auf der Uhr zu klein).
             highlighted = in_zone or in_fake
-            outer = self.cell * (5 if highlighted else 3)
-            inner = self.cell * (3.4 if highlighted else 1.8)
+            outer = self.cell * (7 if highlighted else 3)
+            inner = self.cell * (5 if highlighted else 1.8)
             if in_core:
                 color = GRASS_LIGHT
             elif in_zone:

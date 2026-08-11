@@ -127,8 +127,11 @@ private fun DrawScope.drawWearTrack(
             game.zoneHalfWidth * TimingGame.PERFECT_SHARE
 
         val highlighted = inZone || inFake
-        val outer = if (highlighted) cell * 5f else cell * 3f
-        val inner = if (highlighted) cell * 3.4f else cell * 1.8f
+        // Zonen-Bloecke deutlich groesser als die neutrale Kette: Auf der
+        // echten Uhr waren 5f/3.4f zu klein, um die Zone im Augenwinkel zu
+        // treffen (Feedback vom Geraete-Test auf der Galaxy Watch Ultra).
+        val outer = if (highlighted) cell * 7f else cell * 3f
+        val inner = if (highlighted) cell * 5f else cell * 1.8f
         val innerColor = when {
             inPerfectCore -> WearGrassLight
             inZone -> WearGrassDark
