@@ -96,6 +96,17 @@ jobs:
           name: punkt-release-aab
           path: app/build/outputs/bundle/release/app-release.aab
 
+      # bundleRelease im Root baut auch :wear mit — seit der Signing-Config
+      # in wear/build.gradle.kts ist das Wear-AAB store-tauglich signiert
+      # und wird in der Play Console als zweites Bundle (Formfaktor Wear OS)
+      # im selben Release hochgeladen, siehe PUBLISHING.md.
+      - name: Upload release wear App Bundle
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: punkt-wear-release-aab
+          path: wear/build/outputs/bundle/release/wear-release.aab
+
       - name: Publish APKs as release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
@@ -108,6 +119,7 @@ jobs:
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/bundle/release/app-release.aab
             wear/build/outputs/apk/debug/wear-debug.apk
+            wear/build/outputs/bundle/release/wear-release.aab
 
   # Läuft nur bei manuellem Start (Actions → Build APK → "Run workflow"
   # auf main) und lädt das AAB in den internen Test-Track der Play

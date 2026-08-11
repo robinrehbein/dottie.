@@ -17,6 +17,8 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.11.
 - [ ] IARC-Fragebogen (Content-Rating) ausfüllen
 - [ ] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
       oder per CI-Job `play-internal`, siehe unten)
+- [ ] Optional: Wear-App mitverteilen — Formfaktor Wear OS aktivieren und
+      `wear-release.aab` mit hochladen (Anleitung unten)
 - [ ] 12 Tester einladen, 14 Tage testen lassen (Pflicht bei neuen Privat-Konten)
 - [ ] Production-Freigabe beantragen
 
@@ -225,8 +227,40 @@ und die App bleibt komplett offline. So wird es scharf geschaltet:
    Data-Safety-Formular muss dann angepasst werden (Google-Play-Games-
    Profil, Scores an Google). Ohne Aktivierung ändert sich nichts.
 
+## Wear-App im Play Store mitverteilen
+
+Die CI baut neben dem Phone-AAB auch `wear-release.aab` (signiert mit
+demselben Upload-Keystore, sobald die Secrets gesetzt sind — davor mit
+dem Test-Keystore, der nie in den Store darf). Beide Bundles hängen an
+den `apk-build-N`-Releases. Phone- und Wear-App teilen sich die
+Paket-ID `de.robinrehbein.pointless` und damit den Store-Eintrag; Play
+liefert automatisch das passende Bundle pro Gerätetyp aus.
+
+Einrichtung in der Play Console (einmalig):
+
+1. **Releases → Einrichtung → Erweiterte Einstellungen → Formfaktoren**
+   → „Formfaktor hinzufügen" → **Wear OS** aktivieren.
+2. Im Test-Release (intern oder geschlossen) zusätzlich zum Phone-AAB
+   das `wear-release.aab` hochladen — die Console ordnet es am
+   `<uses-feature android.hardware.type.watch>` automatisch Wear zu.
+3. Fürs Listing verlangt Play mindestens einen **Wear-Screenshot**
+   (rund dargestellt, min. 384×384 px, Format 1:1).
+4. Installiert wird auf der Uhr über den **Play Store auf der Uhr**
+   (gleiches Google-Konto wie der Tester); die App ist standalone
+   (`com.google.android.wearable.standalone`), das Telefon ist egal.
+
+Wear-Releases durchlaufen zusätzlich Googles Wear-OS-Qualitätsprüfung —
+für interne Tests ist das egal, für Production muss der Prototyp
+vorher auf echter Hardware getestet sein.
+
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
 (`app/build.gradle.kts`). Aktuell: `versionCode 25` / `versionName
 "2.14"`. Vor jedem Store-Upload beides anheben und committen.
+
+Die Wear-App zählt in einem eigenen Bereich **ab 100001**
+(`wear/build.gradle.kts`), damit sich die beiden Zähler nie in die
+Quere kommen — Play verlangt eindeutige versionCodes über alle
+Artefakte einer Paket-ID hinweg. Auch hier gilt: vor jedem Upload
+anheben.

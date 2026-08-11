@@ -134,6 +134,12 @@ Installation zum Testen per WLAN-ADB: Entwicklermodus auf der Uhr
 aktivieren, dort WLAN-Debugging einschalten, dann vom Rechner aus
 `adb connect UHR-IP:5555` und `adb install wear-debug.apk`.
 
+Alternativ ohne PC: Die CI baut auch ein store-taugliches
+`wear-release.aab` (eigener versionCode-Bereich ab 100001), das sich in
+der Play Console als zweites Bundle im selben Release verteilen lässt —
+die Uhr installiert dann über ihren eigenen Play Store. Anleitung in
+[PUBLISHING.md](PUBLISHING.md).
+
 ## Build
 
 ```
