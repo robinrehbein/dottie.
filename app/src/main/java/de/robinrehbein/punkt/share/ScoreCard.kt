@@ -146,7 +146,9 @@ object ScoreCard {
             else -> null
         }
         if (medal != null) {
-            drawMedal(canvas, paint, cx, H * 0.755f, 62f, medal.first, medal.second)
+            // Münz-Mitte so, dass das Band oben nicht in die REKORD-Zeile
+            // ragt und die Münze über der Grasnarbe endet.
+            drawMedal(canvas, paint, cx, H * 0.79f, 62f, medal.first, medal.second)
         }
 
         drawShadowed(context.getString(R.string.card_challenge), cx, H * 0.945f, 72f, ACCENT)
