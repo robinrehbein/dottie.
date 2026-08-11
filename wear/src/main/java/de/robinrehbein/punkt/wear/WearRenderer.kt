@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.rotate
 import de.robinrehbein.punkt.game.TimingGame
 import kotlin.math.abs
 import kotlin.math.cos
@@ -33,8 +34,13 @@ internal val WearGrassDark = Color(0xFF74BF2E)
 /** Standard-Segmentfarbe außerhalb jeder Zone (Sand-Ton aus GameOverlays.kt). */
 internal val WearTrackDefaultColor = Color(0xFFD3C87E)
 
+/**
+ * Gold-Akzent (DotBody am Phone) für Overlay-Texte und der Glanzton der
+ * Medaillen-Münze. Der Vogel selbst zeichnet nicht mehr mit diesen
+ * Konstanten, sondern mit dem gewählten Skin (WearDotSkin) — KLASSIK
+ * trägt dieselben Werte.
+ */
 internal val WearDotBody = Color(0xFFFFD847)
-internal val WearDotShade = Color(0xFFF5A623)
 internal val WearDotShine = Color(0xFFFFF3B8)
 
 /** Fallen-Zone (aus TimingGameScreen.kt, dort privat). */
@@ -45,11 +51,26 @@ internal val WearFakeZoneCoreColor = Color(0xFF8A2FB0)
 private const val WEAR_GRID = 13f
 
 /**
+ * Mario-Tod, Werte 1:1 aus TimingGameScreen.kt: Nach dem Todes-Freeze
+ * hüpft der Vogel mit dieser Anfangsgeschwindigkeit nach oben und fällt
+ * dann mit der Gravitation unten aus dem Bild — beides in Bildhöhen pro
+ * Sekunde(²), skaliert also automatisch aufs kleine Display.
+ */
+private const val WEAR_DEATH_HOP_SPEED = 1.6f
+private const val WEAR_DEATH_GRAVITY = 6f
+
+/**
+ * Während des Hüpfers dreht sich der Vogel um 180° auf den Rücken und
+ * fällt kopfüber — die Drehung ist am Scheitelpunkt (~0,27s) fertig.
+ */
+private const val WEAR_DEATH_FLIP_SECONDS = 0.3f
+
+/**
  * Zeichnet die komplette Spielwelt für das runde Wear-Display: Himmel je
  * nach Score-Stufe, die Bahn als Perlenkette und den Vogel — kein
  * Szenerie-/Boden-Hintergrund wie am Phone, das Display ist dafür zu klein.
  */
-internal fun DrawScope.drawWearWorld(game: TimingGame) {
+internal fun DrawScope.drawWearWorld(game: TimingGame, skin: WearDotSkin) {
     val d = size.minDimension
     val cx = size.width / 2f
     val cy = size.height / 2f
@@ -63,8 +84,11 @@ internal fun DrawScope.drawWearWorld(game: TimingGame) {
 
     val radius = d * 0.38f
     drawWearTrack(game, cx, cy, radius, cell)
-    if (game.isDotVisible) {
-        drawWearDot(game, cx, cy, radius, d)
+    // In OVER ist der Vogel bereits unten aus dem Bild gefallen
+    // (Mario-Hüpfer in der DYING-Phase) — die Bahn bleibt leer, bis der
+    // nächste Lauf startet. Am Phone regelt das fx.deathTime genauso.
+    if (game.phase != TimingGame.Phase.OVER && game.isDotVisible) {
+        drawWearDot(game, cx, cy, radius, d, skin)
     }
 }
 
@@ -103,8 +127,11 @@ private fun DrawScope.drawWearTrack(
             game.zoneHalfWidth * TimingGame.PERFECT_SHARE
 
         val highlighted = inZone || inFake
-        val outer = if (highlighted) cell * 5f else cell * 3f
-        val inner = if (highlighted) cell * 3.4f else cell * 1.8f
+        // Zonen-Bloecke deutlich groesser als die neutrale Kette: Auf der
+        // echten Uhr waren 5f/3.4f zu klein, um die Zone im Augenwinkel zu
+        // treffen (Feedback vom Geraete-Test auf der Galaxy Watch Ultra).
+        val outer = if (highlighted) cell * 7f else cell * 3f
+        val inner = if (highlighted) cell * 5f else cell * 1.8f
         val innerColor = when {
             inPerfectCore -> WearGrassLight
             inZone -> WearGrassDark
@@ -126,49 +153,131 @@ private fun DrawScope.drawWearTrack(
     }
 }
 
-/** Vogel als Pixel-Kreis mit Auge/Glanzpunkt in Flugrichtung. */
+/**
+ * Vogel als Pixel-Kreis mit Auge/Glanzpunkt in Flugrichtung — Körper-,
+ * Schatten- und Glanzfarbe kommen aus dem gewählten Skin, wie
+ * drawTimingDot am Phone.
+ */
 private fun DrawScope.drawWearDot(
     game: TimingGame,
     cx: Float,
     cy: Float,
     radius: Float,
-    minDimension: Float
+    minDimension: Float,
+    skin: WearDotSkin
 ) {
     val px = cx + cos(game.angle) * radius
-    val py = cy + sin(game.angle) * radius
+    var py = cy + sin(game.angle) * radius
     val r = minDimension * 0.075f
 
-    drawWearPixelCircle(
-        color = WearDotBody,
-        outline = WearOutlineColor,
-        centerX = px,
-        centerY = py,
-        radius = r,
-        shade = WearDotShade
-    )
+    // Mario-Tod wie am Phone (drawTimingDot in TimingGameScreen.kt):
+    // Während des Todes-Freeze bleibt der Vogel stehen, dann hüpft er nach
+    // oben, dreht sich dabei auf den Rücken und fällt kopfüber mit
+    // Gravitation unten aus dem Bild. Ein eigener Zeitgeber ist unnötig —
+    // game.elapsed zählt in DYING ab dem Todesmoment.
+    var flip = 0f
+    if (game.phase == TimingGame.Phase.DYING) {
+        val t = game.elapsed - TimingGame.DEATH_FREEZE_SECONDS
+        if (t > 0f) {
+            val h = size.height
+            py += (-WEAR_DEATH_HOP_SPEED * t + 0.5f * WEAR_DEATH_GRAVITY * t * t) * h
+            if (py - r * 2f > h) return
+            flip = 180f * (t / WEAR_DEATH_FLIP_SECONDS).coerceAtMost(1f)
+        }
+    }
 
-    val u = (r * 2f) / WEAR_GRID
-    fun rect(col: Float, row: Float, cols: Float, rows: Float, color: Color) {
-        drawRect(
-            color = color,
-            topLeft = Offset(px - r + col * u, py - r + row * u),
-            size = Size(cols * u, rows * u)
+    fun drawBird() {
+        drawWearPixelCircle(
+            color = skin.body,
+            outline = WearOutlineColor,
+            centerX = px,
+            centerY = py,
+            radius = r,
+            shade = skin.shade
         )
+
+        val u = (r * 2f) / WEAR_GRID
+        fun rect(col: Float, row: Float, cols: Float, rows: Float, color: Color) {
+            drawRect(
+                color = color,
+                topLeft = Offset(px - r + col * u, py - r + row * u),
+                size = Size(cols * u, rows * u)
+            )
+        }
+
+        // Auge/Glanzpunkt folgen der sichtbaren Flugrichtung wie am Phone
+        // (drawTimingDot in TimingGameScreen.kt): horizontale Geschwindigkeit
+        // ist ~ -sin(angle) * direction — zeigt sie nach links, wird gespiegelt.
+        val facingLeft = sin(game.angle) * game.direction > 0f
+        if (facingLeft) {
+            rect(WEAR_GRID - 4.5f, 2.5f, 2f, 2f, skin.shine)
+            rect(2f, 3f, 3.5f, 4f, Color.White)
+            rect(2f, 4f, 1.5f, 2f, WearOutlineColor)
+        } else {
+            rect(2.5f, 2.5f, 2f, 2f, skin.shine)
+            rect(7.5f, 3f, 3.5f, 4f, Color.White)
+            rect(9.5f, 4f, 1.5f, 2f, WearOutlineColor)
+        }
     }
 
-    // Auge/Glanzpunkt folgen der sichtbaren Flugrichtung wie am Phone
-    // (drawTimingDot in TimingGameScreen.kt): horizontale Geschwindigkeit
-    // ist ~ -sin(angle) * direction — zeigt sie nach links, wird gespiegelt.
-    val facingLeft = sin(game.angle) * game.direction > 0f
-    if (facingLeft) {
-        rect(WEAR_GRID - 4.5f, 2.5f, 2f, 2f, WearDotShine)
-        rect(2f, 3f, 3.5f, 4f, Color.White)
-        rect(2f, 4f, 1.5f, 2f, WearOutlineColor)
+    if (flip > 0f) {
+        rotate(degrees = flip, pivot = Offset(px, py)) { drawBird() }
     } else {
-        rect(2.5f, 2.5f, 2f, 2f, WearDotShine)
-        rect(7.5f, 3f, 3.5f, 4f, Color.White)
-        rect(9.5f, 4f, 1.5f, 2f, WearOutlineColor)
+        drawBird()
     }
+}
+
+/**
+ * Kleine Pixel-Münze in den Farben der Medaillen-Stufe. Die 72dp-Medaille
+ * des Phones (MedalBadge in GameOverlays.kt) samt Band wäre auf der Uhr
+ * zu groß — hier reicht die Münze mit Glanzpunkt als kompaktes Symbol.
+ */
+internal fun DrawScope.drawWearMedalCoin(tier: WearMedalTier) {
+    val r = size.minDimension / 2f
+    val cx = size.width / 2f
+    val cy = size.height / 2f
+    drawWearPixelCircle(
+        color = tier.body,
+        outline = WearOutlineColor,
+        centerX = cx,
+        centerY = cy,
+        radius = r,
+        shade = tier.shade
+    )
+    // Glanzpunkt oben links, wie auf der Phone-Münze.
+    val u = (r * 2f) / WEAR_GRID
+    drawRect(
+        color = WearDotShine,
+        topLeft = Offset(cx - r + 2.5f * u, cy - r + 2.5f * u),
+        size = Size(2f * u, 2f * u)
+    )
+}
+
+/**
+ * Kleine Skin-Vorschau-Münze fürs READY-Overlay: Pixel-Kreis in den
+ * Farben des gewählten Skins mit Glanzpunkt — dieselbe Zeichnung wie die
+ * Medaillen-Münze, nur eben in Skin-Farben. Ein Tap darauf schaltet
+ * zyklisch zum nächsten freigeschalteten Skin (siehe cycleSkin im
+ * WearGameController).
+ */
+internal fun DrawScope.drawWearSkinCoin(skin: WearDotSkin) {
+    val r = size.minDimension / 2f
+    val cx = size.width / 2f
+    val cy = size.height / 2f
+    drawWearPixelCircle(
+        color = skin.body,
+        outline = WearOutlineColor,
+        centerX = cx,
+        centerY = cy,
+        radius = r,
+        shade = skin.shade
+    )
+    val u = (r * 2f) / WEAR_GRID
+    drawRect(
+        color = skin.shine,
+        topLeft = Offset(cx - r + 2.5f * u, cy - r + 2.5f * u),
+        size = Size(2f * u, 2f * u)
+    )
 }
 
 /** Lokale Kopie von drawPixelCircle (GameOverlays.kt) — kein :app-Zugriff. */

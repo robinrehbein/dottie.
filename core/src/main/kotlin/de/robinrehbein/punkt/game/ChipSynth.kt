@@ -7,6 +7,8 @@ import kotlin.random.Random
 /**
  * Purer Kotlin-Synthesizer für Chiptune-Soundeffekte im NES-Stil:
  * Rechteckwellen und Rauschen, zur Laufzeit erzeugt — keine Audio-Assets.
+ * Lebt in :core (kein Android nötig), damit Phone (:app, GameAudio) und
+ * Uhr (:wear, WearAudio) exakt dieselben Klänge erzeugen.
  *
  * Alle Funktionen liefern Mono-Samples im Bereich [-1, 1] bei
  * [SAMPLE_RATE] Hz. Jeder Ton bekommt eine kurze Attack-Rampe und ein

@@ -7,9 +7,9 @@ import android.os.Vibrator
 import android.os.VibratorManager
 
 /**
- * Haptik statt Sound: Der Wear-Prototyp hat keinen eigenen Sound-Use-Case
- * (siehe GameHaptics in :app für die Telefon-Entsprechung mit Audio) —
- * Vibration ist hier das komplette Feedback.
+ * Haptik zusätzlich zum Sound (WearAudio) — Vibration bleibt das
+ * primäre Feedback am Handgelenk, gerade wenn der Ton aus ist
+ * (siehe GameHaptics in :app für die Telefon-Entsprechung).
  *
  * minSdk 30 liegt unter API 31 (VibratorManager) — auf API 30 muss der
  * alte Weg über den klassischen Vibrator-Service greifen.

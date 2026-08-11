@@ -7,8 +7,12 @@
 
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Gleiches Launcher-Icon wie die Phone-App (Mipmaps aus :app
+         kopiert): Als Adaptive Icon wird es vom Wear-Launcher automatisch
+         rund maskiert. -->
     <application
             android:allowBackup="true"
+            android:icon="@mipmap/ic_launcher"
             android:label="@string/app_name">
 
         <!-- Eigenständige Wear-App: läuft ohne installierte Companion-
