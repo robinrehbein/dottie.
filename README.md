@@ -115,6 +115,21 @@ Festgehaltene Design-Ideen für ein FLIP-Comeback („FLIP-Münzen"):
 - Münzen ab Score 5, etwa jede 3.–4. Säule, Pixel-Explosion + Haptik
   beim Einsammeln, eigene Gier-Spott-Texte beim Tod
 
+## Wear-OS-Prototyp (experimentell)
+
+Im Modul `:wear` liegt ein eigenständiger Prototyp für runde Wear-OS-Uhren:
+eine schlanke, alleinstehende Watch-App, die die Spiellogik aus `:core`
+wiederverwendet, aber bewusst abgespeckt ist — nur der Classic-Modus, kein
+Daily, keine Skins, kein Teilen, keine Notifications, Haptik statt Sound.
+Der Rekord wird lokal auf der Uhr gespeichert, getrennt vom Telefon-Store.
+Auf Uhren mit Zusatztasten (z. B. dem Quick-Button der Galaxy Watch Ultra)
+lässt sich statt per Touch auch per Tastendruck tappen — praktisch, weil
+der Finger beim Timing sonst genau die Zielzone verdeckt.
+
+Installation zum Testen per WLAN-ADB: Entwicklermodus auf der Uhr
+aktivieren, dort WLAN-Debugging einschalten, dann vom Rechner aus
+`adb connect UHR-IP:5555` und `adb install wear-debug.apk`.
+
 ## Build
 
 ```
