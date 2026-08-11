@@ -9,11 +9,15 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "de.robinrehbein.punkt"
+        // Neue Paket-ID nach der Umbenennung PUNKT. -> POINTLESS.: die alte
+        // ID de.robinrehbein.punkt ist im Play Store bereits vergeben und
+        // deren Signing-Key nicht mehr vorhanden — eine Play-Paket-ID ist
+        // ohne den Original-Key fuer immer blockiert, daher der Neustart.
+        applicationId = "de.robinrehbein.pointless"
         minSdk = 28
         targetSdk = 36
-        versionCode = 24
-        versionName = "2.13.2"
+        versionCode = 25
+        versionName = "2.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -79,6 +83,7 @@ android {
 
 dependencies {
 
+    implementation(project(":core"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default = Englisch, wie im Phone-Modul. Deutsch liegt in values-de/. -->
+<resources>
+    <string name="app_name" translatable="false">POINTLESS.</string>
+    <string name="tap">TAP</string>
+    <string name="best">BEST: %1$d</string>
+</resources>

@@ -233,9 +233,11 @@ internal fun ReadyOverlay(
                 .padding(top = 80.dp)
         ) {
             Text(
-                text = "PUNKT.",
+                // 56.sp statt 64.sp: "POINTLESS." ist 10 Zeichen breit und
+                // muss auch auf 360-dp-Displays ohne Umbruch passen.
+                text = "POINTLESS.",
                 style = ScoreShadowStyle,
-                fontSize = 64.sp,
+                fontSize = 56.sp,
                 color = Color.White
             )
             if (bestScore > 0) {

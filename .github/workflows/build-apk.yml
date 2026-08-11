@@ -39,6 +39,17 @@ jobs:
           name: punkt-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
 
+      # assembleDebug im Root-Build-Check baut :wear automatisch mit (jedes
+      # com.android.application-Modul hängt sein assembleDebug an den
+      # gleichnamigen Root-Task) — die Wear-APK landet daher genauso als
+      # Branch-Artefakt wie die Phone-APK.
+      - name: Upload debug wear APK (Branch-Artefakt)
+        if: github.ref != 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: punkt-wear-debug-apk
+          path: wear/build/outputs/apk/debug/wear-debug.apk
+
       - name: Prepare release keystore
         # Sobald das Secret PUNKT_KEYSTORE_BASE64 gesetzt ist (Keystore-
         # Rotation, siehe PUBLISHING.md), signiert der Build mit dem echten
@@ -96,6 +107,7 @@ jobs:
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/bundle/release/app-release.aab
+            wear/build/outputs/apk/debug/wear-debug.apk
 
   # Läuft nur bei manuellem Start (Actions → Build APK → "Run workflow"
   # auf main) und lädt das AAB in den internen Test-Track der Play
@@ -130,7 +142,7 @@ jobs:
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: de.robinrehbein.punkt
+          packageName: de.robinrehbein.pointless
           releaseFiles: app-release.aab
           track: internal
           status: draft

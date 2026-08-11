@@ -1,4 +1,4 @@
-# PUNKT. — Weg in den Play Store
+# POINTLESS. — Weg in den Play Store
 
 Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.11.
 
@@ -85,7 +85,7 @@ wird öffentlich sichtbar.
 
 **App-Name** (max. 30 Zeichen):
 
-> PUNKT. — Timing-Arcade
+> POINTLESS. — Timing-Arcade
 
 **Kurzbeschreibung** (max. 80 Zeichen):
 
@@ -95,7 +95,7 @@ wird öffentlich sichtbar.
 
 > **Ein Punkt. Ein Daumen. Kein Erbarmen.**
 >
-> PUNKT. ist pures Timing: Ein Punkt kreist auf seiner Bahn — tippe
+> POINTLESS. ist pures Timing: Ein Punkt kreist auf seiner Bahn — tippe
 > genau dann, wenn er die grüne Zone durchquert. Triffst du, geht es
 > weiter. Verpasst du, ist der Run sofort vorbei. Kein Tutorial-Kram,
 > keine Wartezeiten: Der nächste Versuch ist einen Tap entfernt.
@@ -130,7 +130,7 @@ wird öffentlich sichtbar.
 
 **App name** (max. 30 Zeichen):
 
-> PUNKT. — Timing Arcade
+> POINTLESS. — Timing Arcade
 
 **Short description** (max. 80 Zeichen):
 
@@ -140,7 +140,7 @@ wird öffentlich sichtbar.
 
 > **One dot. One thumb. No mercy.**
 >
-> PUNKT. is pure timing: a dot circles its track — tap exactly when it
+> POINTLESS. is pure timing: a dot circles its track — tap exactly when it
 > crosses the green zone. Hit it and you keep going. Miss it and the run
 > is over on the spot. No tutorials, no waiting: the next attempt is one
 > tap away.
@@ -189,7 +189,7 @@ workflow** (auf `main`). Einmalige Einrichtung:
    verlinkt direkt in die Cloud Console).
 2. In der Cloud Console für das Service-Konto einen **JSON-Key**
    erzeugen und herunterladen.
-3. Zurück in der Play Console dem Service-Konto Zugriff auf PUNKT.
+3. Zurück in der Play Console dem Service-Konto Zugriff auf POINTLESS.
    geben — die Berechtigung „Releases in Tests verwalten" reicht.
 4. Den **kompletten JSON-Inhalt** als GitHub-Secret
    `PLAY_SERVICE_ACCOUNT_JSON` anlegen (Settings → Secrets and
@@ -197,7 +197,7 @@ workflow** (auf `main`). Einmalige Einrichtung:
    committen, nie in Chats einfügen.
 
 Zwei Dinge kann die API nicht, die bleiben Handarbeit in der Console:
-die App selbst anlegen (Name „PUNKT.", Paket `de.robinrehbein.punkt`)
+die App selbst anlegen (Name „Pointless.", Paket `de.robinrehbein.pointless`)
 und den allerersten Upload prüfen/freigeben. Außerdem gilt: Der Job
 verweigert den Start, solange der Keystore nicht rotiert ist
 (`PUNKT_KEYSTORE_BASE64` fehlt), und jeder Upload braucht einen noch
@@ -228,5 +228,5 @@ und die App bleibt komplett offline. So wird es scharf geschaltet:
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 24` / `versionName
-"2.13.2"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 25` / `versionName
+"2.14"`. Vor jedem Store-Upload beides anheben und committen.
