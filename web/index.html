@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport-fit=cover: die Safe-Areas (Notch/Home-Indicator) werden per
+       env(safe-area-inset-*) in style.css berücksichtigt. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#4EC0CA">
+  <meta name="description" content="Dottie. — stop the dot in the green zone. A tiny rage game.">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- iOS: installierbar über Safari-Teilen -> "Zum Home-Bildschirm" -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Dottie.">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="icon" type="image/png" href="icon-512.png">
+
+  <title>Dottie.</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="stage">
+    <canvas id="game"></canvas>
+
+    <!-- PERFEKT! +n — sitzt knapp unter der Bahn (74% Bildhöhe) -->
+    <div id="perfect" class="shadow-text hidden">PERFECT! +2</div>
+
+    <!-- HUD im Lauf -->
+    <div id="hud" class="overlay hidden">
+      <div id="score" class="shadow-text">0</div>
+      <div id="hud-daily" class="shadow-text hidden">DAILY</div>
+      <div id="banner" class="shadow-text hidden"></div>
+    </div>
+
+    <!-- Startscreen -->
+    <div id="overlay-ready" class="overlay">
+      <button id="btn-sound" class="pixel-btn corner-tl" type="button"></button>
+      <button id="btn-help" class="pixel-btn corner-tr" type="button">?</button>
+
+      <div class="ready-top">
+        <div id="title" class="shadow-text">DOTTIE.</div>
+        <div id="best-line" class="shadow-text hidden"></div>
+      </div>
+
+      <div id="hint" class="shadow-text blink"></div>
+
+      <div class="ready-bottom">
+        <div class="btn-row">
+          <button id="btn-daily" class="pixel-btn gold" type="button"></button>
+          <button id="btn-skins" class="pixel-btn" type="button"></button>
+        </div>
+        <div id="daily-line" class="shadow-text hidden"></div>
+        <div id="run-line" class="shadow-text hidden"></div>
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="overlay-gameover" class="overlay hidden">
+      <button id="btn-help-over" class="pixel-btn corner-tr" type="button">?</button>
+
+      <div class="go-center">
+        <div id="go-title" class="shadow-text">GAME OVER</div>
+
+        <div class="pixel-panel">
+          <div class="panel-row">
+            <div class="medal-col">
+              <canvas id="go-medal" width="144" height="144"></canvas>
+              <div id="go-medal-name"></div>
+              <div id="go-medal-next" class="hidden"></div>
+            </div>
+            <div class="score-col">
+              <div id="go-score-label" class="panel-label"></div>
+              <div id="go-score" class="panel-value">0</div>
+              <div id="go-best-label" class="panel-label"></div>
+              <div id="go-best" class="panel-value">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="go-taunt" class="shadow-text"></div>
+        <div id="go-daily-line" class="shadow-text hidden"></div>
+        <div id="go-new-medal" class="shadow-text gold hidden"></div>
+        <div id="go-new-skin" class="shadow-text gold hidden"></div>
+        <div id="go-retry" class="shadow-text blink"></div>
+        <div class="btn-row">
+          <button id="btn-menu" class="pixel-btn" type="button"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hilfe -->
+    <div id="overlay-help" class="overlay scrim hidden">
+      <div id="help-content" class="scroll-content"></div>
+    </div>
+
+    <!-- Skins -->
+    <div id="overlay-skins" class="overlay scrim hidden">
+      <div class="scroll-content">
+        <div id="skins-title" class="shadow-text scrim-title">SKINS</div>
+        <div id="skin-list"></div>
+        <div id="skins-close" class="help-close"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/strings.js"></script>
+  <script src="js/skins.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/daily.js"></script>
+  <script src="js/synth.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

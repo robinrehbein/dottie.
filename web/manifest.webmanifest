@@ -1,0 +1,24 @@
+{
+  "name": "Dottie.",
+  "short_name": "Dottie.",
+  "description": "Stop the dot in the green zone. A tiny rage game.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#4EC0CA",
+  "theme_color": "#4EC0CA",
+  "icons": [
+    {
+      "src": "icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
