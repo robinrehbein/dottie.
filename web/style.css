@@ -100,7 +100,13 @@ body {
   position: absolute;
   top: calc(16px + env(safe-area-inset-top, 0px));
   left: calc(16px + env(safe-area-inset-left, 0px));
+  /* quadratisch wie am Phone (PixelIconButton) — Icon statt Text */
+  width: 48px;
+  height: 48px;
+  padding: 0;
 }
+
+.corner-tl svg { display: block; margin: auto; }
 
 .corner-tr {
   position: absolute;
