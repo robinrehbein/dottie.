@@ -5,4 +5,32 @@
     <string name="best">REKORD: %1$d</string>
     <string name="sound_on">TON: AN</string>
     <string name="sound_off">TON: AUS</string>
+    <string name="new_record">NEUER REKORD!</string>
+    <string name="banner_record">REKORD GEKNACKT!</string>
+
+    <!-- Medaillen-Namen, identisch zum Phone-Modul -->
+    <string name="medal_bronze">BRONZE</string>
+    <string name="medal_silver">SILBER</string>
+    <string name="medal_gold">GOLD</string>
+    <string name="medal_platinum">PLATIN</string>
+
+    <!-- Spott-Texte: Wear-taugliche Teilmenge der Phone-Arrays (kurz genug
+         fürs runde Display, max. ~18 Zeichen); Auswahl deterministisch
+         über score+best wie am Phone. -->
+    <string-array name="taunts_zero">
+        <item>ERNSTHAFT?</item>
+        <item>DAS GING SCHNELL.</item>
+    </string-array>
+    <string-array name="taunts_close">
+        <item>NUR %1$d GEFEHLT!</item>
+        <item>SO NAH!</item>
+    </string-array>
+    <string-array name="taunts_low">
+        <item>DAS WAR NIX.</item>
+        <item>DU KANNST MEHR.</item>
+    </string-array>
+    <string-array name="taunts_default">
+        <item>NOCHMAL!</item>
+        <item>NICHT AUFGEBEN!</item>
+    </string-array>
 </resources>

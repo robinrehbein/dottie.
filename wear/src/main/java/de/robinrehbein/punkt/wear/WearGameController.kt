@@ -35,6 +35,9 @@ class WearGameController(context: Context) {
     private val audio = WearAudio(context)
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+    /** Für die Spott-Text-Ressourcen; ApplicationContext leakt nicht. */
+    private val appContext = context.applicationContext
+
     var phase by mutableStateOf(TimingGame.Phase.READY)
         private set
     var score by mutableIntStateOf(0)
@@ -42,6 +45,14 @@ class WearGameController(context: Context) {
     var bestScore by mutableIntStateOf(prefs.getInt(KEY_BEST, 0))
         private set
     var isNewRecord by mutableStateOf(false)
+        private set
+
+    /** Spott-Text des letzten Todes, fürs OVER-Overlay (leer bei Rekord). */
+    var taunt by mutableStateOf("")
+        private set
+
+    /** Restzeit des "REKORD GEKNACKT!"-Banners im Lauf, 0 = ausgeblendet. */
+    var recordBannerTimeLeft by mutableFloatStateOf(0f)
         private set
 
     /** Ton an/aus; persistent, damit die Wahl App-Neustarts überlebt. */
@@ -96,6 +107,7 @@ class WearGameController(context: Context) {
     /** Ein Frame der Spiel-Loop; wird aus WearGameScreens LaunchedEffect gerufen. */
     fun update(dt: Float) {
         blinkClock += dt
+        recordBannerTimeLeft = (recordBannerTimeLeft - dt).coerceAtLeast(0f)
         val events = game.update(dt)
         var twistUnlockedThisFrame = false
         events.forEach { event ->
@@ -103,6 +115,7 @@ class WearGameController(context: Context) {
                 TimingGame.GameEvent.Started -> {
                     lastStage = 0
                     recordCelebrated = false
+                    recordBannerTimeLeft = 0f
                 }
                 TimingGame.GameEvent.Hit -> {
                     haptics.hit()
@@ -119,8 +132,12 @@ class WearGameController(context: Context) {
                 TimingGame.GameEvent.Died -> {
                     haptics.died()
                     audio.death()
-                    val newBest = game.score > bestScore
+                    val previousBest = bestScore
+                    val newBest = game.score > previousBest
                     isNewRecord = newBest
+                    // Spott-Text vor dem Rekord-Update wählen — die Pools
+                    // hängen am Abstand zum ALTEN Bestwert (wie am Phone).
+                    taunt = pickTaunt(game.score, previousBest)
                     if (newBest) {
                         bestScore = game.score
                         prefs.edit().putInt(KEY_BEST, bestScore).apply()
@@ -144,6 +161,7 @@ class WearGameController(context: Context) {
             !recordCelebrated && bestScore > 0 && game.score > bestScore
         ) {
             recordCelebrated = true
+            recordBannerTimeLeft = RECORD_BANNER_SECONDS
             audio.newRecord()
         }
 
@@ -175,6 +193,34 @@ class WearGameController(context: Context) {
             game.reset()
             phase = TimingGame.Phase.READY
             score = 0
+            recordBannerTimeLeft = 0f
         }
+    }
+
+    /**
+     * Spott-Text pro Tod, gleiche Logik wie pickTaunt in GameOverlays.kt:
+     * Pool nach Situation (Null-Runde, knapp dran, weit drunter, sonst),
+     * Auswahl deterministisch über score+best statt echtem Zufall — fühlt
+     * sich zufällig an, bleibt aber testbar. Die Wear-Arrays sind eine
+     * gekürzte Teilmenge der Phone-Texte (Platz auf dem runden Display).
+     */
+    private fun pickTaunt(score: Int, previousBest: Int): String {
+        val gap = previousBest - score
+        val pool = appContext.resources.getStringArray(
+            when {
+                score == 0 -> R.array.taunts_zero
+                gap in 1..3 -> R.array.taunts_close
+                score < previousBest / 2 -> R.array.taunts_low
+                else -> R.array.taunts_default
+            }
+        )
+        val line = pool[(score + previousBest) % pool.size]
+        // Nur die "knapp daneben"-Zeilen tragen einen %1$d-Platzhalter.
+        return if (line.contains("%1\$d")) line.format(gap) else line
+    }
+
+    private companion object {
+        /** Anzeigedauer des Rekord-Banners im Lauf, wie am Phone (2,2s). */
+        const val RECORD_BANNER_SECONDS = 2.2f
     }
 }

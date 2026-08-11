@@ -4,10 +4,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
@@ -17,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.MaterialTheme
@@ -26,6 +30,13 @@ import kotlinx.coroutines.isActive
 
 /** Rot fürs "neuer Rekord"-Feedback, wie RecordRed in GameOverlays.kt. */
 private val WearRecordRed = Color(0xFFE53935)
+
+/** Banner-Orange und Feier-Gold, wie in ScoreHud/GameOverOverlay am Phone. */
+private val WearBannerOrange = Color(0xFFFF8A3C)
+private val WearCelebrateGold = Color(0xFFFFE95E)
+
+/** Über diese Restzeit blendet das Rekord-Banner am Ende weich aus. */
+private const val BANNER_FADE_SECONDS = 0.4f
 
 /**
  * Wear-OS-Prototyp von "STOPP": nur der Classic-Modus aus :core, kein
@@ -82,11 +93,18 @@ fun WearGameScreen(controller: WearGameController) {
                     onToggleSound = { controller.toggleSound() }
                 )
                 TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
-                    WearRunningOverlay(score = controller.score)
+                    WearRunningOverlay(
+                        score = controller.score,
+                        // Banner nur im Lauf — während der Todes-Animation
+                        // gehört die Bühne dem fallenden Vogel.
+                        recordBannerTimeLeft = if (controller.phase == TimingGame.Phase.RUNNING)
+                            controller.recordBannerTimeLeft else 0f
+                    )
                 TimingGame.Phase.OVER -> WearOverOverlay(
                     score = controller.score,
                     bestScore = controller.bestScore,
                     isNewRecord = controller.isNewRecord,
+                    taunt = controller.taunt,
                     tapHintVisible = controller.phaseElapsed >= TimingGame.RESTART_LOCK_SECONDS,
                     blinkVisible = blinkVisible
                 )
@@ -110,15 +128,22 @@ private fun WearReadyOverlay(
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold
             )
-            // Wie am Phone: BEST nur zeigen, wenn schon ein Lauf gezählt hat.
+            // Wie am Phone: BEST nur zeigen, wenn schon ein Lauf gezählt hat —
+            // ab Bronze mit der aktuellen Medaillen-Münze daneben.
             if (bestScore > 0) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.best, bestScore),
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    WearMedalTier.forScore(bestScore)?.let { tier ->
+                        WearMedalCoin(tier = tier, coinSize = 14.dp)
+                        Spacer(modifier = Modifier.width(5.dp))
+                    }
+                    Text(
+                        text = stringResource(R.string.best, bestScore),
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             // Ton-Schalter, dezent unter den Texten. Eigener Tap-Handler:
             // detectTapGestures konsumiert das Up-Event, dadurch feuert der
@@ -142,7 +167,7 @@ private fun WearReadyOverlay(
 }
 
 @Composable
-private fun WearRunningOverlay(score: Int) {
+private fun WearRunningOverlay(score: Int, recordBannerTimeLeft: Float) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
             text = score.toString(),
@@ -150,6 +175,22 @@ private fun WearRunningOverlay(score: Int) {
             fontSize = 44.sp,
             fontWeight = FontWeight.Bold
         )
+        // "REKORD GEKNACKT!" am oberen Rand, sobald der Lauf den alten
+        // Bestwert überholt (Timer im Controller, wie die Live-Feier am
+        // Phone) — blendet am Ende weich aus statt hart zu verschwinden.
+        if (recordBannerTimeLeft > 0f) {
+            Text(
+                text = stringResource(R.string.banner_record),
+                color = WearBannerOrange.copy(
+                    alpha = (recordBannerTimeLeft / BANNER_FADE_SECONDS).coerceAtMost(1f)
+                ),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 28.dp)
+            )
+        }
     }
 }
 
@@ -158,6 +199,7 @@ private fun WearOverOverlay(
     score: Int,
     bestScore: Int,
     isNewRecord: Boolean,
+    taunt: String,
     tapHintVisible: Boolean,
     blinkVisible: Boolean
 ) {
@@ -169,10 +211,35 @@ private fun WearOverOverlay(
                 fontSize = 40.sp,
                 fontWeight = FontWeight.Bold
             )
+            // Medaillen-Zeile ab Bronze: Münze plus Stufen-Name in der
+            // Medaillen-Farbe — klein unter dem Score, der bleibt der Star.
+            WearMedalTier.forScore(score)?.let { tier ->
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    WearMedalCoin(tier = tier, coinSize = 14.dp)
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = stringResource(tier.nameRes),
+                        color = tier.body,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+            }
             Text(
                 text = stringResource(R.string.best, bestScore),
                 color = if (isNewRecord) WearRecordRed else Color.White,
                 fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            // Bei neuem Rekord gewinnt die Feier, sonst der Spott — wie am
+            // Phone (GameOverOverlay), nur eine Nummer kleiner.
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = if (isNewRecord) stringResource(R.string.new_record) else taunt,
+                color = if (isNewRecord) WearCelebrateGold else Color.White.copy(alpha = 0.8f),
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
             // Erst nach RESTART_LOCK blinken (statt nur ein/aus schalten),
@@ -188,5 +255,13 @@ private fun WearOverOverlay(
                 )
             }
         }
+    }
+}
+
+/** Medaillen-Münze als kleines Canvas — Zeichnung liegt im WearRenderer. */
+@Composable
+private fun WearMedalCoin(tier: WearMedalTier, coinSize: Dp) {
+    Canvas(modifier = Modifier.size(coinSize)) {
+        drawWearMedalCoin(tier)
     }
 }
