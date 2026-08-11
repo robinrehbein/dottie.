@@ -7,7 +7,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.TimingGame
+import java.time.LocalDate
 
 /** SharedPreferences-Datei und -Schlüssel für den lokalen Uhren-Rekord. */
 private const val PREFS_NAME = "punkt_wear"
@@ -15,6 +17,18 @@ private const val KEY_BEST = "best"
 
 /** Ton an/aus — gleicher Mechanismus wie der Rekord, gleiche Prefs-Datei. */
 private const val KEY_SOUND_MUTED = "sound_muted"
+
+/**
+ * Perfekt-Serie, Skin und Daily-Stand — gleiche Key-Namen wie im
+ * Phone-Store (ScoreStore.kt), nur eben in der Uhren-Prefs-Datei. Der
+ * Daily-Stand der Uhr ist bewusst lokal und unabhängig vom Phone, genau
+ * wie der Rekord.
+ */
+private const val KEY_BEST_PERFECT = "best_perfect_streak"
+private const val KEY_SKIN = "selected_skin"
+private const val KEY_DAILY_BEST = "daily_best"
+private const val KEY_DAILY_DAY = "daily_day"
+private const val KEY_DAILY_STREAK = "daily_streak"
 
 /**
  * Zustands-Holder außerhalb der Composition. MainActivity braucht ihn in
@@ -27,7 +41,7 @@ private const val KEY_SOUND_MUTED = "sound_muted"
  * Funktion (Snapshot-State ist unabhängig von der Composition) — Lese-
  * zugriffe in WearGameScreen lösen trotzdem ganz normal Recomposition aus.
  */
-class WearGameController(context: Context) {
+internal class WearGameController(context: Context) {
 
     val game = TimingGame()
 
@@ -59,6 +73,31 @@ class WearGameController(context: Context) {
     var soundOn by mutableStateOf(!prefs.getBoolean(KEY_SOUND_MUTED, false))
         private set
 
+    /** Daily-Modus an/aus — Session-Zustand wie am Phone, nicht persistent. */
+    var dailyMode by mutableStateOf(false)
+        private set
+
+    /** Tagesbest von HEUTE (0, solange heute noch kein Daily-Lauf lief). */
+    var dailyBestToday by mutableIntStateOf(0)
+        private set
+
+    /** Anzeige-Serie: 0, wenn der letzte Daily-Lauf länger als einen Tag her ist. */
+    var dailyStreak by mutableIntStateOf(0)
+        private set
+
+    /** Gewählter Punkt-Skin; persistent wie der Rekord. */
+    var skin by mutableStateOf(WearDotSkin.fromName(prefs.getString(KEY_SKIN, null)))
+        private set
+
+    /** Beste jemals erreichte Perfekt-Serie (für Skin-Freischaltungen). */
+    private var bestPerfectStreak = prefs.getInt(KEY_BEST_PERFECT, 0)
+
+    /** Höchste Perfekt-Serie des laufenden Versuchs. */
+    private var runMaxPerfect = 0
+
+    /** Tag, dem der laufende Versuch zugerechnet wird (fixiert beim Start). */
+    private var runEpochDay = 0L
+
     /** Zuletzt gesehene Himmels-Stufe (score / 5), für die Stufen-Fanfare. */
     private var lastStage = 0
 
@@ -79,6 +118,7 @@ class WearGameController(context: Context) {
 
     init {
         audio.muted = !soundOn
+        refreshDailyDisplay()
     }
 
     /**
@@ -89,7 +129,51 @@ class WearGameController(context: Context) {
      * Event doppelt verarbeitet wird.
      */
     fun tap() {
+        // Ein Tap in READY/OVER startet gleich einen Lauf — vorher Tag und
+        // Seed für den aktuellen Modus setzen (wie prepareRun am Phone).
+        if (game.phase == TimingGame.Phase.READY || game.phase == TimingGame.Phase.OVER) {
+            prepareRun()
+        }
         game.tap()
+    }
+
+    /**
+     * Vor jedem Lauf-Start: Tag fixieren und die Zufallsquelle passend zum
+     * Modus setzen. Die Daily bekommt exakt den Tages-Seed aus :core
+     * (DailyChallenge.seedFor) — also dieselbe Zonen- und Twist-Abfolge
+     * wie jeder Daily-Versuch des Tages, auch auf dem Phone.
+     */
+    private fun prepareRun() {
+        runEpochDay = LocalDate.now().toEpochDay()
+        game.reseed(if (dailyMode) DailyChallenge.seedFor(runEpochDay) else null)
+    }
+
+    /** Schaltet zwischen CLASSIC und DAILY um (READY-/OVER-Overlay). */
+    fun toggleDailyMode() {
+        dailyMode = !dailyMode
+        refreshDailyDisplay()
+    }
+
+    /**
+     * Nächster freigeschalteter Skin (zyklisch), gesperrte werden über-
+     * sprungen. Die Freischaltungen werden wie am Phone bei jedem Aufruf
+     * frisch aus den Bestleistungen abgeleitet — ein neuer Rekord macht
+     * einen Skin also ab sofort wählbar, ganz ohne Unlock-Popup. Für die
+     * Daily-Serie zählt der gespeicherte Stand (nicht die Anzeige-
+     * Vorschau), exakt wie stats() im Phone-Store.
+     */
+    fun cycleSkin() {
+        val stats = WearDotSkin.Stats(
+            bestScore = bestScore,
+            bestPerfectStreak = bestPerfectStreak,
+            bestDailyStreak = prefs.getInt(KEY_DAILY_STREAK, 0)
+        )
+        val unlocked = WearDotSkin.entries.filter { it.isUnlocked(stats) }
+        if (unlocked.size <= 1) return
+        skin = unlocked[(unlocked.indexOf(skin) + 1) % unlocked.size]
+        prefs.edit().putString(KEY_SKIN, skin.name).apply()
+        // Kurzes Klick-Feedback, damit der Wechsel auch haptisch ankommt.
+        haptics.hit()
     }
 
     /** Schaltet den Ton um und merkt sich die Wahl in den Prefs. */
@@ -116,6 +200,7 @@ class WearGameController(context: Context) {
                     lastStage = 0
                     recordCelebrated = false
                     recordBannerTimeLeft = 0f
+                    runMaxPerfect = 0
                 }
                 TimingGame.GameEvent.Hit -> {
                     haptics.hit()
@@ -124,6 +209,7 @@ class WearGameController(context: Context) {
                 TimingGame.GameEvent.PerfectHit -> {
                     haptics.perfectHit()
                     audio.perfect(game.perfectStreak)
+                    runMaxPerfect = maxOf(runMaxPerfect, game.perfectStreak)
                 }
                 is TimingGame.GameEvent.TwistUnlocked -> {
                     twistUnlockedThisFrame = true
@@ -141,6 +227,15 @@ class WearGameController(context: Context) {
                     if (newBest) {
                         bestScore = game.score
                         prefs.edit().putInt(KEY_BEST, bestScore).apply()
+                    }
+                    // Beste Perfekt-Serie fortschreiben (Skin-Freischaltung
+                    // SCHATTEN), wie submitPerfectStreak im Phone-Store.
+                    if (runMaxPerfect > bestPerfectStreak) {
+                        bestPerfectStreak = runMaxPerfect
+                        prefs.edit().putInt(KEY_BEST_PERFECT, bestPerfectStreak).apply()
+                    }
+                    if (dailyMode) {
+                        submitDailyRun(runEpochDay, game.score)
                     }
                 }
                 TimingGame.GameEvent.Settled -> {
@@ -194,6 +289,50 @@ class WearGameController(context: Context) {
             phase = TimingGame.Phase.READY
             score = 0
             recordBannerTimeLeft = 0f
+        }
+    }
+
+    /**
+     * Beendeter Daily-Lauf, gleiche Regeln wie submitDailyRun im
+     * Phone-Store: Nur der erste Lauf des Tages schreibt die Tages-Serie
+     * fort (DailyChallenge.nextStreak aus :core — eine Lücke reißt sie)
+     * und setzt den Tagesbest neu; danach zählt für den Tag nur noch ein
+     * besserer Tagesbest.
+     */
+    private fun submitDailyRun(epochDay: Long, score: Int) {
+        val storedDay = prefs.getLong(KEY_DAILY_DAY, 0L)
+        if (storedDay != epochDay) {
+            val streak = DailyChallenge.nextStreak(
+                lastPlayedEpochDay = storedDay,
+                currentStreak = prefs.getInt(KEY_DAILY_STREAK, 0),
+                todayEpochDay = epochDay
+            )
+            prefs.edit()
+                .putInt(KEY_DAILY_STREAK, streak)
+                .putLong(KEY_DAILY_DAY, epochDay)
+                .putInt(KEY_DAILY_BEST, score)
+                .apply()
+        } else if (score > prefs.getInt(KEY_DAILY_BEST, 0)) {
+            prefs.edit().putInt(KEY_DAILY_BEST, score).apply()
+        }
+        refreshDailyDisplay()
+    }
+
+    /**
+     * Anzeige-Stände fürs Overlay aus den Prefs ableiten — wie
+     * dailyBestFor/dailyStreakPreviewFor im Phone-Store: Der Tagesbest
+     * gilt nur für den gespeicherten Tag; die Serie gilt als laufend,
+     * wenn der letzte Daily-Lauf heute oder gestern war, sonst als
+     * gerissen (angezeigt wird dann 0).
+     */
+    private fun refreshDailyDisplay() {
+        val today = LocalDate.now().toEpochDay()
+        val storedDay = prefs.getLong(KEY_DAILY_DAY, 0L)
+        dailyBestToday = if (storedDay == today) prefs.getInt(KEY_DAILY_BEST, 0) else 0
+        dailyStreak = if (storedDay == today || storedDay == today - 1) {
+            prefs.getInt(KEY_DAILY_STREAK, 0)
+        } else {
+            0
         }
     }
 

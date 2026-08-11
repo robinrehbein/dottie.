@@ -34,8 +34,13 @@ internal val WearGrassDark = Color(0xFF74BF2E)
 /** Standard-Segmentfarbe außerhalb jeder Zone (Sand-Ton aus GameOverlays.kt). */
 internal val WearTrackDefaultColor = Color(0xFFD3C87E)
 
+/**
+ * Gold-Akzent (DotBody am Phone) für Overlay-Texte und der Glanzton der
+ * Medaillen-Münze. Der Vogel selbst zeichnet nicht mehr mit diesen
+ * Konstanten, sondern mit dem gewählten Skin (WearDotSkin) — KLASSIK
+ * trägt dieselben Werte.
+ */
 internal val WearDotBody = Color(0xFFFFD847)
-internal val WearDotShade = Color(0xFFF5A623)
 internal val WearDotShine = Color(0xFFFFF3B8)
 
 /** Fallen-Zone (aus TimingGameScreen.kt, dort privat). */
@@ -65,7 +70,7 @@ private const val WEAR_DEATH_FLIP_SECONDS = 0.3f
  * nach Score-Stufe, die Bahn als Perlenkette und den Vogel — kein
  * Szenerie-/Boden-Hintergrund wie am Phone, das Display ist dafür zu klein.
  */
-internal fun DrawScope.drawWearWorld(game: TimingGame) {
+internal fun DrawScope.drawWearWorld(game: TimingGame, skin: WearDotSkin) {
     val d = size.minDimension
     val cx = size.width / 2f
     val cy = size.height / 2f
@@ -83,7 +88,7 @@ internal fun DrawScope.drawWearWorld(game: TimingGame) {
     // (Mario-Hüpfer in der DYING-Phase) — die Bahn bleibt leer, bis der
     // nächste Lauf startet. Am Phone regelt das fx.deathTime genauso.
     if (game.phase != TimingGame.Phase.OVER && game.isDotVisible) {
-        drawWearDot(game, cx, cy, radius, d)
+        drawWearDot(game, cx, cy, radius, d, skin)
     }
 }
 
@@ -145,13 +150,18 @@ private fun DrawScope.drawWearTrack(
     }
 }
 
-/** Vogel als Pixel-Kreis mit Auge/Glanzpunkt in Flugrichtung. */
+/**
+ * Vogel als Pixel-Kreis mit Auge/Glanzpunkt in Flugrichtung — Körper-,
+ * Schatten- und Glanzfarbe kommen aus dem gewählten Skin, wie
+ * drawTimingDot am Phone.
+ */
 private fun DrawScope.drawWearDot(
     game: TimingGame,
     cx: Float,
     cy: Float,
     radius: Float,
-    minDimension: Float
+    minDimension: Float,
+    skin: WearDotSkin
 ) {
     val px = cx + cos(game.angle) * radius
     var py = cy + sin(game.angle) * radius
@@ -175,12 +185,12 @@ private fun DrawScope.drawWearDot(
 
     fun drawBird() {
         drawWearPixelCircle(
-            color = WearDotBody,
+            color = skin.body,
             outline = WearOutlineColor,
             centerX = px,
             centerY = py,
             radius = r,
-            shade = WearDotShade
+            shade = skin.shade
         )
 
         val u = (r * 2f) / WEAR_GRID
@@ -197,11 +207,11 @@ private fun DrawScope.drawWearDot(
         // ist ~ -sin(angle) * direction — zeigt sie nach links, wird gespiegelt.
         val facingLeft = sin(game.angle) * game.direction > 0f
         if (facingLeft) {
-            rect(WEAR_GRID - 4.5f, 2.5f, 2f, 2f, WearDotShine)
+            rect(WEAR_GRID - 4.5f, 2.5f, 2f, 2f, skin.shine)
             rect(2f, 3f, 3.5f, 4f, Color.White)
             rect(2f, 4f, 1.5f, 2f, WearOutlineColor)
         } else {
-            rect(2.5f, 2.5f, 2f, 2f, WearDotShine)
+            rect(2.5f, 2.5f, 2f, 2f, skin.shine)
             rect(7.5f, 3f, 3.5f, 4f, Color.White)
             rect(9.5f, 4f, 1.5f, 2f, WearOutlineColor)
         }
@@ -235,6 +245,33 @@ internal fun DrawScope.drawWearMedalCoin(tier: WearMedalTier) {
     val u = (r * 2f) / WEAR_GRID
     drawRect(
         color = WearDotShine,
+        topLeft = Offset(cx - r + 2.5f * u, cy - r + 2.5f * u),
+        size = Size(2f * u, 2f * u)
+    )
+}
+
+/**
+ * Kleine Skin-Vorschau-Münze fürs READY-Overlay: Pixel-Kreis in den
+ * Farben des gewählten Skins mit Glanzpunkt — dieselbe Zeichnung wie die
+ * Medaillen-Münze, nur eben in Skin-Farben. Ein Tap darauf schaltet
+ * zyklisch zum nächsten freigeschalteten Skin (siehe cycleSkin im
+ * WearGameController).
+ */
+internal fun DrawScope.drawWearSkinCoin(skin: WearDotSkin) {
+    val r = size.minDimension / 2f
+    val cx = size.width / 2f
+    val cy = size.height / 2f
+    drawWearPixelCircle(
+        color = skin.body,
+        outline = WearOutlineColor,
+        centerX = cx,
+        centerY = cy,
+        radius = r,
+        shade = skin.shade
+    )
+    val u = (r * 2f) / WEAR_GRID
+    drawRect(
+        color = skin.shine,
         topLeft = Offset(cx - r + 2.5f * u, cy - r + 2.5f * u),
         size = Size(2f * u, 2f * u)
     )

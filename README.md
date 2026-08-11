@@ -123,15 +123,24 @@ Festgehaltene Design-Ideen für ein FLIP-Comeback („FLIP-Münzen"):
 
 Im Modul `:wear` liegt ein eigenständiger Prototyp für runde Wear-OS-Uhren:
 eine schlanke, alleinstehende Watch-App, die die Spiellogik aus `:core`
-wiederverwendet, aber bewusst abgespeckt ist — nur der Classic-Modus, kein
-Daily, keine Skins, kein Teilen, keine Notifications. Feedback kommt über
-Haptik plus dieselben Chiptune-Sounds wie am Phone (`ChipSynth` liegt
-dafür in `:core`, abschaltbar über „TON: AN/AUS" auf dem Startscreen).
+wiederverwendet — bewusst abgespeckt bleiben nur Teilen und Notifications.
+Feedback kommt über Haptik plus dieselben Chiptune-Sounds wie am Phone
+(`ChipSynth` liegt dafür in `:core`, abschaltbar über „TON: AN/AUS" auf
+dem Startscreen).
 Das Game-Feel der Phone-App ist mit an Bord: die Mario-Tod-Animation
 (Hüpfer und Sturz aus dem Bild), Medaillen ab 10/20/30/40 Punkten, das
 live eingeblendete „REKORD GEKNACKT!"-Banner und Spott-Texte beim Tod
 (eine gekürzte, Wear-taugliche Auswahl).
-Der Rekord wird lokal auf der Uhr gespeichert, getrennt vom Telefon-Store.
+Auch die Daily Challenge läuft auf der Uhr: gleicher Tages-Seed wie am
+Phone (`DailyChallenge` in `:core`), umgeschaltet über die Zeile
+„KLASSIK / DAILY" auf dem Start- und Game-Over-Overlay; Tagesbest und
+Tages-Serie werden lokal geführt (nur der erste Lauf des Tages schreibt
+die Serie fort, eine Lücke reißt sie). Dazu die sieben Punkt-Skins mit
+den Freischalt-Bedingungen des Phones — ein Tap auf die kleine
+Skin-Münze im Startscreen schaltet zyklisch zum nächsten
+freigeschalteten Skin.
+Rekord, Daily-Stand und Skin-Wahl werden lokal auf der Uhr gespeichert,
+getrennt vom Telefon-Store.
 Auf Uhren mit Zusatztasten (z. B. dem Quick-Button der Galaxy Watch Ultra)
 lässt sich statt per Touch auch per Tastendruck tappen — praktisch, weil
 der Finger beim Timing sonst genau die Zielzone verdeckt.

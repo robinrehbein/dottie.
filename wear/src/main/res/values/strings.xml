@@ -9,6 +9,14 @@
     <string name="new_record">NEW RECORD!</string>
     <string name="banner_record">RECORD BROKEN!</string>
 
+    <!-- Daily Challenge: Modus-Umschalter und Tages-Stände. Die Serie ist
+         bewusst kürzer als am Phone ("STREAK: 3" statt "STREAK: 3 DAYS") —
+         mehr passt neben den Tagesbest nicht auf das runde Display. -->
+    <string name="classic">CLASSIC</string>
+    <string name="daily">DAILY</string>
+    <string name="today_score">TODAY: %1$d</string>
+    <string name="streak">STREAK: %1$d</string>
+
     <!-- Medaillen-Namen, identisch zum Phone-Modul -->
     <string name="medal_bronze">BRONZE</string>
     <string name="medal_silver">SILVER</string>

@@ -1,6 +1,7 @@
-// Eigenständiger Wear-OS-Prototyp: Ein-Modus-Timing-Spiel für runde Uhren,
-// nutzt die Spiellogik aus :core. Bewusst abgespeckt gegenüber :app (kein
-// Daily, keine Skins, kein Teilen, keine Notifications) — siehe README.md.
+// Eigenständige Wear-OS-App: Timing-Spiel für runde Uhren, nutzt die
+// Spiellogik aus :core — Classic- und Daily-Modus plus freischaltbare
+// Skins. Bewusst abgespeckt gegenüber :app bleiben nur Teilen und
+// Notifications — siehe README.md.
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
