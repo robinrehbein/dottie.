@@ -1,0 +1,410 @@
+/*
+ * Logik-Tests für die Web-Version — mit Node ausführen:
+ *   node tests/run-tests.js   (aus dem web/-Ordner)
+ *
+ * Prüft die 1:1-Portierung von TimingGame, DailyChallenge, ChipSynth,
+ * DotSkin/MedalTier und die Store-/Taunt-Logik gegen das Verhalten der
+ * Kotlin-Quellen (siehe app/src/test/ im Repo).
+ */
+"use strict";
+
+var TimingGame = require("../js/game.js");
+var DailyChallenge = require("../js/daily.js");
+var ChipSynth = require("../js/synth.js");
+var skins = require("../js/skins.js");
+var Strings = require("../js/strings.js");
+var ScoreStore = require("../js/store.js");
+var DotSkin = skins.DotSkin;
+var MedalTier = skins.MedalTier;
+var C = TimingGame.C;
+
+var failures = 0;
+var checks = 0;
+
+function assert(cond, msg) {
+  checks++;
+  if (!cond) {
+    failures++;
+    console.error("FAIL: " + msg);
+  }
+}
+
+function assertEq(actual, expected, msg) {
+  assert(actual === expected, msg + " (expected " + expected + ", got " + actual + ")");
+}
+
+function approx(a, b, eps) { return Math.abs(a - b) <= (eps || 1e-6); }
+
+// ===== Hilfen =====
+
+/** Fährt den Punkt bis in die Zonenmitte und tappt (perfekter Treffer). */
+function driveToZoneAndTap(game) {
+  var guard = 0;
+  // kleine Schritte, damit wir die Mitte präzise erwischen
+  while (guard++ < 200000) {
+    var before = game.relativeToZone();
+    game.update(0.002);
+    if (game.phase !== "RUNNING") return null;
+    var rel = game.relativeToZone();
+    if (rel >= -0.005 && before < rel && Math.abs(rel) <= game.effectiveZoneHalf()) {
+      return game.tap();
+    }
+  }
+  throw new Error("Zone nie erreicht");
+}
+
+// ===== TimingGame: Phasen und Start =====
+(function () {
+  var g = new TimingGame(new TimingGame.Rng(1n));
+  assertEq(g.phase, "READY", "startet in READY");
+  var ev = g.tap();
+  assertEq(ev, "Started", "erster Tap startet");
+  assertEq(g.phase, "RUNNING", "RUNNING nach Start");
+  // Started-Event wird mit dem nächsten update ausgeliefert
+  var events = g.update(0.016);
+  assert(events.indexOf("Started") >= 0, "Started im Event-Puffer");
+})();
+
+// ===== Treffer, Richtungswechsel, Zone-Schrumpfen =====
+(function () {
+  var g = new TimingGame(new TimingGame.Rng(7n));
+  g.twistOverride = [];
+  g.tap();
+  var dirBefore = g.direction;
+  var ev = driveToZoneAndTap(g);
+  assert(ev === "Hit" || ev === "PerfectHit", "Tap in der Zone trifft: " + ev);
+  assertEq(g.hits, 1, "hits nach erstem Treffer");
+  assertEq(g.direction, -dirBefore, "Richtung dreht nach Treffer");
+  assert(approx(g.zoneHalfWidth, C.BASE_ZONE_HALF - C.ZONE_SHRINK_PER_HIT),
+    "Zone schrumpft pro Treffer");
+  assert(g.currentSpeed() > C.BASE_SPEED, "Tempo steigt mit Treffern");
+})();
+
+// ===== Perfekt-Serie: +2, +3, +4, +5, Deckel +5 =====
+(function () {
+  var g = new TimingGame(new TimingGame.Rng(11n));
+  g.twistOverride = [];
+  g.tap();
+  var expected = [2, 3, 4, 5, 5, 5];
+  var score = 0;
+  for (var i = 0; i < expected.length; i++) {
+    var ev = driveToZoneAndTap(g);
+    assertEq(ev, "PerfectHit", "Treffer " + (i + 1) + " ist perfekt");
+    assertEq(g.lastHitPoints, expected[i], "Serienbonus Stufe " + (i + 1));
+    score += expected[i];
+  }
+  assertEq(g.score, score, "Score = Summe der Serienpunkte");
+  assertEq(g.perfectStreak, expected.length, "Serie zaehlt hoch");
+})();
+
+// ===== Normaler Treffer bricht die Serie (ohne Strafe) =====
+(function () {
+  var g = new TimingGame(new TimingGame.Rng(3n));
+  g.twistOverride = [];
+  g.tap();
+  driveToZoneAndTap(g); // perfekt (+2)
+  // Frueh in der Zone tappen (Rand, nicht Kern):
+  var guard = 0;
+  while (guard++ < 200000) {
+    game_step(g);
+    var rel = g.relativeToZone();
+    var half = g.effectiveZoneHalf();
+    if (rel > -half && rel < -half * C.PERFECT_SHARE - 0.02) {
+      var ev = g.tap();
+      assertEq(ev, "Hit", "Randtreffer ist normal");
+      break;
+    }
+  }
+  assertEq(g.perfectStreak, 0, "Serie endet nach normalem Treffer");
+  assertEq(g.lastHitPoints, 1, "normaler Treffer +1");
+  function game_step(gg) { gg.update(0.002); }
+})();
+
+// ===== Tap daneben toetet, DYING -> OVER, Restart-Lock =====
+(function () {
+  var g = new TimingGame(new TimingGame.Rng(5n));
+  g.twistOverride = [];
+  g.tap();
+  g.update(0.001); // Punkt weit weg von der Zone (Mindestabstand 1.1 rad)
+  var ev = g.tap();
+  assertEq(ev, "Died", "Tap ausserhalb toetet");
+  assertEq(g.phase, "DYING", "DYING nach Tod");
+  assertEq(g.tap(), null, "Tap in DYING wird ignoriert");
+
+  // Freeze + Fall abwarten
+  var settled = false;
+  for (var i = 0; i < 200; i++) {
+    var evs = g.update(1 / 60);
+    if (evs.indexOf("Settled") >= 0) settled = true;
+  }
+  assert(settled, "Settled nach Freeze+Fall");
+  assertEq(g.phase, "OVER", "OVER nach Settled");
+
+  // Restart-Lock: direkt nach OVER kein Neustart
+  g.elapsed = 0;
+  assertEq(g.tap(), null, "Restart-Lock blockt Wut-Taps");
+  g.elapsed = C.RESTART_LOCK_SECONDS;
+  assertEq(g.tap(), "Started", "Neustart nach Lock");
+  assertEq(g.score, 0, "Score nach Neustart 0");
+})();
+
+// ===== Ueberfahren ohne Tap toetet =====
+(function () {
+  var g = new TimingGame(new TimingGame.Rng(9n));
+  g.twistOverride = [];
+  g.tap();
+  var died = false;
+  for (var i = 0; i < 5000 && !died; i++) {
+    var evs = g.update(1 / 120);
+    if (evs.indexOf("Died") >= 0) died = true;
+  }
+  assert(died, "Zone ueberfahren -> Tod");
+})();
+
+// ===== Twist-Freischaltung bei Score 5/10/15/20/25 =====
+(function () {
+  assertEq(TimingGame.unlockScore("PULSE"), 5, "PULSE ab 5");
+  assertEq(TimingGame.unlockScore("DRIFT"), 10, "DRIFT ab 10");
+  assertEq(TimingGame.unlockScore("GHOST"), 15, "GHOST ab 15");
+  assertEq(TimingGame.unlockScore("FAKE"), 20, "FAKE ab 20");
+  assertEq(TimingGame.unlockScore("CHAIN"), 25, "CHAIN ab 25");
+
+  // Langer Lauf: alle Twists werden genau einmal angekuendigt.
+  var g = new TimingGame(new TimingGame.Rng(1234n));
+  g.tap();
+  var announced = [];
+  var guard = 0;
+  while (g.score < 60 && guard++ < 500) {
+    driveToZoneAndTap(g);
+    if (g.phase !== "RUNNING") break;
+    var evs = g.update(0.001);
+    evs.forEach(function (e) {
+      if (e && e.type === "TwistUnlocked") announced.push(e.twist);
+    });
+  }
+  assertEq(announced.length, 5, "5 Twist-Ankuendigungen");
+  ["PULSE", "DRIFT", "GHOST", "FAKE", "CHAIN"].forEach(function (tw, i) {
+    assertEq(announced[i], tw, "Ankuendigung " + i + " ist " + tw);
+  });
+  assert(g.activeTwists.size <= C.MAX_ACTIVE_TWISTS, "max. 2 Twists aktiv");
+})();
+
+// ===== GEIST + FALLE nie zusammen =====
+(function () {
+  for (var seed = 0; seed < 40; seed++) {
+    var g = new TimingGame(new TimingGame.Rng(BigInt(seed)));
+    g.tap();
+    var guard = 0;
+    while (g.score < 60 && guard++ < 500) {
+      driveToZoneAndTap(g);
+      if (g.phase !== "RUNNING") break;
+      g.update(0.001);
+      assert(!(g.activeTwists.has("GHOST") && g.activeTwists.has("FAKE")),
+        "GHOST+FAKE verboten (Seed " + seed + ")");
+    }
+  }
+})();
+
+// ===== PULSE: effektive Breite pulsiert im erlaubten Band =====
+(function () {
+  var g = new TimingGame(new TimingGame.Rng(2n));
+  g.twistOverride = ["PULSE"];
+  g.tap();
+  var min = Infinity, max = -Infinity;
+  for (var i = 0; i < 400; i++) {
+    g.update(0.005);
+    if (g.phase !== "RUNNING") break;
+    var eff = g.effectiveZoneHalf();
+    min = Math.min(min, eff);
+    max = Math.max(max, eff);
+  }
+  assert(min >= g.zoneHalfWidth * C.PULSE_MIN_SHARE - 1e-6, "Puls-Minimum");
+  assert(max <= g.zoneHalfWidth + 1e-6, "Puls-Maximum");
+  assert(max - min > 0.01, "Puls bewegt sich");
+})();
+
+// ===== GHOST: Punkt blinkt nur in RUNNING =====
+(function () {
+  var g = new TimingGame(new TimingGame.Rng(2n));
+  g.twistOverride = ["GHOST"];
+  assert(g.isDotVisible(), "in READY immer sichtbar");
+  g.tap();
+  var seenHidden = false, seenVisible = false;
+  for (var i = 0; i < 300; i++) {
+    g.update(0.004);
+    if (g.phase !== "RUNNING") break;
+    if (g.isDotVisible()) seenVisible = true; else seenHidden = true;
+  }
+  assert(seenHidden && seenVisible, "GHOST blinkt (sichtbar und unsichtbar)");
+})();
+
+// ===== CHAIN: Folge-Zone ohne Richtungswechsel =====
+(function () {
+  var g = new TimingGame(new TimingGame.Rng(4n));
+  g.twistOverride = ["CHAIN"];
+  g.tap();
+  var dir = g.direction;
+  driveToZoneAndTap(g);
+  var evs = g.update(0.001);
+  assert(evs.indexOf("ChainNext") >= 0, "ChainNext nach erstem Ketten-Treffer");
+  assertEq(g.direction, dir, "Richtung bleibt in der Kette");
+  assertEq(g.chainRemaining, 0, "eine Folge-Zone (CHAIN_LENGTH=1)");
+  driveToZoneAndTap(g);
+  assertEq(g.direction, -dir, "Richtung dreht nach Ketten-Ende");
+})();
+
+// ===== Determinismus: gleicher Seed -> gleiche Abfolge =====
+(function () {
+  function record(seed) {
+    var g = new TimingGame(new TimingGame.Rng(seed));
+    g.tap();
+    var zones = [];
+    for (var i = 0; i < 8; i++) {
+      driveToZoneAndTap(g);
+      if (g.phase !== "RUNNING") break;
+      g.update(0.001);
+      zones.push(g.zoneCenter.toFixed(9) + ":" +
+        Array.from(g.activeTwists).sort().join(","));
+    }
+    return zones.join("|");
+  }
+  var seed = DailyChallenge.seedFor(20370);
+  assertEq(record(seed), record(seed), "Daily-Seed deterministisch");
+  assert(record(seed) !== record(DailyChallenge.seedFor(20371)),
+    "verschiedene Tage -> verschiedene Abfolgen");
+})();
+
+// ===== Spaeter Tap: Gnadenfenster =====
+(function () {
+  var g = new TimingGame(new TimingGame.Rng(6n));
+  g.twistOverride = [];
+  g.tap();
+  // bis knapp HINTER die Zone fahren (im Gnadenfenster)
+  var guard = 0;
+  while (guard++ < 400000) {
+    g.update(0.001);
+    if (g.phase !== "RUNNING") break;
+    var rel = g.relativeToZone();
+    var half = g.effectiveZoneHalf();
+    if (rel > half + 0.001 &&
+        rel <= half + g.currentSpeed() * C.LATE_TAP_FORGIVENESS_SECONDS - 0.005) {
+      var ev = g.tap();
+      assertEq(ev, "Hit", "spaeter Tap im Gnadenfenster zaehlt als Hit");
+      assertEq(g.lastHitPerfect, false, "Gnade ist nie perfekt");
+      break;
+    }
+  }
+  assert(g.hits === 1, "Gnadenfenster-Treffer registriert");
+})();
+
+// ===== DailyChallenge =====
+(function () {
+  assert(DailyChallenge.seedFor(1) !== DailyChallenge.seedFor(2), "Seeds streuen");
+  assertEq(typeof DailyChallenge.seedFor(20000), "bigint", "Seed ist 64-Bit (BigInt)");
+
+  assertEq(DailyChallenge.nextStreak(0, 0, 100), 1, "nie gespielt -> 1");
+  assertEq(DailyChallenge.nextStreak(-5, 3, 100), 1, "negativ -> 1");
+  assertEq(DailyChallenge.nextStreak(100, 4, 100), 4, "gleicher Tag -> unveraendert");
+  assertEq(DailyChallenge.nextStreak(100, 0, 100), 1, "gleicher Tag, min. 1");
+  assertEq(DailyChallenge.nextStreak(100, 4, 101), 5, "Folgetag -> +1");
+  assertEq(DailyChallenge.nextStreak(100, 4, 103), 1, "Luecke -> zurueck auf 1");
+})();
+
+// ===== ChipSynth =====
+(function () {
+  var fx = ChipSynth.effects();
+  var names = ["start", "hit", "perfect", "chain", "unlock", "record", "death", "thud"];
+  names.forEach(function (n) {
+    var s = fx[n];
+    assert(s && s.length > 0, "Effekt " + n + " vorhanden");
+    var ok = true;
+    for (var i = 0; i < s.length; i++) {
+      if (!(s[i] >= -1 && s[i] <= 1)) { ok = false; break; }
+    }
+    assert(ok, "Effekt " + n + " in [-1, 1]");
+  });
+  assertEq(fx.hit.length, Math.floor(0.07 * ChipSynth.SAMPLE_RATE), "hit-Laenge");
+  assertEq(fx.perfect.length,
+    Math.floor(0.06 * 22050) + Math.floor(0.16 * 22050), "perfect = concat");
+  assertEq(fx.death.length,
+    Math.max(Math.floor(0.35 * 22050), Math.floor(0.12 * 22050)), "death = mix");
+
+  assert(approx(ChipSynth.hitRate(0), 1), "hitRate(0)=1");
+  assert(approx(ChipSynth.hitRate(2), Math.pow(2, 4 / 12)), "hitRate Pentatonik");
+  assert(approx(ChipSynth.hitRate(5), 1), "hitRate wickelt pro 5er-Stufe");
+  assert(approx(ChipSynth.perfectRate(1), 1), "perfectRate(1)=1");
+  assert(approx(ChipSynth.perfectRate(3), Math.pow(2, 4 / 12)), "perfectRate +2HT/Stufe");
+  assert(approx(ChipSynth.perfectRate(99), Math.pow(2, 8 / 12)), "perfectRate Deckel");
+
+  // Deterministisch: zweimal rendern ergibt exakt dieselben Samples.
+  var a = ChipSynth.effects().death;
+  var b = ChipSynth.effects().death;
+  var same = a.length === b.length;
+  for (var i = 0; same && i < a.length; i++) same = a[i] === b[i];
+  assert(same, "Synthese deterministisch (Noise-Seed 42)");
+})();
+
+// ===== DotSkin / MedalTier =====
+(function () {
+  var none = { bestScore: 0, bestPerfectStreak: 0, bestDailyStreak: 0 };
+  assertEq(DotSkin.unlockedCount(none), 1, "nur KLASSIK am Anfang");
+  assertEq(DotSkin.unlockedCount({ bestScore: 10, bestPerfectStreak: 0, bestDailyStreak: 0 }), 2, "MINZE ab Rekord 10");
+  assertEq(DotSkin.unlockedCount({ bestScore: 40, bestPerfectStreak: 0, bestDailyStreak: 0 }), 5, "Rekord-Skins bei 40");
+  assertEq(DotSkin.unlockedCount({ bestScore: 0, bestPerfectStreak: 4, bestDailyStreak: 0 }), 2, "SCHATTEN ab Serie 4");
+  assertEq(DotSkin.unlockedCount({ bestScore: 0, bestPerfectStreak: 0, bestDailyStreak: 3 }), 2, "PRISMA ab Daily-Serie 3");
+  assertEq(DotSkin.unlockedCount({ bestScore: 40, bestPerfectStreak: 4, bestDailyStreak: 3 }), 7, "alle 7 Skins");
+  assertEq(DotSkin.fromName("LAVA").name, "LAVA", "fromName findet");
+  assertEq(DotSkin.fromName("quatsch").name, "KLASSIK", "fromName-Fallback");
+
+  assertEq(MedalTier.forScore(9), null, "keine Medaille unter 10");
+  assertEq(MedalTier.forScore(10).name, "BRONZE", "Bronze ab 10");
+  assertEq(MedalTier.forScore(39).name, "GOLD", "Gold bei 39");
+  assertEq(MedalTier.forScore(40).name, "PLATINUM", "Platin ab 40");
+  assertEq(MedalTier.next(0).name, "BRONZE", "naechste Stufe Bronze");
+  assertEq(MedalTier.next(40), null, "keine naechste ab Platin");
+  assert(MedalTier.isUpgrade(10, 9), "10 nach 9 ist Upgrade");
+  assert(!MedalTier.isUpgrade(15, 12), "15 nach 12 kein Upgrade");
+  assert(MedalTier.isUpgrade(20, 15), "20 nach 15 ist Upgrade");
+})();
+
+// ===== Strings / Taunts =====
+(function () {
+  Strings.setLang("de");
+  assertEq(Strings.t("best_score", 12), "REKORD: 12", "Platzhalter DE");
+  assertEq(Strings.streakLabel(1), "SERIE: 1 TAG", "Streak Singular");
+  assertEq(Strings.streakLabel(3), "SERIE: 3 TAGE", "Streak Plural");
+  assertEq(Strings.pickTaunt(5, 5, true), "NEUER REKORD!", "Rekord-Text");
+  assert(Strings.pickTaunt(0, 10, false).length > 0, "Zero-Taunt vorhanden");
+  var close = Strings.pickTaunt(8, 10, false);
+  assert(close.indexOf("2") >= 0, "Close-Taunt traegt die Luecke: " + close);
+  Strings.setLang("en");
+  assertEq(Strings.t("best_score", 12), "BEST: 12", "Platzhalter EN");
+})();
+
+// ===== ScoreStore (Memory-Backend in Node) =====
+(function () {
+  assertEq(ScoreStore.bestScore, 0, "Store startet leer");
+  assertEq(ScoreStore.submitRun(5), true, "erster Lauf ist Rekord");
+  assertEq(ScoreStore.submitRun(3), false, "kleinerer Lauf kein Rekord");
+  assertEq(ScoreStore.bestScore, 5, "Rekord bleibt 5");
+  assertEq(ScoreStore.runCount, 2, "zwei Laeufe gezaehlt");
+
+  ScoreStore.submitPerfectStreak(3);
+  ScoreStore.submitPerfectStreak(2);
+  assertEq(ScoreStore.bestPerfectStreak, 3, "beste Perfekt-Serie");
+
+  ScoreStore.submitDailyRun(100, 7);
+  assertEq(ScoreStore.dailyBestFor(100), 7, "Daily-Tagesbest");
+  assertEq(ScoreStore.dailyBestFor(101), 0, "anderer Tag -> 0");
+  assertEq(ScoreStore.dailyStreak, 1, "Streak 1 nach erstem Tag");
+  ScoreStore.submitDailyRun(100, 4);
+  assertEq(ScoreStore.dailyBestFor(100), 7, "kleinerer zweiter Lauf aendert nichts");
+  ScoreStore.submitDailyRun(101, 2);
+  assertEq(ScoreStore.dailyStreak, 2, "Folgetag -> Streak 2");
+  assertEq(ScoreStore.dailyBestFor(101), 2, "neuer Tag, neuer Tagesbest");
+  assertEq(ScoreStore.dailyStreakPreviewFor(102), 2, "Preview am Folgetag");
+  assertEq(ScoreStore.dailyStreakPreviewFor(105), 0, "Preview nach Luecke");
+})();
+
+console.log(checks + " Checks, " + failures + " Fehler");
+process.exit(failures === 0 ? 0 : 1);

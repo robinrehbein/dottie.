@@ -1,0 +1,96 @@
+/* Default = Englisch, Deutsch liegt in de.lproj/. Beide Dateien führen
+   dieselben Keys in derselben Reihenfolge — Quelle: Android
+   app/src/main/res/values/strings.xml (ohne Teilen/Reminder/Leaderboard). */
+
+/* Startscreen */
+"ready_hint" = "STOP THE DOT IN THE GREEN ZONE";
+"sound_on" = "SOUND: ON";
+"sound_off" = "SOUND: OFF";
+"best_score" = "BEST: %1$d";
+"daily" = "DAILY";
+"skins" = "SKINS";
+"today_score" = "TODAY: %1$d";
+"streak_one" = "STREAK: 1 DAY";
+"streak_many" = "STREAK: %1$d DAYS";
+"run_number" = "RUN #%1$d";
+
+/* Lauf / Banner */
+"perfect_plus" = "PERFECT! +%1$d";
+"banner_chain" = "ONE MORE!";
+"banner_record" = "RECORD BROKEN!";
+"banner_stage" = "NEW STAGE!";
+"banner_twist_pulse" = "NEW: PULSE ZONE!";
+"banner_twist_drift" = "NEW: DRIFTING ZONE!";
+"banner_twist_ghost" = "NEW: GHOST DOT!";
+"banner_twist_fake" = "NEW: TRAP ZONE!";
+"banner_twist_chain" = "NEW: CHAIN ZONE!";
+
+/* Game Over */
+"game_over" = "GAME OVER";
+"medal" = "MEDAL";
+"medal_bronze" = "BRONZE";
+"medal_silver" = "SILVER";
+"medal_gold" = "GOLD";
+"medal_platinum" = "PLATINUM";
+"medal_next" = "%1$d MORE FOR %2$@";
+"new_medal" = "NEW MEDAL!";
+"points_label" = "SCORE";
+"record_label" = "BEST";
+"new_record" = "NEW RECORD!";
+"new_skin_unlocked" = "NEW SKIN UNLOCKED!";
+"tap_retry" = "TAP = RETRY";
+"menu" = "MENU";
+
+/* Spott-Texte (Auswahl deterministisch über score+best) */
+"taunts_zero_0" = "SERIOUSLY?";
+"taunts_zero_1" = "THAT WAS FAST.";
+"taunts_zero_2" = "WAS THAT ON PURPOSE?";
+"taunts_zero_3" = "WARM-UPS DON'T COUNT.";
+"taunts_close_0" = "SO CLOSE! ONLY %1$d SHORT!";
+"taunts_close_1" = "ALMOST! JUST %1$d MORE!";
+"taunts_close_2" = "AAARGH! %1$d TOO FEW!";
+"taunts_low_0" = "THAT WAS NOTHING.";
+"taunts_low_1" = "YOU CAN DO BETTER.";
+"taunts_low_2" = "FORGOT HOW ALREADY?";
+"taunts_default_0" = "AGAIN!";
+"taunts_default_1" = "NEXT ONE'S YOURS!";
+"taunts_default_2" = "THAT CAME OUT OF NOWHERE.";
+"taunts_default_3" = "DON'T GIVE UP!";
+
+/* Hilfe */
+"help_title" = "HOW TO PLAY";
+"help_line1" = "THE DOT CIRCLES ON ITS OWN.";
+"help_line2" = "TAP WHILE IT IS IN THE GREEN ZONE — TAP OUTSIDE OR OVERSHOOT = GAME OVER.";
+"help_line3" = "BRIGHT ZONE CENTER = PERFECT: +2 POINTS.";
+"help_line4" = "PERFECT STREAK? +3, +4, UP TO +5 PER HIT!";
+"help_line5" = "MEDALS: BRONZE AT 10, SILVER AT 20, GOLD AT 30, PLATINUM AT 40.";
+"help_twists" = "THE TWISTS";
+"twist_pulse_title" = "PULSE (AT 5)";
+"twist_pulse_text" = "THE ZONE BREATHES — GROWS AND SHRINKS.";
+"twist_drift_title" = "DRIFT (AT 10)";
+"twist_drift_text" = "THE ZONE SLOWLY WANDERS ALONG THE TRACK.";
+"twist_ghost_title" = "GHOST (AT 15)";
+"twist_ghost_text" = "THE DOT BLINKS AWAY — KEEP THE TRACK IN YOUR HEAD.";
+"twist_fake_title" = "TRAP (AT 20)";
+"twist_fake_text" = "PURPLE DECOY ZONE: NEVER TAP INTO IT!";
+"twist_chain_title" = "CHAIN (AT 25)";
+"twist_chain_text" = "TWO ZONES IN A ROW — SAME DIRECTION.";
+"help_max_twists" = "AT MOST TWO TWISTS AT ONCE — RANDOMLY MIXED.";
+"tap_to_close" = "TAP TO CLOSE";
+
+/* Skins */
+"skin_selected" = "SELECTED";
+"skin_tap_select" = "TAP TO SELECT";
+"skin_klassik" = "CLASSIC";
+"skin_minze" = "MINT";
+"skin_lava" = "LAVA";
+"skin_gold" = "GOLD";
+"skin_frost" = "FROST";
+"skin_schatten" = "SHADOW";
+"skin_prisma" = "PRISM";
+"skin_hint_minze" = "BEST 10 (BRONZE)";
+"skin_hint_lava" = "BEST 20 (SILVER)";
+"skin_hint_gold" = "BEST 30 (GOLD)";
+"skin_hint_frost" = "BEST 40 (PLATINUM)";
+"skin_hint_schatten" = "4 PERFECTS IN A ROW";
+"skin_hint_prisma" = "DAILY STREAK: 3 DAYS";

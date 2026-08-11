@@ -1,0 +1,49 @@
+name: Build iOS
+
+# NUR manuell (Actions → Build iOS → "Run workflow"): macOS-Minuten
+# kosten auf privaten Repos das 10-fache der Linux-Minuten — deshalb
+# bewusst kein push-Trigger. Der Lauf ist der Kompilier-Beweis für den
+# Swift-Port, denn lokal gibt es keine Apple-Toolchain.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: XcodeGen installieren
+        run: brew install xcodegen
+
+      - name: Xcode-Projekt generieren
+        run: |
+          cd ios
+          xcodegen
+
+      # Device-Build (generic/platform=iOS): beweist, dass der Code für
+      # echte Geräte kompiliert und linkt. Ohne Signierung — dafür bräuchte
+      # es einen Apple-Developer-Account (siehe ios/README.md).
+      - name: Build für iOS-Geräte (unsigniert)
+        run: |
+          cd ios
+          xcodebuild -project Dottie.xcodeproj -scheme Dottie \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO build
+
+      # Simulator-Build: gleiche Quellen, x86_64/arm64-Simulator-Slice.
+      # Die entstehende .app läuft direkt im Xcode-Simulator (Drag & Drop
+      # oder `xcrun simctl install booted Dottie.app`).
+      - name: Build für iOS-Simulator
+        run: |
+          cd ios
+          xcodebuild -project Dottie.xcodeproj -scheme Dottie \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO build
+
+      - name: Simulator-App als Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: dottie-ios-simulator-app
+          path: ios/build/Build/Products/Debug-iphonesimulator/Dottie.app
