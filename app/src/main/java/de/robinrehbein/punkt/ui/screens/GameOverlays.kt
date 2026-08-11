@@ -233,11 +233,11 @@ internal fun ReadyOverlay(
                 .padding(top = 80.dp)
         ) {
             Text(
-                // 56.sp statt 64.sp: "POINTLESS." ist 10 Zeichen breit und
-                // muss auch auf 360-dp-Displays ohne Umbruch passen.
-                text = "POINTLESS.",
+                // "DOTTIE." ist mit 7 Zeichen schmal genug für die vollen
+                // 64.sp — auch auf 360-dp-Displays ohne Umbruch.
+                text = "DOTTIE.",
                 style = ScoreShadowStyle,
-                fontSize = 56.sp,
+                fontSize = 64.sp,
                 color = Color.White
             )
             if (bestScore > 0) {

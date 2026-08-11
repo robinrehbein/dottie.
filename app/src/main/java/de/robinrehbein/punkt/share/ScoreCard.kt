@@ -120,7 +120,7 @@ object ScoreCard {
         canvas.drawRect(0f, groundTop - CELL, W.toFloat(), groundTop, paint)
 
         val cx = W / 2f
-        drawShadowed("POINTLESS.", cx, H * 0.14f, 130f, Color.WHITE)
+        drawShadowed("DOTTIE.", cx, H * 0.14f, 130f, Color.WHITE)
         if (daily) {
             drawShadowed(context.getString(R.string.card_daily), cx, H * 0.20f, 56f, RECORD_YELLOW)
         }

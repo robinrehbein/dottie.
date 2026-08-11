@@ -3,7 +3,7 @@
      values-de/. Beide Dateien führen dieselben Keys in derselben
      Reihenfolge — neue Strings bitte immer in beiden ergänzen. -->
 <resources>
-    <string name="app_name" translatable="false">Pointless.</string>
+    <string name="app_name" translatable="false">Dottie.</string>
 
     <!-- Startscreen -->
     <string name="ready_hint">STOP THE DOT IN THE GREEN ZONE</string>
@@ -111,8 +111,8 @@
     <string name="skin_hint_prisma">DAILY STREAK: 3 DAYS</string>
 
     <!-- Score-Card / Teilen -->
-    <string name="share_text">%1$d points in POINTLESS. — can you beat that?</string>
-    <string name="share_text_daily">Daily Challenge in POINTLESS.: %1$d points — can you beat that?</string>
+    <string name="share_text">%1$d points in DOTTIE. — can you beat that?</string>
+    <string name="share_text_daily">Daily Challenge in DOTTIE.: %1$d points — can you beat that?</string>
     <string name="share_chooser">Share score</string>
     <string name="card_daily">DAILY CHALLENGE</string>
     <string name="card_points">POINTS</string>

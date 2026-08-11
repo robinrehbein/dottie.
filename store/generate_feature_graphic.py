@@ -147,9 +147,9 @@ pixel_circle(
 )
 
 # ===== Titel und Tagline (linke Haelfte) =====
-# 110 statt 150: "POINTLESS." ist 10 Zeichen breit und muss links von der
-# Kreisbahn (linker Rand bei x ~ 620) enden, statt in sie hineinzulaufen.
-font_big = ImageFont.truetype("app/src/main/res/font/bytesized_regular.ttf", 110)
+# "DOTTIE." (7 Zeichen) passt mit vollen 150px links von der Kreisbahn
+# (linker Rand bei x ~ 620) — anders als das breitere "POINTLESS." davor.
+font_big = ImageFont.truetype("app/src/main/res/font/bytesized_regular.ttf", 150)
 font_small = ImageFont.truetype("app/src/main/res/font/bytesized_regular.ttf", 52)
 
 
@@ -160,7 +160,7 @@ def shadowed(pos, text, font, color, shadow=6):
 
 # Tagline bewusst ohne "M": Der Bytesized-Font rendert das M so
 # eigenwillig, dass es auf einem Store-Asset unleserlich wird.
-shadowed((60, 120), "POINTLESS.", font_big, WHITE)
+shadowed((60, 100), "DOTTIE.", font_big, WHITE)
 shadowed((66, 272), "EIN TAP ENTSCHEIDET.", font_small, WHITE)
 shadowed((66, 334), "PERFEKT ODER VORBEI.", font_small, DOT_BODY)
 

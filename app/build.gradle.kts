@@ -9,15 +9,18 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        // Neue Paket-ID nach der Umbenennung PUNKT. -> POINTLESS.: die alte
-        // ID de.robinrehbein.punkt ist im Play Store bereits vergeben und
-        // deren Signing-Key nicht mehr vorhanden — eine Play-Paket-ID ist
-        // ohne den Original-Key fuer immer blockiert, daher der Neustart.
+        // Sichtbarer Name ist seit v2.15 "Dottie." — die Paket-ID bleibt
+        // trotzdem de.robinrehbein.pointless: Sie ist im Play-Eintrag mit
+        // laufendem internem Test registriert und fuer Nutzer unsichtbar
+        // (nur in der Store-URL). Ein ID-Wechsel wuerde den kompletten
+        // Play-Eintrag samt Testern verwerfen. (Historie: bis v2.13 hiess
+        // die App "PUNKT.", deren Paket-ID ist ohne den verlorenen
+        // Original-Key fuer immer blockiert.)
         applicationId = "de.robinrehbein.pointless"
         minSdk = 28
         targetSdk = 36
-        versionCode = 25
-        versionName = "2.14"
+        versionCode = 26
+        versionName = "2.15"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
