@@ -1,4 +1,8 @@
-# PUNKT.
+# POINTLESS.
+
+Bis v2.13 hieß das Spiel „PUNKT." — umbenannt, weil der Name im Play
+Store bereits vergeben war; mit der Umbenennung wechselte auch die
+Paket-ID auf `de.robinrehbein.pointless`.
 
 Ein Hyper-Casual-Android-Spiel im Retro-Pixel-Look (Jetpack Compose,
 alles im Code gezeichnet — keine Assets). Ein Punkt, ein Daumen, sofort

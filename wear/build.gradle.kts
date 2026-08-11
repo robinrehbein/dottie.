@@ -15,7 +15,7 @@ android {
         // Gleiche applicationId wie :app: Play Console führt Phone- und
         // Wear-APK unter einem gemeinsamen Store-Eintrag (Multi-Form-Factor-
         // Listing) — nötig für den späteren gemeinsamen Play-Eintrag.
-        applicationId = "de.robinrehbein.punkt"
+        applicationId = "de.robinrehbein.pointless"
         minSdk = 30
         targetSdk = 35
         versionCode = 1
