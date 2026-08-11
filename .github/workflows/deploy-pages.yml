@@ -34,6 +34,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # enablement: aktiviert Pages (Source "GitHub Actions") beim ersten
+      # Lauf automatisch, falls es noch nicht eingeschaltet ist
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - name: Web-Tests
         run: node web/tests/run-tests.js
 
