@@ -3,7 +3,7 @@
  * ersten Besuch komplett offline spielbar. Bei einer neuen Version die
  * CACHE_VERSION hochzählen, damit alte Caches ersetzt werden.
  */
-var CACHE_VERSION = "dottie-v1";
+var CACHE_VERSION = "dottie-v2";
 
 var ASSETS = [
   "./",

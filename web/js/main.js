@@ -83,8 +83,33 @@
   $("skins-title").textContent = t("skins");
   $("skins-close").textContent = t("tap_to_close");
 
+  // Pixel-Lautsprecher wie am Phone (PixelButton.drawPixelIcon): dieselben
+  // Blöcke auf dem 16er-Raster, "aus" bekommt die rote Treppen-Durchstreichung.
+  function speakerSvg(muted) {
+    var rects =
+      '<rect x="3" y="6" width="2.5" height="4"/>' +
+      '<rect x="5.5" y="5" width="1.5" height="6"/>' +
+      '<rect x="7" y="4" width="1.5" height="8"/>';
+    if (!muted) {
+      rects +=
+        '<rect x="10" y="6" width="1.2" height="4"/>' +
+        '<rect x="12" y="4.5" width="1.2" height="7"/>';
+    }
+    var strike = "";
+    if (muted) {
+      for (var i = 0; i < 6; i++) {
+        strike += '<rect x="' + (2.5 + i * 1.9) + '" y="' + (2.5 + i * 1.9) +
+          '" width="2.2" height="2.2" fill="#E53935"/>';
+      }
+    }
+    return '<svg viewBox="0 0 16 16" width="30" height="30" ' +
+      'shape-rendering="crispEdges" aria-hidden="true">' +
+      '<g fill="currentColor">' + rects + "</g>" + strike + "</svg>";
+  }
+
   function updateSoundButton() {
-    el.btnSound.textContent = t(audio.muted ? "sound_off" : "sound_on");
+    el.btnSound.innerHTML = speakerSvg(audio.muted);
+    el.btnSound.setAttribute("aria-label", t(audio.muted ? "sound_off" : "sound_on"));
   }
   updateSoundButton();
 
