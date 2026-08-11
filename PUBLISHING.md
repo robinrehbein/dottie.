@@ -1,4 +1,4 @@
-# POINTLESS. — Weg in den Play Store
+# DOTTIE. — Weg in den Play Store
 
 Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.11.
 
@@ -77,7 +77,7 @@ Liegt als statische Seite unter `docs/index.html`. Veröffentlichen:
 
 1. Repo → **Settings → Pages**
 2. Source: „Deploy from a branch", Branch `main`, Ordner `/docs`
-3. Die URL (`https://robinrehbein.github.io/punkt./`) im Play-Listing
+3. Die URL (`https://robinrehbein.github.io/dottie./`) im Play-Listing
    als Datenschutz-URL eintragen
 
 Vorher die Kontakt-E-Mail in `docs/index.html` prüfen/anpassen — sie
@@ -87,7 +87,7 @@ wird öffentlich sichtbar.
 
 **App-Name** (max. 30 Zeichen):
 
-> POINTLESS. — Timing-Arcade
+> DOTTIE. — Timing-Arcade
 
 **Kurzbeschreibung** (max. 80 Zeichen):
 
@@ -97,7 +97,7 @@ wird öffentlich sichtbar.
 
 > **Ein Punkt. Ein Daumen. Kein Erbarmen.**
 >
-> POINTLESS. ist pures Timing: Ein Punkt kreist auf seiner Bahn — tippe
+> DOTTIE. ist pures Timing: Ein Punkt kreist auf seiner Bahn — tippe
 > genau dann, wenn er die grüne Zone durchquert. Triffst du, geht es
 > weiter. Verpasst du, ist der Run sofort vorbei. Kein Tutorial-Kram,
 > keine Wartezeiten: Der nächste Versuch ist einen Tap entfernt.
@@ -132,7 +132,7 @@ wird öffentlich sichtbar.
 
 **App name** (max. 30 Zeichen):
 
-> POINTLESS. — Timing Arcade
+> DOTTIE. — Timing Arcade
 
 **Short description** (max. 80 Zeichen):
 
@@ -142,7 +142,7 @@ wird öffentlich sichtbar.
 
 > **One dot. One thumb. No mercy.**
 >
-> POINTLESS. is pure timing: a dot circles its track — tap exactly when it
+> DOTTIE. is pure timing: a dot circles its track — tap exactly when it
 > crosses the green zone. Hit it and you keep going. Miss it and the run
 > is over on the spot. No tutorials, no waiting: the next attempt is one
 > tap away.
@@ -191,7 +191,7 @@ workflow** (auf `main`). Einmalige Einrichtung:
    verlinkt direkt in die Cloud Console).
 2. In der Cloud Console für das Service-Konto einen **JSON-Key**
    erzeugen und herunterladen.
-3. Zurück in der Play Console dem Service-Konto Zugriff auf POINTLESS.
+3. Zurück in der Play Console dem Service-Konto Zugriff auf DOTTIE.
    geben — die Berechtigung „Releases in Tests verwalten" reicht.
 4. Den **kompletten JSON-Inhalt** als GitHub-Secret
    `PLAY_SERVICE_ACCOUNT_JSON` anlegen (Settings → Secrets and
@@ -199,7 +199,7 @@ workflow** (auf `main`). Einmalige Einrichtung:
    committen, nie in Chats einfügen.
 
 Zwei Dinge kann die API nicht, die bleiben Handarbeit in der Console:
-die App selbst anlegen (Name „Pointless.", Paket `de.robinrehbein.pointless`)
+die App selbst anlegen (Name „Dottie.", Paket `de.robinrehbein.pointless`)
 und den allerersten Upload prüfen/freigeben. Außerdem gilt: Der Job
 verweigert den Start, solange der Keystore nicht rotiert ist
 (`PUNKT_KEYSTORE_BASE64` fehlt), und jeder Upload braucht einen noch

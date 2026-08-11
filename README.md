@@ -1,8 +1,10 @@
-# POINTLESS.
+# DOTTIE.
 
-Bis v2.13 hieß das Spiel „PUNKT." — umbenannt, weil der Name im Play
-Store bereits vergeben war; mit der Umbenennung wechselte auch die
-Paket-ID auf `de.robinrehbein.pointless`.
+Bis v2.13 hieß das Spiel „PUNKT." (Paket-ID-Wechsel auf
+`de.robinrehbein.pointless`, weil der alte Signing-Key verloren ging),
+bis v2.14 dann kurz „POINTLESS.". Seit v2.15 heißt es „Dottie." — die
+Paket-ID bleibt dabei unverändert, sie ist im Play-Eintrag registriert
+und für Nutzer unsichtbar.
 
 Ein Hyper-Casual-Android-Spiel im Retro-Pixel-Look (Jetpack Compose,
 alles im Code gezeichnet — keine Assets). Ein Punkt, ein Daumen, sofort
