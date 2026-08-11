@@ -129,7 +129,9 @@ object ScoreCard {
         drawPixelDot(canvas, paint, cx, H * 0.32f, 110f, skin)
 
         drawShadowed(score.toString(), cx, H * 0.55f, 320f, Color.WHITE)
-        drawShadowed(context.getString(R.string.card_points), cx, H * 0.60f, 60f, Color.WHITE)
+        // Mittig zwischen Score-Zahl (Baseline 0.55) und REKORD-Zeile (0.68),
+        // damit PUNKTE weder an der Zahl noch am REKORD klebt.
+        drawShadowed(context.getString(R.string.card_points), cx, H * 0.615f, 60f, Color.WHITE)
 
         val recordLine = when {
             isNewRecord -> context.getString(R.string.new_record)
