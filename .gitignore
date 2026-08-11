@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Claude-Code-Arbeitsdaten (Agent-Worktrees etc.)
+/.claude/
