@@ -1,0 +1,95 @@
+/* Deutsche Texte — Default (Englisch) liegt in en.lproj/.
+   Beide Dateien führen dieselben Keys in derselben Reihenfolge. */
+
+/* Startscreen */
+"ready_hint" = "STOPPE DEN PUNKT IN DER GRUENEN ZONE";
+"sound_on" = "TON: AN";
+"sound_off" = "TON: AUS";
+"best_score" = "REKORD: %1$d";
+"daily" = "DAILY";
+"skins" = "SKINS";
+"today_score" = "HEUTE: %1$d";
+"streak_one" = "SERIE: 1 TAG";
+"streak_many" = "SERIE: %1$d TAGE";
+"run_number" = "VERSUCH #%1$d";
+
+/* Lauf / Banner */
+"perfect_plus" = "PERFEKT! +%1$d";
+"banner_chain" = "NOCH EINE!";
+"banner_record" = "REKORD GEKNACKT!";
+"banner_stage" = "NEUE STUFE!";
+"banner_twist_pulse" = "NEU: PULS-ZONE!";
+"banner_twist_drift" = "NEU: WANDERNDE ZONE!";
+"banner_twist_ghost" = "NEU: GEISTER-PUNKT!";
+"banner_twist_fake" = "NEU: FALLEN-ZONE!";
+"banner_twist_chain" = "NEU: KETTEN-ZONE!";
+
+/* Game Over */
+"game_over" = "GAME OVER";
+"medal" = "MEDAILLE";
+"medal_bronze" = "BRONZE";
+"medal_silver" = "SILBER";
+"medal_gold" = "GOLD";
+"medal_platinum" = "PLATIN";
+"medal_next" = "NOCH %1$d BIS %2$@";
+"new_medal" = "NEUE MEDAILLE!";
+"points_label" = "PUNKTE";
+"record_label" = "REKORD";
+"new_record" = "NEUER REKORD!";
+"new_skin_unlocked" = "NEUER SKIN FREIGESCHALTET!";
+"tap_retry" = "TIPPEN = NOCHMAL";
+"menu" = "MENUE";
+
+/* Spott-Texte (Auswahl deterministisch über score+best) */
+"taunts_zero_0" = "ERNSTHAFT?";
+"taunts_zero_1" = "DAS GING SCHNELL.";
+"taunts_zero_2" = "WAR DAS ABSICHT?";
+"taunts_zero_3" = "AUFWAERMEN ZAEHLT NICHT.";
+"taunts_close_0" = "SO NAH! NUR %1$d GEFEHLT!";
+"taunts_close_1" = "FAST! NOCH %1$d!";
+"taunts_close_2" = "AAARGH! %1$d ZU WENIG!";
+"taunts_low_0" = "DAS WAR NIX.";
+"taunts_low_1" = "DU KANNST MEHR.";
+"taunts_low_2" = "SCHON VERGESSEN WIE?";
+"taunts_default_0" = "NOCHMAL!";
+"taunts_default_1" = "GLEICH KLAPPTS!";
+"taunts_default_2" = "DAS KAM AUS DEM NICHTS.";
+"taunts_default_3" = "NICHT AUFGEBEN!";
+
+/* Hilfe */
+"help_title" = "SO GEHT STOPP";
+"help_line1" = "DER PUNKT KREIST VON ALLEIN.";
+"help_line2" = "TIPPE, WENN ER IN DER GRUENEN ZONE IST — DANEBEN GETIPPT ODER ZONE VERPASST = AUS.";
+"help_line3" = "HELLE MITTE DER ZONE = PERFEKT: +2 PUNKTE.";
+"help_line4" = "PERFEKT IN SERIE? +3, +4, BIS ZU +5 PRO TREFFER!";
+"help_line5" = "MEDAILLEN: BRONZE AB 10, SILBER AB 20, GOLD AB 30, PLATIN AB 40.";
+"help_twists" = "DIE TWISTS";
+"twist_pulse_title" = "PULS (AB 5)";
+"twist_pulse_text" = "DIE ZONE ATMET — WIRD GROESSER UND KLEINER.";
+"twist_drift_title" = "DRIFT (AB 10)";
+"twist_drift_text" = "DIE ZONE WANDERT LANGSAM UEBER DIE BAHN.";
+"twist_ghost_title" = "GEIST (AB 15)";
+"twist_ghost_text" = "DER PUNKT BLINKT WEG — BAHN IM KOPF BEHALTEN.";
+"twist_fake_title" = "FALLE (AB 20)";
+"twist_fake_text" = "VIOLETTE KOEDER-ZONE: NIE HINEINTIPPEN!";
+"twist_chain_title" = "KETTE (AB 25)";
+"twist_chain_text" = "ZWEI ZONEN NACHEINANDER — GLEICHE RICHTUNG.";
+"help_max_twists" = "MAXIMAL ZWEI TWISTS GLEICHZEITIG — ZUFAELLIG GEMISCHT.";
+"tap_to_close" = "TIPPEN ZUM SCHLIESSEN";
+
+/* Skins */
+"skin_selected" = "AUSGEWAEHLT";
+"skin_tap_select" = "TIPPEN ZUM WAEHLEN";
+"skin_klassik" = "KLASSIK";
+"skin_minze" = "MINZE";
+"skin_lava" = "LAVA";
+"skin_gold" = "GOLD";
+"skin_frost" = "FROST";
+"skin_schatten" = "SCHATTEN";
+"skin_prisma" = "PRISMA";
+"skin_hint_minze" = "REKORD 10 (BRONZE)";
+"skin_hint_lava" = "REKORD 20 (SILBER)";
+"skin_hint_gold" = "REKORD 30 (GOLD)";
+"skin_hint_frost" = "REKORD 40 (PLATIN)";
+"skin_hint_schatten" = "4 PERFEKTE IN SERIE";
+"skin_hint_prisma" = "DAILY-SERIE: 3 TAGE";
