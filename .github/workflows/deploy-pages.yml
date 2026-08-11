@@ -1,0 +1,56 @@
+# Veröffentlicht die Web-PWA (web/) plus Datenschutzerklärung auf
+# GitHub Pages. Voraussetzung: Settings → Pages → Source "GitHub Actions".
+#
+# Site-Layout:
+#   /            -> das Spiel (web/, Cache-First-Service-Worker)
+#   /datenschutz -> docs/index.html (Datenschutz-URL fürs Play-Listing)
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "docs/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Nie zwei Deployments gleichzeitig; laufende nicht abbrechen
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Web-Tests
+        run: node web/tests/run-tests.js
+
+      - name: Site zusammenstellen
+        run: |
+          mkdir -p _site/datenschutz
+          cp -r web/. _site/
+          rm -rf _site/tests _site/README.md
+          cp docs/index.html _site/datenschutz/index.html
+          # Pages soll die Dateien 1:1 ausliefern, kein Jekyll-Build
+          touch _site/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

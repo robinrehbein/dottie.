@@ -73,12 +73,18 @@ Keystore ist nur der Upload-Key und ließe sich notfalls erneut tauschen.
 
 ## Datenschutzerklärung (Pflicht fürs Listing)
 
-Liegt als statische Seite unter `docs/index.html`. Veröffentlichen:
+Liegt als statische Seite unter `docs/index.html`. Veröffentlicht wird
+sie zusammen mit der Web-PWA über den Workflow
+`.github/workflows/deploy-pages.yml` (läuft bei jedem Push auf `main`,
+der `web/` oder `docs/` ändert):
 
-1. Repo → **Settings → Pages**
-2. Source: „Deploy from a branch", Branch `main`, Ordner `/docs`
-3. Die URL (`https://robinrehbein.github.io/dottie./`) im Play-Listing
-   als Datenschutz-URL eintragen
+- `https://robinrehbein.github.io/dottie./` → das Spiel (Web-PWA)
+- `https://robinrehbein.github.io/dottie./datenschutz/` → die
+  Datenschutzerklärung — **diese URL** im Play-Listing als
+  Datenschutz-URL eintragen
+
+Einmalige Voraussetzung: Repo → **Settings → Pages** → Source
+„GitHub Actions" (geht nur bei öffentlichem Repo oder mit GitHub Pro).
 
 Vorher die Kontakt-E-Mail in `docs/index.html` prüfen/anpassen — sie
 wird öffentlich sichtbar.

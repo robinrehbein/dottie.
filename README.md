@@ -121,6 +121,17 @@ Festgehaltene Design-Ideen für ein FLIP-Comeback („FLIP-Münzen"):
 - Münzen ab Score 5, etwa jede 3.–4. Säule, Pixel-Explosion + Haptik
   beim Einsammeln, eigene Gier-Spott-Texte beim Tod
 
+## Web-Version (PWA)
+
+Unter `web/` liegt ein kompletter Browser-Port als Progressive Web App —
+statische Dateien ohne Build-Tooling, Spiellogik 1:1 aus `TimingGame`
+portiert, offline spielbar (Service Worker). Auf iPhones ist das der
+kostenlose Verteilweg: Safari → Teilen → „Zum Home-Bildschirm".
+Der Workflow `deploy-pages.yml` veröffentlicht sie bei jedem Push auf
+`main` nach GitHub Pages:
+**<https://robinrehbein.github.io/dottie./>** (Datenschutzerklärung
+unter `/datenschutz/`). Tests: `node web/tests/run-tests.js`.
+
 ## Wear-OS-Prototyp (experimentell)
 
 Im Modul `:wear` liegt ein eigenständiger Prototyp für runde Wear-OS-Uhren:
