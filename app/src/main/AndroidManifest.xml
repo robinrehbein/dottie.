@@ -21,6 +21,16 @@
                 android:name="com.google.android.gms.games.APP_ID"
                 android:value="@string/games_app_id" />
 
+        <!-- AdMob: Ohne diese App-ID crasht das Ads-SDK bei der (späteren)
+             Initialisierung. Hier steht Googles offizielle Beispiel-App-ID
+             als Platzhalter — solange res/values/ads.xml leer ist, wird das
+             SDK nie initialisiert und der Eintrag bleibt wirkungslos. Beim
+             Eintragen echter IDs MUSS diese ID mitgetauscht werden
+             (Anleitung in PUBLISHING.md). -->
+        <meta-data
+                android:name="com.google.android.gms.ads.APPLICATION_ID"
+                android:value="ca-app-pub-3940256099942544~3347511713" />
+
         <provider
                 android:name="androidx.core.content.FileProvider"
                 android:authorities="${applicationId}.fileprovider"

@@ -18,3 +18,8 @@ tasks.withType<KotlinCompile>().configureEach {
         jvmTarget = "11"
     }
 }
+
+dependencies {
+    // Unit-Tests für die Kern-Spiellogik (z. B. TimingGame.revive).
+    testImplementation(libs.junit)
+}

@@ -1,6 +1,6 @@
 /*
  * Texte EN/DE — übernommen aus app/src/main/res/values/strings.xml und
- * values-de/strings.xml (ohne Teilen-/Ranglisten-/Notification-Strings,
+ * values-de/strings.xml (ohne Ranglisten-/Notification-/Score-Card-Strings,
  * die es in der Web-Version nicht gibt). Die Browser-Sprache entscheidet.
  */
 (function (global) {
@@ -43,7 +43,10 @@
       new_record: "NEW RECORD!",
       new_skin_unlocked: "NEW SKIN UNLOCKED!",
       tap_retry: "TAP = RETRY",
+      share: "SHARE",
       menu: "MENU",
+      share_text: "%1$d points in DOTTIE. — can you beat that?",
+      share_text_daily: "Daily Challenge in DOTTIE.: %1$d points — can you beat that?",
 
       taunts_zero: ["SERIOUSLY?", "THAT WAS FAST.", "WAS THAT ON PURPOSE?", "WARM-UPS DON'T COUNT."],
       taunts_close: ["SO CLOSE! ONLY %1$d SHORT!", "ALMOST! JUST %1$d MORE!", "AAARGH! %1$d TOO FEW!"],
@@ -122,7 +125,10 @@
       new_record: "NEUER REKORD!",
       new_skin_unlocked: "NEUER SKIN FREIGESCHALTET!",
       tap_retry: "TIPPEN = NOCHMAL",
+      share: "TEILEN",
       menu: "MENUE",
+      share_text: "%1$d Punkte in DOTTIE. — schaffst du mehr?",
+      share_text_daily: "Daily Challenge in DOTTIE.: %1$d Punkte — schaffst du mehr?",
 
       taunts_zero: ["ERNSTHAFT?", "DAS GING SCHNELL.", "WAR DAS ABSICHT?", "AUFWAERMEN ZAEHLT NICHT."],
       taunts_close: ["SO NAH! NUR %1$d GEFEHLT!", "FAST! NOCH %1$d!", "AAARGH! %1$d ZU WENIG!"],

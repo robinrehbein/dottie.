@@ -446,6 +446,29 @@
       PanelSand: GroundSand,
       DotBody: DotBody,
       RecordRed: RecordRed
+    },
+    /**
+     * Die komplette Palette unter den Kotlin-Namen — die Tests vergleichen
+     * sie Wert für Wert gegen GameOverlays.kt/TimingGameScreen.kt, damit
+     * eine Farbänderung am Phone hier nicht unbemerkt auseinanderläuft.
+     */
+    Palette: {
+      CloudColor: CloudColor,
+      BushColor: BushColor,
+      BushShadeColor: BushShadeColor,
+      TrunkColor: TrunkColor,
+      TrunkShade: TrunkShade,
+      GroundSand: GroundSand,
+      GroundSandShade: GroundSandShade,
+      GrassLight: GrassLight,
+      GrassDark: GrassDark,
+      OutlineColor: OutlineColor,
+      DotBody: DotBody,
+      DotShine: DotShine,
+      RecordRed: RecordRed,
+      FakeZoneColor: FakeZoneColor,
+      FakeZoneCoreColor: FakeZoneCoreColor,
+      SkyStages: SkyStages
     }
   };
 

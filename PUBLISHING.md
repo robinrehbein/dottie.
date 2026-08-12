@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.11.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.16.
 
 ## Checkliste
 
@@ -13,7 +13,10 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.11.
 - [x] Screenshots 1080×1920: je 4 in DE und EN unter `store/screenshots/`
       (Generator: `python3 store/generate_screenshots.py`)
 - [ ] Optional: Play Games Services einrichten → Bestenlisten (Anleitung unten)
-- [ ] Data-Safety-Formular: „Es werden keine Daten erhoben"
+- [ ] Optional: AdMob + In-App-Kauf „remove_ads" aktivieren (Anleitung
+      unten) — solange das nicht passiert, ist die App komplett werbefrei
+- [ ] Data-Safety-Formular: „Es werden keine Daten erhoben" (gilt nur
+      ohne AdMob — mit Werbung siehe Abschnitt unten)
 - [ ] IARC-Fragebogen (Content-Rating) ausfüllen
 - [ ] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
       oder per CI-Job `play-internal`, siehe unten)
@@ -233,6 +236,164 @@ und die App bleibt komplett offline. So wird es scharf geschaltet:
    Data-Safety-Formular muss dann angepasst werden (Google-Play-Games-
    Profil, Scores an Google). Ohne Aktivierung ändert sich nichts.
 
+## Werbung & Käufe aktivieren (AdMob + Play Billing)
+
+Ab v2.16 sind ein **Rewarded-Spot zum Weiterspielen**, gelegentliche
+**Interstitials** und der Kauf **„Werbung entfernen"** eingebaut — aber
+**hart deaktiviert**, solange in `app/src/main/res/values/ads.xml` die
+drei IDs leer sind. Ohne echte IDs wird das Ads-SDK nie initialisiert,
+es gibt keinen Consent-Dialog, keine Ad-Requests und keinen
+BillingClient; die UI sieht aus wie heute (kein WEITERSPIELEN-Knopf,
+keine „WERBUNG ENTFERNEN"-Zeile). Aktivieren ist also eine bewusste
+Entscheidung in genau zwei Dateien.
+
+### 1. AdMob-Konto und App anlegen
+
+1. [admob.google.com](https://admob.google.com) → Konto anlegen (kostenlos,
+   AdSense-/AdMob-Zahlungsprofil mit Adresse und Steuerdaten hinterlegen).
+2. **Apps → App hinzufügen** → Android → „Ja, im Play Store" und DOTTIE.
+   auswählen (Paket `de.robinrehbein.pointless`). Ergebnis ist die
+   **App-ID** im Format `ca-app-pub-…~…` (Tilde!).
+3. **Anzeigenblöcke** anlegen: einen vom Typ **Rewarded** („Weiterspielen")
+   und einen vom Typ **Interstitial** („Game-Over"). Beide liefern eine
+   **Anzeigenblock-ID** im Format `ca-app-pub-…/…` (Schrägstrich!).
+4. Frisch angelegte Blöcke liefern erfahrungsgemäß erst nach einigen
+   Stunden Anzeigen — bis dahin bleibt es still, das ist kein Fehler.
+
+### 2. IDs eintragen (zwei Dateien!)
+
+1. `app/src/main/res/values/ads.xml`: `admob_app_id`,
+   `admob_rewarded_id`, `admob_interstitial_id` ausfüllen. Erst wenn
+   **alle drei** gefüllt sind, schaltet sich die Integration ein.
+2. `app/src/main/AndroidManifest.xml`: die `meta-data`
+   `com.google.android.gms.ads.APPLICATION_ID` trägt bis dahin Googles
+   **Beispiel-App-ID** als Platzhalter — die **muss** durch die echte
+   App-ID aus Schritt 1 ersetzt werden. Bleibt der Platzhalter stehen,
+   verdient die App nichts und AdMob kann das Konto sperren.
+
+Zum Ausprobieren gibt es Googles Test-IDs (sie stehen als Kommentar in
+`ads.xml`): Sie zeigen echte Test-Anzeigen, dürfen aber **nie** in ein
+Store-Release — Klicks auf echte Anzeigen im Eigentest ebenso wenig.
+
+### 3. app-ads.txt — ehrlich betrachtet
+
+AdMob empfiehlt eine `app-ads.txt` auf der Website, die im Play-Listing
+als Entwickler-Website steht. Sie beweist Käufern, dass unser Inventar
+echt ist. Der Haken bei uns:
+
+- Unsere Store-Website ist **<https://robinrehbein.github.io/dottie./>** —
+  das ist ein **Projekt-Pages-Pfad**, kein eigener Host.
+- Die Datei muss aber im **Root der Domain** liegen, also unter
+  `https://robinrehbein.github.io/app-ads.txt`. Ein
+  `…/dottie./app-ads.txt` wird von den Crawlern ignoriert.
+- Dafür bräuchte es ein **eigenes Repository namens
+  `robinrehbein.github.io`** (User-Pages), in dessen Root die Datei
+  liegt. Alternativ eine eigene Domain (z. B. `dottie.app`) als
+  Entwickler-Website eintragen und die Datei dort ablegen.
+
+**Ohne `app-ads.txt` läuft AdMob trotzdem.** Es fällt nur ein Teil der
+Nachfrage weg (manche Käufer bieten ausschließlich auf verifiziertes
+Inventar), der eTPM ist also etwas niedriger. Für den Start ist das
+verkraftbar — die Datei lässt sich jederzeit nachreichen, ihr Inhalt
+ist eine einzige Zeile, die AdMob unter **Apps → app-ads.txt** anzeigt.
+
+### 4. In-App-Produkt „remove_ads" anlegen
+
+Play Console → **Monetarisieren → Produkte → In-App-Produkte → Produkt
+erstellen**:
+
+| Feld | Wert |
+|---|---|
+| Produkt-ID | `remove_ads` (genau so, steht im Code) |
+| Typ | Einmaliger Kauf, **nicht** verbrauchbar |
+| Name | „Werbung entfernen" / „Remove ads" |
+| Beschreibung | Entfernt dauerhaft alle Anzeigen. Weiterspielen nach dem Tod bleibt möglich. |
+| Preis | Vorschlag **2,99 €** (Play rechnet die anderen Währungen um) |
+
+Danach **aktivieren** — inaktive Produkte liefern im Kaufdialog nichts.
+Der Kauf hängt am Google-Konto: Nach einer Neuinstallation stellt die
+App ihn beim Start selbst wieder her (`queryPurchases`), ein
+„Kauf wiederherstellen"-Knopf ist deshalb nicht nötig. Testen geht
+kostenlos über **Einstellungen → Lizenztests** (Lizenz-Tester kaufen
+zum Preis 0) — der Kauf funktioniert erst, wenn die App über einen
+Play-Track installiert wurde, nicht per `adb install`.
+
+### 5. Data-Safety und Datenschutz nachziehen
+
+Mit aktiver Werbung stimmt „Es werden keine Daten erhoben" **nicht
+mehr**. Vor dem nächsten Release anpassen:
+
+- **Data-Safety-Formular** (Play Console → App-Inhalte): „Gerätekennungen
+  oder andere IDs" → **Werbe-ID (AAID)** wird erhoben und **geteilt**,
+  Zweck **Werbung/Marketing**, nicht verschlüsselt übertragbar
+  verneinen/bejahen gemäß Googles Vorgaben; zusätzlich unter
+  **Anzeigen** „Die App enthält Werbung" ankreuzen (das setzt auch das
+  „Enthält Anzeigen"-Label im Listing).
+- **Store-Texte**: Der Absatz „Ehrlich & schlank / Honest & lean" oben
+  behauptet „keine Werbung, keine In-App-Käufe" — beides muss dann raus
+  bzw. umformuliert werden (z. B. „Werbung lässt sich einmalig
+  entfernen").
+- **`docs/index.html`**: Textbaustein unten einsetzen.
+
+### 6. Textbaustein für docs/index.html (erst beim Aktivieren einfügen)
+
+Deutsch — als neuer Abschnitt vor „Kinder", außerdem den Satz unter
+„Kurz gesagt" und den Abschnitt „Internetzugriff" entsprechend
+entschärfen:
+
+```html
+  <h2>Werbung</h2>
+  <p>DOTTIE. zeigt Werbung über <strong>Google AdMob</strong>: einen
+  optionalen Video-Spot zum Weiterspielen nach einem Lauf sowie
+  gelegentliche Vollbild-Anzeigen zwischen Läufen. Dabei verarbeitet
+  Google die <strong>Werbe-ID (AAID)</strong> deines Geräts sowie
+  technische Angaben (Gerätetyp, grobe Region, IP-Adresse), um
+  Anzeigen auszuliefern und Betrug zu erkennen. Verantwortlich dafür
+  ist Google Ireland Ltd.; Details:
+  <a href="https://business.safety.google/privacy/">Google-Datenschutz</a>.
+  Die Werbe-ID lässt sich in den Android-Einstellungen unter
+  „Datenschutz → Werbung" zurücksetzen oder löschen.</p>
+  <p>Vor der ersten Anzeige fragt die App über Googles
+  <strong>User-Messaging-Platform (UMP)</strong> nach deiner
+  Einwilligung; ohne Einwilligung werden keine (bzw. nur nicht
+  personalisierte) Anzeigen geladen. Die Auswahl lässt sich jederzeit
+  über denselben Dialog ändern.</p>
+  <p>Über <strong>Google Play Billing</strong> kann die Werbung
+  einmalig dauerhaft entfernt werden („Werbung entfernen"). Den
+  Zahlungsvorgang wickelt ausschließlich Google Play ab — wir erhalten
+  keine Zahlungsdaten, nur die Information, dass der Kauf besteht.</p>
+```
+
+Englisch — für den Footer-Absatz („English summary"):
+
+```html
+    <p><em>English summary:</em> DOTTIE. shows ads via
+    <strong>Google AdMob</strong> (an optional rewarded video to continue
+    a run, plus occasional interstitials between runs). Google processes
+    your device's <strong>advertising ID (AAID)</strong> and technical
+    data (device type, coarse region, IP address) to serve ads and
+    prevent fraud. Before the first ad, the app asks for your consent via
+    Google's <strong>User Messaging Platform</strong>; you can change
+    that choice at any time. Ads can be removed permanently with a
+    one-time purchase handled entirely by <strong>Google Play
+    Billing</strong> — we never receive payment data. High scores, daily
+    challenge progress, unlocked skins, and settings stay on your device.
+    Contact: robin@join-noah.de</p>
+```
+
+### Wie sich das Spiel dann verhält
+
+- **Weiterspielen (Rewarded)**: erscheint nur im Klassik-Modus, nur wenn
+  ein Spot geladen ist und **einmal pro Lauf**. Score und Treffer
+  bleiben, die Perfekt-Serie beginnt neu, und der Punkt startet eine
+  knappe halbe Runde vor der frischen Zone — nach einem gesehenen Spot
+  darf niemand sofort wieder sterben. Die Daily Challenge bleibt
+  bewusst außen vor: gleicher Lauf für alle, keine gekauften Vorteile.
+- **Interstitials**: frühestens ab dem **4. Tod einer Sitzung** und
+  mindestens **90 Sekunden** nach dem letzten Spot (`InterstitialGate`,
+  per Unit-Test abgesichert) — und nie in dem Game-Over, in dem gerade
+  Weiterspielen angeboten wird.
+
 ## Wear-App im Play Store mitverteilen
 
 Die CI baut neben dem Phone-AAB auch `wear-release.aab` (signiert mit
@@ -262,8 +423,8 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 25` / `versionName
-"2.14"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 27` / `versionName
+"2.16"`. Vor jedem Store-Upload beides anheben und committen.
 
 Die Wear-App zählt in einem eigenen Bereich **ab 100001**
 (`wear/build.gradle.kts`), damit sich die beiden Zähler nie in die

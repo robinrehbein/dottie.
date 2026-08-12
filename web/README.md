@@ -27,6 +27,54 @@ cd web
 node tests/run-tests.js
 ```
 
+## Optik: die Android-App ist die Referenz
+
+Die App gibt vor, wie das Spiel aussieht — die PWA folgt ihr. Konkret:
+
+- **1 dp = 1 CSS-Pixel.** Alle Größen, Schriftgrößen und Abstände in
+  `style.css` sind die dp/sp-Werte aus `GameOverlays.kt`; die Overlays
+  bilden die Compose-Ausrichtungen nach (`.safe` = `windowInsetsPadding`,
+  `.go-center` = `Alignment.Center`, `#hint` = `Center` + 140 dp Polster).
+- **Zeilenhöhe 1.25** — genau `(ascent + |descent|) / unitsPerEm` der
+  Bytesized, also dieselbe Zeilenhöhe, die Compose aus den Font-Metriken
+  zieht.
+- **Textschatten in Geräte-Pixeln.** Compose gibt ihn als
+  `Shadow(offset = Offset(4f, 4f))` an, das sind 4 echte Pixel und nicht
+  4 dp. `main.js` setzt dafür `--dev-px` aus `devicePixelRatio`.
+- **Treppen-Rahmen der Knöpfe** (`js/pixelbutton.js`): Port von
+  `drawPixelBorder`. Ein `border: 3px solid` kann die im oberen und
+  unteren Viertel doppelt breite Kante nicht; die Geometrie steckt
+  deshalb in Hintergrund-Layern und bleibt bei jeder Pixeldichte scharf.
+- **Farben** kommen aus `js/render.js` (`Renderer.Palette`) und werden im
+  Test Wert für Wert gegen `GameOverlays.kt`, `TimingGameScreen.kt` und
+  `DotSkin.kt` geprüft — dasselbe für alle Texte gegen `strings.xml`.
+
+Bewusste Abweichungen (Browser-Grenzen, jeweils im Code kommentiert):
+
+- **Keine Tages-Erinnerung.** Die App hat neben dem Ton-Knopf einen
+  Glocken-Knopf; verlässliche geplante Benachrichtigungen gibt es in
+  einer PWA (vor allem auf iOS) nicht, deshalb fehlt der Knopf hier.
+- **Keine Rangliste.** Der LEADERBOARD-Knopf hängt in der App an Play
+  Games.
+- **TEILEN ohne Score-Card.** Die App rendert ein PNG (`ScoreCard.kt`);
+  im Browser wird derselbe Text per Web Share verschickt (sonst in die
+  Zwischenablage).
+- **Druck-Feedback.** Statt des Material-Ripples hellt sich der Knopf
+  kurz auf — verschieben tut er sich wie am Phone nicht.
+
+## Screenshots
+
+`tests/screenshots/` enthält die aktuellen PWA-Aufnahmen (393x852 CSS-Px
+bei dpr 3) zum Vergleich mit den echten App-Bildern in
+`store/screenshots/`: Startscreen (leer und mit Rekord), Lauf, Hilfe,
+Skin-Picker, Game-Over. Neu erzeugen:
+
+```sh
+cd web
+python3 -m http.server 8765 &
+node tests/screenshots.js      # braucht Playwright + Chromium
+```
+
 ## Hosting
 
 Der Ordner ist als statische Site für **GitHub Pages** gedacht: In den
@@ -50,7 +98,11 @@ der Cache-First-Service-Worker installierten Spieler:innen alte Dateien.
 - `js/strings.js` — Texte EN/DE (Browser-Sprache entscheidet)
 - `js/store.js` — Persistenz in `localStorage`
 - `js/render.js` — Canvas-Rendering (Bahn, Vogel, Szenerie, Medaille)
+- `js/pixelbutton.js` — Treppen-Rahmen und Lautsprecher-Motiv der Knöpfe
+  (Port von `PixelButton.kt`)
 - `js/main.js` — Frame-Loop, Events, Overlays
 - `manifest.webmanifest`, `sw.js`, `icon-*.png` — PWA-Installation und
   Offline-Cache
-- `tests/run-tests.js` — Logik-Tests, laufen mit Node
+- `tests/run-tests.js` — Logik-, Farb- und Text-Tests, laufen mit Node
+- `tests/screenshots.js`, `tests/screenshots/` — Vergleichsbilder gegen
+  die Android-App

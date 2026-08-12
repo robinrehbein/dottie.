@@ -47,6 +47,9 @@
     <string name="tap_retry">TAP = RETRY</string>
     <string name="share">SHARE</string>
     <string name="menu">MENU</string>
+    <!-- Werbung: nur sichtbar, wenn in res/values/ads.xml echte IDs stehen. -->
+    <string name="continue_ad">CONTINUE (AD)</string>
+    <string name="remove_ads">REMOVE ADS</string>
 
     <!-- Spott-Texte (Auswahl deterministisch über score+best) -->
     <string-array name="taunts_zero">

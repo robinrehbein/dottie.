@@ -406,5 +406,193 @@ function driveToZoneAndTap(game) {
   assertEq(ScoreStore.dailyStreakPreviewFor(105), 0, "Preview nach Luecke");
 })();
 
+// ===== Pixel-Rahmen der Knöpfe (PixelButton.kt) =====
+(function () {
+  var PixelButton = require("../js/pixelbutton.js");
+
+  /**
+   * Referenz: die Treppenstufen einzeln wie drawLeft/RightSteppedBorder in
+   * Kotlin. Unsere zusammengefassten Rechtecke müssen exakt dieselbe
+   * Fläche abdecken.
+   */
+  function kotlinRects(w, h, b, overlap) {
+    var out = [
+      { x: 0, y: 0, w: w, h: b },
+      { x: 0, y: h - b, w: w, h: b }
+    ];
+    var steps = Math.trunc((h - 2 * b) / b);
+    var stepH = (h - 2 * b) / steps;
+    for (var i = 0; i < steps; i++) {
+      var y = b + i * stepH;
+      var sw = (i < Math.trunc(steps / 4)) ? b * 2
+        : (i < Math.trunc((steps * 3) / 4)) ? b : b * 2;
+      out.push({ x: 0, y: y, w: sw, h: stepH + overlap });
+      out.push({ x: w - sw, y: y, w: sw, h: stepH + overlap });
+    }
+    return out;
+  }
+
+  function covered(rects, x, y) {
+    for (var i = 0; i < rects.length; i++) {
+      var r = rects[i];
+      if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return true;
+    }
+    return false;
+  }
+
+  [[116, 48, 3], [116, 52, 3], [48, 48, 3], [244, 48, 3], [200, 60, 4]]
+    .forEach(function (dim) {
+      var w = dim[0], h = dim[1], b = dim[2];
+      var mine = PixelButton.steppedBorderRects(w, h, b, 1);
+      var ref = kotlinRects(w, h, b, 1);
+      var same = true;
+      for (var y = 0; y < h && same; y += 0.5) {
+        for (var x = 0; x < w && same; x += 0.5) {
+          if (covered(mine, x, y) !== covered(ref, x, y)) same = false;
+        }
+      }
+      assert(same, "Treppen-Rahmen deckt sich mit Kotlin (" + w + "x" + h + ")");
+    });
+
+  // 48x48 mit 3 dp Rahmen: steps = 14, also 3 breite Stufen oben (y 3..12),
+  // schmale Mitte und 4 breite unten (y 33..45).
+  var r48 = PixelButton.steppedBorderRects(48, 48, 3, 0);
+  assertEq(r48.length, 8, "oben, unten und drei Kanten-Abschnitte je Seite");
+  assertEq(r48[2].w, 6, "oberes Viertel ist doppelt so breit");
+  assertEq(r48[2].y, 3, "Kante beginnt unter dem oberen Balken");
+  assertEq(r48[2].h, 9, "drei Stufen breit oben");
+  assertEq(r48[4].w, 3, "Mitte hat die einfache Rahmenbreite");
+  assertEq(r48[6].w, 6, "unteres Viertel wieder doppelt");
+  assertEq(r48[6].y, 33, "unterer Abschnitt startet bei 33");
+  assertEq(r48[3].x, 42, "rechte Kante sitzt bündig am Rand");
+
+  var css = PixelButton.borderCss(116, 48, 3, 1, "#543847");
+  assertEq(css.image.split("linear-gradient").length - 1, 8, "acht Rahmen-Layer");
+  assert(css.size.indexOf("100% 3px") === 0, "oberer Balken über die volle Breite");
+  assert(css.position.indexOf("calc(100% - 6px)") > 0, "rechte Kante von rechts gemessen");
+
+  var svg = PixelButton.speakerSvg(true, "#543847", "#E53935");
+  assertEq(svg.split("#E53935").length - 1, 6, "sechs Blöcke Durchstreichung bei TON: AUS");
+  assert(PixelButton.speakerSvg(false, "#543847", "#E53935").indexOf("#E53935") < 0,
+    "keine Durchstreichung bei TON: AN");
+  assert(svg.indexOf('viewBox="0 0 16 16"') > 0, "Motiv auf dem 16er-Raster");
+})();
+
+// ===== Farb- und Text-Parität mit den Android-Quellen =====
+(function () {
+  var fs = require("fs");
+  var path = require("path");
+  var Renderer = require("../js/render.js");
+  var app = path.join(__dirname, "..", "..", "app", "src", "main");
+
+  function read(rel) {
+    try {
+      return fs.readFileSync(path.join(app, rel), "utf8");
+    } catch (e) {
+      return null;
+    }
+  }
+
+  var overlays = read("java/de/robinrehbein/punkt/ui/screens/GameOverlays.kt");
+  var screen = read("java/de/robinrehbein/punkt/ui/screens/TimingGameScreen.kt");
+  var skinsKt = read("java/de/robinrehbein/punkt/game/DotSkin.kt");
+  var stringsEn = read("res/values/strings.xml");
+  var stringsDe = read("res/values-de/strings.xml");
+
+  if (!overlays || !screen || !skinsKt || !stringsEn || !stringsDe) {
+    // Die Tests laufen auch außerhalb des Repos (nur web/ ausgeliefert).
+    console.log("Hinweis: app/-Quellen nicht gefunden — Paritätstests übersprungen.");
+    return;
+  }
+
+  function hexes(source, re) {
+    var found = {}, m;
+    while ((m = re.exec(source)) !== null) found[m[1]] = "#" + m[2].toUpperCase();
+    return found;
+  }
+
+  var P = Renderer.Palette;
+  var kotlinColors = hexes(
+    overlays, /internal val (\w+) = Color\(0x[Ff]{2}([0-9A-Fa-f]{6})\)/g
+  );
+  Object.keys(kotlinColors).forEach(function (name) {
+    if (P[name] === undefined) return; // nicht jede Farbe braucht die PWA
+    assertEq(P[name], kotlinColors[name], "Palette " + name);
+  });
+  assert(Object.keys(kotlinColors).length > 15, "Palette aus GameOverlays.kt gelesen");
+
+  var zoneColors = hexes(
+    screen, /private val (FakeZone\w*) = Color\(0x[Ff]{2}([0-9A-Fa-f]{6})\)/g
+  );
+  assertEq(P.FakeZoneColor, zoneColors.FakeZoneColor, "Köder-Zone");
+  assertEq(P.FakeZoneCoreColor, zoneColors.FakeZoneCoreColor, "Köder-Zone (Kern)");
+
+  var skyBlock = screen.slice(screen.indexOf("SkyStages = listOf"));
+  skyBlock = skyBlock.slice(0, skyBlock.indexOf("\n)"));
+  var sky = (skyBlock.match(/0x[Ff]{2}[0-9A-Fa-f]{6}/g) || [])
+    .map(function (h) { return "#" + h.slice(4).toUpperCase(); });
+  assertEq(sky.length, 7, "sieben Himmels-Stufen in Kotlin");
+  sky.forEach(function (hex, i) {
+    assertEq(P.SkyStages[i], hex, "Himmel Stufe " + i);
+  });
+
+  var skinRe = /^\s{4}(\w+)\(R\.string\.\w+,[^,]+, 0x[Ff]{2}([0-9A-Fa-f]{6}), 0x[Ff]{2}([0-9A-Fa-f]{6}), 0x[Ff]{2}([0-9A-Fa-f]{6})\)/gm;
+  var m, seen = 0;
+  while ((m = skinRe.exec(skinsKt)) !== null) {
+    var web = DotSkin.fromName(m[1]);
+    assertEq(web.name, m[1], "Skin " + m[1] + " existiert im Web");
+    assertEq(web.body, "#" + m[2].toUpperCase(), "Skin " + m[1] + " body");
+    assertEq(web.shade, "#" + m[3].toUpperCase(), "Skin " + m[1] + " shade");
+    assertEq(web.shine, "#" + m[4].toUpperCase(), "Skin " + m[1] + " shine");
+    seen++;
+  }
+  assertEq(seen, 7, "alle sieben Skins aus DotSkin.kt geprüft");
+
+  var medalRe = /MedalTier\.(\w+) -> Color\(0x[Ff]{2}([0-9A-Fa-f]{6})\) to Color\(0x[Ff]{2}([0-9A-Fa-f]{6})\)/g;
+  var medals = 0;
+  while ((m = medalRe.exec(overlays)) !== null) {
+    var tier = MedalTier.MEDALS.filter(function (t) { return t.name === m[1]; })[0];
+    assert(!!tier, "Medaille " + m[1] + " existiert im Web");
+    assertEq(tier.body, "#" + m[2].toUpperCase(), "Medaille " + m[1] + " body");
+    assertEq(tier.shade, "#" + m[3].toUpperCase(), "Medaille " + m[1] + " shade");
+    medals++;
+  }
+  assertEq(medals, 4, "vier Medaillen-Stufen geprüft");
+
+  // Texte: jeder Key, den die PWA kennt, muss wortgleich in strings.xml stehen.
+  function xmlStrings(xml) {
+    var out = {}, sm;
+    var re = /<string name="([\w_]+)"[^>]*>([\s\S]*?)<\/string>/g;
+    while ((sm = re.exec(xml)) !== null) {
+      out[sm[1]] = sm[2].replace(/\\'/g, "'").replace(/&amp;/g, "&");
+    }
+    var are = /<string-array name="([\w_]+)">([\s\S]*?)<\/string-array>/g;
+    while ((sm = are.exec(xml)) !== null) {
+      out[sm[1]] = (sm[2].match(/<item>([\s\S]*?)<\/item>/g) || [])
+        .map(function (it) {
+          return it.replace(/<\/?item>/g, "").replace(/\\'/g, "'");
+        });
+    }
+    return out;
+  }
+
+  [["en", stringsEn], ["de", stringsDe]].forEach(function (pair) {
+    var lang = pair[0];
+    var xml = xmlStrings(pair[1]);
+    var web = Strings.STRINGS[lang];
+    var compared = 0;
+    Object.keys(web).forEach(function (key) {
+      if (xml[key] === undefined) return; // app_name steht nur in values/
+      if (Array.isArray(web[key])) {
+        assertEq(web[key].join("|"), xml[key].join("|"), lang + ": " + key);
+      } else {
+        assertEq(web[key], xml[key], lang + ": " + key);
+      }
+      compared++;
+    });
+    assert(compared > 50, lang + ": genug Texte verglichen (" + compared + ")");
+  });
+})();
+
 console.log(checks + " Checks, " + failures + " Fehler");
 process.exit(failures === 0 ? 0 : 1);
