@@ -13,6 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Sitzungs- und Fehlerdateien des Kotlin-Compiler-Daemons
+/.kotlin
 
 # Claude-Code-Arbeitsdaten (Agent-Worktrees etc.)
 /.claude/
