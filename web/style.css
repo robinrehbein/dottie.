@@ -13,6 +13,10 @@
 }
 
 :root {
+  /* Fester Look wie in der App: kein automatisches Dunkelmodus-Umfärben
+     (Gegenstück zum color-scheme-Meta in index.html). */
+  color-scheme: only light;
+
   /* Ein Geräte-Pixel in CSS-Pixeln — main.js setzt den echten Wert aus
      devicePixelRatio. Compose gibt den Textschatten in Geräte-Pixeln an
      (Shadow(offset = Offset(4f, 4f))), nicht in dp; nur so ist der

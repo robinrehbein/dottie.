@@ -224,8 +224,23 @@
     node.classList.toggle("hidden", !visible);
   }
 
+  // ===== Update-Übernahme =====
+  // Ein neuer Service Worker hat übernommen, die Seite zeigt aber noch die
+  // alten Dateien. Neu laden — aber nur im Startscreen, damit niemandem
+  // mitten im Lauf das Spiel unter den Fingern wegbricht.
+  var updatePending = false;
+  var reloading = false;
+
+  function applyUpdateIfIdle() {
+    if (!updatePending || reloading) return;
+    if (game.phase !== TimingGame.Phase.READY) return;
+    reloading = true;
+    window.location.reload();
+  }
+
   // ===== Ready-/Game-Over-Anzeigen =====
   function updateReadyUI() {
+    applyUpdateIfIdle();
     var best = ScoreStore.bestScore;
     setVisible(el.bestLine, best > 0);
     el.bestLine.textContent = t("best_score", best);
@@ -579,11 +594,26 @@
   document.addEventListener("dblclick", function (e) { e.preventDefault(); });
 
   // ===== Service Worker (Cache-First, komplett offline spielbar) =====
+  // Der Cache liefert beim Start sofort die alten Dateien aus — eine neue
+  // Version wird also erst beim ÜBERNÄCHSTEN Aufruf sichtbar. Damit
+  // Updates nicht tagelang unbemerkt bleiben, laden wir die Seite neu,
+  // sobald der neue Worker übernommen hat: aber nur zwischen zwei Runden,
+  // niemals mitten im Spiel.
   if ("serviceWorker" in navigator) {
+    // Beim allerersten Besuch übernimmt der Worker eine noch ungecachte
+    // Seite — das ist kein Update, sondern die Erstinstallation.
+    var hadController = !!navigator.serviceWorker.controller;
+
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("sw.js").catch(function () {
         // Offline-Cache ist optional — das Spiel läuft auch ohne.
       });
+    });
+
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (!hadController) return;
+      updatePending = true;
+      applyUpdateIfIdle();
     });
   }
 

@@ -469,7 +469,17 @@ function driveToZoneAndTap(game) {
   var css = PixelButton.borderCss(116, 48, 3, 1, "#543847");
   assertEq(css.image.split("linear-gradient").length - 1, 8, "acht Rahmen-Layer");
   assert(css.size.indexOf("100% 3px") === 0, "oberer Balken über die volle Breite");
-  assert(css.position.indexOf("calc(100% - 6px)") > 0, "rechte Kante von rechts gemessen");
+  // Regression: Die rechte Kante muss über "100%" bündig ausgerichtet
+  // werden. Ein "calc(100% - Breite)" sieht richtig aus, ist es aber
+  // nicht — background-position mischt Prozent und Länge als
+  // (Knopf - Bild) * 100% + Länge und zieht die Kante dadurch um ihre
+  // eigene Breite nach innen; rechts blitzt dann die Füllfarbe durch.
+  assert(css.position.indexOf("calc(") < 0, "keine calc-Position im Rahmen");
+  var xs = css.position.split(",").map(function (p) { return p.trim().split(" ")[0]; });
+  assertEq(xs.filter(function (x) { return x === "100%"; }).length, 3,
+    "drei rechte Kanten-Abschnitte sitzen bündig rechts");
+  assertEq(xs.filter(function (x) { return x === "0px"; }).length, 5,
+    "oben, unten und drei linke Abschnitte sitzen links");
 
   var svg = PixelButton.speakerSvg(true, "#543847", "#E53935");
   assertEq(svg.split("#E53935").length - 1, 6, "sechs Blöcke Durchstreichung bei TON: AUS");
