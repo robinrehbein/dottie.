@@ -51,6 +51,7 @@
     runLine: $("run-line"),
     over: $("overlay-gameover"),
     btnHelpOver: $("btn-help-over"),
+    btnShare: $("btn-share"),
     goMedal: $("go-medal"),
     goMedalName: $("go-medal-name"),
     goMedalNext: $("go-medal-next"),
@@ -72,54 +73,67 @@
 
   // ===== Statische Texte =====
   document.title = t("app_name");
+  document.documentElement.lang = Strings.lang;
   el.hint.textContent = t("ready_hint");
   el.btnDaily.textContent = t("daily");
   el.btnSkins.textContent = t("skins");
   el.hudDaily.textContent = t("daily");
   el.goScoreLabel.textContent = t("points_label");
   el.goRetry.textContent = t("tap_retry");
+  el.btnShare.textContent = t("share");
   el.btnMenu.textContent = t("menu");
   $("go-title").textContent = t("game_over");
   $("skins-title").textContent = t("skins");
   $("skins-close").textContent = t("tap_to_close");
 
-  // Pixel-Lautsprecher wie am Phone (PixelButton.drawPixelIcon): dieselben
-  // Blöcke auf dem 16er-Raster, "aus" bekommt die rote Treppen-Durchstreichung.
-  function speakerSvg(muted) {
-    var rects =
-      '<rect x="3" y="6" width="2.5" height="4"/>' +
-      '<rect x="5.5" y="5" width="1.5" height="6"/>' +
-      '<rect x="7" y="4" width="1.5" height="8"/>';
-    if (!muted) {
-      rects +=
-        '<rect x="10" y="6" width="1.2" height="4"/>' +
-        '<rect x="12" y="4.5" width="1.2" height="7"/>';
-    }
-    var strike = "";
-    if (muted) {
-      for (var i = 0; i < 6; i++) {
-        strike += '<rect x="' + (2.5 + i * 1.9) + '" y="' + (2.5 + i * 1.9) +
-          '" width="2.2" height="2.2" fill="#E53935"/>';
-      }
-    }
-    return '<svg viewBox="0 0 16 16" width="30" height="30" ' +
-      'shape-rendering="crispEdges" aria-hidden="true">' +
-      '<g fill="currentColor">' + rects + "</g>" + strike + "</svg>";
+  // ===== Pixel-Knöpfe (Farben wie in GameOverlays.kt) =====
+  var C = Renderer.Colors;
+
+  /**
+   * Rahmenfarben pro Knopf, exakt wie die Overlays sie setzen: Sand mit
+   * dunklem Rahmen, nur DAILY und TEILEN leuchten in DotBody. Der
+   * PixelButton-Default (#E8B4E8 auf #5555FF) kommt im Spiel nirgends vor.
+   */
+  var BUTTONS = [
+    [el.btnSound, C.PanelSand],
+    [el.btnHelp, C.PanelSand],
+    [el.btnHelpOver, C.PanelSand],
+    [el.btnDaily, C.DotBody],
+    [el.btnSkins, C.PanelSand],
+    [el.btnShare, C.DotBody],
+    [el.btnMenu, C.PanelSand]
+  ];
+
+  /** Alle Overlay-Knöpfe zeichnen mit borderWidth = 3.dp. */
+  function paintButtons() {
+    // Der Textschatten ist in Compose in Geräte-Pixeln angegeben — hier
+    // einmal pro Auflösungswechsel in CSS-Pixel umrechnen.
+    document.documentElement.style.setProperty(
+      "--dev-px", (1 / (window.devicePixelRatio || 1)) + "px"
+    );
+    BUTTONS.forEach(function (entry) {
+      PixelButton.apply(entry[0], entry[1], C.OutlineColor, 3);
+    });
   }
+  paintButtons();
 
   function updateSoundButton() {
-    el.btnSound.innerHTML = speakerSvg(audio.muted);
+    el.btnSound.innerHTML =
+      PixelButton.speakerSvg(audio.muted, C.OutlineColor, C.RecordRed);
     el.btnSound.setAttribute("aria-label", t(audio.muted ? "sound_off" : "sound_on"));
   }
   updateSoundButton();
 
   // ===== Hilfe-Overlay-Inhalt =====
   (function buildHelp() {
+    // Farben wie in StopHelpContent(): benannte Palettenwerte, wo Kotlin
+    // sie benutzt, sonst dieselben Literale (Blau, Banner-Orange).
+    var P = Renderer.Palette;
     var twists = [
-      ["#9DE85A", "twist_pulse_title", "twist_pulse_text"],
+      [P.GrassLight, "twist_pulse_title", "twist_pulse_text"],
       ["#5B9BD5", "twist_drift_title", "twist_drift_text"],
-      ["#E9FCFD", "twist_ghost_title", "twist_ghost_text"],
-      ["#B44FD8", "twist_fake_title", "twist_fake_text"],
+      [P.CloudColor, "twist_ghost_title", "twist_ghost_text"],
+      [P.FakeZoneColor, "twist_fake_title", "twist_fake_text"],
       ["#FF8A3C", "twist_chain_title", "twist_chain_text"]
     ];
     var html = '<div class="help-heading">' + t("help_title") + "</div>";
@@ -135,12 +149,20 @@
         row[0] + '">' + t(row[1]) + '</span><span class="twist-text">' + t(row[2]) +
         "</span></span></div>";
     });
-    html += '<div class="help-line">' + t("help_max_twists") + "</div>";
+    html += '<div class="help-line after-twists">' + t("help_max_twists") + "</div>";
     html += '<div class="help-close">' + t("tap_to_close") + "</div>";
     el.helpContent.innerHTML = html;
   })();
 
   // ===== Skin-Overlay =====
+
+  /** "#RRGGBB" + Alpha -> "rgba(r, g, b, a)" (Compose: Color.copy(alpha)). */
+  function rgba(hex, alpha) {
+    var n = parseInt(hex.slice(1), 16);
+    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," +
+      (n & 255) + "," + alpha + ")";
+  }
+
   function buildSkinList() {
     var stats = ScoreStore.stats();
     el.skinList.innerHTML = "";
@@ -151,8 +173,16 @@
 
       var chip = document.createElement("span");
       chip.className = "skin-chip";
-      chip.style.background = s.body;
-      if (!unlocked) chip.style.opacity = "0.25";
+      // Gesperrt: Compose legt die Skin-Farbe mit alpha 0.25 auf den
+      // dunklen Kasten — nicht den ganzen Chip transparent machen, sonst
+      // verblasst auch der Rahmen.
+      if (unlocked) {
+        chip.style.background = s.body;
+      } else {
+        chip.style.backgroundColor = C.OutlineColor;
+        var faded = rgba(s.body, 0.25);
+        chip.style.backgroundImage = "linear-gradient(" + faded + "," + faded + ")";
+      }
       row.appendChild(chip);
 
       var texts = document.createElement("span");
@@ -216,6 +246,13 @@
 
   function updateGameOverUI() {
     var score = game.score;
+    // Die Medaille wird in Geräte-Pixeln gezeichnet (72 dp * dpr), damit
+    // ihre Pixel-Blöcke so scharf sind wie am Phone statt hochskaliert.
+    var medalPx = Math.round(72 * Math.min(window.devicePixelRatio || 1, 3));
+    if (el.goMedal.width !== medalPx) {
+      el.goMedal.width = medalPx;
+      el.goMedal.height = medalPx;
+    }
     Renderer.drawMedal(el.goMedal, score);
     // Medaillen-Pop neu anstoßen
     el.goMedal.classList.remove("pop");
@@ -292,6 +329,9 @@
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
     ctx.imageSmoothingEnabled = false;
+    // Rahmen und Textschatten hängen an der Pixeldichte — beim Wechsel
+    // auf ein anderes Display (oder Zoom) neu setzen.
+    paintButtons();
   }
   window.addEventListener("resize", resize);
   window.addEventListener("orientationchange", function () {
@@ -504,6 +544,20 @@
   button(el.btnSkins, function () {
     buildSkinList();
     show(el.skins);
+  });
+
+  // Teilen: Die App baut dafür eine gerenderte Score-Card als PNG
+  // (ScoreCard.kt) und öffnet den System-Dialog. Im Browser gibt es dafür
+  // keinen verlässlichen Weg (Web Share mit Dateien fehlt auf iOS-Safari
+  // je nach Version), deshalb teilen wir denselben Text wie die App und
+  // legen ihn sonst in die Zwischenablage.
+  button(el.btnShare, function () {
+    var text = t(dailyMode ? "share_text_daily" : "share_text", game.score);
+    if (navigator.share) {
+      navigator.share({ text: text }).catch(function () {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(function () {});
+    }
   });
 
   button(el.btnMenu, function () {

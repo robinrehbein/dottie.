@@ -29,65 +29,76 @@
     <!-- PERFEKT! +n — sitzt knapp unter der Bahn (74% Bildhöhe) -->
     <div id="perfect" class="shadow-text hidden">PERFECT! +2</div>
 
-    <!-- HUD im Lauf -->
+    <!-- HUD im Lauf. Die .safe-Box entspricht dem
+         windowInsetsPadding(systemBars) der Compose-Overlays: alle
+         Positionen darin sind relativ zum sichtbaren Bereich. -->
     <div id="hud" class="overlay hidden">
-      <div id="score" class="shadow-text">0</div>
-      <div id="hud-daily" class="shadow-text hidden">DAILY</div>
-      <div id="banner" class="shadow-text hidden"></div>
+      <div class="safe">
+        <div class="hud-col">
+          <div id="score" class="shadow-text">0</div>
+          <div id="hud-daily" class="shadow-text hidden">DAILY</div>
+          <div id="banner" class="shadow-text hidden"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Startscreen -->
     <div id="overlay-ready" class="overlay">
-      <button id="btn-sound" class="pixel-btn corner-tl" type="button"></button>
-      <button id="btn-help" class="pixel-btn corner-tr" type="button">?</button>
+      <div class="safe">
+        <button id="btn-sound" class="pixel-btn corner-tl" type="button"></button>
+        <button id="btn-help" class="pixel-btn corner-tr" type="button">?</button>
 
-      <div class="ready-top">
-        <div id="title" class="shadow-text">DOTTIE.</div>
-        <div id="best-line" class="shadow-text hidden"></div>
-      </div>
-
-      <div id="hint" class="shadow-text blink"></div>
-
-      <div class="ready-bottom">
-        <div class="btn-row">
-          <button id="btn-daily" class="pixel-btn gold" type="button"></button>
-          <button id="btn-skins" class="pixel-btn" type="button"></button>
+        <div class="ready-top">
+          <div id="title" class="shadow-text">DOTTIE.</div>
+          <div id="best-line" class="shadow-text hidden"></div>
         </div>
-        <div id="daily-line" class="shadow-text hidden"></div>
-        <div id="run-line" class="shadow-text hidden"></div>
+
+        <div id="hint" class="shadow-text blink"></div>
+
+        <div class="ready-bottom">
+          <div class="btn-row">
+            <button id="btn-daily" class="pixel-btn btn-tall" type="button"></button>
+            <button id="btn-skins" class="pixel-btn btn-tall" type="button"></button>
+          </div>
+          <div id="daily-line" class="shadow-text hidden"></div>
+          <div id="run-line" class="shadow-text hidden"></div>
+        </div>
       </div>
     </div>
 
     <!-- Game Over -->
     <div id="overlay-gameover" class="overlay hidden">
-      <button id="btn-help-over" class="pixel-btn corner-tr" type="button">?</button>
+      <div class="safe">
+        <button id="btn-help-over" class="pixel-btn corner-tr" type="button">?</button>
 
-      <div class="go-center">
-        <div id="go-title" class="shadow-text">GAME OVER</div>
+        <div class="go-center">
+          <div id="go-title" class="shadow-text">GAME OVER</div>
 
-        <div class="pixel-panel">
-          <div class="panel-row">
-            <div class="medal-col">
-              <canvas id="go-medal" width="144" height="144"></canvas>
-              <div id="go-medal-name"></div>
-              <div id="go-medal-next" class="hidden"></div>
-            </div>
-            <div class="score-col">
-              <div id="go-score-label" class="panel-label"></div>
-              <div id="go-score" class="panel-value">0</div>
-              <div id="go-best-label" class="panel-label"></div>
-              <div id="go-best" class="panel-value">0</div>
+          <div class="pixel-panel">
+            <div class="panel-row">
+              <div class="medal-col">
+                <canvas id="go-medal" width="144" height="144"></canvas>
+                <div id="go-medal-name"></div>
+                <div id="go-medal-next" class="hidden"></div>
+              </div>
+              <div class="score-col">
+                <div id="go-score-label" class="panel-label"></div>
+                <div id="go-score" class="panel-value">0</div>
+                <div id="go-best-label" class="panel-label"></div>
+                <div id="go-best" class="panel-value">0</div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div id="go-taunt" class="shadow-text"></div>
-        <div id="go-daily-line" class="shadow-text hidden"></div>
-        <div id="go-new-medal" class="shadow-text gold hidden"></div>
-        <div id="go-new-skin" class="shadow-text gold hidden"></div>
-        <div id="go-retry" class="shadow-text blink"></div>
-        <div class="btn-row">
-          <button id="btn-menu" class="pixel-btn" type="button"></button>
+          <div id="go-taunt" class="shadow-text"></div>
+          <div id="go-daily-line" class="shadow-text hidden"></div>
+          <div id="go-new-medal" class="shadow-text gold hidden"></div>
+          <div id="go-new-skin" class="shadow-text gold hidden"></div>
+          <div id="go-retry" class="shadow-text blink-over"></div>
+          <div class="btn-row">
+            <button id="btn-share" class="pixel-btn" type="button"></button>
+            <button id="btn-menu" class="pixel-btn" type="button"></button>
+          </div>
         </div>
       </div>
     </div>
@@ -102,7 +113,7 @@
       <div class="scroll-content">
         <div id="skins-title" class="shadow-text scrim-title">SKINS</div>
         <div id="skin-list"></div>
-        <div id="skins-close" class="help-close"></div>
+        <div id="skins-close" class="skins-close"></div>
       </div>
     </div>
   </div>
@@ -114,6 +125,7 @@
   <script src="js/synth.js"></script>
   <script src="js/store.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/pixelbutton.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/main.js"></script>
 </body>

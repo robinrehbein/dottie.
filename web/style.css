@@ -1,13 +1,32 @@
 /*
- * Dottie. — Pixel-Look im Hochformat. Farben aus der Spiel-Palette
- * (GameOverlays.kt), Bytesized-Font aus der Android-App, Safe-Areas
- * für iPhones mit Notch/Home-Indicator.
+ * Dottie. — Pixel-Look im Hochformat. Alle Maße sind die dp/sp-Werte aus
+ * GameOverlays.kt und PixelButton.kt: 1 dp = 1 CSS-Pixel, damit die PWA
+ * auf demselben Gerät genauso groß rendert wie die Android-App. Farben
+ * aus der Spiel-Palette (GameOverlays.kt), Bytesized-Font aus der App,
+ * Safe-Areas für iPhones mit Notch/Home-Indicator.
  */
 
 @font-face {
   font-family: "Bytesized";
   src: url("bytesized_regular.ttf") format("truetype");
   font-display: block;
+}
+
+:root {
+  /* Ein Geräte-Pixel in CSS-Pixeln — main.js setzt den echten Wert aus
+     devicePixelRatio. Compose gibt den Textschatten in Geräte-Pixeln an
+     (Shadow(offset = Offset(4f, 4f))), nicht in dp; nur so ist der
+     Schatten hier gleich dick wie am Phone. */
+  --dev-px: 1px;
+  --shadow-offset: calc(var(--dev-px) * 4);
+
+  /* Palette (GameOverlays.kt) */
+  --outline: #543847;   /* OutlineColor / TextDark */
+  --panel-sand: #DED895; /* PanelSand / GroundSand */
+  --dot-body: #FFD847;
+  --record-red: #E53935;
+  --accent: #FF8A3C;     /* Banner, GAME OVER, TWISTS-Überschrift */
+  --record-yellow: #FFE95E;
 }
 
 * {
@@ -31,6 +50,9 @@ html, body {
 body {
   font-family: "Bytesized", monospace;
   color: #fff;
+  /* 1.25 = (ascent 12 + |descent| 8) / unitsPerEm 16 der Bytesized —
+     dieselbe Zeilenhöhe, die Compose aus den Font-Metriken zieht. */
+  line-height: 1.25;
 }
 
 #stage {
@@ -61,57 +83,88 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+/* Entspricht windowInsetsPadding(WindowInsets.systemBars) in Compose:
+   Bezugsrahmen für alle Align-Positionen der Overlays. */
+.safe {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 .hidden { display: none !important; }
 
 .shadow-text {
-  text-shadow: 0.08em 0.08em 0 #543847;
-  letter-spacing: 0.02em;
+  text-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--outline);
 }
 
 .blink { animation: blink 1.2s linear infinite; }
+.blink-over { animation: blink-over 1s linear infinite; }
 
+/* tween(600ms, LinearEasing) + RepeatMode.Reverse zwischen 1 und 0.25 */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.25; }
 }
 
-.gold { color: #FFE95E; }
+/* Game-Over blinkt schneller und weniger tief: 500 ms, 1 -> 0.3 */
+@keyframes blink-over {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
 
-/* ===== Pixel-Buttons ===== */
+.gold { color: var(--record-yellow); }
+
+/* ===== Pixel-Buttons (PixelButton.kt) ===== */
 
 .pixel-btn {
   font-family: "Bytesized", monospace;
-  font-size: 22px;
-  color: #543847;
-  background: #DED895;
-  border: 3px solid #543847;
+  /* PixelButton zeichnet den Text immer mit 16.sp, egal wie groß der
+     Knopf ist. */
+  font-size: 16px;
+  line-height: 1.25;
+  color: var(--outline);
+  /* Hintergrund und Treppen-Rahmen kommen aus PixelButton.apply() —
+     ein CSS-Rahmen kann die Treppenkanten nicht nachbilden. */
+  background: none;
+  border: 0;
   border-radius: 0;
-  padding: 10px 18px;
-  min-height: 48px;
+  /* Text(modifier = padding(horizontal = 16.dp)) */
+  padding: 0 16px;
+  width: 116px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   cursor: pointer;
   touch-action: manipulation;
 }
 
-.pixel-btn:active { transform: translate(2px, 2px); }
+/* Android zeigt beim Druck den Material-Ripple; im Browser ist ein kurzes
+   Aufhellen die nächstliegende Entsprechung — vor allem verschiebt es den
+   Knopf nicht, wie es die App auch nicht tut. */
+.pixel-btn:active { filter: brightness(1.12); }
 
-.pixel-btn.gold { background: #FFD847; }
+/* DAILY/SKINS im Startscreen sind 116x52 dp, GAME-OVER-Knöpfe 116x48 dp. */
+.btn-tall { height: 52px; }
 
 .corner-tl {
   position: absolute;
-  top: calc(16px + env(safe-area-inset-top, 0px));
-  left: calc(16px + env(safe-area-inset-left, 0px));
-  /* quadratisch wie am Phone (PixelIconButton) — Icon statt Text */
+  top: 16px;
+  left: 16px;
   width: 48px;
   height: 48px;
   padding: 0;
 }
 
-.corner-tl svg { display: block; margin: auto; }
+/* PixelIconButton rechnet u = buttonSize/16 — das Motiv füllt also den
+   ganzen Knopf und liegt über dem Rahmen. */
+.corner-tl svg { display: block; width: 100%; height: 100%; }
 
 .corner-tr {
   position: absolute;
-  top: calc(16px + env(safe-area-inset-top, 0px));
-  right: calc(16px + env(safe-area-inset-right, 0px));
+  top: 16px;
+  right: 16px;
   width: 48px;
   height: 48px;
   padding: 0;
@@ -123,32 +176,30 @@ body {
   justify-content: center;
 }
 
-.btn-row .pixel-btn { min-width: 116px; }
-
 /* ===== HUD ===== */
 
-#hud {
+.hud-col {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   pointer-events: none;
 }
 
-#score {
-  margin-top: calc(40px + env(safe-area-inset-top, 0px));
-  font-size: 72px;
-  line-height: 1;
-}
+#score { font-size: 72px; }
 
 #hud-daily {
   font-size: 18px;
-  color: #FFD847;
+  color: var(--dot-body);
 }
 
 #banner {
   margin-top: 6px;
   font-size: 30px;
-  color: #FF8A3C;
+  color: var(--accent);
   text-align: center;
   padding: 0 24px;
 }
@@ -160,76 +211,88 @@ body {
   right: 0;
   text-align: center;
   font-size: 28px;
-  color: #FFE95E;
+  color: var(--record-yellow);
   pointer-events: none;
 }
 
 /* ===== Startscreen ===== */
 
-#overlay-ready {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
 .ready-top {
-  margin-top: 80px;
+  position: absolute;
+  top: 80px;
+  left: 0;
+  right: 0;
   text-align: center;
 }
 
 #title {
-  font-size: clamp(48px, 18vw, 72px);
-  line-height: 1;
+  /* 64.sp fest wie am Phone; erst unter 360 dp Breite schrumpft der Titel,
+     damit "DOTTIE." nicht umbricht. */
+  font-size: min(64px, 17.8vw);
 }
 
-#best-line { font-size: 22px; margin-top: 6px; }
+#best-line { font-size: 22px; }
 
+/* Compose: Column(align = Center, padding(top = 140.dp)) — die Box wird
+   mittig ausgerichtet und der Text dadurch um die halbe Polsterung nach
+   unten geschoben. */
 #hint {
-  margin-top: auto;
-  margin-bottom: auto;
+  position: absolute;
+  top: calc(50% + 70px);
+  transform: translateY(-50%);
+  left: 0;
+  right: 0;
   font-size: 22px;
   text-align: center;
   padding: 0 24px;
 }
 
 .ready-bottom {
-  margin-bottom: 48px;
+  position: absolute;
+  bottom: 48px;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
 }
 
-#daily-line { font-size: 15px; color: #FFD847; }
-#run-line { font-size: 16px; opacity: 0.8; }
+#daily-line {
+  margin-top: 8px;
+  font-size: 15px;
+  color: var(--dot-body);
+}
+
+#run-line {
+  margin-top: 6px;
+  font-size: 16px;
+  opacity: 0.8;
+}
 
 /* ===== Game Over ===== */
 
-#overlay-gameover {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .go-center {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  max-width: 92vw;
 }
 
 #go-title {
   font-size: 48px;
-  color: #FF8A3C;
-  line-height: 1;
+  color: var(--accent);
 }
 
 .pixel-panel {
-  background: #DED895;
-  border: 4px solid #543847;
+  margin-top: 16px;
+  background: var(--panel-sand);
+  border: 4px solid var(--outline);
   padding: 24px 32px;
-  color: #543847;
+  color: var(--outline);
 }
 
 .panel-row {
@@ -244,16 +307,34 @@ body {
   align-items: center;
 }
 
-#go-medal {
-  width: 72px;
-  height: 72px;
-  image-rendering: pixelated;
-}
+#go-medal { width: 72px; height: 72px; }
 
-#go-medal.pop { animation: medal-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+/* Compose: spring(DampingRatioMediumBouncy, StiffnessLow) — die Kurve ist
+   hier als Stützstellen dieser Feder (ω=√200, ζ=0.5) abgetastet, damit
+   der Überschwinger genauso weit und genauso schnell läuft wie am Phone. */
+#go-medal.pop { animation: medal-pop 0.76s linear; }
 
 @keyframes medal-pop {
   0% { transform: scale(0); }
+  5% { transform: scale(0.119); }
+  10% { transform: scale(0.380); }
+  15% { transform: scale(0.667); }
+  20% { transform: scale(0.908); }
+  25% { transform: scale(1.069); }
+  30% { transform: scale(1.148); }
+  35% { transform: scale(1.162); }
+  40% { transform: scale(1.135); }
+  45% { transform: scale(1.090); }
+  50% { transform: scale(1.044); }
+  55% { transform: scale(1.007); }
+  60% { transform: scale(0.985); }
+  65% { transform: scale(0.975); }
+  70% { transform: scale(0.974); }
+  75% { transform: scale(0.980); }
+  80% { transform: scale(0.987); }
+  85% { transform: scale(0.995); }
+  90% { transform: scale(1.000); }
+  95% { transform: scale(1.003); }
   100% { transform: scale(1); }
 }
 
@@ -261,22 +342,31 @@ body {
 #go-medal-next { font-size: 10px; color: #8A7F5A; }
 
 .panel-label { font-size: 16px; }
-.panel-value { font-size: 40px; line-height: 1; }
-.panel-label.record, .panel-value.record { color: #E53935; }
+.panel-value { font-size: 40px; }
+#go-best-label { margin-top: 4px; }
+.panel-label.record, .panel-value.record { color: var(--record-red); }
 
 #go-taunt {
+  margin-top: 12px;
   font-size: 24px;
   text-align: center;
   padding: 0 24px;
 }
 
-#go-daily-line { font-size: 16px; color: #FFD847; }
-#go-new-medal, #go-new-skin { font-size: 18px; }
+#go-daily-line {
+  margin-top: 6px;
+  font-size: 16px;
+  color: var(--dot-body);
+}
+
+#go-new-medal, #go-new-skin { margin-top: 6px; font-size: 18px; }
 
 #go-retry {
+  margin-top: 24px;
   font-size: 26px;
-  margin-top: 12px;
 }
+
+.go-center .btn-row { margin-top: 20px; }
 
 /* ===== Scrim-Overlays (Hilfe, Skins) ===== */
 
@@ -304,7 +394,7 @@ body {
 
 .help-heading {
   font-size: 32px;
-  text-shadow: 0.08em 0.08em 0 #543847;
+  text-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--outline);
   margin-bottom: 12px;
 }
 
@@ -314,12 +404,15 @@ body {
   padding: 4px 32px;
 }
 
-.help-line.gold { color: #FFD847; }
+.help-line.gold { color: var(--dot-body); }
+
+/* Spacer(10.dp) vor der Schlusszeile "MAXIMAL ZWEI TWISTS ..." */
+.help-line.after-twists { margin-top: 10px; }
 
 .help-twists {
   font-size: 24px;
-  color: #FF8A3C;
-  text-shadow: 0.08em 0.08em 0 #543847;
+  color: var(--accent);
+  text-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--outline);
   margin: 18px 0 8px;
 }
 
@@ -327,7 +420,6 @@ body {
   display: flex;
   align-items: center;
   width: 100%;
-  max-width: 480px;
   padding: 5px 40px;
 }
 
@@ -350,22 +442,25 @@ body {
 
 /* ===== Skin-Liste ===== */
 
-#skin-list { width: 100%; max-width: 480px; }
+#skin-list { width: 100%; }
 
 .skin-row {
   display: flex;
   align-items: center;
+  width: 100%;
   padding: 10px 48px;
   cursor: pointer;
 }
 
 .skin-row.locked { cursor: default; }
 
+/* Box(size 36.dp, background OutlineColor, padding 4.dp, background body):
+   der Rahmen ist Teil der 36 dp, die Farbe sitzt in der Mitte. */
 .skin-chip {
   width: 36px;
   height: 36px;
   flex: none;
-  border: 4px solid #543847;
+  border: 4px solid var(--outline);
   margin-right: 16px;
 }
 
@@ -374,4 +469,11 @@ body {
 .skin-row.locked .skin-title { opacity: 0.45; }
 .skin-sub { font-size: 14px; opacity: 0.7; }
 .skin-row.locked .skin-sub { opacity: 0.45; }
-.skin-sub.selected { color: #FFD847; opacity: 1; }
+.skin-sub.selected { color: var(--dot-body); opacity: 1; }
+
+/* Spacer(20.dp) vor "TIPPEN ZUM SCHLIESSEN" — im Hilfe-Overlay sind es 28. */
+.skins-close {
+  font-size: 14px;
+  opacity: 0.6;
+  margin-top: 20px;
+}
