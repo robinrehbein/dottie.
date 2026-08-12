@@ -6,6 +6,11 @@
        env(safe-area-inset-*) in style.css berücksichtigt. -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#4EC0CA">
+  <!-- "only light" schaltet das automatische Dunkelmodus-Umfärben ab, das
+       Chrome/Samsung Internet sonst über die Seite legen: Es färbt die
+       Knopfflächen (DOM) um, während die im Canvas gezeichnete Welt hell
+       bleibt. Die App hat einen festen Look, die PWA soll das auch. -->
+  <meta name="color-scheme" content="only light">
   <meta name="description" content="Dottie. — stop the dot in the green zone. A tiny rage game.">
 
   <!-- PWA -->

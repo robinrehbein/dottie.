@@ -70,9 +70,12 @@
       var r = rects[i];
       images.push("linear-gradient(" + color + "," + color + ")");
       sizes.push((r.w >= w ? "100%" : r.w + "px") + " " + r.h + "px");
-      positions.push(
-        (r.x === 0 ? "0px" : "calc(100% - " + r.w + "px)") + " " + r.y + "px"
-      );
+      // Rechte Kante buendig an den rechten Rand: "100%" richtet die
+      // rechte Bildkante an der rechten Knopfkante aus. Ein
+      // "calc(100% - Breite)" waere falsch — background-position mischt
+      // Prozent und Laenge als (Knopf - Bild) * 100% + Laenge und zoege
+      // die Kante um ihre eigene Breite nach innen.
+      positions.push((r.x === 0 ? "0px" : "100%") + " " + r.y + "px");
     }
     return {
       image: images.join(","),
