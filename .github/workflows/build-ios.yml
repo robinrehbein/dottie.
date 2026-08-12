@@ -9,9 +9,20 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    # macos-15: XcodeGen 2.45+ schreibt das Xcode-16-Projektformat
+    # (objectVersion 77), das Xcode 15.4 auf macos-14 nicht lesen kann.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
+      # Neuestes installiertes Xcode aktivieren — das Image-Default kann
+      # älter sein als das, was das Projektformat verlangt.
+      - name: Neuestes Xcode auswählen
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Nutze $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
 
       - name: XcodeGen installieren
         run: brew install xcodegen
