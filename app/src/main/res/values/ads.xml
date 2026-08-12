@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AdMob (Rewarded-Revive + Interstitials) und damit die gesamte
+     Monetarisierung, inklusive des "Werbung entfernen"-Kaufs.
+
+     Leer = Integration komplett deaktiviert: kein SDK-Init, keine
+     Ad-Requests, kein Consent-Dialog, kein Billing — die App verhält
+     sich exakt wie ohne die Abhängigkeiten. Erst wenn ALLE DREI IDs
+     ausgefüllt sind, wird Werbung aktiv. Beim Eintragen echter IDs
+     muss auch die APPLICATION_ID im AndroidManifest mitgetauscht
+     werden (Anleitung in PUBLISHING.md).
+
+     Google-Test-IDs für die Entwicklung (zeigen echte Test-Anzeigen,
+     dürfen NIE in ein Store-Release):
+       App-ID:       ca-app-pub-3940256099942544~3347511713
+       Rewarded:     ca-app-pub-3940256099942544/5224354917
+       Interstitial: ca-app-pub-3940256099942544/1033173712 -->
+<resources>
+    <string name="admob_app_id" translatable="false"></string>
+    <string name="admob_rewarded_id" translatable="false"></string>
+    <string name="admob_interstitial_id" translatable="false"></string>
+</resources>

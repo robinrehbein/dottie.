@@ -19,8 +19,10 @@ android {
         applicationId = "de.robinrehbein.pointless"
         minSdk = 28
         targetSdk = 36
-        versionCode = 26
-        versionName = "2.15"
+        // v2.16: AdMob + Play Billing feature-geflaggt vorbereitet
+        // (inaktiv, bis in res/values/ads.xml echte IDs stehen).
+        versionCode = 27
+        versionName = "2.16"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -98,6 +100,12 @@ dependencies {
     // Play Games Services v2 (Bestenlisten) — inaktiv, bis in
     // res/values/games.xml echte IDs stehen (siehe PUBLISHING.md).
     implementation(libs.play.services.games)
+    // Monetarisierung: AdMob (Rewarded + Interstitial), UMP-Consent und
+    // Play Billing ("Werbung entfernen") — inaktiv, bis in
+    // res/values/ads.xml echte IDs stehen (siehe PUBLISHING.md).
+    implementation(libs.play.services.ads)
+    implementation(libs.ump)
+    implementation(libs.billing.ktx)
     // WorkManager für die tägliche Daily-Challenge-Erinnerung
     implementation(libs.androidx.work.runtime)
 

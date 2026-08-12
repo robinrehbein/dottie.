@@ -37,6 +37,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.R
+import de.robinrehbein.punkt.ads.AdsManager
+import de.robinrehbein.punkt.billing.BillingManager
 import de.robinrehbein.punkt.data.ScoreStore
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.DotSkin
@@ -140,6 +142,17 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     val bannerState = remember { BannerState() }
     val runState = remember { RunState() }
     val leaderboards = remember { Leaderboards(context as? Activity) }
+    // Werbung und Kauf hängen wie die Bestenlisten an der Activity aus dem
+    // LocalContext — beide sind ohne konfigurierte IDs komplett inaktiv.
+    val ads = remember { AdsManager(context as? Activity, store) }
+    val billing = remember {
+        BillingManager(
+            activity = context as? Activity,
+            store = store,
+            configured = ads.configured,
+            onAdsRemoved = { ads.disableAfterPurchase() }
+        )
+    }
 
     var frameTick by remember { mutableLongStateOf(0L) }
     var phase by remember { mutableStateOf(TimingGame.Phase.READY) }
@@ -165,6 +178,10 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         mutableIntStateOf(store.dailyStreakPreviewFor(LocalDate.now().toEpochDay()))
     }
     var reminderOn by remember { mutableStateOf(store.reminderEnabled) }
+    // Wird beim Aufschlag (Settled) einmal entschieden, damit ein
+    // nachträglich fertig geladener Spot das Overlay nicht mitten im
+    // Lesen umbaut.
+    var continueAdOffer by remember { mutableStateOf(false) }
 
     // Ab Android 13 braucht die Erinnerung die Notification-Permission —
     // erst nach erteilter Erlaubnis wird der Schalter wirklich aktiv.
@@ -179,11 +196,20 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     }
 
     DisposableEffect(Unit) {
-        onDispose { audio.release() }
+        onDispose {
+            audio.release()
+            billing.release()
+        }
     }
 
     // Play-Games-Sign-in (No-op, solange keine IDs konfiguriert sind).
     LaunchedEffect(Unit) { leaderboards.connect() }
+
+    // Werbung und Kauf hochfahren — beides No-op ohne AdMob-IDs.
+    LaunchedEffect(Unit) {
+        ads.start()
+        billing.connect()
+    }
 
     // Falls die Erinnerung aktiv ist: Planung idempotent auffrischen
     // (übersteht App-Updates und gelöschte WorkManager-Jobs).
@@ -240,6 +266,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             runState.maxPerfect = 0
                             skinUnlockedThisRun = false
                             newMedalThisRun = false
+                            continueAdOffer = false
                             fx.deathTime = -1f
                             audio.start()
                         }
@@ -292,6 +319,18 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                                 haptics.newRecord()
                             }
                         }
+                        is TimingGame.GameEvent.Revived -> {
+                            // Der Vogel steht wieder auf: Sturz-Animation und
+                            // Tod-Effekte zurücknehmen, Angebot verbrauchen.
+                            fx.deathTime = -1f
+                            fx.flashAlpha = 0f
+                            fx.shakeTime = 0f
+                            continueAdOffer = false
+                            bannerState.timeLeft = 0f
+                            bannerText = ""
+                            haptics.unlock()
+                            audio.unlock()
+                        }
                         is TimingGame.GameEvent.Settled -> {
                             haptics.thud()
                             // Der Rekord-Jingle lief meist schon live im Lauf;
@@ -300,6 +339,18 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                                 audio.newRecord()
                             } else {
                                 audio.thud()
+                            }
+                            // Weiterspielen anbieten? Einmal pro Lauf, nur in
+                            // KLASSIK — die Daily lebt vom identischen Lauf
+                            // für alle und verträgt keinen gekauften Vorteil.
+                            continueAdOffer = ads.enabled && ads.rewardedReady &&
+                                !dailyMode && !game.reviveUsed
+                            // Interstitial nur beim wirklich endgültigen
+                            // Game-Over: Solange noch ein Weiterspielen
+                            // angeboten wird, darf kein Vollbild-Spot die
+                            // Entscheidung überdecken.
+                            if (!dailyMode && !continueAdOffer) {
+                                (context as? Activity)?.let { ads.onGameOver(it) }
                             }
                         }
                         else -> Unit
@@ -419,7 +470,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             DailyReminder.schedule(context)
                         }
                     }
-                }
+                },
+                removeAdsVisible = ads.enabled,
+                onRemoveAds = { (context as? Activity)?.let { billing.purchase(it) } }
             )
             TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
                 ScoreHud(
@@ -452,7 +505,16 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     dailyMode = false
                     game.reset()
                 },
-                onHelp = { showHelp = true }
+                onHelp = { showHelp = true },
+                continueAdVisible = continueAdOffer,
+                onContinueAd = {
+                    // Erst die Belohnung, dann das Weiterspielen: Bricht die
+                    // Spielerin den Spot ab, passiert nichts und das
+                    // Game-Over bleibt stehen.
+                    (context as? Activity)?.let { activity ->
+                        ads.showRewarded(activity) { game.revive() }
+                    }
+                }
             )
         }
 

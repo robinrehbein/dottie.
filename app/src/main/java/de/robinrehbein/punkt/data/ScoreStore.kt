@@ -41,6 +41,17 @@ class ScoreStore(context: Context) {
             prefs.edit().putBoolean(KEY_REMINDER, value).apply()
         }
 
+    /**
+     * Werbefrei gekauft ("remove_ads"). Play Billing ist die Wahrheit —
+     * dieser Wert ist nur der lokale Spiegel, damit die UI beim Start
+     * ohne Netz sofort weiß, dass keine Werbung erscheinen darf.
+     */
+    var adsRemoved: Boolean
+        get() = prefs.getBoolean(KEY_ADS_REMOVED, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_ADS_REMOVED, value).apply()
+        }
+
     /** Gewählter Punkt-Skin, KLASSIK als Fallback. */
     var selectedSkin: DotSkin
         get() = DotSkin.fromName(prefs.getString(KEY_SKIN, null))
@@ -136,6 +147,7 @@ class ScoreStore(context: Context) {
         const val KEY_REMINDER = "daily_reminder"
         const val KEY_BEST_PERFECT = "best_perfect_streak"
         const val KEY_SKIN = "selected_skin"
+        const val KEY_ADS_REMOVED = "ads_removed"
         const val KEY_DAILY_BEST = "daily_best"
         const val KEY_DAILY_DAY = "daily_day"
         const val KEY_DAILY_STREAK = "daily_streak"

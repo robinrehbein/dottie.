@@ -72,6 +72,16 @@ Ab v2.11 gibt es zusätzlich eine optionale **tägliche Erinnerung** an
 die Daily Challenge (Opt-in über den Startscreen, komplett lokal per
 WorkManager, ab Android 13 hinter der Notification-Permission).
 
+Ab v2.16 ist die **Monetarisierung vorbereitet, aber hart deaktiviert**:
+ein Rewarded-Spot zum Weiterspielen (einmal pro Lauf, nur Klassik),
+seltene Interstitials (frühestens ab dem 4. Tod einer Sitzung, mit
+90-Sekunden-Sperre) und der einmalige Kauf „Werbung entfernen" über Play
+Billing. Solange in `res/values/ads.xml` keine echten AdMob-IDs stehen —
+und das ist der Auslieferungszustand — wird kein SDK initialisiert, es
+gibt keine Requests, keinen Consent-Dialog und keinen BillingClient; die
+UI sieht exakt aus wie ohne die Abhängigkeiten. Anleitung zum
+Scharfschalten samt Datenschutz-Textbausteinen in PUBLISHING.md.
+
 ## Sprachen (ab v2.11)
 
 Die App ist zweisprachig: **Englisch** ist die Standardsprache,

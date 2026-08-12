@@ -10,6 +10,12 @@ activityCompose = "1.11.0"
 composeBom = "2024.09.00"
 playGames = "20.1.2"
 work = "2.9.1"
+# Monetarisierung (nur :app): AdMob-SDK, UMP-Consent und Play Billing —
+# alles feature-geflaggt über res/values/ads.xml, ohne echte IDs werden
+# die SDKs nie initialisiert.
+playServicesAds = "24.4.0"
+ump = "3.2.0"
+billing = "7.1.1"
 # Wear-Compose ist nicht Teil der androidx.compose-BOM (eigene
 # Versionierung) — 1.4.0 ist die zur BOM-Ära 2024.09.00 passende stabile
 # Version für das :wear-Modul.
@@ -31,6 +37,9 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 play-services-games = { group = "com.google.android.gms", name = "play-services-games-v2", version.ref = "playGames" }
+play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
+ump = { group = "com.google.android.ump", name = "user-messaging-platform", version.ref = "ump" }
+billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
 androidx-work-runtime = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 androidx-wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wearCompose" }
 androidx-wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }

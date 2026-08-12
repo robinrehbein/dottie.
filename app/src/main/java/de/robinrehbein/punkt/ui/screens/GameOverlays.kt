@@ -174,7 +174,11 @@ internal fun ReadyOverlay(
     soundOn: Boolean,
     onToggleSound: () -> Unit,
     reminderOn: Boolean,
-    onToggleReminder: () -> Unit
+    onToggleReminder: () -> Unit,
+    // Kauf-Zeile: nur sichtbar, wenn Werbung wirklich läuft. Ohne
+    // AdMob-IDs (Standard) sieht der Startscreen exakt aus wie bisher.
+    removeAdsVisible: Boolean = false,
+    onRemoveAds: () -> Unit = {}
 ) {
     val blink by rememberInfiniteTransition(label = "blink").animateFloat(
         initialValue = 1f,
@@ -330,6 +334,21 @@ internal fun ReadyOverlay(
                     color = Color.White.copy(alpha = 0.8f)
                 )
             }
+            // Bewusst nur eine kleine Zeile statt eines dritten großen
+            // Knopfs: Der Kauf soll auffindbar sein, aber nicht um
+            // Aufmerksamkeit mit DAILY und SKINS konkurrieren.
+            if (removeAdsVisible) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = stringResource(R.string.remove_ads),
+                    style = ScoreShadowStyle,
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.75f),
+                    modifier = Modifier
+                        .clickable { onRemoveAds() }
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            }
         }
     }
 }
@@ -347,7 +366,13 @@ internal fun GameOverOverlay(
     newMedal: Boolean,
     onShare: () -> Unit,
     onMenu: () -> Unit,
-    onHelp: () -> Unit
+    onHelp: () -> Unit,
+    // Weiterspielen gegen einen Rewarded-Spot: nur wenn Werbung aktiv,
+    // ein Spot geladen ist, der Lauf ein Klassik-Lauf ist und in diesem
+    // Lauf noch nicht wiederbelebt wurde. Ohne AdMob-IDs (Standard)
+    // sieht das Game-Over exakt aus wie bisher.
+    continueAdVisible: Boolean = false,
+    onContinueAd: () -> Unit = {}
 ) {
     val blink by rememberInfiniteTransition(label = "overBlink").animateFloat(
         initialValue = 1f,
@@ -499,6 +524,23 @@ internal fun GameOverOverlay(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+
+            // Steht über dem "TIPPEN = NOCHMAL"-Hinweis: Wer weiterspielen
+            // will, soll das Angebot sehen, bevor der Blick beim
+            // Neustart-Hinweis landet.
+            if (continueAdVisible) {
+                PixelButton(
+                    text = stringResource(R.string.continue_ad),
+                    onClick = onContinueAd,
+                    backgroundColor = GrassLight,
+                    borderColor = TextDark,
+                    textColor = TextDark,
+                    width = 244.dp,
+                    height = 52.dp,
+                    borderWidth = 3.dp
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // Kein NOCHMAL-Button: Tap irgendwo startet sofort neu (nach
             // kurzer Wut-Tap-Sperre) — der blinkende Hinweis ist die
