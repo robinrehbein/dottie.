@@ -326,7 +326,7 @@
       var facingLeft = Math.sin(game.angle) * game.direction > 0;
       if (facingLeft) {
         birdRect(GRID - 4.5, 2.5, 2, 2, shine);
-        birdRect(5, 3, 0.5, 4, OutlineColor);
+        birdRect(5.5, 3, 0.5, 4, OutlineColor);
         birdRect(2, 2.5, 3.5, 0.5, OutlineColor);
         birdRect(2, 7, 3.5, 0.5, OutlineColor);
         birdRect(2, 3, 3.5, 4, "#FFFFFF");

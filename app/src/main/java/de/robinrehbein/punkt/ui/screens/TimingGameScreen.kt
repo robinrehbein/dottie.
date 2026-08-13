@@ -998,7 +998,7 @@ private fun DrawScope.drawTimingDot(
         val shine = Color(skin.shineColor(state))
         if (facingLeft) {
             rect(GRID - 4.5f, 2.5f, 2f, 2f, shine)
-            rect(5f, 3f, 0.5f, 4f, OutlineColor)
+            rect(5.5f, 3f, 0.5f, 4f, OutlineColor)
             rect(2f, 2.5f, 3.5f, 0.5f, OutlineColor)
             rect(2f, 7f, 3.5f, 0.5f, OutlineColor)
             rect(2f, 3f, 3.5f, 4f, Color.White)

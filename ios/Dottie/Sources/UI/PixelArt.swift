@@ -104,7 +104,7 @@ enum PixelArt {
             // Skins (Koi, Chrom) ginge das Weiß sonst im Körper unter.
             if facingLeft {
                 block(grid - 4.5, 2.5, 2, 2, shine)
-                block(5, 3, 0.5, 4, Palette.outline)
+                block(5.5, 3, 0.5, 4, Palette.outline)
                 block(2, 2.5, 3.5, 0.5, Palette.outline)
                 block(2, 7, 3.5, 0.5, Palette.outline)
                 block(2, 3, 3.5, 4, UIColor.white)
