@@ -4,7 +4,10 @@ on:
   push:
     branches:
       - main
-      - claude/casual-game-mobile-levels-9twgfw
+      # Jeder Arbeits-Branch bekommt den Build-Check samt Debug-APK als
+      # Artefakt. Als Muster statt einzelner Namen, damit hier nichts
+      # stehen bleibt, wenn ein Branch gemerged und geloescht ist.
+      - 'claude/**'
   workflow_dispatch:
 
 permissions:
