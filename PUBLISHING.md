@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.17.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.18.
 
 ## Checkliste
 
