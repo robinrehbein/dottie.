@@ -19,12 +19,15 @@ android {
         applicationId = "de.robinrehbein.pointless"
         minSdk = 28
         targetSdk = 36
-        // v2.17: 21 Punkt-Skins (gemustert, bewegt, auf den Lauf
+        // v2.18: 21 Punkt-Skins (gemustert, bewegt, auf den Lauf
         // reagierend), der Himmel im Tag-Nacht-Umlauf, und der
         // Rewarded-Spot schaltet einen Skin-Tagespass frei statt
         // Weiterspielen — der Tod bleibt endgueltig. Werbung ist aktiv.
-        versionCode = 28
-        versionName = "2.17"
+        //
+        // 28 wurde bereits gebaut und verteilt (Build 101 mit Skins und
+        // Umlauf, Build 108 zusaetzlich mit Tagespass) — deshalb hier 29.
+        versionCode = 29
+        versionName = "2.18"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
