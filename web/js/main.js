@@ -170,13 +170,6 @@
 
   // ===== Skin-Overlay =====
 
-  /** "#RRGGBB" + Alpha -> "rgba(r, g, b, a)" (Compose: Color.copy(alpha)). */
-  function rgba(hex, alpha) {
-    var n = parseInt(hex.slice(1), 16);
-    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," +
-      (n & 255) + "," + alpha + ")";
-  }
-
   function buildSkinList() {
     var stats = ScoreStore.stats();
     el.skinList.innerHTML = "";
@@ -185,18 +178,20 @@
       var row = document.createElement("div");
       row.className = "skin-row" + (unlocked ? "" : " locked");
 
-      var chip = document.createElement("span");
+      // Vorschau als echter Vogel statt als Farbflaeche: Bei gemusterten
+      // Skins sagt ein einzelner Farbwert nichts mehr aus. Bewegte Skins
+      // stehen dabei still (Zeitpunkt 0), wie in der App.
+      var chip = document.createElement("canvas");
       chip.className = "skin-chip";
-      // Gesperrt: Compose legt die Skin-Farbe mit alpha 0.25 auf den
-      // dunklen Kasten — nicht den ganzen Chip transparent machen, sonst
-      // verblasst auch der Rahmen.
-      if (unlocked) {
-        chip.style.background = s.body;
-      } else {
-        chip.style.backgroundColor = C.OutlineColor;
-        var faded = rgba(s.body, 0.25);
-        chip.style.backgroundImage = "linear-gradient(" + faded + "," + faded + ")";
-      }
+      var chipSize = 36;
+      var chipDpr = Math.min(window.devicePixelRatio || 1, 3);
+      chip.width = chipSize * chipDpr;
+      chip.height = chipSize * chipDpr;
+      var chipCtx = chip.getContext("2d");
+      chipCtx.scale(chipDpr, chipDpr);
+      chipCtx.globalAlpha = unlocked ? 1 : 0.3;
+      Renderer.drawSkinPreview(chipCtx, chipSize, s);
+      chipCtx.globalAlpha = 1;
       row.appendChild(chip);
 
       var texts = document.createElement("span");

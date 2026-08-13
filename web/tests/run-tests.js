@@ -349,10 +349,63 @@ function driveToZoneAndTap(game) {
   var none = { bestScore: 0, bestPerfectStreak: 0, bestDailyStreak: 0 };
   assertEq(DotSkin.unlockedCount(none), 1, "nur KLASSIK am Anfang");
   assertEq(DotSkin.unlockedCount({ bestScore: 10, bestPerfectStreak: 0, bestDailyStreak: 0 }), 2, "MINZE ab Rekord 10");
-  assertEq(DotSkin.unlockedCount({ bestScore: 40, bestPerfectStreak: 0, bestDailyStreak: 0 }), 5, "Rekord-Skins bei 40");
+  // Rekord 40 oeffnet MINZE(10), LAVA(20), MELONE(25), GOLD/CHAMAELEON(30),
+  // PILZ(35) und FROST(40) — mit KLASSIK sind das acht.
+  assertEq(DotSkin.unlockedCount({ bestScore: 40, bestPerfectStreak: 0, bestDailyStreak: 0 }), 8, "Rekord-Skins bei 40");
   assertEq(DotSkin.unlockedCount({ bestScore: 0, bestPerfectStreak: 4, bestDailyStreak: 0 }), 2, "SCHATTEN ab Serie 4");
   assertEq(DotSkin.unlockedCount({ bestScore: 0, bestPerfectStreak: 0, bestDailyStreak: 3 }), 2, "PRISMA ab Daily-Serie 3");
-  assertEq(DotSkin.unlockedCount({ bestScore: 40, bestPerfectStreak: 4, bestDailyStreak: 3 }), 7, "alle 7 Skins");
+  assertEq(DotSkin.unlockedCount({ bestScore: 40, bestPerfectStreak: 4, bestDailyStreak: 3 }), 10, "Bestand plus Muster");
+  assertEq(
+    DotSkin.unlockedCount({ bestScore: 60, bestPerfectStreak: 12, bestDailyStreak: 14 }),
+    DotSkin.SKINS.length,
+    "alle " + DotSkin.SKINS.length + " Skins"
+  );
+
+  // Der Regenbogen kommt erst, wenn alles andere offen ist.
+  var fastAlles = { bestScore: 999, bestPerfectStreak: 99, bestDailyStreak: 13 };
+  assert(!DotSkin.isUnlocked(DotSkin.fromName("REGENBOGEN"), fastAlles), "Regenbogen wartet auf Aurora");
+  assert(
+    DotSkin.isUnlocked(DotSkin.fromName("REGENBOGEN"), { bestScore: 60, bestPerfectStreak: 12, bestDailyStreak: 14 }),
+    "Regenbogen schliesst die Sammlung ab"
+  );
+
+  // Jedes Feld jedes Skins liefert eine gueltige Farbe — auch bewegte und
+  // reagierende, in jedem Zustand.
+  var zustaende = [
+    undefined,
+    { elapsed: 0.4, score: 0, perfectStreak: 0 },
+    { elapsed: 2.7, score: 33, perfectStreak: 4 },
+    { elapsed: 9.9, score: 99, perfectStreak: 12 }
+  ];
+  var felder = 0;
+  DotSkin.SKINS.forEach(function (s) {
+    zustaende.forEach(function (st) {
+      for (var row = 0; row < DotSkin.GRID; row++) {
+        for (var col = 0; col < DotSkin.GRID; col++) {
+          if (!/^#[0-9A-Fa-f]{6}$/.test(DotSkin.cell(s, col, row, st))) {
+            assert(false, "Skin " + s.name + " liefert bei (" + col + "," + row + ") keine Farbe");
+            return;
+          }
+          felder++;
+        }
+      }
+      if (!/^#[0-9A-Fa-f]{6}$/.test(DotSkin.shine(s, st))) {
+        assert(false, "Skin " + s.name + " hat keinen Glanzpunkt");
+      }
+    });
+  });
+  assertEq(felder, DotSkin.SKINS.length * zustaende.length * DotSkin.GRID * DotSkin.GRID,
+    "alle Felder aller Skins geprueft");
+
+  // Standbilder duerfen sich ohne Zeitanteil nicht bewegen.
+  DotSkin.SKINS.forEach(function (s) {
+    if (s.animated) return;
+    assertEq(
+      DotSkin.cell(s, 4, 4, { elapsed: 0 }),
+      DotSkin.cell(s, 4, 4, { elapsed: 5.5 }),
+      "Skin " + s.name + " steht still"
+    );
+  });
   assertEq(DotSkin.fromName("LAVA").name, "LAVA", "fromName findet");
   assertEq(DotSkin.fromName("quatsch").name, "KLASSIK", "fromName-Fallback");
 
@@ -506,10 +559,21 @@ function driveToZoneAndTap(game) {
   var overlays = read("java/de/robinrehbein/punkt/ui/screens/GameOverlays.kt");
   var screen = read("java/de/robinrehbein/punkt/ui/screens/TimingGameScreen.kt");
   var skinsKt = read("java/de/robinrehbein/punkt/game/DotSkin.kt");
+  var paintKt = (function () {
+    try {
+      return fs.readFileSync(
+        path.join(__dirname, "..", "..", "core", "src", "main", "kotlin",
+          "de", "robinrehbein", "punkt", "game", "SkinPaint.kt"),
+        "utf8"
+      );
+    } catch (e) {
+      return null;
+    }
+  })();
   var stringsEn = read("res/values/strings.xml");
   var stringsDe = read("res/values-de/strings.xml");
 
-  if (!overlays || !screen || !skinsKt || !stringsEn || !stringsDe) {
+  if (!overlays || !screen || !skinsKt || !paintKt || !stringsEn || !stringsDe) {
     // Die Tests laufen auch außerhalb des Repos (nur web/ ausgeliefert).
     console.log("Hinweis: app/-Quellen nicht gefunden — Paritätstests übersprungen.");
     return;
@@ -546,17 +610,84 @@ function driveToZoneAndTap(game) {
     assertEq(P.SkyStages[i], hex, "Himmel Stufe " + i);
   });
 
-  var skinRe = /^\s{4}(\w+)\(R\.string\.\w+,[^,]+, 0x[Ff]{2}([0-9A-Fa-f]{6}), 0x[Ff]{2}([0-9A-Fa-f]{6}), 0x[Ff]{2}([0-9A-Fa-f]{6})\)/gm;
-  var m, seen = 0;
-  while ((m = skinRe.exec(skinsKt)) !== null) {
-    var web = DotSkin.fromName(m[1]);
-    assertEq(web.name, m[1], "Skin " + m[1] + " existiert im Web");
-    assertEq(web.body, "#" + m[2].toUpperCase(), "Skin " + m[1] + " body");
-    assertEq(web.shade, "#" + m[3].toUpperCase(), "Skin " + m[1] + " shade");
-    assertEq(web.shine, "#" + m[4].toUpperCase(), "Skin " + m[1] + " shine");
-    seen++;
+  // Skins: Reihenfolge, Kennungen, Stellvertreter-Farben und Schwellen
+  // kommen aus SkinPaint.kt (:core) — die PWA muss sie 1:1 spiegeln, sonst
+  // heisst derselbe gespeicherte Name auf beiden Seiten etwas anderes.
+  // Die Enum-Namen in :app muessen zu SkinId passen — die Auswahl wird
+  // unter diesem Namen gespeichert.
+  var appIds = (skinsKt.match(/^\s{4}(\w+)\(SkinId\.\w+,/gm) || [])
+    .map(function (zeile) { return zeile.trim().split("(")[0]; });
+
+  var kotlinIds = (function () {
+    var block = paintKt.slice(paintKt.indexOf("enum class SkinId {"));
+    block = block.slice(0, block.indexOf("}"));
+    return (block.match(/\b[A-Z][A-Z_]+\b/g) || []).filter(function (n) {
+      return n !== "SKIN" && n !== "ID";
+    });
+  })();
+  assertEq(
+    DotSkin.SKINS.map(function (s) { return s.name; }).join(","),
+    kotlinIds.join(","),
+    "Skin-Reihenfolge deckt sich mit SkinId"
+  );
+  assertEq(appIds.join(","), kotlinIds.join(","), "DotSkin.kt fuehrt dieselben Skins in derselben Reihenfolge");
+
+  /** Liest einen when-Block aus SkinPaint.kt als { SKIN: "wert" }. */
+  function whenBlock(head) {
+    var start = paintKt.indexOf(head);
+    assert(start >= 0, "Block '" + head + "' in SkinPaint.kt gefunden");
+    var block = paintKt.slice(start + head.length);
+    block = block.slice(0, block.indexOf("\n    }"));
+    var out = {}, wm;
+    var re = /SkinId\.(\w+) -> ([^\n]+)/g;
+    while ((wm = re.exec(block)) !== null) out[wm[1]] = wm[2].trim();
+    return out;
   }
-  assertEq(seen, 7, "alle sieben Skins aus DotSkin.kt geprüft");
+
+  ["body", "shade", "shine"].forEach(function (rolle) {
+    var head = rolle === "shine"
+      ? "fun shine(id: SkinId, state: SkinState = SkinState()): Long = when (id) {"
+      : "fun " + rolle + "(id: SkinId): Long = when (id) {";
+    var werte = whenBlock(head);
+    assertEq(Object.keys(werte).length, kotlinIds.length, "SkinPaint." + rolle + " deckt alle Skins ab");
+    Object.keys(werte).forEach(function (id) {
+      var hex = werte[id].match(/0x[Ff]{2}([0-9A-Fa-f]{6})/);
+      if (!hex) return; // NEON holt seinen Glanz aus einer Funktion
+      assertEq(DotSkin.fromName(id)[rolle], "#" + hex[1].toUpperCase(), "Skin " + id + " " + rolle);
+    });
+  });
+
+  var kotlinSky = (paintKt.slice(paintKt.indexOf("val SKY_STAGES = longArrayOf("))
+    .match(/0x[Ff]{2}[0-9A-Fa-f]{6}/g) || []).slice(0, 7)
+    .map(function (h) { return "#" + h.slice(4).toUpperCase(); });
+  assertEq(kotlinSky.join(","), DotSkin.SKY_STAGES.join(","), "Chamaeleon nutzt dieselben Himmelsstufen");
+
+  // Freischalt-Schwellen: jede Regel aus Kotlin wird an ihrer Kante geprueft.
+  var regeln = whenBlock("fun isUnlocked(id: SkinId, stats: SkinStats): Boolean = when (id) {");
+  var felder2 = {
+    "stats.bestScore": "bestScore",
+    "stats.bestPerfectStreak": "bestPerfectStreak",
+    "stats.bestDailyStreak": "bestDailyStreak"
+  };
+  var geprueft = 0;
+  Object.keys(regeln).forEach(function (id) {
+    var rm = regeln[id].match(/(stats\.\w+) >= (\d+)/);
+    if (!rm) return; // KLASSIK (immer offen) und REGENBOGEN (Sammlung)
+    var feld = felder2[rm[1]];
+    var schwelle = parseInt(rm[2], 10);
+    var skin = DotSkin.fromName(id);
+    function stats(wert) {
+      var st = { bestScore: 0, bestPerfectStreak: 0, bestDailyStreak: 0 };
+      st[feld] = wert;
+      return st;
+    }
+    assert(!DotSkin.isUnlocked(skin, stats(schwelle - 1)), "Skin " + id + " bleibt unter " + schwelle + " zu");
+    assert(DotSkin.isUnlocked(skin, stats(schwelle)), "Skin " + id + " oeffnet bei " + schwelle);
+    geprueft++;
+  });
+  assertEq(geprueft, kotlinIds.length - 2, "alle Schwellen ausser Klassik und Regenbogen geprueft");
+
+  var m;
 
   var medalRe = /MedalTier\.(\w+) -> Color\(0x[Ff]{2}([0-9A-Fa-f]{6})\) to Color\(0x[Ff]{2}([0-9A-Fa-f]{6})\)/g;
   var medals = 0;

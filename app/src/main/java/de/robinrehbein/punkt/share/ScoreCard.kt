@@ -194,7 +194,9 @@ object ScoreCard {
         for ((c, r) in leftBand) block(c, r, 2f, 1.5f, 0xFFE53935.toInt())
         for ((c, r) in rightBand) block(c, r, 2f, 1.5f, 0xFFB02A28.toInt())
 
-        drawPixelCircle(canvas, paint, cx, cy, radius, color, shade)
+        drawPixelCircle(canvas, paint, cx, cy, radius) { col, row ->
+            if (col + row > 13 * 1.15f) shade else color
+        }
 
         val cu = radius * 2f / 13f
         fun emboss(c: Float, r: Float, w: Float, h: Float) {
@@ -223,8 +225,7 @@ object ScoreCard {
         cx: Float,
         cy: Float,
         radius: Float,
-        color: Int,
-        shade: Int = color
+        cell: (col: Int, row: Int) -> Int
     ) {
         val grid = 13
         val u = radius * 2f / grid
@@ -236,11 +237,7 @@ object ScoreCard {
                 val dy = row - mid
                 val dist = sqrt(dx * dx + dy * dy)
                 if (dist > rr) continue
-                paint.color = when {
-                    dist > rr - 1.1f -> OUTLINE
-                    row + col > grid * 1.15f -> shade
-                    else -> color
-                }
+                paint.color = if (dist > rr - 1.1f) OUTLINE else cell(col, row)
                 canvas.drawRect(
                     cx - radius + col * u,
                     cy - radius + row * u,
@@ -252,9 +249,13 @@ object ScoreCard {
         }
     }
 
-    /** Der Spiel-Punkt samt Glanz und Auge im gewählten Skin. */
+    /**
+     * Der Spiel-Punkt samt Glanz und Auge im gewählten Skin. Bewegte Skins
+     * stehen auf dem Bild still: Ein geteilter Screenshot ist ein Standbild,
+     * also zeichnet er den Zeitpunkt 0 (SkinState-Standardwert).
+     */
     private fun drawPixelDot(canvas: Canvas, paint: Paint, cx: Float, cy: Float, r: Float, skin: DotSkin) {
-        drawPixelCircle(canvas, paint, cx, cy, r, skin.body.toInt(), skin.shade.toInt())
+        drawPixelCircle(canvas, paint, cx, cy, r) { col, row -> skin.cell(col, row).toInt() }
         val u = r * 2f / 13f
         fun cellRect(col: Float, row: Float, cols: Float, rows: Float, color: Int) {
             paint.color = color
@@ -264,6 +265,11 @@ object ScoreCard {
             )
         }
         cellRect(2.5f, 2.5f, 2f, 2f, skin.shine.toInt())
+        // Kontur zum Körper hin, damit das Auge auf hellen Skins nicht
+        // im Körper verschwindet (wie im Spiel, siehe drawTimingDot).
+        cellRect(7f, 3f, 0.5f, 4f, OUTLINE)
+        cellRect(7.5f, 2.5f, 3.5f, 0.5f, OUTLINE)
+        cellRect(7.5f, 7f, 3.5f, 0.5f, OUTLINE)
         cellRect(7.5f, 3f, 3.5f, 4f, Color.WHITE)
         cellRect(9.5f, 4f, 1.5f, 2f, OUTLINE)
     }
