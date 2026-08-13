@@ -504,6 +504,15 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 onMenu = {
                     dailyMode = false
                     game.reset()
+                    // Auch die Effekte zurücksetzen — sonst läuft die
+                    // Sturz-Animation weiter und der Vogel fehlt im
+                    // Startbild, obwohl er dort wieder kreisen soll.
+                    fx.reset()
+                    continueAdOffer = false
+                    bannerState.timeLeft = 0f
+                    bannerText = ""
+                    bannerState.lastStage = 0
+                    bannerState.recordCelebrated = false
                 },
                 onHelp = { showHelp = true },
                 continueAdVisible = continueAdOffer,

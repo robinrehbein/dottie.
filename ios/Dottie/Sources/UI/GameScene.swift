@@ -44,6 +44,17 @@ final class GameScene: SKScene {
     private var lastUpdateTime: TimeInterval = 0
     private var lastPhase: TimingGame.Phase = .over // erzwingt READY-Setup im 1. Frame
 
+    /// Alle Effekte auf den Ruhezustand (FxState.reset am Phone) — nötig
+    /// überall dort, wo ein Lauf endet, ohne dass gleich der nächste
+    /// startet. Vor allem `deathTime`: Bliebe der Sturz aktiv, wäre der
+    /// Vogel im READY-Bild längst unten aus dem Kader gefallen.
+    private func resetFx() {
+        flashAlpha = 0
+        shakeTime = 0
+        celebrateTime = 0
+        deathTime = -1
+    }
+
     // MARK: - Layout-Konstanten (aus TimingGameScreen.kt)
 
     private static let celebrateSeconds: CGFloat = 1.1
@@ -689,6 +700,14 @@ final class GameScene: SKScene {
         case "btn.menu":
             dailyMode = false
             game.reset()
+            // Auch die Effekte zurücksetzen — sonst läuft die
+            // Sturz-Animation weiter und der Vogel fehlt im Startbild,
+            // obwohl er dort wieder kreisen soll.
+            resetFx()
+            bannerTimeLeft = 0
+            lastStage = 0
+            recordCelebrated = false
+            hud?.bannerLabel.text = ""
         default:
             break
         }
