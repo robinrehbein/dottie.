@@ -990,24 +990,30 @@ private fun DrawScope.drawTimingDot(
         // sie nach links, wird das Gesicht gespiegelt. Der Wechsel passiert
         // genau dort, wo der Vogel senkrecht fliegt, und fällt kaum auf.
         //
-        // Das Auge bekommt zum Körper hin eine Kontur: Auf sehr hellen
-        // Skins (Koi, Chrom) ginge das Weiß sonst im Körper unter und nur
-        // die Pupille bliebe stehen. Zur Silhouette hin fehlt sie, dort
-        // grenzt ohnehin die Kontur des Kreises an.
+        // Auf sehr hellen Skins (Koi, Chrom) ginge das weiße Auge im
+        // Körper unter — dort bekommt es zum Körper hin eine Kontur.
+        // Wo der Körper von selbst genug Kontrast hat, bleibt sie weg:
+        // Sie wirkte dort wie ein Kasten ums Auge. Zur Silhouette hin
+        // fehlt sie immer, dort grenzt ohnehin die Kontur des Kreises an.
         val facingLeft = sin(game.angle) * game.direction > 0f
         val shine = Color(skin.shineColor(state))
+        val eyeOutline = skin.needsEyeOutline
         if (facingLeft) {
             rect(GRID - 4.5f, 2.5f, 2f, 2f, shine)
-            rect(5.5f, 3f, 0.5f, 4f, OutlineColor)
-            rect(2f, 2.5f, 3.5f, 0.5f, OutlineColor)
-            rect(2f, 7f, 3.5f, 0.5f, OutlineColor)
+            if (eyeOutline) {
+                rect(5.5f, 3f, 0.5f, 4f, OutlineColor)
+                rect(2f, 2.5f, 3.5f, 0.5f, OutlineColor)
+                rect(2f, 7f, 3.5f, 0.5f, OutlineColor)
+            }
             rect(2f, 3f, 3.5f, 4f, Color.White)
             rect(2f, 4f, 1.5f, 2f, OutlineColor)
         } else {
             rect(2.5f, 2.5f, 2f, 2f, shine)
-            rect(7f, 3f, 0.5f, 4f, OutlineColor)
-            rect(7.5f, 2.5f, 3.5f, 0.5f, OutlineColor)
-            rect(7.5f, 7f, 3.5f, 0.5f, OutlineColor)
+            if (eyeOutline) {
+                rect(7f, 3f, 0.5f, 4f, OutlineColor)
+                rect(7.5f, 2.5f, 3.5f, 0.5f, OutlineColor)
+                rect(7.5f, 7f, 3.5f, 0.5f, OutlineColor)
+            }
             rect(7.5f, 3f, 3.5f, 4f, Color.White)
             rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
         }

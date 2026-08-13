@@ -269,11 +269,13 @@ object ScoreCard {
             )
         }
         cellRect(2.5f, 2.5f, 2f, 2f, skin.shine.toInt())
-        // Kontur zum Körper hin, damit das Auge auf hellen Skins nicht
-        // im Körper verschwindet (wie im Spiel, siehe drawTimingDot).
-        cellRect(7f, 3f, 0.5f, 4f, OUTLINE)
-        cellRect(7.5f, 2.5f, 3.5f, 0.5f, OUTLINE)
-        cellRect(7.5f, 7f, 3.5f, 0.5f, OUTLINE)
+        // Kontur nur, wo das Auge auf hellem Körper sonst verschwände
+        // (wie im Spiel, siehe drawTimingDot).
+        if (skin.needsEyeOutline) {
+            cellRect(7f, 3f, 0.5f, 4f, OUTLINE)
+            cellRect(7.5f, 2.5f, 3.5f, 0.5f, OUTLINE)
+            cellRect(7.5f, 7f, 3.5f, 0.5f, OUTLINE)
+        }
         cellRect(7.5f, 3f, 3.5f, 4f, Color.WHITE)
         cellRect(9.5f, 4f, 1.5f, 2f, OUTLINE)
     }

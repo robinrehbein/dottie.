@@ -397,6 +397,15 @@ function driveToZoneAndTap(game) {
   assertEq(felder, DotSkin.SKINS.length * zustaende.length * DotSkin.GRID * DotSkin.GRID,
     "alle Felder aller Skins geprueft");
 
+  // Die Augen-Kontur haengt an der Helligkeit des Koerpers und muss in
+  // beiden Ports dieselben Skins treffen.
+  assertEq(
+    DotSkin.SKINS.filter(function (s) { return DotSkin.needsEyeOutline(s); })
+      .map(function (s) { return s.name; }).join(","),
+    "PILZ,KOI,KARO,CHROM",
+    "Augen-Kontur trifft dieselben Skins wie in Kotlin"
+  );
+
   // Standbilder duerfen sich ohne Zeitanteil nicht bewegen.
   DotSkin.SKINS.forEach(function (s) {
     if (s.animated) return;

@@ -204,6 +204,24 @@ class SkinPaintTest {
     }
 
     @Test
+    fun `die Augen-Kontur haengt an der Helligkeit des Koerpers`() {
+        // Sehr helle Koerper: Ohne Kontur ginge das weisse Auge unter.
+        listOf(SkinId.KOI, SkinId.CHROM, SkinId.KARO, SkinId.PILZ).forEach {
+            assertTrue("$it braucht die Augen-Kontur", SkinPaint.needsEyeOutline(it))
+        }
+        // Alles andere traegt den Kontrast selbst — dort waere die Kontur
+        // ein Kasten ums Auge und wuerde den Bestand veraendern.
+        listOf(
+            SkinId.KLASSIK, SkinId.GOLD, SkinId.MINZE, SkinId.LAVA, SkinId.FROST,
+            SkinId.SCHATTEN, SkinId.PRISMA, SkinId.BIENE, SkinId.MELONE,
+            SkinId.GALAXIE, SkinId.NEON, SkinId.MAGMA, SkinId.TINTE,
+            SkinId.REGENBOGEN, SkinId.AURORA, SkinId.CHAMAELEON, SkinId.KOMBO
+        ).forEach {
+            assertFalse("$it braucht keine Augen-Kontur", SkinPaint.needsEyeOutline(it))
+        }
+    }
+
+    @Test
     fun `nur Tinte zieht einen Schweif`() {
         SkinId.entries.forEach { id ->
             assertEquals(id == SkinId.TINTE, SkinPaint.hasTrail(id))
