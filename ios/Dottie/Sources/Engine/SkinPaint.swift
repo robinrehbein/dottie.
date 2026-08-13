@@ -21,10 +21,23 @@ enum SkinPaint {
     private static let mid = CGFloat(grid - 1) / 2
     private static let rr = CGFloat(grid) / 2 - 0.25
 
-    /// Himmelsstufen für CHAMAELEON — Spiegel von Palette.skyStages.
+    /// Himmelsstufen — Spiegel von Palette.skyStages.
     static let skyStages: [UInt32] = [
         0x4EC0CA, 0x5B9BD5, 0x7B6FD0, 0xC0616F, 0xD98A3D, 0x3D4A8C, 0x2A2640
     ]
+
+    /// Länge eines Himmels-Umlaufs in Stufen: sechs hoch von Tag bis Nacht,
+    /// sechs zurück. Bei einer Stufe je fünf Punkte ist ein Umlauf also 60
+    /// Punkte lang.
+    static let skyCycle = 12
+
+    /// Himmelsstufe zu einem Score. Der Zähler bleibt nicht in der Nacht
+    /// stehen, sondern läuft weiter — hoch bis zur Nacht und wieder zurück
+    /// zum Tag.
+    static func skyStage(_ score: Int) -> Int {
+        let step = ((score / 5) % skyCycle + skyCycle) % skyCycle
+        return step <= skyCycle / 2 ? step : skyCycle - step
+    }
 
     /// Nachbilder eines Schweif-Skins und ihr Winkelabstand (Radiant).
     static let trailSteps = 3
@@ -195,7 +208,7 @@ enum SkinPaint {
     /// Textur-Cache in GameScene schlüsselt darüber.
     static func frameKey(_ id: DotSkin, _ state: State) -> Int {
         if isAnimated(id) { return Int(state.elapsed * 12) }
-        if id == .chamaeleon { return min(state.score / 5, skyStages.count - 1) }
+        if id == .chamaeleon { return skyStage(state.score) }
         if id == .kombo { return min(state.perfectStreak, 5) }
         return 0
     }
@@ -275,7 +288,7 @@ enum SkinPaint {
             return dark ? mix(base, 0x3B4152, 0.35) : base
 
         case .chamaeleon:
-            let sky = skyStages[min(state.score / 5, skyStages.count - 1)]
+            let sky = skyStages[skyStage(state.score)]
             return dark ? mix(sky, 0x000000, 0.18) : mix(sky, 0xFFFFFF, 0.34)
 
         case .kombo:

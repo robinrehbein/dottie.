@@ -64,7 +64,11 @@ import kotlin.math.sin
 private val FakeZoneColor = Color(0xFFB44FD8)
 private val FakeZoneCoreColor = Color(0xFF8A2FB0)
 
-/** Himmelsfarbe pro 5er-Stufe: von Tag über Abendrot bis Nacht. */
+/**
+ * Himmelsfarbe pro 5er-Stufe: von Tag über Abendrot bis Nacht. Welche
+ * Stufe zu einem Score gehört, rechnet SkinPaint.skyStage — der Zähler
+ * läuft im Umlauf, nach der Nacht geht es zurück Richtung Tag.
+ */
 private val SkyStages = listOf(
     Color(0xFF4EC0CA), // 0+  Tag (türkis)
     Color(0xFF5B9BD5), // 5+  Blau
@@ -568,7 +572,7 @@ private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState, skin: DotSk
 
     translate(shake.x, shake.y) {
         // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht.
-        val sky = SkyStages[(game.score / 5).coerceAtMost(SkyStages.size - 1)]
+        val sky = SkyStages[SkinPaint.skyStage(game.score)]
         drawRect(color = sky, topLeft = Offset(-40f, -40f), size = Size(w + 80f, h + 80f))
 
         // Langsam driftende Wolken

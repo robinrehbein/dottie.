@@ -381,7 +381,7 @@
     ctx.translate(shakeX, shakeY);
 
     // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht.
-    var sky = SkyStages[Math.min(Math.floor(game.score / 5), SkyStages.length - 1)];
+    var sky = SkyStages[global.DotSkin.skyStage(game.score)];
     rect(ctx, sky, -40, -40, w + 80, h + 80);
 
     // Langsam driftende Wolken

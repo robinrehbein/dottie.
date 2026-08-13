@@ -81,7 +81,7 @@ internal fun DrawScope.drawWearWorld(game: TimingGame, skin: WearDotSkin) {
     // robust gegenüber eckigen/ovalen Displays.
     val cell = floor(d / 220f).coerceAtLeast(2f)
 
-    val sky = WearSkyStages[(game.score / 5).coerceAtMost(WearSkyStages.size - 1)]
+    val sky = WearSkyStages[SkinPaint.skyStage(game.score)]
     drawRect(color = sky, topLeft = Offset.Zero, size = size)
 
     val radius = d * 0.38f

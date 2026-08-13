@@ -66,8 +66,8 @@ object SkinPaint {
     private const val RR = GRID / 2f - 0.25f
 
     /**
-     * Himmelsstufen für CHAMAELEON. Spiegelt SkyStages aus der UI
-     * (TimingGameScreen.kt); der Gleichstand ist per Test abgesichert.
+     * Himmelsstufen. Spiegelt SkyStages aus der UI (TimingGameScreen.kt);
+     * der Gleichstand ist per Test abgesichert.
      */
     val SKY_STAGES = longArrayOf(
         0xFF4EC0CA, // 0+  Tag
@@ -78,6 +78,25 @@ object SkinPaint {
         0xFF3D4A8C, // 25+ Dämmerung
         0xFF2A2640  // 30+ Nacht
     )
+
+    /**
+     * Länge eines Himmels-Umlaufs in Stufen: sechs hoch von Tag bis Nacht,
+     * sechs zurück. Bei einer Stufe je fünf Punkte ist ein Umlauf also 60
+     * Punkte lang.
+     */
+    const val SKY_CYCLE = 12
+
+    /**
+     * Himmelsstufe zu einem Score. Der Zähler bleibt nicht in der Nacht
+     * stehen, sondern läuft weiter — hoch bis zur Nacht und wieder zurück
+     * zum Tag. Damit bleibt der Himmel bis zum letzten Punkt ein
+     * Fortschrittsanzeiger, statt ab Score 30 einzufrieren, und niemand
+     * spielt einen langen Lauf komplett im Dunkeln.
+     */
+    fun skyStage(score: Int): Int {
+        val step = ((score / 5) % SKY_CYCLE + SKY_CYCLE) % SKY_CYCLE
+        return if (step <= SKY_CYCLE / 2) step else SKY_CYCLE - step
+    }
 
     /** Wie viele Nachbilder ein Schweif-Skin auf der Bahn hinterlässt. */
     const val TRAIL_STEPS = 3
@@ -174,7 +193,7 @@ object SkinPaint {
      */
     fun frameKey(id: SkinId, state: SkinState): Int = when {
         isAnimated(id) -> (state.elapsed * 12f).toInt()
-        id == SkinId.CHAMAELEON -> min(state.score / 5, SKY_STAGES.size - 1)
+        id == SkinId.CHAMAELEON -> skyStage(state.score)
         id == SkinId.KOMBO -> min(state.perfectStreak, 5)
         else -> 0
     }
@@ -307,7 +326,7 @@ object SkinPaint {
             }
 
             SkinId.CHAMAELEON -> {
-                val sky = SKY_STAGES[min(state.score / 5, SKY_STAGES.size - 1)]
+                val sky = SKY_STAGES[skyStage(state.score)]
                 if (col + row > GRID * 1.15f) mix(sky, 0xFF000000, 0.18f)
                 else mix(sky, 0xFFFFFFFF, 0.34f)
             }
