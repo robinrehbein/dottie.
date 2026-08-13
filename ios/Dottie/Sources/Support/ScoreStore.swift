@@ -30,6 +30,12 @@ final class ScoreStore {
         set { defaults.set(newValue, forKey: ScoreStore.keyMuted) }
     }
 
+    /// Tägliche Daily-Challenge-Erinnerung (Opt-in, lokal).
+    var reminderEnabled: Bool {
+        get { return defaults.bool(forKey: ScoreStore.keyReminder) }
+        set { defaults.set(newValue, forKey: ScoreStore.keyReminder) }
+    }
+
     /// Gewählter Punkt-Skin, KLASSIK als Fallback.
     var selectedSkin: DotSkin {
         get { return DotSkin.fromName(defaults.string(forKey: ScoreStore.keySkin)) }
@@ -126,6 +132,7 @@ final class ScoreStore {
     private static let keyBest = "best_score_timing"
     private static let keyRuns = "run_count_timing"
     private static let keyMuted = "sound_muted"
+    private static let keyReminder = "daily_reminder"
     private static let keyBestPerfect = "best_perfect_streak"
     private static let keySkin = "selected_skin"
     private static let keyDailyBest = "daily_best"

@@ -60,17 +60,49 @@ final class PixelLabel: SKNode {
     }
 }
 
-/// Blockiger Button: dunkler Rahmen, farbige Fläche, Bytesized-Label.
-/// Getroffene Buttons werden über `PixelButton.hit(in:at:)` gefunden.
+/// Motive für die Icon-Knöpfe, gezeichnet auf einem 16er-Raster —
+/// dieselbe Aufzählung wie PixelIcon in app/.../components/PixelButton.kt.
+enum PixelIconKind {
+    case speakerOn
+    case speakerOff
+    case bellOn
+    case bellOff
+}
+
+/// Blockiger Button mit Treppenkanten, 1:1 aus drawPixelBorder in
+/// app/.../ui/components/PixelButton.kt: Oben und unten ein
+/// durchgehender Streifen, links und rechts eine Kante, die im obersten
+/// und untersten Viertel doppelt so breit ist.
+///
+/// Ein glatter Rahmen wäre einfacher — aber genau diese Treppe macht den
+/// Retro-Look aus, und Android ist die Vorlage, an der sich iOS und die
+/// PWA ausrichten. Gezeichnet wird in Rechtecken statt als Textur, damit
+/// es bei jeder Bildschirmdichte scharf bleibt.
 final class PixelButton: SKNode {
 
     let buttonName: String
     private let size: CGSize
     private let label: PixelLabel
+    private let iconLayer = SKNode()
+    private let iconColor: UIColor
+    private let strikeColor: UIColor
 
     var text: String {
         get { return label.text }
         set { label.text = newValue }
+    }
+
+    /// Motiv umschalten (Ton an/aus). Neu gezeichnet statt zwei Knöpfe
+    /// übereinanderzulegen — der Wechsel passiert selten genug.
+    var icon: PixelIconKind? {
+        didSet {
+            iconLayer.removeAllChildren()
+            if let icon = icon {
+                PixelButton.addIcon(
+                    icon, to: iconLayer, size: size, color: iconColor, strike: strikeColor
+                )
+            }
+        }
     }
 
     init(
@@ -80,22 +112,126 @@ final class PixelButton: SKNode {
         background: UIColor,
         border: UIColor = Palette.textDark,
         textColor: UIColor = Palette.textDark,
-        fontSize: CGFloat = 20
+        fontSize: CGFloat = 20,
+        borderWidth: CGFloat = 4,
+        icon: PixelIconKind? = nil,
+        iconColor: UIColor = Palette.textDark,
+        strikeColor: UIColor = Palette.recordRed
     ) {
         self.buttonName = name
         self.size = size
         self.label = PixelLabel(text: text, fontSize: fontSize, color: textColor, shadow: false)
+        self.iconColor = iconColor
+        self.strikeColor = strikeColor
         super.init()
         self.name = name
 
-        let borderNode = SKSpriteNode(color: border, size: size)
-        let innerNode = SKSpriteNode(
-            color: background,
-            size: CGSize(width: size.width - 6, height: size.height - 6)
+        addChild(SKSpriteNode(color: background, size: size))
+        PixelButton.addSteppedBorder(to: self, size: size, color: border, pixelSize: borderWidth)
+        addChild(iconLayer)
+        // Bewusst direkt gezeichnet statt ueber self.icon: Swift ruft
+        // didSet bei Zuweisungen im eigenen Initialisierer nicht auf, das
+        // Motiv bliebe sonst unsichtbar.
+        self.icon = icon
+        if let icon = icon {
+            PixelButton.addIcon(
+                icon, to: iconLayer, size: size, color: iconColor, strike: strikeColor
+            )
+        } else {
+            addChild(label)
+        }
+    }
+
+    /// Ein Rechteck in Pixel-Koordinaten (Ursprung oben links) auf einen
+    /// Knoten legen, dessen Kinder um die Mitte zentriert sind.
+    private static func addRect(
+        to node: SKNode,
+        buttonSize: CGSize,
+        x: CGFloat,
+        y: CGFloat,
+        w: CGFloat,
+        h: CGFloat,
+        color: UIColor
+    ) {
+        guard w > 0, h > 0 else { return }
+        let sprite = SKSpriteNode(color: color, size: CGSize(width: w, height: h))
+        sprite.position = CGPoint(
+            x: x + w / 2 - buttonSize.width / 2,
+            y: buttonSize.height / 2 - y - h / 2
         )
-        addChild(borderNode)
-        addChild(innerNode)
-        addChild(label)
+        node.addChild(sprite)
+    }
+
+    private static func addSteppedBorder(
+        to node: SKNode,
+        size: CGSize,
+        color: UIColor,
+        pixelSize: CGFloat
+    ) {
+        addRect(to: node, buttonSize: size, x: 0, y: 0, w: size.width, h: pixelSize, color: color)
+        addRect(
+            to: node, buttonSize: size,
+            x: 0, y: size.height - pixelSize, w: size.width, h: pixelSize, color: color
+        )
+
+        // Kotlin: steps = ((height - 2 * pixelSize) / pixelSize).toInt()
+        let steps = Int((size.height - 2 * pixelSize) / pixelSize)
+        guard steps > 0 else { return }
+        let stepHeight = (size.height - 2 * pixelSize) / CGFloat(steps)
+        for i in 0..<steps {
+            let y = pixelSize + CGFloat(i) * stepHeight
+            // Int-Division wie in Kotlin: das obere und das untere
+            // Viertel bekommen die doppelte Breite.
+            let stepWidth = (i < steps / 4 || i >= steps * 3 / 4) ? pixelSize * 2 : pixelSize
+            // +1 wie am Phone: verhindert Haarrisse zwischen den Stufen.
+            let h = stepHeight + 1
+            addRect(to: node, buttonSize: size, x: 0, y: y, w: stepWidth, h: h, color: color)
+            addRect(
+                to: node, buttonSize: size,
+                x: size.width - stepWidth, y: y, w: stepWidth, h: h, color: color
+            )
+        }
+    }
+
+    /// Lautsprecher aus drawPixelIcon: Bloecke auf dem 16er-Raster, "aus"
+    /// zusätzlich mit der roten Treppen-Durchstreichung.
+    private static func addIcon(
+        _ icon: PixelIconKind,
+        to node: SKNode,
+        size: CGSize,
+        color: UIColor,
+        strike: UIColor
+    ) {
+        let u = min(size.width, size.height) / 16
+        func block(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ c: UIColor) {
+            addRect(to: node, buttonSize: size, x: x * u, y: y * u, w: w * u, h: h * u, color: c)
+        }
+        switch icon {
+        case .speakerOn, .speakerOff:
+            // Korpus plus Trichter nach rechts
+            block(3, 6, 2.5, 4, color)
+            block(5.5, 5, 1.5, 6, color)
+            block(7, 4, 1.5, 8, color)
+            if icon == .speakerOn {
+                // Zwei blockige Schallwellen
+                block(10, 6, 1.2, 4, color)
+                block(12, 4.5, 1.2, 7, color)
+            }
+        case .bellOn, .bellOff:
+            // Knauf, Kuppel, Koerper, Rand, Kloeppel
+            block(7.2, 2.5, 1.6, 1.5, color)
+            block(5.5, 3.8, 5, 2.2, color)
+            block(4.5, 6, 7, 3.5, color)
+            block(3.5, 9.3, 9, 1.6, color)
+            block(7.2, 11.2, 1.6, 1.6, color)
+        }
+        if icon == .speakerOff || icon == .bellOff {
+            // Treppen-Durchstreichung von links oben nach rechts unten
+            for i in 0..<6 {
+                let d = 2.5 + CGFloat(i) * 1.9
+                block(d, d, 2.2, 2.2, strike)
+            }
+        }
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -159,6 +295,7 @@ final class ReadyOverlay: SKNode {
     private let statsLabel: PixelLabel
     private let runLabel: PixelLabel
     private let soundButton: PixelButton
+    private let reminderButton: PixelButton
     private var buttons: [PixelButton] = []
 
     init(sceneSize: CGSize, safeTop: CGFloat, safeBottom: CGFloat) {
@@ -168,12 +305,23 @@ final class ReadyOverlay: SKNode {
         bestLabel = PixelLabel(text: "", fontSize: 22, color: .white)
         statsLabel = PixelLabel(text: "", fontSize: 15, color: Palette.dotBody)
         runLabel = PixelLabel(text: "", fontSize: 16, color: UIColor(white: 1, alpha: 0.8))
+        // Icon statt Text, wie am Phone (PixelIconButton in
+        // GameOverlays.kt): 48x48, Sandfläche, 3px Rahmen.
         soundButton = PixelButton(
             name: "btn.sound",
-            text: L10n.text("sound_on"),
-            size: CGSize(width: 150, height: 44),
+            text: "",
+            size: CGSize(width: 48, height: 48),
             background: Palette.panelSand,
-            fontSize: 16
+            borderWidth: 3,
+            icon: .speakerOn
+        )
+        reminderButton = PixelButton(
+            name: "btn.reminder",
+            text: "",
+            size: CGSize(width: 48, height: 48),
+            background: Palette.panelSand,
+            borderWidth: 3,
+            icon: .bellOff
         )
         super.init()
 
@@ -198,15 +346,20 @@ final class ReadyOverlay: SKNode {
         ])))
         addChild(hint)
 
-        soundButton.position = CGPoint(x: 16 + 75, y: h - safeTop - 40)
+        // Ton und Erinnerung nebeneinander oben links, wie am Phone
+        // (die beiden PixelIconButton in GameOverlays.kt, 10dp Abstand).
+        soundButton.position = CGPoint(x: 16 + 24, y: h - safeTop - 40)
         addChild(soundButton)
+        reminderButton.position = CGPoint(x: 16 + 24 + 48 + 10, y: h - safeTop - 40)
+        addChild(reminderButton)
 
         let helpButton = PixelButton(
             name: "btn.help",
             text: "?",
             size: CGSize(width: 48, height: 48),
             background: Palette.panelSand,
-            fontSize: 24
+            fontSize: 24,
+            borderWidth: 3
         )
         helpButton.position = CGPoint(x: w - 16 - 24, y: h - safeTop - 40)
         addChild(helpButton)
@@ -235,18 +388,26 @@ final class ReadyOverlay: SKNode {
         runLabel.position = CGPoint(x: w / 2, y: safeBottom + 42)
         addChild(runLabel)
 
-        buttons = [soundButton, helpButton, dailyButton, skinsButton]
+        buttons = [soundButton, reminderButton, helpButton, dailyButton, skinsButton]
     }
 
     required init?(coder aDecoder: NSCoder) {
         return nil
     }
 
-    func refresh(bestScore: Int, runNumber: Int, soundOn: Bool, dailyBest: Int, dailyStreak: Int) {
+    func refresh(
+        bestScore: Int,
+        runNumber: Int,
+        soundOn: Bool,
+        reminderOn: Bool,
+        dailyBest: Int,
+        dailyStreak: Int
+    ) {
         bestLabel.text = L10n.format("best_score", bestScore)
         bestLabel.isHidden = bestScore <= 0
 
-        soundButton.text = L10n.text(soundOn ? "sound_on" : "sound_off")
+        soundButton.icon = soundOn ? .speakerOn : .speakerOff
+        reminderButton.icon = reminderOn ? .bellOn : .bellOff
 
         var parts: [String] = []
         if dailyBest > 0 {
@@ -287,7 +448,7 @@ final class GameOverOverlay: SKNode {
     private let newSkinLabel: PixelLabel
     private var buttons: [PixelButton] = []
 
-    init(sceneSize: CGSize) {
+    init(sceneSize: CGSize, safeTop: CGFloat) {
         self.sceneSize = sceneSize
         let w = sceneSize.width
         let h = sceneSize.height
@@ -311,6 +472,20 @@ final class GameOverOverlay: SKNode {
         let gameOver = PixelLabel(text: L10n.text("game_over"), fontSize: 48, color: Palette.bannerOrange)
         gameOver.position = CGPoint(x: centerX, y: centerY + 210)
         addChild(gameOver)
+
+        // "?" auch hier, wie am Phone: Nach dem ersten Tod will man die
+        // Regeln nachlesen, und der Startbildschirm ist von hier aus nur
+        // ueber den Umweg MENUE erreichbar.
+        let helpButton = PixelButton(
+            name: "btn.help",
+            text: "?",
+            size: CGSize(width: 48, height: 48),
+            background: Palette.panelSand,
+            fontSize: 24,
+            borderWidth: 3
+        )
+        helpButton.position = CGPoint(x: w - 16 - 24, y: h - safeTop - 40)
+        addChild(helpButton)
 
         // Panel: dunkler Rahmen + Sandfläche.
         let panelSize = CGSize(width: min(w - 48, 330), height: 170)
@@ -370,7 +545,7 @@ final class GameOverOverlay: SKNode {
         )
         menuButton.position = CGPoint(x: centerX, y: centerY - 210)
         addChild(menuButton)
-        buttons = [menuButton]
+        buttons = [menuButton, helpButton]
     }
 
     required init?(coder aDecoder: NSCoder) {
