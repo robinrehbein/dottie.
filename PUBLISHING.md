@@ -264,16 +264,20 @@ den Rekord anfassen. Der Spot verkauft deshalb nur Kosmetik auf Zeit.
 4. Frisch angelegte Blöcke liefern erfahrungsgemäß erst nach einigen
    Stunden Anzeigen — bis dahin bleibt es still, das ist kein Fehler.
 
-### 2. IDs eintragen (zwei Dateien!)
+### 2. IDs eintragen
 
-1. `app/src/main/res/values/ads.xml`: `admob_app_id`,
-   `admob_rewarded_id`, `admob_interstitial_id` ausfüllen. Erst wenn
-   **alle drei** gefüllt sind, schaltet sich die Integration ein.
-2. `app/src/main/AndroidManifest.xml`: die `meta-data`
-   `com.google.android.gms.ads.APPLICATION_ID` trägt bis dahin Googles
-   **Beispiel-App-ID** als Platzhalter — die **muss** durch die echte
-   App-ID aus Schritt 1 ersetzt werden. Bleibt der Platzhalter stehen,
-   verdient die App nichts und AdMob kann das Konto sperren.
+Alle IDs stehen an genau einer Stelle: `app/src/main/res/values/ads.xml`.
+Das AndroidManifest verweist per `@string/admob_app_id` darauf, es gibt
+also nichts doppelt zu pflegen.
+
+**Stand:** Die App-ID ist eingetragen
+(`ca-app-pub-1786159152036324~8923812059`). Es fehlen noch
+`admob_rewarded_id` und `admob_interstitial_id` — bis beide gefüllt
+sind, bleibt die App werbefrei, obwohl die App-ID schon steht.
+
+Die App-ID darf nie wieder geleert werden: Das Ads-SDK startet über
+einen eigenen ContentProvider und bricht ohne gültige ID beim App-Start
+ab. Zum Abschalten reicht es, eine Anzeigenblock-ID zu leeren.
 
 Zum Ausprobieren gibt es Googles Test-IDs (sie stehen als Kommentar in
 `ads.xml`): Sie zeigen echte Test-Anzeigen, dürfen aber **nie** in ein
@@ -298,8 +302,14 @@ echt ist. Der Haken bei uns:
 **Ohne `app-ads.txt` läuft AdMob trotzdem.** Es fällt nur ein Teil der
 Nachfrage weg (manche Käufer bieten ausschließlich auf verifiziertes
 Inventar), der eTPM ist also etwas niedriger. Für den Start ist das
-verkraftbar — die Datei lässt sich jederzeit nachreichen, ihr Inhalt
-ist eine einzige Zeile, die AdMob unter **Apps → app-ads.txt** anzeigt.
+verkraftbar — die Datei lässt sich jederzeit nachreichen. Ihr Inhalt ist
+eine einzige Zeile; für dieses Konto lautet sie:
+
+```
+google.com, pub-1786159152036324, DIRECT, f08c47fec0942fa0
+```
+
+(AdMob zeigt dieselbe Zeile unter **Apps → app-ads.txt** an.)
 
 ### 4. In-App-Produkt „remove_ads" anlegen
 

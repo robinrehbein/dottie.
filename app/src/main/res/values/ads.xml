@@ -2,12 +2,19 @@
 <!-- AdMob (Rewarded fuer den Skin-Tagespass + Interstitials) und damit
      die gesamte Monetarisierung, inklusive des "Werbung entfernen"-Kaufs.
 
-     Leer = Integration komplett deaktiviert: kein SDK-Init, keine
+     Erst wenn ALLE DREI IDs ausgefüllt sind, wird Werbung aktiv: keine
      Ad-Requests, kein Consent-Dialog, kein Billing — die App verhält
-     sich exakt wie ohne die Abhängigkeiten. Erst wenn ALLE DREI IDs
-     ausgefüllt sind, wird Werbung aktiv. Beim Eintragen echter IDs
-     muss auch die APPLICATION_ID im AndroidManifest mitgetauscht
-     werden (Anleitung in PUBLISHING.md).
+     sich sonst exakt wie ohne die Abhängigkeiten (AdsManager.configured).
+
+     Stand: Die App-ID ist eingetragen, die beiden Anzeigenblock-IDs
+     fehlen noch. Bis sie da sind, bleibt die App werbefrei. Sie werden
+     in der AdMob-Konsole pro Anzeigenblock erzeugt und tragen einen
+     Schrägstrich statt der Tilde:
+       Rewarded:     ca-app-pub-1786159152036324/XXXXXXXXXX
+       Interstitial: ca-app-pub-1786159152036324/XXXXXXXXXX
+
+     Die App-ID darf nicht leer sein — das AndroidManifest verweist auf
+     sie, und das Ads-SDK bricht beim Start ohne gültige ID ab.
 
      Google-Test-IDs für die Entwicklung (zeigen echte Test-Anzeigen,
      dürfen NIE in ein Store-Release):
@@ -15,7 +22,7 @@
        Rewarded:     ca-app-pub-3940256099942544/5224354917
        Interstitial: ca-app-pub-3940256099942544/1033173712 -->
 <resources>
-    <string name="admob_app_id" translatable="false"></string>
+    <string name="admob_app_id" translatable="false">ca-app-pub-1786159152036324~8923812059</string>
     <string name="admob_rewarded_id" translatable="false"></string>
     <string name="admob_interstitial_id" translatable="false"></string>
 </resources>
