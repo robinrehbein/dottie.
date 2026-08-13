@@ -15,6 +15,20 @@
   audio.muted = ScoreStore.soundMuted;
 
   var fx = { flashAlpha: 0, shakeTime: 0, celebrateTime: 0, deathTime: -1 };
+
+  /**
+   * Alle Effekte auf den Ruhezustand (FxState.reset in der App) — nötig
+   * überall dort, wo ein Lauf endet, ohne dass gleich der nächste
+   * startet. Vor allem deathTime: Bliebe der Sturz aktiv, wäre der Vogel
+   * im READY-Bild längst unten aus dem Kader gefallen und unsichtbar.
+   */
+  function resetFx() {
+    fx.flashAlpha = 0;
+    fx.shakeTime = 0;
+    fx.celebrateTime = 0;
+    fx.deathTime = -1;
+  }
+
   var bannerState = { timeLeft: 0, priority: 0, lastStage: 0, recordCelebrated: false };
   var runState = { epochDay: 0, maxPerfect: 0 };
 
@@ -578,6 +592,14 @@
   button(el.btnMenu, function () {
     dailyMode = false;
     game.reset();
+    // Auch die Effekte zurücksetzen — sonst läuft die Sturz-Animation
+    // weiter und der Vogel fehlt im Startbild, obwohl er dort wieder
+    // kreisen soll (drawTimingDot bricht ab, sobald er unten raus ist).
+    resetFx();
+    bannerState.timeLeft = 0;
+    bannerState.lastStage = 0;
+    bannerState.recordCelebrated = false;
+    bannerText = "";
   });
 
   // Overlays: Tap irgendwo schließt — und wird konsumiert, damit er
@@ -603,11 +625,30 @@
     // Beim allerersten Besuch übernimmt der Worker eine noch ungecachte
     // Seite — das ist kein Update, sondern die Erstinstallation.
     var hadController = !!navigator.serviceWorker.controller;
+    var registration = null;
 
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js").catch(function () {
-        // Offline-Cache ist optional — das Spiel läuft auch ohne.
-      });
+      // updateViaCache "none": Der Browser darf sw.js selbst NICHT aus
+      // dem HTTP-Cache beantworten. Sonst hängt die Update-Erkennung an
+      // der Cache-Dauer des Hosters — und eine installierte PWA, die nie
+      // geschlossen wird, bleibt beliebig lange auf der alten Version.
+      navigator.serviceWorker.register("sw.js", { updateViaCache: "none" })
+        .then(function (reg) {
+          registration = reg;
+          reg.update();
+        })
+        .catch(function () {
+          // Offline-Cache ist optional — das Spiel läuft auch ohne.
+        });
+    });
+
+    // Eine als App installierte PWA wird selten neu geladen: Sie wandert
+    // nur in den Hintergrund und zurück. Jede Rückkehr ist deshalb der
+    // Moment, in dem nach einer neuen Version gesehen wird.
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState !== "visible") return;
+      if (registration) registration.update();
+      applyUpdateIfIdle();
     });
 
     navigator.serviceWorker.addEventListener("controllerchange", function () {
