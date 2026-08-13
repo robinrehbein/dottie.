@@ -59,11 +59,17 @@ html, body {
  * einer einzelnen Farbe war das ein türkiser Balken unter dem Boden.
  *
  * Deshalb derselbe Zweiklang wie im Spiel: Himmel oben, Sand ab 88% — das
- * ist exakt die Bodenkante aus drawGroundStrip() in render.js. Bleibt ein
- * Streifen frei, setzt er den Boden nahtlos fort statt ihn zu unterbrechen.
+ * ist exakt die Bodenkante aus drawGroundStrip() in render.js.
+ *
+ * Wichtig: Der Verlauf ist ein Hintergrund-*Bild*, und iOS malt in den
+ * Streifen außerhalb des Viewports nur die Hintergrund-*Farbe*. Ohne
+ * eigene Farbe blieb dort das Weiß der Seitenfläche stehen. Also Sand als
+ * Grundfarbe darunter — der Verlauf liegt im Viewport ohnehin darüber,
+ * und der Streifen setzt den Boden nahtlos fort.
  */
 html {
-  background: linear-gradient(
+  background-color: #DED895;
+  background-image: linear-gradient(
     to bottom,
     #4EC0CA 0 88%,
     #DED895 88% 100%
