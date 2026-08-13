@@ -49,6 +49,7 @@
     <string name="menu">MENU</string>
     <!-- Werbung: nur sichtbar, wenn in res/values/ads.xml echte IDs stehen. -->
     <string name="remove_ads">REMOVE ADS</string>
+    <string name="ad_privacy">AD PRIVACY SETTINGS</string>
 
     <!-- Spott-Texte (Auswahl deterministisch über score+best) -->
     <string-array name="taunts_zero">

@@ -479,7 +479,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     }
                 },
                 removeAdsVisible = ads.enabled,
-                onRemoveAds = { (context as? Activity)?.let { billing.purchase(it) } }
+                onRemoveAds = { (context as? Activity)?.let { billing.purchase(it) } },
+                privacyVisible = ads.enabled && ads.privacyOptionsRequired,
+                onPrivacy = { (context as? Activity)?.let { ads.showPrivacyOptions(it) } }
             )
             TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
                 ScoreHud(

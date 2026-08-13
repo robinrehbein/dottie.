@@ -69,6 +69,17 @@ class AdsManager(
     var rewardedReady by mutableStateOf(false)
         private set
 
+    /**
+     * Muss die App einen dauerhaften Weg zurück ins Einwilligungs-Formular
+     * anbieten? Googles UMP beantwortet das je nach Region: In der EU ist
+     * eine einmal erteilte Einwilligung ohne Widerrufsmöglichkeit
+     * wertlos, außerhalb gibt es oft gar kein Formular. Beobachtbar, weil
+     * die Antwort erst nach dem Netzabruf feststeht — der Startscreen
+     * blendet die Zeile dann nach.
+     */
+    var privacyOptionsRequired by mutableStateOf(false)
+        private set
+
     private var rewarded: RewardedAd? = null
     private var interstitial: InterstitialAd? = null
     private var started = false
@@ -109,14 +120,47 @@ class AdsManager(
                     if (formError != null) {
                         Log.w(TAG, "Consent-Formular: ${formError.message}")
                     }
+                    updatePrivacyOptionsRequired()
                     initializeIfAllowed()
                 }
             },
             { requestError ->
                 Log.w(TAG, "Consent-Abfrage: ${requestError.message}")
+                updatePrivacyOptionsRequired()
                 initializeIfAllowed()
             }
         )
+    }
+
+    private fun updatePrivacyOptionsRequired() {
+        privacyOptionsRequired = consentInformation?.privacyOptionsRequirementStatus ==
+            ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+    }
+
+    /**
+     * Öffnet Googles Einwilligungs-Formular erneut, damit sich eine
+     * einmal getroffene Wahl auch wieder ändern lässt. Ohne diesen Weg
+     * wäre die Einwilligung nach DSGVO nicht widerrufbar — und Google
+     * verlangt ihn ausdrücklich, sobald [privacyOptionsRequired] gilt.
+     */
+    fun showPrivacyOptions(activity: Activity) {
+        UserMessagingPlatform.showPrivacyOptionsForm(activity) { formError ->
+            if (formError != null) {
+                Log.w(TAG, "Datenschutz-Formular: ${formError.message}")
+                return@showPrivacyOptionsForm
+            }
+            // Ein Widerruf kann die Auslieferung beenden — dann laufen die
+            // bereits geladenen Spots ins Leere. Neu bewerten statt raten.
+            updatePrivacyOptionsRequired()
+            if (consentInformation?.canRequestAds() != true) {
+                rewarded = null
+                rewardedReady = false
+                interstitial = null
+            } else {
+                loadRewarded()
+                loadInterstitial()
+            }
+        }
     }
 
     private fun initializeIfAllowed() {

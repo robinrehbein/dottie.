@@ -72,15 +72,18 @@ Ab v2.11 gibt es zusätzlich eine optionale **tägliche Erinnerung** an
 die Daily Challenge (Opt-in über den Startscreen, komplett lokal per
 WorkManager, ab Android 13 hinter der Notification-Permission).
 
-Ab v2.17 ist die **Monetarisierung vorbereitet, aber hart deaktiviert**:
-ein Rewarded-Spot für den **Skin-Tagespass**, seltene Interstitials
+Ab v2.17 ist die **Monetarisierung aktiv**: ein freiwilliger
+Rewarded-Spot für den **Skin-Tagespass**, seltene Interstitials
 (frühestens ab dem 6. Tod einer Sitzung, mit 180-Sekunden-Sperre) und der
-einmalige Kauf „Werbung entfernen" über Play Billing. Solange in
-`res/values/ads.xml` keine echten AdMob-IDs stehen — und das ist der
-Auslieferungszustand — wird kein SDK initialisiert, es gibt keine
-Requests, keinen Consent-Dialog und keinen BillingClient; die UI sieht
-exakt aus wie ohne die Abhängigkeiten. Anleitung zum Scharfschalten samt
-Datenschutz-Textbausteinen in PUBLISHING.md.
+einmalige Kauf „Werbung entfernen" über Play Billing. Die AdMob-IDs
+stehen in `res/values/ads.xml`; leert man eine der beiden
+Anzeigenblock-IDs, fällt alles wieder in den werbefreien Zustand zurück —
+kein SDK-Init, keine Requests, kein Consent-Dialog, kein BillingClient,
+und die UI sieht aus wie ohne die Abhängigkeiten. Vor der ersten Anzeige
+fragt Googles UMP nach der Einwilligung; wo das Pflicht ist, führt eine
+Zeile auf dem Startscreen dauerhaft zurück in dieses Formular.
+Datenschutzerklärung: `docs/index.html`, restliche Schritte in
+PUBLISHING.md.
 
 **Die Design-Entscheidung dahinter:** Werbung rührt weder den Lauf noch
 den Rekord an. Der Tod ist endgültig — „Perfekt oder vorbei" ist das

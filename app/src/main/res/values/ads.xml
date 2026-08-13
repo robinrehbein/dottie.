@@ -6,15 +6,14 @@
      Ad-Requests, kein Consent-Dialog, kein Billing — die App verhält
      sich sonst exakt wie ohne die Abhängigkeiten (AdsManager.configured).
 
-     Stand: Die App-ID ist eingetragen, die beiden Anzeigenblock-IDs
-     fehlen noch. Bis sie da sind, bleibt die App werbefrei. Sie werden
-     in der AdMob-Konsole pro Anzeigenblock erzeugt und tragen einen
-     Schrägstrich statt der Tilde:
-       Rewarded:     ca-app-pub-1786159152036324/XXXXXXXXXX
-       Interstitial: ca-app-pub-1786159152036324/XXXXXXXXXX
+     Stand: Alle drei IDs sind eingetragen, Werbung ist damit AKTIV.
+     Zum Abschalten eine der beiden Anzeigenblock-IDs leeren — die
+     App-ID muss stehen bleiben, weil das AndroidManifest auf sie
+     verweist und das Ads-SDK ohne gültige ID beim Start abbricht.
 
-     Die App-ID darf nicht leer sein — das AndroidManifest verweist auf
-     sie, und das Ads-SDK bricht beim Start ohne gültige ID ab.
+     Wer hier etwas ändert, muss auch die Datenschutzerklärung
+     (docs/index.html) und die Store-Angaben zur Datensicherheit
+     nachziehen — Schritt 5 in PUBLISHING.md.
 
      Google-Test-IDs für die Entwicklung (zeigen echte Test-Anzeigen,
      dürfen NIE in ein Store-Release):
@@ -23,6 +22,6 @@
        Interstitial: ca-app-pub-3940256099942544/1033173712 -->
 <resources>
     <string name="admob_app_id" translatable="false">ca-app-pub-1786159152036324~8923812059</string>
-    <string name="admob_rewarded_id" translatable="false"></string>
-    <string name="admob_interstitial_id" translatable="false"></string>
+    <string name="admob_rewarded_id" translatable="false">ca-app-pub-1786159152036324/3200712083</string>
+    <string name="admob_interstitial_id" translatable="false">ca-app-pub-1786159152036324/1632625338</string>
 </resources>

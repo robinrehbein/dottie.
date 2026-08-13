@@ -178,7 +178,11 @@ internal fun ReadyOverlay(
     // Kauf-Zeile: nur sichtbar, wenn Werbung wirklich läuft. Ohne
     // AdMob-IDs (Standard) sieht der Startscreen exakt aus wie bisher.
     removeAdsVisible: Boolean = false,
-    onRemoveAds: () -> Unit = {}
+    onRemoveAds: () -> Unit = {},
+    // Widerruf der Werbe-Einwilligung. Google blendet die Zeile selbst
+    // nur dort ein, wo sie nötig ist (im Wesentlichen die EU).
+    privacyVisible: Boolean = false,
+    onPrivacy: () -> Unit = {}
 ) {
     val blink by rememberInfiniteTransition(label = "blink").animateFloat(
         initialValue = 1f,
@@ -346,6 +350,20 @@ internal fun ReadyOverlay(
                     color = Color.White.copy(alpha = 0.75f),
                     modifier = Modifier
                         .clickable { onRemoveAds() }
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            }
+            // Noch eine Spur zurückhaltender als die Kauf-Zeile: Der
+            // Widerruf muss dauerhaft erreichbar sein, aber niemand sucht
+            // ihn auf einem Startbildschirm — deshalb klein und blass.
+            if (privacyVisible) {
+                Text(
+                    text = stringResource(R.string.ad_privacy),
+                    style = ScoreShadowStyle,
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .clickable { onPrivacy() }
                         .padding(horizontal = 16.dp, vertical = 6.dp)
                 )
             }

@@ -13,10 +13,10 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.17.
 - [x] Screenshots 1080×1920: je 4 in DE und EN unter `store/screenshots/`
       (Generator: `python3 store/generate_screenshots.py`)
 - [ ] Optional: Play Games Services einrichten → Bestenlisten (Anleitung unten)
-- [ ] Optional: AdMob + In-App-Kauf „remove_ads" aktivieren (Anleitung
-      unten) — solange das nicht passiert, ist die App komplett werbefrei
-- [ ] Data-Safety-Formular: „Es werden keine Daten erhoben" (gilt nur
-      ohne AdMob — mit Werbung siehe Abschnitt unten)
+- [x] AdMob-IDs eingetragen — **Werbung ist aktiv** (Abschnitt unten)
+- [ ] In-App-Kauf „remove_ads" in der Play Console anlegen (Abschnitt unten)
+- [ ] Data-Safety-Formular **mit** Werbung ausfüllen (Abschnitt unten) —
+      „keine Daten erhoben" wäre jetzt falsch
 - [ ] IARC-Fragebogen (Content-Rating) ausfüllen
 - [ ] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
       oder per CI-Job `play-internal`, siehe unten)
@@ -132,8 +132,11 @@ wird öffentlich sichtbar.
 > wird sofort gefeiert.
 >
 > **Ehrlich & schlank**
-> Keine Werbung, keine In-App-Käufe, keine Datensammelei, kein
-> Internet nötig. Nur du, der Punkt und dein Highscore.
+> Keine Datensammelei, kein Konto, kein Internet zum Spielen nötig.
+> Werbung finanziert die App: gelegentlich nach einem Spielende, und
+> freiwillig, wenn du ein gesperrtes Aussehen einen Tag lang testen
+> willst. Sie fasst weder deinen Lauf noch deinen Rekord an — und ein
+> einmaliger Kauf entfernt sie dauerhaft.
 
 **Kategorie:** Spiele → Arcade · **Tags:** Casual, Arcade, One-Tap
 
@@ -175,8 +178,10 @@ wird öffentlich sichtbar.
 > runs, and breaking your record gets celebrated the moment it happens.
 >
 > **Honest & lean**
-> No ads, no in-app purchases, no data collection, no internet needed.
-> Just you, the dot, and your high score.
+> No data collection, no account, no internet needed to play. Ads keep
+> the app alive: occasionally after a run ends, and voluntarily when you
+> want to try a locked look for a day. They never touch your run or your
+> record — and a single purchase removes them for good.
 
 **Assets:**
 
@@ -332,70 +337,22 @@ kostenlos über **Einstellungen → Lizenztests** (Lizenz-Tester kaufen
 zum Preis 0) — der Kauf funktioniert erst, wenn die App über einen
 Play-Track installiert wurde, nicht per `adb install`.
 
-### 5. Data-Safety und Datenschutz nachziehen
+### 5. Data-Safety und Anzeigen-Label in der Play Console
 
-Mit aktiver Werbung stimmt „Es werden keine Daten erhoben" **nicht
-mehr**. Vor dem nächsten Release anpassen:
+Die Datenschutzerklärung (`docs/index.html`) und die Store-Texte oben
+sind bereits auf aktive Werbung umgeschrieben. Offen bleibt der Teil,
+der nur in der Play Console geht:
 
-- **Data-Safety-Formular** (Play Console → App-Inhalte): „Gerätekennungen
-  oder andere IDs" → **Werbe-ID (AAID)** wird erhoben und **geteilt**,
-  Zweck **Werbung/Marketing**, nicht verschlüsselt übertragbar
-  verneinen/bejahen gemäß Googles Vorgaben; zusätzlich unter
-  **Anzeigen** „Die App enthält Werbung" ankreuzen (das setzt auch das
-  „Enthält Anzeigen"-Label im Listing).
-- **Store-Texte**: Der Absatz „Ehrlich & schlank / Honest & lean" oben
-  behauptet „keine Werbung, keine In-App-Käufe" — beides muss dann raus
-  bzw. umformuliert werden (z. B. „Werbung lässt sich einmalig
-  entfernen").
-- **`docs/index.html`**: Textbaustein unten einsetzen.
-
-### 6. Textbaustein für docs/index.html (erst beim Aktivieren einfügen)
-
-Deutsch — als neuer Abschnitt vor „Kinder", außerdem den Satz unter
-„Kurz gesagt" und den Abschnitt „Internetzugriff" entsprechend
-entschärfen:
-
-```html
-  <h2>Werbung</h2>
-  <p>DOTTIE. zeigt Werbung über <strong>Google AdMob</strong>: einen
-  freiwilligen Video-Spot, der einen gesperrten Punkt-Skin für den
-  laufenden Tag freischaltet, sowie gelegentliche Vollbild-Anzeigen
-  zwischen Läufen. Dabei verarbeitet
-  Google die <strong>Werbe-ID (AAID)</strong> deines Geräts sowie
-  technische Angaben (Gerätetyp, grobe Region, IP-Adresse), um
-  Anzeigen auszuliefern und Betrug zu erkennen. Verantwortlich dafür
-  ist Google Ireland Ltd.; Details:
-  <a href="https://business.safety.google/privacy/">Google-Datenschutz</a>.
-  Die Werbe-ID lässt sich in den Android-Einstellungen unter
-  „Datenschutz → Werbung" zurücksetzen oder löschen.</p>
-  <p>Vor der ersten Anzeige fragt die App über Googles
-  <strong>User-Messaging-Platform (UMP)</strong> nach deiner
-  Einwilligung; ohne Einwilligung werden keine (bzw. nur nicht
-  personalisierte) Anzeigen geladen. Die Auswahl lässt sich jederzeit
-  über denselben Dialog ändern.</p>
-  <p>Über <strong>Google Play Billing</strong> kann die Werbung
-  einmalig dauerhaft entfernt werden („Werbung entfernen"). Den
-  Zahlungsvorgang wickelt ausschließlich Google Play ab — wir erhalten
-  keine Zahlungsdaten, nur die Information, dass der Kauf besteht.</p>
-```
-
-Englisch — für den Footer-Absatz („English summary"):
-
-```html
-    <p><em>English summary:</em> DOTTIE. shows ads via
-    <strong>Google AdMob</strong> (an optional rewarded video that unlocks
-    a locked dot skin for the rest of the day, plus occasional
-    interstitials between runs). Google processes
-    your device's <strong>advertising ID (AAID)</strong> and technical
-    data (device type, coarse region, IP address) to serve ads and
-    prevent fraud. Before the first ad, the app asks for your consent via
-    Google's <strong>User Messaging Platform</strong>; you can change
-    that choice at any time. Ads can be removed permanently with a
-    one-time purchase handled entirely by <strong>Google Play
-    Billing</strong> — we never receive payment data. High scores, daily
-    challenge progress, unlocked skins, and settings stay on your device.
-    Contact: robin@join-noah.de</p>
-```
+- **Data-Safety-Formular** (Play Console → App-Inhalte → Datensicherheit):
+  „Gerätekennungen oder andere IDs" → **Werbe-ID (AAID)** wird erhoben
+  **und geteilt**, Zweck **Werbung/Marketing**. Als Verarbeiter tritt
+  Google auf. „Es werden keine Daten erhoben" wäre jetzt falsch.
+- **Anzeigen-Label**: unter App-Inhalte → **Anzeigen** „Ja, die App
+  enthält Werbung" ankreuzen. Das setzt das „Enthält Anzeigen"-Label im
+  Listing.
+- **IARC-Fragebogen**: beim Ausfüllen angeben, dass die App Werbung
+  enthält und digitale Käufe anbietet — sonst weicht das Rating später
+  vom tatsächlichen Inhalt ab.
 
 ### Wie sich das Spiel dann verhält
 
