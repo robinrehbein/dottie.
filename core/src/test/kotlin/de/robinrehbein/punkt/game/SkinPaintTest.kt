@@ -63,8 +63,12 @@ class SkinPaintTest {
         val nacht = SkinPaint.cell(SkinId.CHAMAELEON, 3, 3, SkinState(score = 30))
         assertNotEquals("Tag und Nacht müssen sich unterscheiden", tag, nacht)
 
-        val jenseits = SkinPaint.cell(SkinId.CHAMAELEON, 3, 3, SkinState(score = 999))
-        assertEquals("Oberhalb der letzten Stufe bleibt es bei Nacht", nacht, jenseits)
+        // Kein Deckel mehr: Der Himmel laeuft im Umlauf, siehe skyStage.
+        assertEquals(
+            "Nach einem vollen Umlauf ist wieder Nacht",
+            nacht,
+            SkinPaint.cell(SkinId.CHAMAELEON, 3, 3, SkinState(score = 90))
+        )
 
         val kalt = SkinPaint.cell(SkinId.KOMBO, 3, 3, SkinState(perfectStreak = 0))
         val heiss = SkinPaint.cell(SkinId.KOMBO, 3, 3, SkinState(perfectStreak = 5))
@@ -149,6 +153,54 @@ class SkinPaintTest {
         assertEquals(0xFF00FF00, SkinPaint.hsl(120f, 1f, 0.5f))
         assertEquals(0xFF0000FF, SkinPaint.hsl(240f, 1f, 0.5f))
         assertEquals("Negative Winkel wickeln sich", SkinPaint.hsl(30f, 1f, 0.5f), SkinPaint.hsl(-330f, 1f, 0.5f))
+    }
+
+    @Test
+    fun `der Himmel laeuft im Umlauf statt in der Nacht stehenzubleiben`() {
+        // Hoch bis zur Nacht ...
+        assertEquals(0, SkinPaint.skyStage(0))
+        assertEquals(0, SkinPaint.skyStage(4))
+        assertEquals(1, SkinPaint.skyStage(5))
+        assertEquals(5, SkinPaint.skyStage(25))
+        assertEquals(6, SkinPaint.skyStage(30))
+        // ... und wieder zurueck zum Tag.
+        assertEquals(5, SkinPaint.skyStage(35))
+        assertEquals(1, SkinPaint.skyStage(55))
+        assertEquals(0, SkinPaint.skyStage(60))
+        assertEquals(6, SkinPaint.skyStage(90))
+
+        // Ein voller Umlauf ist SKY_CYCLE Stufen, also 60 Punkte lang.
+        (0..400).forEach { score ->
+            assertEquals(
+                "Score $score muss sich nach einem Umlauf wiederholen",
+                SkinPaint.skyStage(score),
+                SkinPaint.skyStage(score + SkinPaint.SKY_CYCLE * 5)
+            )
+        }
+
+        // Und er bleibt immer in der Farbtabelle.
+        (0..1000).forEach { score ->
+            val stage = SkinPaint.skyStage(score)
+            assertTrue("Stufe $stage liegt ausserhalb der Tabelle", stage in SkinPaint.SKY_STAGES.indices)
+        }
+    }
+
+    @Test
+    fun `Chamaeleon laeuft mit dem Himmel zurueck`() {
+        // Score 60 ist wieder Tag — der Skin muss dieselbe Farbe zeigen wie
+        // beim Start, sonst folgt er dem Himmel nicht mehr.
+        assertEquals(
+            SkinPaint.cell(SkinId.CHAMAELEON, 3, 3, SkinState(score = 0)),
+            SkinPaint.cell(SkinId.CHAMAELEON, 3, 3, SkinState(score = 60))
+        )
+        assertEquals(
+            SkinPaint.cell(SkinId.CHAMAELEON, 3, 3, SkinState(score = 30)),
+            SkinPaint.cell(SkinId.CHAMAELEON, 3, 3, SkinState(score = 90))
+        )
+        assertNotEquals(
+            SkinPaint.cell(SkinId.CHAMAELEON, 3, 3, SkinState(score = 30)),
+            SkinPaint.cell(SkinId.CHAMAELEON, 3, 3, SkinState(score = 60))
+        )
     }
 
     @Test

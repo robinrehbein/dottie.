@@ -9,6 +9,7 @@ import android.graphics.Paint
 import androidx.core.content.FileProvider
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.SkinPaint
 import java.io.File
 import kotlin.math.sqrt
 
@@ -24,7 +25,10 @@ object ScoreCard {
     private const val H = 1350
     private const val CELL = 6f
 
-    /** Himmelsfarbe pro 5er-Stufe — Kopie der SkyStages aus dem Spiel. */
+    /**
+     * Himmelsfarbe pro 5er-Stufe — Kopie der SkyStages aus dem Spiel; die
+     * Stufe zum Score kommt wie dort aus SkinPaint.skyStage.
+     */
     private val SKY = intArrayOf(
         0xFF4EC0CA.toInt(), 0xFF5B9BD5.toInt(), 0xFF7B6FD0.toInt(),
         0xFFC0616F.toInt(), 0xFFD98A3D.toInt(), 0xFF3D4A8C.toInt(),
@@ -98,7 +102,7 @@ object ScoreCard {
         }
 
         // Himmel nach erreichter Stufe, wie im Spiel
-        paint.color = SKY[(score / 5).coerceAtMost(SKY.size - 1)]
+        paint.color = SKY[SkinPaint.skyStage(score)]
         canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), paint)
 
         drawCloud(canvas, paint, W * 0.08f, H * 0.10f)

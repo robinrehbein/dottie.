@@ -660,7 +660,26 @@ function driveToZoneAndTap(game) {
   var kotlinSky = (paintKt.slice(paintKt.indexOf("val SKY_STAGES = longArrayOf("))
     .match(/0x[Ff]{2}[0-9A-Fa-f]{6}/g) || []).slice(0, 7)
     .map(function (h) { return "#" + h.slice(4).toUpperCase(); });
-  assertEq(kotlinSky.join(","), DotSkin.SKY_STAGES.join(","), "Chamaeleon nutzt dieselben Himmelsstufen");
+  assertEq(kotlinSky.join(","), DotSkin.SKY_STAGES.join(","), "dieselben Himmelsstufen wie in Kotlin");
+
+  // Der Himmel laeuft im Umlauf statt in der Nacht stehenzubleiben — die
+  // Laenge des Umlaufs steht in beiden Quellen und muss uebereinstimmen.
+  var kotlinCycle = parseInt(
+    (paintKt.match(/const val SKY_CYCLE = (\d+)/) || [])[1], 10
+  );
+  assertEq(DotSkin.SKY_CYCLE, kotlinCycle, "gleiche Umlauf-Laenge wie in Kotlin");
+
+  var folge = [];
+  for (var punkte = 0; punkte <= 60; punkte += 5) folge.push(DotSkin.skyStage(punkte));
+  assertEq(folge.join(","), "0,1,2,3,4,5,6,5,4,3,2,1,0", "hoch bis zur Nacht und zurueck zum Tag");
+  assertEq(DotSkin.skyStage(4), 0, "unter fuenf Punkten bleibt es Tag");
+  assertEq(DotSkin.skyStage(90), 6, "nach eineinhalb Umlaeufen wieder Nacht");
+  var imBereich = true;
+  for (var sc = 0; sc <= 1000; sc++) {
+    var st = DotSkin.skyStage(sc);
+    if (st < 0 || st >= DotSkin.SKY_STAGES.length) imBereich = false;
+  }
+  assert(imBereich, "die Stufe bleibt immer in der Farbtabelle");
 
   // Freischalt-Schwellen: jede Regel aus Kotlin wird an ihrer Kante geprueft.
   var regeln = whenBlock("fun isUnlocked(id: SkinId, stats: SkinStats): Boolean = when (id) {");

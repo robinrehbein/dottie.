@@ -38,7 +38,8 @@ Kuratierte Ausnahme: GEIST + FALLE erscheinen nie gleichzeitig —
 unsichtbarer Punkt plus tödliche Köder-Zone wäre Zufalls-Tod statt
 Skill. Alle anderen Kombinationen bleiben erlaubt.
 
-Dazu: Himmel färbt sich pro 5er-Stufe Richtung Nacht, Medaillen ab
+Dazu: Himmel färbt sich pro 5er-Stufe Richtung Nacht — und wieder
+zurück zum Tag, ein voller Umlauf sind 60 Punkte —, Medaillen ab
 10/20/30/40 Punkten, Spott-Texte beim Tod, Haptik-Feedback, „?"-Button
 mit Spielerklärung. Wer den eigenen Rekord im Lauf überholt, bekommt
 das sofort gefeiert („REKORD GEKNACKT!") — nicht erst beim Tod.

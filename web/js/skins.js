@@ -16,10 +16,27 @@
   var MID = (GRID - 1) / 2;
   var RR = GRID / 2 - 0.25;
 
-  /** Himmelsstufen fuer CHAMAELEON — Spiegel von SkyStages im Renderer. */
+  /** Himmelsstufen — Spiegel von SkyStages im Renderer. */
   var SKY_STAGES = [
     "#4EC0CA", "#5B9BD5", "#7B6FD0", "#C0616F", "#D98A3D", "#3D4A8C", "#2A2640"
   ];
+
+  /**
+   * Laenge eines Himmels-Umlaufs in Stufen: sechs hoch von Tag bis Nacht,
+   * sechs zurueck. Bei einer Stufe je fuenf Punkte ist ein Umlauf also 60
+   * Punkte lang.
+   */
+  var SKY_CYCLE = 12;
+
+  /**
+   * Himmelsstufe zu einem Score (Port von SkinPaint.skyStage). Der Zaehler
+   * bleibt nicht in der Nacht stehen, sondern laeuft weiter — hoch bis zur
+   * Nacht und wieder zurueck zum Tag.
+   */
+  function skyStage(score) {
+    var step = ((Math.floor(score / 5) % SKY_CYCLE) + SKY_CYCLE) % SKY_CYCLE;
+    return step <= SKY_CYCLE / 2 ? step : SKY_CYCLE - step;
+  }
 
   /** Nachbilder eines Schweif-Skins und ihr Winkelabstand (Radiant). */
   var TRAIL_STEPS = 3;
@@ -254,7 +271,7 @@
       name: "CHAMAELEON", titleKey: "skin_chamaeleon", hintKey: "skin_hint_chamaeleon",
       body: "#8FD8DE", shade: "#3F9BA5", shine: "#FFFFFF",
       cell: function (col, row, state) {
-        var sky = SKY_STAGES[Math.min(Math.floor(state.score / 5), SKY_STAGES.length - 1)];
+        var sky = SKY_STAGES[skyStage(state.score)];
         return col + row > GRID * 1.15 ? mix(sky, "#000000", 0.18) : mix(sky, "#FFFFFF", 0.34);
       }
     },
@@ -332,6 +349,8 @@
   var DotSkin = {
     SKINS: SKINS,
     SKY_STAGES: SKY_STAGES,
+    SKY_CYCLE: SKY_CYCLE,
+    skyStage: skyStage,
     GRID: GRID,
     TRAIL_STEPS: TRAIL_STEPS,
     TRAIL_SPACING: TRAIL_SPACING,

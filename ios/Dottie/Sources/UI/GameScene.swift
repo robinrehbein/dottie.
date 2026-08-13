@@ -509,7 +509,7 @@ final class GameScene: SKScene {
         }
 
         // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht.
-        let stageIndex = min(game.score / 5, Palette.skyStages.count - 1)
+        let stageIndex = SkinPaint.skyStage(game.score)
         skyNode.color = Palette.skyStages[stageIndex]
 
         // Wolken driften nach links.
