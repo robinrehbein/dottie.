@@ -1,8 +1,10 @@
 package de.robinrehbein.punkt.data
 
 import android.content.Context
+import android.content.SharedPreferences
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.Season
 import de.robinrehbein.punkt.game.SyncState
 
 /**
@@ -27,6 +29,43 @@ class ScoreStore(context: Context) {
     /** Beste jemals erreichte Perfekt-Serie (für Skin-Freischaltungen). */
     val bestPerfectStreak: Int
         get() = prefs.getInt(KEY_BEST_PERFECT, 0)
+
+    // ===== Ausdauer-Achsen (Menge statt Können) =====
+
+    /** Summe aller je erspielten Punkte. */
+    val totalScore: Int
+        get() = prefs.getInt(KEY_TOTAL_SCORE, 0)
+
+    /** Kalendertage mit mindestens einem Lauf. */
+    val daysPlayed: Int
+        get() = prefs.getInt(KEY_DAYS_PLAYED, 0)
+
+    /**
+     * Bitmaske der Kalendermonate mit mindestens einem Lauf (Bit 0 =
+     * Januar). Eine Maske statt eines Zählers, weil "in drei Monaten
+     * gespielt" verschiedene Monate meint — dreimal im Mai ist einer.
+     */
+    val monthsPlayedMask: Int
+        get() = prefs.getInt(KEY_MONTHS_PLAYED, 0)
+
+    /**
+     * Bitmaske der verdienten Saison-Skins (siehe Season.bit in :core).
+     * Sie ist die einzige Wahrheit über Saison-Skins: Der Kalender allein
+     * würde den Kürbis im November wieder wegnehmen.
+     */
+    val seasonEarned: Int
+        get() = prefs.getInt(KEY_SEASON_EARNED, 0)
+
+    /**
+     * Gönner-Paket gekauft ("patron_pack"). Wie [adsRemoved] nur der
+     * lokale Spiegel des Play-Kaufs, damit die drei Gönner-Skins beim
+     * Start ohne Netz sofort dastehen.
+     */
+    var patronOwned: Boolean
+        get() = prefs.getBoolean(KEY_PATRON, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_PATRON, value).apply()
+        }
 
     /** Ton an/aus — überlebt App-Neustarts. */
     var soundMuted: Boolean
@@ -123,14 +162,68 @@ class ScoreStore(context: Context) {
         else -> 0
     }
 
-    /** Meldet einen beendeten Lauf; liefert true, wenn es ein neuer Rekord war. */
-    fun submitRun(score: Int): Boolean {
-        prefs.edit().putInt(KEY_RUNS, runCount + 1).apply()
-        if (score > bestScore) {
-            prefs.edit().putInt(KEY_BEST, score).apply()
-            return true
+    /**
+     * Meldet einen beendeten Lauf; liefert true, wenn es ein neuer Rekord
+     * war.
+     *
+     * Der Lauf bringt seinen Kalender selbst mit ([epochDay], [month],
+     * [year]) statt hier die Uhr zu fragen: Ein Lauf gehört dem Tag, an
+     * dem er gestartet ist — auch wenn er über Mitternacht läuft —, und
+     * genau dieser Tag entscheidet schon über den Daily-Seed.
+     */
+    fun submitRun(score: Int, epochDay: Long, month: Int, year: Int): Boolean {
+        val editor = prefs.edit()
+        editor.putInt(KEY_RUNS, runCount + 1)
+        editor.putInt(KEY_TOTAL_SCORE, totalScore + score)
+
+        // Ein neuer Kalendertag zählt genau einmal — gespeichert wird
+        // deshalb der Zähler UND der Tag, an dem er zuletzt stieg.
+        if (prefs.getLong(KEY_LAST_PLAYED_DAY, Long.MIN_VALUE) != epochDay) {
+            editor.putInt(KEY_DAYS_PLAYED, daysPlayed + 1)
+            editor.putLong(KEY_LAST_PLAYED_DAY, epochDay)
         }
-        return false
+        editor.putInt(KEY_MONTHS_PLAYED, monthsPlayedMask or (1 shl (month - 1)))
+
+        writeSeasonProgress(editor, epochDay, month, year)
+
+        val record = score > bestScore
+        if (record) editor.putInt(KEY_BEST, score)
+        editor.apply()
+        return record
+    }
+
+    /**
+     * Saison-Fortschritt: Tage mit Lauf im laufenden Saison-Monat. Der
+     * Fensterschlüssel (Jahr*100+Monat) setzt den Zähler beim Wechsel des
+     * Fensters zurück — der Oktober 2026 fängt wieder bei null an, sonst
+     * bekäme man den Kürbis über Jahre zusammengestückelt.
+     *
+     * Das erreichte Bit wird dagegen NIE zurückgenommen: Verdient ist
+     * verdient, auch im November.
+     */
+    private fun writeSeasonProgress(
+        editor: SharedPreferences.Editor,
+        epochDay: Long,
+        month: Int,
+        year: Int
+    ) {
+        val season = Season.forMonth(month) ?: return
+        val window = year * 100 + month
+        val sameWindow = prefs.getInt(KEY_SEASON_WINDOW, 0) == window
+        val daysSoFar = if (sameWindow) prefs.getInt(KEY_SEASON_DAYS, 0) else 0
+        val lastDay = if (sameWindow) {
+            prefs.getLong(KEY_SEASON_LAST_DAY, Long.MIN_VALUE)
+        } else {
+            Long.MIN_VALUE
+        }
+        val days = if (lastDay == epochDay) daysSoFar else daysSoFar + 1
+
+        editor.putInt(KEY_SEASON_WINDOW, window)
+        editor.putInt(KEY_SEASON_DAYS, days)
+        editor.putLong(KEY_SEASON_LAST_DAY, epochDay)
+        if (days >= season.requiredDays) {
+            editor.putInt(KEY_SEASON_EARNED, seasonEarned or season.bit)
+        }
     }
 
     /** Meldet die höchste Perfekt-Serie eines Laufs. */
@@ -167,11 +260,19 @@ class ScoreStore(context: Context) {
         return false
     }
 
-    /** Aktuelle Bestleistungen gebündelt, für Skin-Freischaltungen. */
+    /** Aktueller Stand gebündelt, für Skin-Freischaltungen. */
     fun stats(): DotSkin.Stats = DotSkin.Stats(
         bestScore = bestScore,
         bestPerfectStreak = bestPerfectStreak,
-        bestDailyStreak = dailyStreak
+        bestDailyStreak = dailyStreak,
+        runCount = runCount,
+        totalScore = totalScore,
+        daysPlayed = daysPlayed,
+        // Gespeichert wird die Maske, gefragt ist die Anzahl VERSCHIEDENER
+        // Monate — deshalb hier die gesetzten Bits zählen.
+        monthsPlayed = Integer.bitCount(monthsPlayedMask),
+        seasonEarned = seasonEarned,
+        patronOwned = patronOwned
     )
 
     // ===== Abgleich mit der Uhr =====
@@ -195,6 +296,15 @@ class ScoreStore(context: Context) {
             dailyDay = dailyDay,
             dailyBest = dailyBest,
             dailyStreak = dailyStreak,
+            totalScore = totalScore,
+            daysPlayed = daysPlayed,
+            lastPlayedDay = prefs.getLong(KEY_LAST_PLAYED_DAY, 0L),
+            monthsPlayed = monthsPlayedMask,
+            seasonEarned = seasonEarned,
+            // Der Gönner-Kauf wird bewusst NICHT geteilt: Er hängt am
+            // Google-Konto, und die Uhr stellt ihn über Play selbst wieder
+            // her. Ein mitgeteiltes Flag wäre nur eine zweite, schlechtere
+            // Wahrheit — und über den Data Layer fälschbar.
             skin = if (shareSkin) chosen.name else "",
             skinChangedAt = if (shareSkin) prefs.getLong(KEY_SKIN_CHANGED, 0L) else 0L
         )
@@ -222,6 +332,20 @@ class ScoreStore(context: Context) {
         if (state.bestPerfectStreak > before.bestPerfectStreak) {
             editor.putInt(KEY_BEST_PERFECT, state.bestPerfectStreak)
         }
+        // Zahlen wachsen nur, Masken werden verodert — dieselbe Regel wie
+        // in SyncState.mergedWith. Ein Monat oder ein Saison-Skin, den nur
+        // die Uhr gesehen hat, darf hier nicht verlorengehen.
+        if (state.totalScore > before.totalScore) editor.putInt(KEY_TOTAL_SCORE, state.totalScore)
+        if (state.daysPlayed > before.daysPlayed) editor.putInt(KEY_DAYS_PLAYED, state.daysPlayed)
+        if (state.lastPlayedDay > before.lastPlayedDay) {
+            editor.putLong(KEY_LAST_PLAYED_DAY, state.lastPlayedDay)
+        }
+        if (state.monthsPlayed != before.monthsPlayed) {
+            editor.putInt(KEY_MONTHS_PLAYED, before.monthsPlayed or state.monthsPlayed)
+        }
+        if (state.seasonEarned != before.seasonEarned) {
+            editor.putInt(KEY_SEASON_EARNED, before.seasonEarned or state.seasonEarned)
+        }
         if (state.dailyDay != before.dailyDay ||
             state.dailyBest != before.dailyBest ||
             state.dailyStreak != before.dailyStreak
@@ -242,7 +366,16 @@ class ScoreStore(context: Context) {
             val merged = DotSkin.Stats(
                 bestScore = maxOf(state.bestScore, before.bestScore),
                 bestPerfectStreak = maxOf(state.bestPerfectStreak, before.bestPerfectStreak),
-                bestDailyStreak = maxOf(state.dailyStreak, before.dailyStreak)
+                bestDailyStreak = maxOf(state.dailyStreak, before.dailyStreak),
+                runCount = maxOf(state.runCount, before.runCount),
+                totalScore = maxOf(state.totalScore, before.totalScore),
+                daysPlayed = maxOf(state.daysPlayed, before.daysPlayed),
+                monthsPlayed = Integer.bitCount(state.monthsPlayed or before.monthsPlayed),
+                seasonEarned = state.seasonEarned or before.seasonEarned,
+                // Der Kauf steht nicht im Austauschformat, also gilt hier
+                // der lokale Spiegel — sonst fiele ein Gönner-Skin beim
+                // Abgleich stumm auf KLASSIK zurück.
+                patronOwned = patronOwned
             )
             if (incoming.isUnlocked(merged)) editor.putString(KEY_SKIN, incoming.name)
         }
@@ -265,5 +398,16 @@ class ScoreStore(context: Context) {
         const val KEY_SKIN_CHANGED = "skin_changed_at"
         const val KEY_SKIN_PASS_SKIN = "skin_pass_skin"
         const val KEY_SKIN_PASS_DAY = "skin_pass_day"
+        const val KEY_TOTAL_SCORE = "total_score"
+        const val KEY_DAYS_PLAYED = "days_played"
+        const val KEY_LAST_PLAYED_DAY = "last_played_day"
+        const val KEY_MONTHS_PLAYED = "months_played"
+        // Fenster, Tageszähler und letzter gezählter Tag der laufenden
+        // Saison; nur KEY_SEASON_EARNED überlebt den Monat.
+        const val KEY_SEASON_WINDOW = "season_window"
+        const val KEY_SEASON_DAYS = "season_days"
+        const val KEY_SEASON_LAST_DAY = "season_last_day"
+        const val KEY_SEASON_EARNED = "season_earned"
+        const val KEY_PATRON = "patron_owned"
     }
 }

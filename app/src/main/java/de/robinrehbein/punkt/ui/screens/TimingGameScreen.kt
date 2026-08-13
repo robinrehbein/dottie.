@@ -58,6 +58,7 @@ import de.robinrehbein.punkt.share.ScoreCard
 import de.robinrehbein.punkt.sync.StatsSync
 import kotlinx.coroutines.isActive
 import java.time.LocalDate
+import java.time.LocalDateTime
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
@@ -131,8 +132,29 @@ private class RunState {
     /** Tag, dem der Lauf zugerechnet wird (fixiert beim Start). */
     var epochDay = 0L
 
+    /** Kalender des Laufs — Monat und Jahr gehören zu [epochDay]. */
+    var month = 6
+    var year = 0
+
+    /** Stunde für TAGESZEIT; wie [month] die Uhr des Geräts. */
+    var hour = 12
+
     /** Höchste Perfekt-Serie dieses Laufs, für die Bestleistung. */
     var maxPerfect = 0
+
+    /**
+     * Uhr und Kalender einmal je Lauf ablesen. Bewusst nicht pro Frame:
+     * TAGESZEIT und JAHRESZEIT ändern sich in Stunden, nicht in
+     * Millisekunden — und ein Systemaufruf im Zeichenpfad wäre teuer für
+     * nichts. Ein Lauf über Mitternacht behält damit sein Kleid, genau
+     * wie er seinen Tag behält.
+     */
+    fun readClock(now: LocalDateTime = LocalDateTime.now()) {
+        epochDay = now.toLocalDate().toEpochDay()
+        month = now.monthValue
+        year = now.year
+        hour = now.hour
+    }
 }
 
 /**
@@ -151,17 +173,25 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     val game = remember { TimingGame() }
     val fx = remember { FxState() }
     val bannerState = remember { BannerState() }
-    val runState = remember { RunState() }
+    // Schon beim Aufbau die Uhr lesen: Der Vogel kreist auch im
+    // Startbild, und TAGESZEIT soll dort nicht bis zum ersten Lauf im
+    // Standard-Mittag stehen.
+    val runState = remember { RunState().apply { readClock() } }
     val leaderboards = remember { Leaderboards(context as? Activity) }
     // Werbung und Kauf hängen wie die Bestenlisten an der Activity aus dem
     // LocalContext — beide sind ohne konfigurierte IDs komplett inaktiv.
     val ads = remember { AdsManager(context as? Activity, store) }
+    // Der Gönner-Kauf liegt zusätzlich als Compose-Zustand vor: Er kann
+    // bei offenem Skin-Menü eintreffen, und die drei neuen Skins sollen
+    // dann sofort dastehen statt erst beim nächsten Öffnen.
+    var patronOwned by remember { mutableStateOf(store.patronOwned) }
     val billing = remember {
         BillingManager(
             activity = context as? Activity,
             store = store,
             configured = ads.configured,
-            onAdsRemoved = { ads.disableAfterPurchase() }
+            onAdsRemoved = { ads.disableAfterPurchase() },
+            onPatronOwned = { patronOwned = true }
         )
     }
 
@@ -282,8 +312,11 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     // Modus setzen — die Daily bekommt den Tages-Seed, damit jeder Versuch
     // des Tages dieselbe Zonen-Abfolge spielt.
     fun prepareRun() {
-        val today = LocalDate.now().toEpochDay()
-        runState.epochDay = today
+        // Tag, Monat, Jahr und Stunde kommen aus derselben Ablesung —
+        // sonst könnte ein Lauf um Mitternacht seinen Tag aus dem einen
+        // und seinen Monat aus dem anderen Datum bekommen.
+        runState.readClock()
+        val today = runState.epochDay
         // Jeder Lauf-Start ist auch der Moment, den Tagespass nachzuziehen.
         refreshSkinPass(today)
         game.reseed(if (dailyMode) DailyChallenge.seedFor(today) else null)
@@ -362,8 +395,16 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             fx.deathTime = 0f
                             val previousBest = store.bestScore
                             newMedalThisRun = MedalTier.isUpgrade(game.score, previousBest)
-                            val unlockedBefore = DotSkin.unlockedCount(store.stats())
-                            isNewRecord = store.submitRun(game.score)
+                            // Gezählt wird, was VERDIENT ist: Saison zählt
+                            // mit, Gönner nie — ein Kauf ist keine Leistung
+                            // und darf die Feier nicht auslösen.
+                            val earnedBefore = DotSkin.earnedCount(store.stats())
+                            isNewRecord = store.submitRun(
+                                score = game.score,
+                                epochDay = runState.epochDay,
+                                month = runState.month,
+                                year = runState.year
+                            )
                             store.submitPerfectStreak(runState.maxPerfect)
                             if (dailyMode) {
                                 store.submitDailyRun(runState.epochDay, game.score)
@@ -373,7 +414,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             }
                             leaderboards.submitBest(game.score)
                             skinUnlockedThisRun =
-                                DotSkin.unlockedCount(store.stats()) > unlockedBefore
+                                DotSkin.earnedCount(store.stats()) > earnedBefore
                             taunt = pickTaunt(context, game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
                             runNumber = store.runCount
@@ -463,7 +504,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             frameTick // Frame-Abhängigkeit: erzwingt Neuzeichnen pro Tick.
-            drawTimingWorld(game, fx, skin)
+            // Stunde und Monat kommen aus dem Lauf-Zustand, nicht frisch
+            // von der Uhr — sie werden je Lauf einmal abgelesen.
+            drawTimingWorld(game, fx, skin, runState.hour, runState.month)
         }
 
         // Positionen relativ zur Bildhöhe: Die Bahn endet spätestens bei
@@ -589,7 +632,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
 
         if (showSkins) {
             SkinOverlay(
-                stats = store.stats(),
+                // patronOwned wird hier bewusst noch einmal gelesen: Erst
+                // dieser Zugriff lässt die Liste nach dem Kauf neu zeichnen.
+                stats = store.stats().copy(patronOwned = patronOwned),
                 selected = skin,
                 onSelect = {
                     skin = it
@@ -616,7 +661,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             store.selectedSkin = wanted
                         }
                     }
-                }
+                },
+                // Kein Preis von Google = kein Angebot, wie bei "Werbung
+                // entfernen". Wer das Paket hat, sieht statt des Preises
+                // ein Danke.
+                patronPrice = billing.patronPriceLabel,
+                onPatron = { (context as? Activity)?.let { billing.purchasePatron(it) } }
             )
         }
     }
@@ -624,7 +674,13 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
 
 // ===== Welt-Rendering =====
 
-private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState, skin: DotSkin) {
+private fun DrawScope.drawTimingWorld(
+    game: TimingGame,
+    fx: FxState,
+    skin: DotSkin,
+    hour: Int,
+    month: Int
+) {
     val h = size.height
     val w = size.width
     val cell = floor(h / 220f).coerceAtLeast(2f)
@@ -659,7 +715,7 @@ private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState, skin: DotSk
         val radius = min(w * 0.36f, h * 0.28f)
         drawTrack(game, cx, cy, radius, cell)
         if (game.isDotVisible) {
-            drawTimingDot(game, fx, cx, cy, radius, skin)
+            drawTimingDot(game, fx, cx, cy, radius, skin, hour, month)
         }
         if (fx.celebrateTime > 0f) {
             drawUnlockBurst(fx.celebrateTime, cx, cy, radius, cell)
@@ -1010,7 +1066,9 @@ private fun DrawScope.drawTimingDot(
     cx: Float,
     cy: Float,
     radius: Float,
-    skin: DotSkin
+    skin: DotSkin,
+    hour: Int,
+    month: Int
 ) {
     val h = size.height
     val px = cx + cos(game.angle) * radius
@@ -1033,7 +1091,9 @@ private fun DrawScope.drawTimingDot(
     val state = SkinState(
         elapsed = game.elapsed,
         score = game.score,
-        perfectStreak = game.perfectStreak
+        perfectStreak = game.perfectStreak,
+        hour = hour,
+        month = month
     )
 
     fun drawBird(centerX: Float, centerY: Float, alpha: Float = 1f) {

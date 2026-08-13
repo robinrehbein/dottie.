@@ -51,10 +51,12 @@ import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.MedalTier
+import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.components.PixelIcon
 import de.robinrehbein.punkt.ui.components.PixelIconButton
 import de.robinrehbein.punkt.ui.theme.Bytesized
+import java.time.LocalDateTime
 
 // ===== Gemeinsame Retro-Farbpalette =====
 internal val SkyColor = Color(0xFF4EC0CA)
@@ -867,6 +869,9 @@ private fun TwistHelpRow(color: Color, title: String, text: String) {
  * bereitliegt. Beides ist ohne AdMob-IDs immer null bzw. false — dann
  * gibt es weder Zusatzzeilen noch anklickbare gesperrte Skins, das
  * Overlay ist Pixel für Pixel das alte.
+ *
+ * [patronPrice] ist der von Google gelieferte Preis des Gönner-Pakets
+ * (null = nicht kaufbar, dann bleibt das Angebot unsichtbar).
  */
 @Composable
 internal fun SkinOverlay(
@@ -876,8 +881,15 @@ internal fun SkinOverlay(
     onClose: () -> Unit,
     skinPass: DotSkin? = null,
     adOfferReady: Boolean = false,
-    onWatchAdFor: (DotSkin) -> Unit = {}
+    onWatchAdFor: (DotSkin) -> Unit = {},
+    patronPrice: String? = null,
+    onPatron: () -> Unit = {}
 ) {
+    // Uhr und Kalender einmal pro Öffnen ablesen, nicht pro Vorschau:
+    // TAGESZEIT und JAHRESZEIT sollen in der Liste ihr heutiges Kleid
+    // tragen, aber 42 Zeilen dürfen nicht 42-mal die Systemzeit fragen.
+    val now = remember { LocalDateTime.now() }
+    val preview = remember(now) { SkinState(hour = now.hour, month = now.monthValue) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -902,12 +914,43 @@ internal fun SkinOverlay(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
+            // Bei 42 Skins ist die reine Liste nicht mehr lesbar: Die
+            // Familien-Überschrift sagt, wonach die nächsten Zeilen
+            // funktionieren — Muster, Zeit, Spielstand, Kalender, Kauf.
+            var lastFamily: DotSkin.Family? = null
+
             DotSkin.entries.forEach { skin ->
+                if (skin.family != lastFamily) {
+                    lastFamily = skin.family
+                    SkinFamilyHeading(stringResource(skin.family.titleRes))
+                    // Das Gönner-Angebot steht unter seiner Überschrift und
+                    // nirgends sonst: Wer die Skins ansieht, ist der einzige,
+                    // den es interessiert. Ohne Preis von Google (oder wenn
+                    // das Paket schon gehört) bleibt die Zeile weg.
+                    if (skin.family == DotSkin.Family.GOENNER &&
+                        (stats.patronOwned || patronPrice != null)
+                    ) {
+                        Text(
+                            text = if (stats.patronOwned) stringResource(R.string.patron_owned)
+                            else stringResource(R.string.patron_pack, patronPrice.orEmpty()),
+                            fontFamily = Bytesized,
+                            fontSize = 15.sp,
+                            color = DotBody,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .clickable(enabled = !stats.patronOwned) { onPatron() }
+                                .padding(horizontal = 48.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
                 // "Verdient" und "heute spielbar" bleiben getrennt: Der
                 // Tagespass macht den Skin nutzbar, nicht freigeschaltet.
                 val available = skin.isAvailable(stats, skinPass)
                 val onPass = skin == skinPass && !skin.isUnlocked(stats)
-                val adOffer = !available && adOfferReady
+                // Gönner-Skins bleiben vom Tagespass ausgenommen: Ein Spot
+                // darf keinen Kauf ersetzen, auch nicht für einen Tag.
+                val adOffer = !available && adOfferReady && !skin.isPatron
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -919,7 +962,8 @@ internal fun SkinOverlay(
                 ) {
                     // Vorschau als echter Vogel statt als Farbfläche: Bei
                     // gemusterten Skins sagt ein einzelner Farbwert nichts
-                    // mehr aus. Bewegte Skins stehen dabei still (Zeitpunkt 0).
+                    // mehr aus. Bewegte Skins stehen dabei still (Zeitpunkt 0),
+                    // Uhr- und Kalender-Skins zeigen das Kleid von jetzt.
                     Canvas(modifier = Modifier.size(36.dp)) {
                         val d = size.minDimension
                         drawPixelCircle(
@@ -928,7 +972,7 @@ internal fun SkinOverlay(
                             centerY = d / 2f,
                             radius = d / 2f,
                             alpha = if (available) 1f else 0.3f
-                        ) { col, row -> Color(skin.cell(col, row)) }
+                        ) { col, row -> Color(skin.cell(col, row, preview)) }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
@@ -979,6 +1023,19 @@ internal fun SkinOverlay(
             )
         }
     }
+}
+
+/** Überschrift einer Skin-Familie — schmal, damit die Liste ruhig bleibt. */
+@Composable
+private fun SkinFamilyHeading(text: String) {
+    Spacer(modifier = Modifier.height(10.dp))
+    Text(
+        text = text,
+        style = ScoreShadowStyle,
+        fontSize = 18.sp,
+        color = Color(0xFFFF8A3C),
+        modifier = Modifier.padding(bottom = 2.dp)
+    )
 }
 
 // ===== Spott-Texte für den Rage-Faktor =====

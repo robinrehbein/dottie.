@@ -284,7 +284,9 @@ final class GameScene: SKScene {
         self.skinOverlay = skins
     }
 
-    private func rebuildBirdTextures(state: SkinPaint.State = .still) {
+    /// Ohne Zustand: Standbild mit der Uhr des Geräts — TAGESZEIT und
+    /// JAHRESZEIT stehen sonst im READY-Bild auf Mittag im Juni.
+    private func rebuildBirdTextures(state: SkinPaint.State = SkinPaint.State.now()) {
         birdTextureLeft = PixelArt.birdTexture(
             skin: skin, facingLeft: true, diameter: birdRadius * 2, state: state
         )
@@ -614,8 +616,10 @@ final class GameScene: SKScene {
         }
 
         // Bewegte und reagierende Skins: neu rastern, sobald sich das Bild
-        // wirklich ändert — nicht in jedem Frame.
-        let state = SkinPaint.State(
+        // wirklich ändert — nicht in jedem Frame. Uhr und Kalender kommen
+        // aus SkinPaint.clock() und sind dort gecacht, der Aufruf kostet
+        // also nichts.
+        let state = SkinPaint.State.now(
             elapsed: CGFloat(game.elapsed),
             score: game.score,
             perfectStreak: game.perfectStreak
@@ -717,13 +721,10 @@ final class GameScene: SKScene {
             help.isHidden = true
             return
         }
+        // Der Skin-Picker scrollt: Er entscheidet erst beim Loslassen, ob
+        // die Berührung ein Tipp oder ein Zug war.
         if let skins = skinOverlay, !skins.isHidden {
-            if let selected = skins.skinAt(point: location, stats: store.stats()) {
-                skin = selected
-                store.selectedSkin = selected
-                rebuildBirdTextures()
-            }
-            skins.isHidden = true
+            skins.touchBegan(at: location)
             return
         }
 
@@ -744,6 +745,32 @@ final class GameScene: SKScene {
             prepareRun()
         }
         game.tap()
+    }
+
+    /// Nur der Skin-Picker hört mit: Im Spiel selbst entscheidet allein
+    /// touchesBegan, ein Wischen darf dort nichts auslösen.
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first, let skins = skinOverlay, !skins.isHidden else {
+            return
+        }
+        skins.touchMoved(to: touch.location(in: self))
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first, let skins = skinOverlay, !skins.isHidden else {
+            return
+        }
+        switch skins.touchEnded(at: touch.location(in: self), stats: store.stats()) {
+        case .scrolled:
+            break
+        case .select(let selected):
+            skin = selected
+            store.selectedSkin = selected
+            rebuildBirdTextures()
+            skins.isHidden = true
+        case .close:
+            skins.isHidden = true
+        }
     }
 
     private func handleButton(_ name: String) {

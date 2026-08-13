@@ -24,6 +24,35 @@ final class ScoreStore {
         return defaults.integer(forKey: ScoreStore.keyBestPerfect)
     }
 
+    // MARK: - Ausdauer (Menge statt Können)
+
+    /// Summe aller je erspielten Punkte.
+    var totalScore: Int {
+        return defaults.integer(forKey: ScoreStore.keyTotalScore)
+    }
+
+    /// Anzahl Kalendertage mit mindestens einem Lauf.
+    var daysPlayed: Int {
+        return defaults.integer(forKey: ScoreStore.keyDaysPlayed)
+    }
+
+    /// Letzter gespielter Kalendertag als Epoch-Day, 0 = noch nie.
+    var lastPlayedDay: Int64 {
+        return Int64(defaults.integer(forKey: ScoreStore.keyLastPlayedDay))
+    }
+
+    /// Bitmaske der Kalendermonate mit mindestens einem Lauf (Bit 0 = Januar).
+    var monthsPlayedMask: Int {
+        return defaults.integer(forKey: ScoreStore.keyMonthsPlayed)
+    }
+
+    /// Bitmaske der verdienten Saison-Skins (siehe Season.bit). Einmal
+    /// gesetzte Bits werden nie wieder gelöscht — verdient bleibt verdient,
+    /// auch wenn der Monat vorbei ist.
+    var seasonEarned: Int {
+        return defaults.integer(forKey: ScoreStore.keySeasonEarned)
+    }
+
     /// Ton an/aus — überlebt App-Neustarts.
     var soundMuted: Bool {
         get { return defaults.bool(forKey: ScoreStore.keyMuted) }
@@ -80,11 +109,61 @@ final class ScoreStore {
     @discardableResult
     func submitRun(score: Int) -> Bool {
         defaults.set(runCount + 1, forKey: ScoreStore.keyRuns)
+        noteEndurance(score: score)
         if score > bestScore {
             defaults.set(score, forKey: ScoreStore.keyBest)
             return true
         }
         return false
+    }
+
+    /// Die Ausdauer-Achsen eines Laufs: Punkte insgesamt, Kalendertage,
+    /// Monate und der Fortschritt im laufenden Saison-Fenster. Der Kalender
+    /// kommt aus der Geräte-Uhr — dieselbe Quelle, aus der auch TAGESZEIT
+    /// und JAHRESZEIT ihr Kleid ziehen.
+    private func noteEndurance(score: Int) {
+        defaults.set(totalScore + max(score, 0), forKey: ScoreStore.keyTotalScore)
+
+        let now = Date()
+        let epochDay = DailyChallenge.todayEpochDay(date: now)
+        if lastPlayedDay != epochDay {
+            defaults.set(daysPlayed + 1, forKey: ScoreStore.keyDaysPlayed)
+            defaults.set(Int(epochDay), forKey: ScoreStore.keyLastPlayedDay)
+        }
+
+        let parts = Calendar.current.dateComponents([.year, .month], from: now)
+        guard let month = parts.month, let year = parts.year else {
+            return
+        }
+        // Maske statt Zähler: Zwölf Läufe im Januar sind ein Monat, nicht
+        // zwölf. Gezählt wird in stats() über die gesetzten Bits.
+        defaults.set(monthsPlayedMask | (1 << (month - 1)), forKey: ScoreStore.keyMonthsPlayed)
+        noteSeason(year: year, month: month, epochDay: epochDay)
+    }
+
+    /// Saison-Fortschritt: Tage mit Lauf im aktiven Saison-Monat. Das
+    /// Fenster ist Jahr*100+Monat; wechselt es, beginnt der Tageszähler von
+    /// vorn — die verdiente Maske bleibt davon unberührt.
+    private func noteSeason(year: Int, month: Int, epochDay: Int64) {
+        guard let season = Season.forMonth(month) else {
+            return
+        }
+        let window = year * 100 + month
+        if defaults.integer(forKey: ScoreStore.keySeasonWindow) != window {
+            defaults.set(window, forKey: ScoreStore.keySeasonWindow)
+            defaults.set(0, forKey: ScoreStore.keySeasonDays)
+            defaults.set(0, forKey: ScoreStore.keySeasonLastDay)
+        }
+        // Nur der erste Lauf des Tages zählt: Anwesenheit, nicht Sitzfleisch.
+        if Int64(defaults.integer(forKey: ScoreStore.keySeasonLastDay)) == epochDay {
+            return
+        }
+        defaults.set(Int(epochDay), forKey: ScoreStore.keySeasonLastDay)
+        let days = defaults.integer(forKey: ScoreStore.keySeasonDays) + 1
+        defaults.set(days, forKey: ScoreStore.keySeasonDays)
+        if days >= season.requiredDays {
+            defaults.set(seasonEarned | season.bit, forKey: ScoreStore.keySeasonEarned)
+        }
     }
 
     /// Meldet die höchste Perfekt-Serie eines Laufs.
@@ -118,12 +197,23 @@ final class ScoreStore {
         return false
     }
 
-    /// Aktuelle Bestleistungen gebündelt, für Skin-Freischaltungen.
+    /// Alles, woraus sich Freischaltungen speisen — Bestleistungen und
+    /// Ausdauer gebündelt.
     func stats() -> DotSkin.Stats {
         return DotSkin.Stats(
             bestScore: bestScore,
             bestPerfectStreak: bestPerfectStreak,
-            bestDailyStreak: dailyStreak
+            bestDailyStreak: dailyStreak,
+            runCount: runCount,
+            totalScore: totalScore,
+            daysPlayed: daysPlayed,
+            // Die Anzahl gesetzter Bits ist die Anzahl gesehener Monate.
+            monthsPlayed: monthsPlayedMask.nonzeroBitCount,
+            seasonEarned: seasonEarned,
+            // Kein Billing auf iOS: Die Gönner-Skins stehen im Menü, sind
+            // aber gesperrt. Ein "gekauft" zu behaupten, das es nicht gibt,
+            // wäre die schlechtere Lüge als ein gesperrter Skin.
+            patronOwned: false
         )
     }
 
@@ -138,4 +228,14 @@ final class ScoreStore {
     private static let keyDailyBest = "daily_best"
     private static let keyDailyDay = "daily_day"
     private static let keyDailyStreak = "daily_streak"
+    private static let keyTotalScore = "total_score"
+    private static let keyDaysPlayed = "days_played"
+    private static let keyLastPlayedDay = "last_played_day"
+    private static let keyMonthsPlayed = "months_played"
+    private static let keySeasonEarned = "season_earned"
+    // Nur lokaler Fortschritt im laufenden Saison-Fenster — verdient wird
+    // daraus die Maske oben, und nur die überlebt den Monat.
+    private static let keySeasonWindow = "season_window"
+    private static let keySeasonDays = "season_days"
+    private static let keySeasonLastDay = "season_last_day"
 }

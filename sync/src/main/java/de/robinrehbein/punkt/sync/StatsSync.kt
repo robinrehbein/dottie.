@@ -150,6 +150,16 @@ class StatsSync(
         const val KEY_SKIN = "skin"
         const val KEY_SKIN_CHANGED = "skin_changed_at"
 
+        // Ausdauer-Achsen und Saison-Maske (ab v2.20). Fehlen sie in einer
+        // Nachricht, weil die Gegenseite noch die alte App fährt, greifen
+        // die Standardwerte — und das Zusammenführen nimmt ohnehin den
+        // größeren Wert bzw. die vereinigte Maske.
+        const val KEY_TOTAL_SCORE = "total_score"
+        const val KEY_DAYS_PLAYED = "days_played"
+        const val KEY_LAST_PLAYED_DAY = "last_played_day"
+        const val KEY_MONTHS_PLAYED = "months_played"
+        const val KEY_SEASON_EARNED = "season_earned"
+
         fun DataMap.putState(s: SyncState) {
             putInt(KEY_BEST, s.bestScore)
             putInt(KEY_RUNS, s.runCount)
@@ -157,6 +167,11 @@ class StatsSync(
             putLong(KEY_DAILY_DAY, s.dailyDay)
             putInt(KEY_DAILY_BEST, s.dailyBest)
             putInt(KEY_DAILY_STREAK, s.dailyStreak)
+            putInt(KEY_TOTAL_SCORE, s.totalScore)
+            putInt(KEY_DAYS_PLAYED, s.daysPlayed)
+            putLong(KEY_LAST_PLAYED_DAY, s.lastPlayedDay)
+            putInt(KEY_MONTHS_PLAYED, s.monthsPlayed)
+            putInt(KEY_SEASON_EARNED, s.seasonEarned)
             putString(KEY_SKIN, s.skin)
             putLong(KEY_SKIN_CHANGED, s.skinChangedAt)
         }
@@ -168,6 +183,11 @@ class StatsSync(
             dailyDay = getLong(KEY_DAILY_DAY, 0L),
             dailyBest = getInt(KEY_DAILY_BEST, 0),
             dailyStreak = getInt(KEY_DAILY_STREAK, 0),
+            totalScore = getInt(KEY_TOTAL_SCORE, 0),
+            daysPlayed = getInt(KEY_DAYS_PLAYED, 0),
+            lastPlayedDay = getLong(KEY_LAST_PLAYED_DAY, 0L),
+            monthsPlayed = getInt(KEY_MONTHS_PLAYED, 0),
+            seasonEarned = getInt(KEY_SEASON_EARNED, 0),
             skin = getString(KEY_SKIN, ""),
             skinChangedAt = getLong(KEY_SKIN_CHANGED, 0L)
         )

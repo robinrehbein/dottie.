@@ -16,6 +16,13 @@
     <string name="today_score">HEUTE: %1$d</string>
     <string name="streak">SERIE: %1$d</string>
 
+    <!-- Skin-Wähler. Die Skin-Namen selbst sind keine Ressourcen: Sie
+         stehen als Aufzählungs-Namen in WearDotSkin, die Uhr ist
+         einsprachig (siehe dort). %1$d = verdient, %2$d = erreichbar —
+         Saison- und Goenner-Skins zaehlen nicht mit. -->
+    <string name="skins">SKINS %1$d/%2$d</string>
+    <string name="back">ZURUECK</string>
+
     <!-- Medaillen-Namen, identisch zum Phone-Modul -->
     <string name="medal_bronze">BRONZE</string>
     <string name="medal_silver">SILBER</string>

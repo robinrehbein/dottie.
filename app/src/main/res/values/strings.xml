@@ -99,6 +99,16 @@
     <!-- Skins -->
     <string name="skin_selected">SELECTED</string>
     <string name="skin_tap_select">TAP TO SELECT</string>
+    <!-- Familien-Ueberschriften im Skin-Menue (42 Skins brauchen Gliederung). -->
+    <string name="skin_family_solid">SOLID</string>
+    <string name="skin_family_pattern">PATTERNED</string>
+    <string name="skin_family_moving">ANIMATED</string>
+    <string name="skin_family_reactive">REACTIVE</string>
+    <string name="skin_family_season">SEASONAL</string>
+    <string name="skin_family_patron">PATRON</string>
+    <!-- Goenner-Paket: nur sichtbar, wenn Google einen Preis liefert. -->
+    <string name="patron_pack">PATRON PACK — %1$s</string>
+    <string name="patron_owned">THANK YOU!</string>
     <!-- Skin-Tagespass: nur sichtbar, wenn Werbung aktiv ist. -->
     <string name="skin_pass_today">FREE TODAY</string>
     <string name="skin_pass_offer">TRY TODAY — WATCH AD</string>
@@ -143,6 +153,46 @@
     <string name="skin_hint_chamaeleon">BEST 30</string>
     <string name="skin_hint_kombo">8 PERFECTS IN A ROW</string>
     <string name="skin_hint_tinte">BEST 55</string>
+    <string name="skin_ei">EGG</string>
+    <string name="skin_tiger">TIGER</string>
+    <string name="skin_pinguin">PENGUIN</string>
+    <string name="skin_fussball">FOOTBALL</string>
+    <string name="skin_donut">DONUT</string>
+    <string name="skin_welle">WAVE</string>
+    <string name="skin_gewitter">STORM</string>
+    <string name="skin_konfetti">CONFETTI</string>
+    <string name="skin_disco">DISCO</string>
+    <string name="skin_holo">HOLO</string>
+    <string name="skin_thermo">THERMO</string>
+    <string name="skin_medaille">MEDAL</string>
+    <string name="skin_tageszeit">DAYTIME</string>
+    <string name="skin_jahreszeit">SEASON</string>
+    <string name="skin_kuerbis">PUMPKIN</string>
+    <string name="skin_zuckerstange">CANDY CANE</string>
+    <string name="skin_herz">HEART</string>
+    <string name="skin_osterei">EASTER EGG</string>
+    <string name="skin_diamant">DIAMOND</string>
+    <string name="skin_phoenix">PHOENIX</string>
+    <string name="skin_onyx">ONYX</string>
+    <string name="skin_hint_ei">25 RUNS</string>
+    <string name="skin_hint_tiger">100 RUNS</string>
+    <string name="skin_hint_pinguin">BEST 65</string>
+    <string name="skin_hint_fussball">300 RUNS</string>
+    <string name="skin_hint_donut">1,000 POINTS TOTAL</string>
+    <string name="skin_hint_welle">BEST 70</string>
+    <string name="skin_hint_gewitter">15 PERFECTS IN A ROW</string>
+    <string name="skin_hint_konfetti">5,000 POINTS TOTAL</string>
+    <string name="skin_hint_disco">DAILY STREAK: 21 DAYS</string>
+    <string name="skin_hint_holo">BEST 80</string>
+    <string name="skin_hint_thermo">BEST 75</string>
+    <string name="skin_hint_medaille">200 RUNS</string>
+    <string name="skin_hint_tageszeit">PLAYED ON 7 DAYS</string>
+    <string name="skin_hint_jahreszeit">PLAYED IN 3 MONTHS</string>
+    <string name="skin_hint_kuerbis">OCTOBER: PLAY ON 5 DAYS</string>
+    <string name="skin_hint_zuckerstange">DECEMBER: PLAY ON 5 DAYS</string>
+    <string name="skin_hint_herz">FEBRUARY: PLAY ON 3 DAYS</string>
+    <string name="skin_hint_osterei">APRIL: PLAY ON 5 DAYS</string>
+    <string name="skin_hint_goenner">PATRON PACK</string>
 
     <!-- Score-Card / Teilen -->
     <string name="share_text">%1$d points in DOTTIE. — can you beat that?</string>
