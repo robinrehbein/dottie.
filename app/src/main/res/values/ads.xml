@@ -15,11 +15,10 @@
      (docs/index.html) und die Store-Angaben zur Datensicherheit
      nachziehen — Schritt 5 in PUBLISHING.md.
 
-     Google-Test-IDs für die Entwicklung (zeigen echte Test-Anzeigen,
-     dürfen NIE in ein Store-Release):
-       App-ID:       ca-app-pub-3940256099942544~3347511713
-       Rewarded:     ca-app-pub-3940256099942544/5224354917
-       Interstitial: ca-app-pub-3940256099942544/1033173712 -->
+     Diese Datei gilt für Release-Builds. Debug-Builds überschreibt
+     app/src/debug/res/values/ads.xml mit Googles Test-IDs — sonst
+     zeigt jede Test-APK echte Werbung, und ein eigener Klick darauf
+     kostet im Zweifel das AdMob-Konto. -->
 <resources>
     <string name="admob_app_id" translatable="false">ca-app-pub-1786159152036324~8923812059</string>
     <string name="admob_rewarded_id" translatable="false">ca-app-pub-1786159152036324/3200712083</string>
