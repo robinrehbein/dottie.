@@ -109,6 +109,34 @@
     <string name="skin_hint_frost">REKORD 40 (PLATIN)</string>
     <string name="skin_hint_schatten">4 PERFEKTE IN SERIE</string>
     <string name="skin_hint_prisma">DAILY-SERIE: 3 TAGE</string>
+    <string name="skin_biene">BIENE</string>
+    <string name="skin_melone">MELONE</string>
+    <string name="skin_pilz">FLIEGENPILZ</string>
+    <string name="skin_koi">KOI</string>
+    <string name="skin_galaxie">GALAXIE</string>
+    <string name="skin_karo">KARO</string>
+    <string name="skin_regenbogen">REGENBOGEN</string>
+    <string name="skin_aurora">AURORA</string>
+    <string name="skin_magma">MAGMA</string>
+    <string name="skin_neon">NEON</string>
+    <string name="skin_chrom">CHROM</string>
+    <string name="skin_chamaeleon">CHAMAELEON</string>
+    <string name="skin_kombo">KOMBO</string>
+    <string name="skin_tinte">TINTE</string>
+    <string name="skin_hint_biene">6 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_melone">REKORD 25</string>
+    <string name="skin_hint_pilz">REKORD 35</string>
+    <string name="skin_hint_koi">DAILY-SERIE: 7 TAGE</string>
+    <string name="skin_hint_galaxie">REKORD 50</string>
+    <string name="skin_hint_karo">10 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_regenbogen">ALLE ANDEREN SKINS SAMMELN</string>
+    <string name="skin_hint_aurora">DAILY-SERIE: 14 TAGE</string>
+    <string name="skin_hint_magma">REKORD 60</string>
+    <string name="skin_hint_neon">12 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_chrom">REKORD 45</string>
+    <string name="skin_hint_chamaeleon">REKORD 30</string>
+    <string name="skin_hint_kombo">8 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_tinte">REKORD 55</string>
 
     <!-- Score-Card / Teilen -->
     <string name="share_text">%1$d Punkte in DOTTIE. — schaffst du mehr?</string>

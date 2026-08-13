@@ -29,13 +29,14 @@ enum PixelArt {
         ctx.fill(CGRect(x: x, y: y, width: w, height: h))
     }
 
-    /// Blockiger "Pixel"-Kreis aus Rasterzellen (drawPixelCircle).
+    /// Blockiger "Pixel"-Kreis aus Rasterzellen (drawPixelCircle). Die
+    /// Füllfarbe kommt pro Feld aus `cell` — so zeichnet dieselbe Routine
+    /// einfarbige, gemusterte und animierte Skins (siehe SkinPaint).
     static func pixelCircle(
         _ ctx: CGContext,
         rect: CGRect,
-        color: UIColor,
         outline: UIColor,
-        shade: UIColor
+        cell: (Int, Int) -> UIColor
     ) {
         let n = Int(grid)
         let radius = rect.width / 2
@@ -49,14 +50,7 @@ enum PixelArt {
                 let dy = CGFloat(row) - mid
                 let dist = sqrt(dx * dx + dy * dy)
                 if dist <= rr {
-                    let cellColor: UIColor
-                    if dist > rr - 1.1 {
-                        cellColor = outline
-                    } else if CGFloat(row + col) > grid * 1.15 {
-                        cellColor = shade
-                    } else {
-                        cellColor = color
-                    }
+                    let cellColor = dist > rr - 1.1 ? outline : cell(col, row)
                     fill(
                         ctx, cellColor,
                         rect.minX + CGFloat(col) * u,
@@ -68,33 +62,75 @@ enum PixelArt {
         }
     }
 
+    /// Einfarbige Variante mit Schattenseite — für Münzen und Deko.
+    static func pixelCircle(
+        _ ctx: CGContext,
+        rect: CGRect,
+        color: UIColor,
+        outline: UIColor,
+        shade: UIColor
+    ) {
+        pixelCircle(ctx, rect: rect, outline: outline) { col, row in
+            CGFloat(row + col) > grid * 1.15 ? shade : color
+        }
+    }
+
     /// Pixel-Vogel: Kreis-Körper mit Glanzpunkt, Auge und Pupille —
-    /// gespiegelt je nach Flugrichtung (drawTimingDot / drawBird).
-    static func birdTexture(skin: DotSkin, facingLeft: Bool, diameter: CGFloat) -> SKTexture {
+    /// gespiegelt je nach Flugrichtung (drawTimingDot / drawBird). Der
+    /// Zustand entscheidet bei bewegten und reagierenden Skins über die
+    /// Farbe; GameScene rastert nur neu, wenn sich SkinPaint.frameKey
+    /// ändert.
+    static func birdTexture(
+        skin: DotSkin,
+        facingLeft: Bool,
+        diameter: CGFloat,
+        state: SkinPaint.State = .still
+    ) -> SKTexture {
         let d = max(diameter, 8)
         return texture(size: CGSize(width: d, height: d)) { ctx in
-            let body = UIColor(rgb: skin.body)
-            let shade = UIColor(rgb: skin.shade)
-            let shine = UIColor(rgb: skin.shine)
+            let shine = UIColor(rgb: skin.shineColor(state))
             pixelCircle(
                 ctx,
                 rect: CGRect(x: 0, y: 0, width: d, height: d),
-                color: body,
-                outline: Palette.outline,
-                shade: shade
-            )
+                outline: Palette.outline
+            ) { col, row in
+                UIColor(rgb: skin.cell(col, row, state))
+            }
             let u = d / grid
             func block(_ col: CGFloat, _ row: CGFloat, _ cols: CGFloat, _ rows: CGFloat, _ color: UIColor) {
                 fill(ctx, color, col * u, row * u, cols * u, rows * u)
             }
+            // Das Auge bekommt zum Körper hin eine Kontur: Auf sehr hellen
+            // Skins (Koi, Chrom) ginge das Weiß sonst im Körper unter.
             if facingLeft {
                 block(grid - 4.5, 2.5, 2, 2, shine)
+                block(5, 3, 0.5, 4, Palette.outline)
+                block(2, 2.5, 3.5, 0.5, Palette.outline)
+                block(2, 7, 3.5, 0.5, Palette.outline)
                 block(2, 3, 3.5, 4, UIColor.white)
                 block(2, 4, 1.5, 2, Palette.outline)
             } else {
                 block(2.5, 2.5, 2, 2, shine)
+                block(7, 3, 0.5, 4, Palette.outline)
+                block(7.5, 2.5, 3.5, 0.5, Palette.outline)
+                block(7.5, 7, 3.5, 0.5, Palette.outline)
                 block(7.5, 3, 3.5, 4, UIColor.white)
                 block(9.5, 4, 1.5, 2, Palette.outline)
+            }
+        }
+    }
+
+    /// Kleine Skin-Vorschau für die Auswahl: nur der Körper im Muster des
+    /// Skins, ohne Gesicht — bei 36 Punkten wäre es sonst Matsch.
+    static func skinPreviewTexture(skin: DotSkin, size: CGFloat) -> SKTexture {
+        let d = max(size, 8)
+        return texture(size: CGSize(width: d, height: d)) { ctx in
+            pixelCircle(
+                ctx,
+                rect: CGRect(x: 0, y: 0, width: d, height: d),
+                outline: Palette.outline
+            ) { col, row in
+                UIColor(rgb: skin.cell(col, row))
             }
         }
     }

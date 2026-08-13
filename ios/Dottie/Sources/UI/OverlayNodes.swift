@@ -523,7 +523,7 @@ final class SkinOverlay: SKNode {
     private struct Row {
         let skin: DotSkin
         let centerY: CGFloat
-        let swatchInner: SKSpriteNode
+        let swatch: SKSpriteNode
         let titleLabel: PixelLabel
         let statusLabel: PixelLabel
     }
@@ -549,14 +549,13 @@ final class SkinOverlay: SKNode {
 
         var y = h - 180
         for skin in DotSkin.allCases {
-            let swatchOutline = SKSpriteNode(color: Palette.outline, size: CGSize(width: 36, height: 36))
-            swatchOutline.position = CGPoint(x: 64, y: y)
-            addChild(swatchOutline)
-            let swatchInner = SKSpriteNode(
-                color: UIColor(rgb: skin.body), size: CGSize(width: 28, height: 28)
-            )
-            swatchInner.position = swatchOutline.position
-            addChild(swatchInner)
+            // Vorschau als echter Vogel statt als Farbfläche: Bei
+            // gemusterten Skins sagt ein einzelner Farbwert nichts mehr
+            // aus. Bewegte Skins stehen dabei still (Zeitpunkt 0).
+            let swatch = SKSpriteNode(texture: PixelArt.skinPreviewTexture(skin: skin, size: 36))
+            swatch.size = CGSize(width: 36, height: 36)
+            swatch.position = CGPoint(x: 64, y: y)
+            addChild(swatch)
 
             let titleLabel = PixelLabel(
                 text: L10n.text(skin.titleKey), fontSize: 20, color: .white, shadow: false
@@ -575,7 +574,7 @@ final class SkinOverlay: SKNode {
             rows.append(Row(
                 skin: skin,
                 centerY: y,
-                swatchInner: swatchInner,
+                swatch: swatch,
                 titleLabel: titleLabel,
                 statusLabel: statusLabel
             ))
@@ -605,7 +604,7 @@ final class SkinOverlay: SKNode {
     func refresh(stats: DotSkin.Stats, selected: DotSkin) {
         for row in rows {
             let unlocked = row.skin.isUnlocked(stats)
-            row.swatchInner.alpha = unlocked ? 1.0 : 0.25
+            row.swatch.alpha = unlocked ? 1.0 : 0.3
             row.titleLabel.color = unlocked ? .white : UIColor(white: 1, alpha: 0.45)
             if row.skin == selected {
                 row.statusLabel.text = L10n.text("skin_selected")
