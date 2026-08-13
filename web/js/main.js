@@ -344,10 +344,16 @@
   }
 
   // ===== Canvas-Größe (devicePixelRatio, Hochformat) =====
+  var lastSize = "";
   function resize() {
     var dpr = Math.min(window.devicePixelRatio || 1, 3);
     var w = stage.clientWidth;
     var h = stage.clientHeight;
+    // Das Neusetzen von canvas.width leert den Puffer — bei unveränderter
+    // Größe wäre das ein sichtbares Flackern für nichts.
+    var size = w + "x" + h + "@" + dpr;
+    if (size === lastSize) return;
+    lastSize = size;
     canvas.width = Math.max(1, Math.round(w * dpr));
     canvas.height = Math.max(1, Math.round(h * dpr));
     canvas.style.width = w + "px";
@@ -361,6 +367,17 @@
   window.addEventListener("orientationchange", function () {
     setTimeout(resize, 250);
   });
+  // iOS meldet die endgültige Viewport-Höhe der installierten PWA erst,
+  // wenn der Startbildschirm weg ist — ohne resize-Event. Beobachtet wird
+  // deshalb die Bühne selbst; visualViewport fängt zusätzlich die Fälle ab,
+  // in denen sich nur der sichtbare Ausschnitt ändert (Tastatur, Leisten).
+  if (window.ResizeObserver) {
+    new ResizeObserver(resize).observe(stage);
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", resize);
+  }
+  window.addEventListener("pageshow", resize);
   resize();
 
   // ===== Event-Verarbeitung (Port des LaunchedEffect-Loops) =====
