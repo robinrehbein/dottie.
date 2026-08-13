@@ -23,8 +23,10 @@ android {
         // Paket-ID hinweg. Die Phone-App zählt ab 25 aufwärts, Wear bekommt
         // deshalb einen eigenen Bereich ab 100001 — so kollidieren die
         // beiden Zähler nie.
-        versionCode = 100005
-        versionName = "0.2.3-wear"
+        // 100005 ging bereits als Build 110 raus (Augen-Kontur), der
+        // Uhr-Abgleich bekommt deshalb 100006.
+        versionCode = 100006
+        versionName = "0.2.4-wear"
     }
 
     signingConfigs {
@@ -79,6 +81,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":sync"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)

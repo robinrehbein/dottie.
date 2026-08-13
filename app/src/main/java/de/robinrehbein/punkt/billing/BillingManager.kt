@@ -13,6 +13,9 @@ import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import de.robinrehbein.punkt.data.ScoreStore
 
 /**
@@ -29,8 +32,9 @@ import de.robinrehbein.punkt.data.ScoreStore
  * wiederherstellen"-Knopf.
  *
  * Fehler werden geschluckt und nur geloggt: Ein kaputter Billing-Dienst
- * darf das Spiel nicht behindern — im schlimmsten Fall passiert beim
- * Tippen auf den Kauf-Button einfach nichts.
+ * darf das Spiel nicht behindern. Sichtbar wird das Angebot erst, wenn
+ * Google tatsächlich ein kaufbares Produkt liefert ([priceLabel]) — ein
+ * Knopf, der ins Leere greift, ist schlimmer als gar keiner.
  */
 class BillingManager(
     private val activity: Activity?,
@@ -41,6 +45,17 @@ class BillingManager(
 
     private var client: BillingClient? = null
     private var productDetails: ProductDetails? = null
+
+    /**
+     * Der von Google formatierte Preis ("0,99 €"), sobald das Produkt
+     * abrufbar ist — sonst null. Doppelte Aufgabe: Er ist die Bedingung
+     * dafür, dass das Angebot überhaupt erscheint, und zugleich der Text
+     * daneben. Der Preis kommt bewusst von Google und steht nirgends im
+     * Code: Er hängt an Land, Währung und Steuersatz und würde als feste
+     * Zeichenkette in der Hälfte der Welt falsch dastehen.
+     */
+    var priceLabel by mutableStateOf<String?>(null)
+        private set
 
     private val purchasesUpdated = PurchasesUpdatedListener { result, purchases ->
         if (result.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
@@ -100,9 +115,16 @@ class BillingManager(
         try {
             billing.queryProductDetailsAsync(params) { result, details ->
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                    productDetails = details.firstOrNull()
+                    val found = details.firstOrNull()
+                    productDetails = found
+                    priceLabel = found?.oneTimePurchaseOfferDetails?.formattedPrice
                 } else {
+                    // Produkt in der Play Console nicht angelegt, App nicht
+                    // über Play installiert, kein Play-Dienst: In allen drei
+                    // Fällen bleibt das Angebot unsichtbar statt tot.
                     Log.i(TAG, "Produkt nicht gefunden: ${result.responseCode}")
+                    productDetails = null
+                    priceLabel = null
                 }
             }
         } catch (t: Throwable) {

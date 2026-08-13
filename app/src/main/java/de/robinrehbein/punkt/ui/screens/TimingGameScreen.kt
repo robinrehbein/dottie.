@@ -32,6 +32,9 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -51,6 +54,7 @@ import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.notify.DailyReminder
 import de.robinrehbein.punkt.play.Leaderboards
 import de.robinrehbein.punkt.share.ScoreCard
+import de.robinrehbein.punkt.sync.StatsSync
 import kotlinx.coroutines.isActive
 import java.time.LocalDate
 import kotlin.math.abs
@@ -160,6 +164,17 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         )
     }
 
+    // Abgleich mit der Uhr. Laeuft nur, solange die App im Vordergrund
+    // ist — beim naechsten Oeffnen wird ohnehin nachgeholt, was die
+    // Gegenseite zwischenzeitlich abgelegt hat.
+    val statsSync = remember {
+        StatsSync(
+            context = context,
+            read = { store.syncState() },
+            write = { store.applySync(it) }
+        )
+    }
+
     var frameTick by remember { mutableLongStateOf(0L) }
     var phase by remember { mutableStateOf(TimingGame.Phase.READY) }
     var score by remember { mutableIntStateOf(0) }
@@ -220,6 +235,25 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         onDispose {
             audio.release()
             billing.release()
+        }
+    }
+
+    // Der Abgleich haengt am Lebenszyklus statt an der Composition: Beim
+    // Zurueckkehren in die App soll er neu ziehen, und im Hintergrund
+    // soll kein Listener offen bleiben.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> statsSync.start()
+                Lifecycle.Event.ON_STOP -> statsSync.stop()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            statsSync.stop()
         }
     }
 
@@ -340,6 +374,10 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             taunt = pickTaunt(context, game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
                             runNumber = store.runCount
+                            // Jeder beendete Lauf ist ein moeglicher neuer
+                            // Stand fuer die Uhr. Ohne Aenderung ist der
+                            // Aufruf ein No-op.
+                            statsSync.publish()
                             if (isNewRecord && !bannerState.recordCelebrated) {
                                 haptics.newRecord()
                             }
@@ -484,7 +522,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                         }
                     }
                 },
-                removeAdsVisible = ads.enabled,
+                // Kein Preis von Google = kein Angebot. Ein Knopf, der
+                // ins Leere greift, ist schlimmer als gar keiner.
+                removeAdsPrice = if (ads.enabled) billing.priceLabel else null,
                 onRemoveAds = { (context as? Activity)?.let { billing.purchase(it) } },
                 privacyVisible = ads.enabled && ads.privacyOptionsRequired,
                 onPrivacy = { (context as? Activity)?.let { ads.showPrivacyOptions(it) } }
@@ -543,6 +583,11 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 onSelect = {
                     skin = it
                     store.selectedSkin = it
+                    // Die Skin-Wahl ist der einzige Wert, bei dem "neuer
+                    // gewinnt" gilt — sie muss deshalb sofort raus, sonst
+                    // ueberschreibt sie beim naechsten Abgleich die
+                    // juengere Wahl auf der Uhr.
+                    statsSync.publish()
                     showSkins = false
                 },
                 onClose = { showSkins = false },

@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.18.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.19.
 
 ## Checkliste
 
@@ -327,9 +327,27 @@ erstellen**:
 | Typ | Einmaliger Kauf, **nicht** verbrauchbar |
 | Name | „Werbung entfernen" / „Remove ads" |
 | Beschreibung | Entfernt dauerhaft alle Anzeigen. Skins werden weiter durch Spielen freigeschaltet. |
-| Preis | Vorschlag **2,99 €** (Play rechnet die anderen Währungen um) |
+| Preis | **1,99 €** (Play rechnet die anderen Währungen um) |
 
 Danach **aktivieren** — inaktive Produkte liefern im Kaufdialog nichts.
+
+Warum 1,99 € und nicht 0,99 €: Bei den meisten Spielen ist „Werbung
+entfernen" ein Genervt-Kauf. Hier stört die Werbung kaum — frühestens ab
+dem sechsten Tod, dann drei Minuten Ruhe, in der Daily gar nicht. Wer
+trotzdem kauft, tut das eher aus Zuneigung zum Spiel als aus Not, und
+für den ist der Unterschied zwischen einem und zwei Euro belanglos. Nach
+Mehrwertsteuer und Googles 15 % bleiben 1,42 € statt 0,71 € — also
+doppelt so viel, ohne dass nennenswert weniger Leute kaufen. Weiter nach
+oben (2,99 €) wäre unangemessen: So aufdringlich ist die Werbung nicht,
+und das Store-Versprechen „ehrlich und schlank" soll eins bleiben.
+
+Der Preis steht **nirgends im Code**: Die App zeigt den Wert an, den
+Google für das Land der Spielerin ausliefert (`formattedPrice`), samt
+Währung und Steuersatz. Eine feste Zeichenkette stünde in der Hälfte der
+Welt falsch da. Solange Google kein kaufbares Produkt liefert — Produkt
+nicht angelegt, nicht aktiviert, App nicht über Play installiert oder
+kein Play-Dienst vorhanden — **erscheint die Kauf-Zeile gar nicht erst**,
+statt als toter Knopf dazustehen.
 Der Kauf hängt am Google-Konto: Nach einer Neuinstallation stellt die
 App ihn beim Start selbst wieder her (`queryPurchases`), ein
 „Kauf wiederherstellen"-Knopf ist deshalb nicht nötig. Testen geht

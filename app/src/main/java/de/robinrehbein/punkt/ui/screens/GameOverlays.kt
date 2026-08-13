@@ -188,9 +188,10 @@ internal fun ReadyOverlay(
     onToggleSound: () -> Unit,
     reminderOn: Boolean,
     onToggleReminder: () -> Unit,
-    // Kauf-Zeile: nur sichtbar, wenn Werbung wirklich läuft. Ohne
-    // AdMob-IDs (Standard) sieht der Startscreen exakt aus wie bisher.
-    removeAdsVisible: Boolean = false,
+    // Kauf-Zeile: nur sichtbar, wenn Werbung läuft UND Google ein
+    // kaufbares Produkt liefert (dann steht hier dessen Preis). Ohne
+    // AdMob-IDs sieht der Startscreen exakt aus wie bisher.
+    removeAdsPrice: String? = null,
     onRemoveAds: () -> Unit = {},
     // Widerruf der Werbe-Einwilligung. Google blendet die Zeile selbst
     // nur dort ein, wo sie nötig ist (im Wesentlichen die EU).
@@ -354,10 +355,10 @@ internal fun ReadyOverlay(
             // Bewusst nur eine kleine Zeile statt eines dritten großen
             // Knopfs: Der Kauf soll auffindbar sein, aber nicht um
             // Aufmerksamkeit mit DAILY und SKINS konkurrieren.
-            if (removeAdsVisible) {
+            if (removeAdsPrice != null) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = stringResource(R.string.remove_ads),
+                    text = stringResource(R.string.remove_ads, removeAdsPrice),
                     style = ScoreShadowStyle,
                     fontSize = 14.sp,
                     color = Color.White.copy(alpha = 0.75f),

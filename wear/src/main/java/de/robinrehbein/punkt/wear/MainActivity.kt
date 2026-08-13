@@ -8,6 +8,7 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import de.robinrehbein.punkt.sync.StatsSync
 import kotlin.math.abs
 import kotlin.math.sign
 
@@ -25,6 +26,7 @@ import kotlin.math.sign
 class MainActivity : ComponentActivity() {
 
     private lateinit var controller: WearGameController
+    private lateinit var statsSync: StatsSync
 
     /** Aufsummierte Rotary-Einheiten seit dem letzten ausgelösten Tap. */
     private var rotaryAccumulated = 0f
@@ -37,9 +39,27 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         controller = WearGameController(applicationContext)
+        // Abgleich mit dem Telefon. Der Controller kennt den Data Layer
+        // nicht — er meldet nur, dass sich etwas geaendert hat.
+        statsSync = StatsSync(
+            context = applicationContext,
+            read = { controller.syncState() },
+            write = { controller.applySync(it) }
+        )
+        controller.onStateChanged = { statsSync.publish() }
         setContent {
             WearGameScreen(controller)
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        statsSync.start()
+    }
+
+    override fun onStop() {
+        statsSync.stop()
+        super.onStop()
     }
 
     override fun onPause() {

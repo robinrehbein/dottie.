@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.robinrehbein.punkt.game.DailyChallenge
+import de.robinrehbein.punkt.game.SyncState
 import de.robinrehbein.punkt.game.TimingGame
 import java.time.LocalDate
 
@@ -29,6 +30,15 @@ private const val KEY_SKIN = "selected_skin"
 private const val KEY_DAILY_BEST = "daily_best"
 private const val KEY_DAILY_DAY = "daily_day"
 private const val KEY_DAILY_STREAK = "daily_streak"
+
+/**
+ * Nur für den Abgleich mit dem Telefon: Wann der Skin zuletzt bewusst
+ * gewechselt wurde, und die Lauf-Zahl des Telefons. Die Uhr zählt ihre
+ * Läufe selbst nicht — sie trägt den Wert nur weiter, damit er beim
+ * Hin- und Herschicken nicht verloren geht.
+ */
+private const val KEY_SKIN_CHANGED = "skin_changed_at"
+private const val KEY_RUNS = "run_count"
 
 /**
  * Zustands-Holder außerhalb der Composition. MainActivity braucht ihn in
@@ -171,7 +181,11 @@ internal class WearGameController(context: Context) {
         val unlocked = WearDotSkin.entries.filter { it.isUnlocked(stats) }
         if (unlocked.size <= 1) return
         skin = unlocked[(unlocked.indexOf(skin) + 1) % unlocked.size]
-        prefs.edit().putString(KEY_SKIN, skin.name).apply()
+        prefs.edit()
+            .putString(KEY_SKIN, skin.name)
+            .putLong(KEY_SKIN_CHANGED, System.currentTimeMillis())
+            .apply()
+        onStateChanged?.invoke()
         // Kurzes Klick-Feedback, damit der Wechsel auch haptisch ankommt.
         haptics.hit()
     }
@@ -186,6 +200,74 @@ internal class WearGameController(context: Context) {
     /** Gibt den SoundPool frei; aus MainActivity.onDestroy gerufen. */
     fun release() {
         audio.release()
+    }
+
+    // ===== Abgleich mit dem Telefon =====
+
+    /**
+     * Wird gerufen, wenn sich hier etwas geändert hat, das die andere
+     * Seite angeht. MainActivity hängt daran das Veröffentlichen im Data
+     * Layer — der Controller selbst kennt den Abgleich nicht und bleibt
+     * damit ohne Android-Dienste testbar.
+     */
+    var onStateChanged: (() -> Unit)? = null
+
+    /** Der lokale Stand als Austauschformat für den Data Layer. */
+    fun syncState(): SyncState = SyncState(
+        bestScore = bestScore,
+        runCount = prefs.getInt(KEY_RUNS, 0),
+        bestPerfectStreak = bestPerfectStreak,
+        dailyDay = prefs.getLong(KEY_DAILY_DAY, 0L),
+        dailyBest = prefs.getInt(KEY_DAILY_BEST, 0),
+        dailyStreak = prefs.getInt(KEY_DAILY_STREAK, 0),
+        skin = skin.name,
+        skinChangedAt = prefs.getLong(KEY_SKIN_CHANGED, 0L)
+    )
+
+    /**
+     * Übernimmt einen zusammengeführten Stand und meldet, ob sich dabei
+     * hier etwas geändert hat. Nur bei einem echten Zuwachs antwortet der
+     * Abgleich der Gegenseite — sonst würden sich beide Geräte endlos
+     * gegenseitig bestätigen.
+     */
+    fun applySync(state: SyncState): Boolean {
+        val before = syncState()
+        if (before == state) return false
+        val editor = prefs.edit()
+        if (state.bestScore > before.bestScore) editor.putInt(KEY_BEST, state.bestScore)
+        if (state.runCount > before.runCount) editor.putInt(KEY_RUNS, state.runCount)
+        if (state.bestPerfectStreak > before.bestPerfectStreak) {
+            editor.putInt(KEY_BEST_PERFECT, state.bestPerfectStreak)
+        }
+        if (state.dailyDay != before.dailyDay ||
+            state.dailyBest != before.dailyBest ||
+            state.dailyStreak != before.dailyStreak
+        ) {
+            editor.putLong(KEY_DAILY_DAY, state.dailyDay)
+            editor.putInt(KEY_DAILY_BEST, state.dailyBest)
+            editor.putInt(KEY_DAILY_STREAK, state.dailyStreak)
+        }
+        if (state.skinChangedAt > before.skinChangedAt) {
+            editor.putLong(KEY_SKIN_CHANGED, state.skinChangedAt)
+            // Freischaltungen leitet die Uhr aus den Bestleistungen ab —
+            // mit den zusammengeführten Zahlen, nicht mit den alten.
+            val merged = WearDotSkin.Stats(
+                bestScore = maxOf(state.bestScore, before.bestScore),
+                bestPerfectStreak = maxOf(state.bestPerfectStreak, before.bestPerfectStreak),
+                bestDailyStreak = maxOf(state.dailyStreak, before.dailyStreak)
+            )
+            val incoming = WearDotSkin.fromName(state.skin)
+            if (incoming.isUnlocked(merged)) editor.putString(KEY_SKIN, incoming.name)
+        }
+        editor.apply()
+
+        // Angezeigte Werte nachziehen — die Compose-Felder lesen die Prefs
+        // nur beim Erzeugen.
+        bestScore = prefs.getInt(KEY_BEST, 0)
+        bestPerfectStreak = prefs.getInt(KEY_BEST_PERFECT, 0)
+        skin = WearDotSkin.fromName(prefs.getString(KEY_SKIN, null))
+        refreshDailyDisplay()
+        return true
     }
 
     /** Ein Frame der Spiel-Loop; wird aus WearGameScreens LaunchedEffect gerufen. */
@@ -237,6 +319,9 @@ internal class WearGameController(context: Context) {
                     if (dailyMode) {
                         submitDailyRun(runEpochDay, game.score)
                     }
+                    // Jeder beendete Lauf ist ein moeglicher neuer Stand
+                    // fuers Telefon. Ohne Aenderung ist das ein No-op.
+                    onStateChanged?.invoke()
                 }
                 TimingGame.GameEvent.Settled -> {
                     // Der Rekord-Jingle lief meist schon live im Lauf; sonst
