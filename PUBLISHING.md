@@ -423,8 +423,8 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 27` / `versionName
-"2.16"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 28` / `versionName
+"2.17"`. Vor jedem Store-Upload beides anheben und committen.
 
 Die Wear-App zählt in einem eigenen Bereich **ab 100001**
 (`wear/build.gradle.kts`), damit sich die beiden Zähler nie in die

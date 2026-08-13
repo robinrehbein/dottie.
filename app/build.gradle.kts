@@ -19,10 +19,10 @@ android {
         applicationId = "de.robinrehbein.pointless"
         minSdk = 28
         targetSdk = 36
-        // v2.16: AdMob + Play Billing feature-geflaggt vorbereitet
-        // (inaktiv, bis in res/values/ads.xml echte IDs stehen).
-        versionCode = 27
-        versionName = "2.16"
+        // v2.17: 21 Punkt-Skins (gemustert, bewegt, auf den Lauf
+        // reagierend) und der Himmel im Tag-Nacht-Umlauf.
+        versionCode = 28
+        versionName = "2.17"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
