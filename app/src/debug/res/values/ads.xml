@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug-Overlay zu app/src/main/res/values/ads.xml.
+
+     Gradle legt die Ressourcen dieses Quellordners über die aus main/,
+     sobald der Build-Typ "debug" ist. AdsManager liest die IDs über
+     getString(R.string.admob_*) und merkt davon nichts — welche IDs
+     ankommen, entscheidet allein die Ressourcenauflösung.
+
+     Warum: In main/ stehen die echten Anzeigenblock-IDs. Ohne dieses
+     Overlay zeigt jede Debug-APK echte Werbung, und ein eigener Klick
+     darauf ist genau der Grund, aus dem Google AdMob-Konten sperrt.
+     Hier stehen deshalb Googles offizielle Test-IDs: echte Testanzeigen,
+     vollständiger Ablauf inklusive Consent-Dialog und Rewarded-Callback,
+     aber ohne Umsatz und ohne Risiko fürs Konto.
+
+     Release-Builds sehen diese Datei nicht — dort bleiben die echten IDs
+     aus main/ stehen. Die App-ID muss auch hier gesetzt sein, weil das
+     AndroidManifest auf sie verweist und das Ads-SDK ohne gültige ID
+     beim Start abbricht. -->
+<resources>
+    <string name="admob_app_id" translatable="false">ca-app-pub-3940256099942544~3347511713</string>
+    <string name="admob_rewarded_id" translatable="false">ca-app-pub-3940256099942544/5224354917</string>
+    <string name="admob_interstitial_id" translatable="false">ca-app-pub-3940256099942544/1033173712</string>
+</resources>

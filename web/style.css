@@ -48,7 +48,36 @@ html, body {
   /* Kein Doppeltipp-Zoom, kein Pinch — Taps gehen ans Spiel. */
   touch-action: manipulation;
   overscroll-behavior: none;
-  background: #4EC0CA;
+}
+
+/*
+ * Der Hintergrund des Wurzelelements wird auf die gesamte Seitenfläche
+ * hochgereicht — auch auf Streifen, die außerhalb des Viewports liegen.
+ * Genau so einer entsteht auf dem iPhone, wenn die PWA vom Home-Bildschirm
+ * startet: Der Bereich hinter dem Home-Indicator gehört nicht zum Viewport,
+ * das Canvas endet darüber, und iOS füllt den Rest mit dieser Farbe. Mit
+ * einer einzelnen Farbe war das ein türkiser Balken unter dem Boden.
+ *
+ * Deshalb derselbe Zweiklang wie im Spiel: Himmel oben, Sand ab 88% — das
+ * ist exakt die Bodenkante aus drawGroundStrip() in render.js.
+ *
+ * Wichtig: Der Verlauf ist ein Hintergrund-*Bild*, und iOS malt in den
+ * Streifen außerhalb des Viewports nur die Hintergrund-*Farbe*. Ohne
+ * eigene Farbe blieb dort das Weiß der Seitenfläche stehen. Also Sand als
+ * Grundfarbe darunter — der Verlauf liegt im Viewport ohnehin darüber,
+ * und der Streifen setzt den Boden nahtlos fort.
+ */
+html {
+  background-color: #DED895;
+  background-image: linear-gradient(
+    to bottom,
+    #4EC0CA 0 88%,
+    #DED895 88% 100%
+  );
+}
+
+body {
+  background: transparent;
 }
 
 body {

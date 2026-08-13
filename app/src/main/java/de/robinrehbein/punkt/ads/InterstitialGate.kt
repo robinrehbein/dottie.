@@ -13,6 +13,11 @@ package de.robinrehbein.punkt.ads
  *    gezeigten Spot. Dottie.-Läufe dauern oft nur Sekunden — ohne
  *    Zeitfenster käme sonst nach jedem zweiten Lauf Werbung.
  *
+ * Beide Werte sind bewusst zurückhaltend gewählt: Das Spiel lebt vom
+ * sofortigen nächsten Versuch ("noch einmal, jetzt klappt's"), und
+ * genau diesen Reflex zerschneidet ein Vollbild-Spot. Lieber seltener
+ * Werbung als ein Spiel, das man nach zehn Minuten weglegt.
+ *
  * Die Uhr wird injiziert ([nowMillis]), damit Tests keine echte Zeit
  * abwarten müssen. Die Instanz lebt genau eine App-Sitzung: der
  * Todeszähler startet bei jedem Kaltstart neu.
@@ -50,9 +55,9 @@ class InterstitialGate(private val nowMillis: () -> Long) {
 
     companion object {
         /** Ab dem wievielten Tod einer Sitzung Werbung erlaubt ist. */
-        const val MIN_DEATHS = 4
+        const val MIN_DEATHS = 6
 
         /** Mindestabstand zwischen zwei Interstitials. */
-        const val MIN_INTERVAL_MILLIS = 90_000L
+        const val MIN_INTERVAL_MILLIS = 180_000L
     }
 }

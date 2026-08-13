@@ -188,10 +188,22 @@ internal fun ReadyOverlay(
     onToggleSound: () -> Unit,
     reminderOn: Boolean,
     onToggleReminder: () -> Unit,
-    // Kauf-Zeile: nur sichtbar, wenn Werbung wirklich läuft. Ohne
-    // AdMob-IDs (Standard) sieht der Startscreen exakt aus wie bisher.
-    removeAdsVisible: Boolean = false,
-    onRemoveAds: () -> Unit = {}
+    // Kauf-Zeile: nur sichtbar, wenn Werbung läuft UND Google ein
+    // kaufbares Produkt liefert (dann steht hier dessen Preis). Ohne
+    // AdMob-IDs sieht der Startscreen exakt aus wie bisher.
+    removeAdsPrice: String? = null,
+    onRemoveAds: () -> Unit = {},
+    // Widerruf der Werbe-Einwilligung. Google blendet die Zeile selbst
+    // nur dort ein, wo sie nötig ist (im Wesentlichen die EU).
+    privacyVisible: Boolean = false,
+    onPrivacy: () -> Unit = {},
+    // Versteckte Diagnose: langer Druck auf den Titel blendet den
+    // Klartext-Zustand von Werbung und Kauf ein. Nach aussen sieht
+    // "keine Einwilligung" genauso aus wie "keine Anzeige verfuegbar" —
+    // ohne Rechner ist das sonst nicht auseinanderzuhalten. Ein langer
+    // Druck auf eine Ueberschrift passiert niemandem versehentlich.
+    diagnostics: String? = null,
+    onToggleDiagnostics: () -> Unit = {}
 ) {
     val blink by rememberInfiniteTransition(label = "blink").animateFloat(
         initialValue = 1f,
@@ -255,7 +267,10 @@ internal fun ReadyOverlay(
                 text = "DOTTIE.",
                 style = ScoreShadowStyle,
                 fontSize = 64.sp,
-                color = Color.White
+                color = Color.White,
+                modifier = Modifier.pointerInput(Unit) {
+                    detectTapGestures(onLongPress = { onToggleDiagnostics() })
+                }
             )
             if (bestScore > 0) {
                 Text(
@@ -263,6 +278,16 @@ internal fun ReadyOverlay(
                     style = ScoreShadowStyle,
                     fontSize = 22.sp,
                     color = Color.White
+                )
+            }
+            if (diagnostics != null) {
+                Text(
+                    text = diagnostics,
+                    fontFamily = Bytesized,
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.85f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 6.dp, start = 16.dp, end = 16.dp)
                 )
             }
         }
@@ -350,15 +375,29 @@ internal fun ReadyOverlay(
             // Bewusst nur eine kleine Zeile statt eines dritten großen
             // Knopfs: Der Kauf soll auffindbar sein, aber nicht um
             // Aufmerksamkeit mit DAILY und SKINS konkurrieren.
-            if (removeAdsVisible) {
+            if (removeAdsPrice != null) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = stringResource(R.string.remove_ads),
+                    text = stringResource(R.string.remove_ads, removeAdsPrice),
                     style = ScoreShadowStyle,
                     fontSize = 14.sp,
                     color = Color.White.copy(alpha = 0.75f),
                     modifier = Modifier
                         .clickable { onRemoveAds() }
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            }
+            // Noch eine Spur zurückhaltender als die Kauf-Zeile: Der
+            // Widerruf muss dauerhaft erreichbar sein, aber niemand sucht
+            // ihn auf einem Startbildschirm — deshalb klein und blass.
+            if (privacyVisible) {
+                Text(
+                    text = stringResource(R.string.ad_privacy),
+                    style = ScoreShadowStyle,
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .clickable { onPrivacy() }
                         .padding(horizontal = 16.dp, vertical = 6.dp)
                 )
             }
@@ -379,13 +418,7 @@ internal fun GameOverOverlay(
     newMedal: Boolean,
     onShare: () -> Unit,
     onMenu: () -> Unit,
-    onHelp: () -> Unit,
-    // Weiterspielen gegen einen Rewarded-Spot: nur wenn Werbung aktiv,
-    // ein Spot geladen ist, der Lauf ein Klassik-Lauf ist und in diesem
-    // Lauf noch nicht wiederbelebt wurde. Ohne AdMob-IDs (Standard)
-    // sieht das Game-Over exakt aus wie bisher.
-    continueAdVisible: Boolean = false,
-    onContinueAd: () -> Unit = {}
+    onHelp: () -> Unit
 ) {
     val blink by rememberInfiniteTransition(label = "overBlink").animateFloat(
         initialValue = 1f,
@@ -537,23 +570,6 @@ internal fun GameOverOverlay(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-
-            // Steht über dem "TIPPEN = NOCHMAL"-Hinweis: Wer weiterspielen
-            // will, soll das Angebot sehen, bevor der Blick beim
-            // Neustart-Hinweis landet.
-            if (continueAdVisible) {
-                PixelButton(
-                    text = stringResource(R.string.continue_ad),
-                    onClick = onContinueAd,
-                    backgroundColor = GrassLight,
-                    borderColor = TextDark,
-                    textColor = TextDark,
-                    width = 244.dp,
-                    height = 52.dp,
-                    borderWidth = 3.dp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
 
             // Kein NOCHMAL-Button: Tap irgendwo startet sofort neu (nach
             // kurzer Wut-Tap-Sperre) — der blinkende Hinweis ist die
@@ -845,13 +861,22 @@ private fun TwistHelpRow(color: Color, title: String, text: String) {
  * Freigeschaltete Skins lassen sich antippen, gesperrte zeigen ihre
  * Freischalt-Bedingung. Ein Tap außerhalb schließt (und wird konsumiert,
  * damit er nicht als Spiel-Tap durchschlägt).
+ *
+ * [skinPass] ist der heute per Spot freigeschaltete Probier-Skin (siehe
+ * ScoreStore.skinPassFor); [adOfferReady] sagt, ob dafür gerade ein Spot
+ * bereitliegt. Beides ist ohne AdMob-IDs immer null bzw. false — dann
+ * gibt es weder Zusatzzeilen noch anklickbare gesperrte Skins, das
+ * Overlay ist Pixel für Pixel das alte.
  */
 @Composable
 internal fun SkinOverlay(
     stats: DotSkin.Stats,
     selected: DotSkin,
     onSelect: (DotSkin) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    skinPass: DotSkin? = null,
+    adOfferReady: Boolean = false,
+    onWatchAdFor: (DotSkin) -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -878,12 +903,18 @@ internal fun SkinOverlay(
             )
 
             DotSkin.entries.forEach { skin ->
-                val unlocked = skin.isUnlocked(stats)
+                // "Verdient" und "heute spielbar" bleiben getrennt: Der
+                // Tagespass macht den Skin nutzbar, nicht freigeschaltet.
+                val available = skin.isAvailable(stats, skinPass)
+                val onPass = skin == skinPass && !skin.isUnlocked(stats)
+                val adOffer = !available && adOfferReady
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = unlocked) { onSelect(skin) }
+                        .clickable(enabled = available || adOffer) {
+                            if (available) onSelect(skin) else onWatchAdFor(skin)
+                        }
                         .padding(horizontal = 48.dp, vertical = 10.dp)
                 ) {
                     // Vorschau als echter Vogel statt als Farbfläche: Bei
@@ -896,7 +927,7 @@ internal fun SkinOverlay(
                             centerX = d / 2f,
                             centerY = d / 2f,
                             radius = d / 2f,
-                            alpha = if (unlocked) 1f else 0.3f
+                            alpha = if (available) 1f else 0.3f
                         ) { col, row -> Color(skin.cell(col, row)) }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
@@ -905,22 +936,36 @@ internal fun SkinOverlay(
                             text = stringResource(skin.titleRes),
                             fontFamily = Bytesized,
                             fontSize = 20.sp,
-                            color = if (unlocked) Color.White else Color.White.copy(alpha = 0.45f)
+                            color = if (available) Color.White else Color.White.copy(alpha = 0.45f)
                         )
                         Text(
                             text = when {
                                 skin == selected -> stringResource(R.string.skin_selected)
-                                unlocked -> stringResource(R.string.skin_tap_select)
+                                available -> stringResource(R.string.skin_tap_select)
                                 else -> skin.unlockHintRes?.let { stringResource(it) } ?: ""
                             },
                             fontFamily = Bytesized,
                             fontSize = 14.sp,
                             color = when {
                                 skin == selected -> DotBody
-                                unlocked -> Color.White.copy(alpha = 0.7f)
+                                available -> Color.White.copy(alpha = 0.7f)
                                 else -> Color.White.copy(alpha = 0.45f)
                             }
                         )
+                        // Der Spot-Hinweis bekommt eine eigene, kleinere
+                        // Zeile: Die Freischalt-Bedingung ist die wichtigere
+                        // Information und bleibt deshalb ungekürzt oben.
+                        if (onPass || adOffer) {
+                            Text(
+                                text = stringResource(
+                                    if (onPass) R.string.skin_pass_today
+                                    else R.string.skin_pass_offer
+                                ),
+                                fontFamily = Bytesized,
+                                fontSize = 12.sp,
+                                color = GrassLight
+                            )
+                        }
                     }
                 }
             }

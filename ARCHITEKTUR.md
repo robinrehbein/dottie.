@@ -92,8 +92,9 @@ und wird als Framework in die Xcode-App gelinkt.
 - 1338 Zeilen Swift weg, ein ganzer Handport weniger zu pflegen.
 - Die Daily Challenge ist per Konstruktion identisch statt per Test.
 - Neue Spiel-Features landen einmal in Kotlin und sind auf iOS sofort da
-  — heute ist jedes Feature zweimal zu bauen (der Port hinkt bereits
-  hinterher: `revive` aus v2.16 fehlt auf iOS).
+  — heute ist jedes Feature zweimal zu bauen, und beide Seiten müssen
+  sich auch wieder gemeinsam ändern: Als `revive` aus der Engine flog,
+  war das ein Eingriff in `:core` **und** in den Swift-Port.
 
 **Aufwand:** grob ein bis zwei Tage für Setup und Umstellung der
 Aufrufstellen, plus eine CI-Runde zum Geradeziehen.

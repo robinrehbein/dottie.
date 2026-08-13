@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -144,7 +143,7 @@ private fun WearReadyOverlay(
                 text = stringResource(R.string.tap),
                 color = Color.White.copy(alpha = if (blinkVisible) 1f else 0.25f),
                 fontSize = 26.sp,
-                fontWeight = FontWeight.Bold
+                fontFamily = WearBytesized
             )
             if (dailyMode) {
                 // Im DAILY-Modus zählen die Tages-Stände statt des
@@ -167,7 +166,7 @@ private fun WearReadyOverlay(
                         ).joinToString("  ·  "),
                         color = WearDotBody,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
+                        fontFamily = WearBytesized
                     )
                 }
             } else if (bestScore > 0) {
@@ -183,7 +182,7 @@ private fun WearReadyOverlay(
                         text = stringResource(R.string.best, bestScore),
                         color = Color.White,
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                        fontFamily = WearBytesized
                     )
                 }
             }
@@ -213,7 +212,7 @@ private fun WearReadyOverlay(
                     text = stringResource(if (soundOn) R.string.sound_on else R.string.sound_off),
                     color = Color.White.copy(alpha = 0.55f),
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontFamily = WearBytesized,
                     modifier = Modifier
                         .pointerInput(Unit) {
                             detectTapGestures(onTap = { onToggleSound() })
@@ -244,14 +243,14 @@ private fun WearModeSwitch(dailyMode: Boolean, onToggle: () -> Unit) {
             text = stringResource(R.string.classic),
             color = if (dailyMode) Color.White.copy(alpha = 0.35f) else WearDotBody,
             fontSize = 13.sp,
-            fontWeight = FontWeight.Bold
+            fontFamily = WearBytesized
         )
         Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = stringResource(R.string.daily),
             color = if (dailyMode) WearDotBody else Color.White.copy(alpha = 0.35f),
             fontSize = 13.sp,
-            fontWeight = FontWeight.Bold
+            fontFamily = WearBytesized
         )
     }
 }
@@ -264,7 +263,7 @@ private fun WearRunningOverlay(score: Int, daily: Boolean, recordBannerTimeLeft:
                 text = score.toString(),
                 color = Color.White,
                 fontSize = 44.sp,
-                fontWeight = FontWeight.Bold
+                fontFamily = WearBytesized
             )
             // Dezenter Modus-Hinweis direkt unterm Score (wie ScoreHud am
             // Phone) — oben gehört der Platz dem Rekord-Banner, und am
@@ -274,7 +273,7 @@ private fun WearRunningOverlay(score: Int, daily: Boolean, recordBannerTimeLeft:
                     text = stringResource(R.string.daily),
                     color = WearDotBody,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+                    fontFamily = WearBytesized
                 )
             }
         }
@@ -288,7 +287,7 @@ private fun WearRunningOverlay(score: Int, daily: Boolean, recordBannerTimeLeft:
                     alpha = (recordBannerTimeLeft / BANNER_FADE_SECONDS).coerceAtMost(1f)
                 ),
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
+                fontFamily = WearBytesized,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 28.dp)
@@ -316,7 +315,7 @@ private fun WearOverOverlay(
                 text = score.toString(),
                 color = Color.White,
                 fontSize = 40.sp,
-                fontWeight = FontWeight.Bold
+                fontFamily = WearBytesized
             )
             // Medaillen-Zeile ab Bronze: Münze plus Stufen-Name in der
             // Medaillen-Farbe — klein unter dem Score, der bleibt der Star.
@@ -329,7 +328,7 @@ private fun WearOverOverlay(
                         text = stringResource(tier.nameRes),
                         color = tier.body,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
+                        fontFamily = WearBytesized
                     )
                 }
                 Spacer(modifier = Modifier.height(2.dp))
@@ -338,7 +337,7 @@ private fun WearOverOverlay(
                 text = stringResource(R.string.best, bestScore),
                 color = if (isNewRecord) WearRecordRed else Color.White,
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontFamily = WearBytesized
             )
             // Bei neuem Rekord gewinnt die Feier, sonst der Spott — wie am
             // Phone (GameOverOverlay), nur eine Nummer kleiner.
@@ -347,7 +346,7 @@ private fun WearOverOverlay(
                 text = if (isNewRecord) stringResource(R.string.new_record) else taunt,
                 color = if (isNewRecord) WearCelebrateGold else Color.White.copy(alpha = 0.8f),
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
+                fontFamily = WearBytesized
             )
             // Nach einem Daily-Lauf: Tagesbest und Serie kompakt in einer
             // Zeile (wie die Daily-Zeile im GameOverOverlay am Phone).
@@ -368,7 +367,7 @@ private fun WearOverOverlay(
                     ).joinToString("  ·  "),
                     color = WearDotBody,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+                    fontFamily = WearBytesized
                 )
             }
             // Erst nach RESTART_LOCK blinken (statt nur ein/aus schalten),
@@ -380,7 +379,7 @@ private fun WearOverOverlay(
                     text = stringResource(R.string.tap),
                     color = Color.White.copy(alpha = if (blinkVisible) 1f else 0.25f),
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+                    fontFamily = WearBytesized
                 )
             }
             // Der Umschalter auch hier: Ein Tap in OVER startet sofort den

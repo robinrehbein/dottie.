@@ -88,7 +88,14 @@ Gleichheit geprüft:
 |---|---|---|
 | Konstanten, Zonenbreite | `1e-5` | rechnen sich nicht auf, nur Darstellungsrundung |
 | Winkel, Zonenmitte | `5e-3` | summieren sich über einen ganzen Lauf auf |
-| Farben | ±2 pro Kanal | Kotlin rechnet Skins in `Float`, der Swift-Port in `CGFloat` |
+| Farben | ±2 pro Kanal, ohne Alpha | Kotlin rechnet Skins in `Float`, der Swift-Port in `CGFloat` |
+
+Farben stehen als ARGB (`0xFFRRGGBB`) in der Datei, verglichen werden
+aber nur Rot, Grün und Blau: Die Ports stellen sie unterschiedlich dar —
+Kotlin als ARGB-Long (damit `:core` ohne Compose-Typen auskommt), Swift
+als 24-Bit-RGB mit Deckkraft erst an der `UIColor`, JavaScript als
+`#RRGGBB`. Alle Werte in `:core` sind vollflächig deckend, es geht also
+nichts verloren.
 
 Der interessante Fall ist die zweite Zeile. Kotlin läuft auf der JVM und
 rechnet jede Fließkomma-Operation einzeln; Swift wird von LLVM übersetzt,

@@ -1,22 +1,32 @@
 name: Build iOS
 
-# macOS-Minuten kosten auf privaten Repos das 10-fache der Linux-Minuten,
-# deshalb läuft dieser Workflow weiterhin nicht bei jedem Push. Er startet
-# manuell — und zusätzlich bei Pull Requests, die den Swift-Port oder
-# seine Vergleichsgrundlage anfassen: Der Port hat außer diesem Lauf keine
-# Absicherung, und ohne Trigger würden die Paritäts-Tests (parity/) erst
-# auffallen, wenn jemand von Hand daran denkt.
+# Der Lauf ist der einzige Kompilier-Beweis für den Swift-Port — auf
+# einem Linux-Rechner gibt es keine Apple-Toolchain, ein Fehler fiele
+# sonst erst beim Öffnen in Xcode auf. Seit den Paritäts-Tests
+# (parity/README.md) ist er zusätzlich der einzige Ort, an dem geprüft
+# wird, ob der Port noch dieselben Zahlen liefert wie die Kotlin-Engine.
 #
-# Wenn die Minuten knapp werden: den pull_request-Block streichen, dann
-# ist alles wie vorher.
+# Früher war der Trigger bewusst nur manuell, weil macOS-Minuten auf
+# privaten Repos das Zehnfache kosten. Seit das Repo öffentlich ist,
+# entfällt der Grund: Für öffentliche Repositories sind die Läufe
+# kostenlos. Deshalb jetzt automatisch — bei Änderungen am
+# iOS-Verzeichnis, an diesem Workflow und an der Vergleichsgrundlage
+# (parity/ und core/, denn die geben die Soll-Werte vor).
+#
+# Die Arbeits-Branches heißen alle claude/** und stehen deshalb wie in
+# build-apk.yml direkt im Push-Trigger; ein zusätzlicher
+# pull_request-Trigger würde jeden Lauf nur verdoppeln.
 on:
-  workflow_dispatch:
-  pull_request:
+  push:
+    branches:
+      - main
+      - 'claude/**'
     paths:
       - "ios/**"
       - "parity/**"
       - "core/**"
       - ".github/workflows/build-ios.yml"
+  workflow_dispatch:
 
 jobs:
   build:

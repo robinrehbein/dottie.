@@ -1,25 +1,27 @@
 # Logik-, Farb- und Text-Tests der PWA (web/tests/run-tests.js).
 #
 # Warum ein eigener Workflow: Die Tests liefen bisher nur in
-# deploy-pages.yml, also erst beim Push auf main — ein Pull Request konnte
-# den Web-Port kaputt machen, ohne dass es jemand sah. Sie lesen ausserdem
-# die Kotlin-Quellen aus app/ und core/ direkt ein (Farben, Texte, Skins,
-# Freischalt-Schwellen), deshalb loesen auch Aenderungen dort einen Lauf
-# aus: Genau dann laeuft der Web-Port ja auseinander.
+# deploy-pages.yml, also erst beim Push auf main — ein Arbeits-Branch
+# konnte den Web-Port kaputt machen, ohne dass es jemand sah. Sie lesen
+# ausserdem die Kotlin-Quellen aus app/ und core/ sowie die Vektoren aus
+# parity/ direkt ein (Farben, Texte, Skins, Freischalt-Schwellen),
+# deshalb loesen auch Aenderungen dort einen Lauf aus: Genau dann laeuft
+# der Web-Port ja auseinander.
+#
+# Trigger wie in build-apk.yml: Push auf main und auf die
+# claude/**-Arbeits-Branches, kein zusaetzlicher pull_request-Trigger,
+# der jeden Lauf nur verdoppeln wuerde.
 name: Web-Tests
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'claude/**'
     paths:
       - "web/**"
       - "core/**"
-      - "app/src/main/**"
-      - ".github/workflows/web-tests.yml"
-  pull_request:
-    paths:
-      - "web/**"
-      - "core/**"
+      - "parity/**"
       - "app/src/main/**"
       - ".github/workflows/web-tests.yml"
   workflow_dispatch:

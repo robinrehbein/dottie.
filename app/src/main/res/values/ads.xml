@@ -1,21 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- AdMob (Rewarded-Revive + Interstitials) und damit die gesamte
-     Monetarisierung, inklusive des "Werbung entfernen"-Kaufs.
+<!-- AdMob (Rewarded fuer den Skin-Tagespass + Interstitials) und damit
+     die gesamte Monetarisierung, inklusive des "Werbung entfernen"-Kaufs.
 
-     Leer = Integration komplett deaktiviert: kein SDK-Init, keine
+     Erst wenn ALLE DREI IDs ausgefüllt sind, wird Werbung aktiv: keine
      Ad-Requests, kein Consent-Dialog, kein Billing — die App verhält
-     sich exakt wie ohne die Abhängigkeiten. Erst wenn ALLE DREI IDs
-     ausgefüllt sind, wird Werbung aktiv. Beim Eintragen echter IDs
-     muss auch die APPLICATION_ID im AndroidManifest mitgetauscht
-     werden (Anleitung in PUBLISHING.md).
+     sich sonst exakt wie ohne die Abhängigkeiten (AdsManager.configured).
 
-     Google-Test-IDs für die Entwicklung (zeigen echte Test-Anzeigen,
-     dürfen NIE in ein Store-Release):
-       App-ID:       ca-app-pub-3940256099942544~3347511713
-       Rewarded:     ca-app-pub-3940256099942544/5224354917
-       Interstitial: ca-app-pub-3940256099942544/1033173712 -->
+     Stand: Alle drei IDs sind eingetragen, Werbung ist damit AKTIV.
+     Zum Abschalten eine der beiden Anzeigenblock-IDs leeren — die
+     App-ID muss stehen bleiben, weil das AndroidManifest auf sie
+     verweist und das Ads-SDK ohne gültige ID beim Start abbricht.
+
+     Wer hier etwas ändert, muss auch die Datenschutzerklärung
+     (docs/index.html) und die Store-Angaben zur Datensicherheit
+     nachziehen — Schritt 5 in PUBLISHING.md.
+
+     Diese Datei gilt für Release-Builds. Debug-Builds überschreibt
+     app/src/debug/res/values/ads.xml mit Googles Test-IDs — sonst
+     zeigt jede Test-APK echte Werbung, und ein eigener Klick darauf
+     kostet im Zweifel das AdMob-Konto. -->
 <resources>
-    <string name="admob_app_id" translatable="false"></string>
-    <string name="admob_rewarded_id" translatable="false"></string>
-    <string name="admob_interstitial_id" translatable="false"></string>
+    <string name="admob_app_id" translatable="false">ca-app-pub-1786159152036324~8923812059</string>
+    <string name="admob_rewarded_id" translatable="false">ca-app-pub-1786159152036324/3200712083</string>
+    <string name="admob_interstitial_id" translatable="false">ca-app-pub-1786159152036324/1632625338</string>
 </resources>

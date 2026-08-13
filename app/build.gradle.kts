@@ -19,10 +19,22 @@ android {
         applicationId = "de.robinrehbein.pointless"
         minSdk = 28
         targetSdk = 36
-        // v2.17: 21 Punkt-Skins (gemustert, bewegt, auf den Lauf
-        // reagierend) und der Himmel im Tag-Nacht-Umlauf.
-        versionCode = 28
-        versionName = "2.17"
+        // v2.18: 21 Punkt-Skins (gemustert, bewegt, auf den Lauf
+        // reagierend), der Himmel im Tag-Nacht-Umlauf, und der
+        // Rewarded-Spot schaltet einen Skin-Tagespass frei statt
+        // Weiterspielen — der Tod bleibt endgueltig. Werbung ist aktiv.
+        //
+        // Zur Zaehlung: 28 wurde zweimal gebaut und verteilt (Build 101
+        // mit Skins und Umlauf, Build 108 zusaetzlich mit Tagespass),
+        // deshalb sprang main auf 29 — und 29 ging als Build 110 raus.
+        // Der Uhr-Abgleich bekommt daher 30. Jeder verteilte Build muss
+        // seinen eigenen Code haben, sonst haelt Android zwei
+        // verschiedene Staende faelschlich fuer dieselbe Fassung.
+        //
+        // v2.19: Abgleich mit der Uhr ueber den Wearable Data Layer.
+        // v2.20: Versteckte Diagnose-Zeile (langer Druck auf den Titel).
+        versionCode = 31
+        versionName = "2.20"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -83,12 +95,17 @@ android {
     }
     buildFeatures {
         compose = true
+        // Fuer die versteckte Diagnose-Zeile: Sie nennt Versionsname und
+        // -code, damit beim Geraetetest nie wieder unklar ist, welcher
+        // Build gerade laeuft.
+        buildConfig = true
     }
 }
 
 dependencies {
 
     implementation(project(":core"))
+    implementation(project(":sync"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

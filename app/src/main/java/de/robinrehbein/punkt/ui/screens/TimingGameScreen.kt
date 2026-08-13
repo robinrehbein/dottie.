@@ -32,10 +32,14 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.BuildConfig
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.ads.AdsManager
 import de.robinrehbein.punkt.billing.BillingManager
@@ -51,6 +55,7 @@ import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.notify.DailyReminder
 import de.robinrehbein.punkt.play.Leaderboards
 import de.robinrehbein.punkt.share.ScoreCard
+import de.robinrehbein.punkt.sync.StatsSync
 import kotlinx.coroutines.isActive
 import java.time.LocalDate
 import kotlin.math.abs
@@ -160,6 +165,17 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         )
     }
 
+    // Abgleich mit der Uhr. Laeuft nur, solange die App im Vordergrund
+    // ist — beim naechsten Oeffnen wird ohnehin nachgeholt, was die
+    // Gegenseite zwischenzeitlich abgelegt hat.
+    val statsSync = remember {
+        StatsSync(
+            context = context,
+            read = { store.syncState() },
+            write = { store.applySync(it) }
+        )
+    }
+
     var frameTick by remember { mutableLongStateOf(0L) }
     var phase by remember { mutableStateOf(TimingGame.Phase.READY) }
     var score by remember { mutableIntStateOf(0) }
@@ -174,7 +190,13 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     var soundOn by remember { mutableStateOf(!store.soundMuted) }
     var dailyMode by remember { mutableStateOf(false) }
     var skin by remember { mutableStateOf(store.selectedSkin) }
+    // Der per Spot geliehene Skin des heutigen Tages (null = keiner).
+    var skinPass by remember {
+        mutableStateOf(store.skinPassFor(LocalDate.now().toEpochDay()))
+    }
     var showSkins by remember { mutableStateOf(false) }
+    // Versteckte Diagnose-Zeile (langer Druck auf den Titel).
+    var showDiagnostics by remember { mutableStateOf(false) }
     var skinUnlockedThisRun by remember { mutableStateOf(false) }
     var newMedalThisRun by remember { mutableStateOf(false) }
     var dailyBestToday by remember {
@@ -184,10 +206,21 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         mutableIntStateOf(store.dailyStreakPreviewFor(LocalDate.now().toEpochDay()))
     }
     var reminderOn by remember { mutableStateOf(store.reminderEnabled) }
-    // Wird beim Aufschlag (Settled) einmal entschieden, damit ein
-    // nachträglich fertig geladener Spot das Overlay nicht mitten im
-    // Lesen umbaut.
-    var continueAdOffer by remember { mutableStateOf(false) }
+
+    /**
+     * Frischt den Tagespass auf und holt eine nicht mehr gedeckte Auswahl
+     * zurück auf KLASSIK. Nötig, weil der Pass um Mitternacht verfällt und
+     * eine Sitzung diesen Wechsel überleben kann — sonst liefe der
+     * geliehene Skin still weiter, bis in die Score-Card hinein.
+     */
+    fun refreshSkinPass(today: Long) {
+        val pass = store.skinPassFor(today)
+        skinPass = pass
+        if (!skin.isAvailable(store.stats(), pass)) {
+            skin = DotSkin.KLASSIK
+            store.selectedSkin = DotSkin.KLASSIK
+        }
+    }
 
     // Ab Android 13 braucht die Erinnerung die Notification-Permission —
     // erst nach erteilter Erlaubnis wird der Schalter wirklich aktiv.
@@ -208,8 +241,30 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    // Der Abgleich haengt am Lebenszyklus statt an der Composition: Beim
+    // Zurueckkehren in die App soll er neu ziehen, und im Hintergrund
+    // soll kein Listener offen bleiben.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> statsSync.start()
+                Lifecycle.Event.ON_STOP -> statsSync.stop()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            statsSync.stop()
+        }
+    }
+
     // Play-Games-Sign-in (No-op, solange keine IDs konfiguriert sind).
     LaunchedEffect(Unit) { leaderboards.connect() }
+
+    // Beim Start prüfen, ob die gespeicherte Auswahl heute noch gilt.
+    LaunchedEffect(Unit) { refreshSkinPass(LocalDate.now().toEpochDay()) }
 
     // Werbung und Kauf hochfahren — beides No-op ohne AdMob-IDs.
     LaunchedEffect(Unit) {
@@ -229,6 +284,8 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     fun prepareRun() {
         val today = LocalDate.now().toEpochDay()
         runState.epochDay = today
+        // Jeder Lauf-Start ist auch der Moment, den Tagespass nachzuziehen.
+        refreshSkinPass(today)
         game.reseed(if (dailyMode) DailyChallenge.seedFor(today) else null)
     }
 
@@ -272,7 +329,6 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             runState.maxPerfect = 0
                             skinUnlockedThisRun = false
                             newMedalThisRun = false
-                            continueAdOffer = false
                             fx.deathTime = -1f
                             audio.start()
                         }
@@ -321,21 +377,13 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             taunt = pickTaunt(context, game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
                             runNumber = store.runCount
+                            // Jeder beendete Lauf ist ein moeglicher neuer
+                            // Stand fuer die Uhr. Ohne Aenderung ist der
+                            // Aufruf ein No-op.
+                            statsSync.publish()
                             if (isNewRecord && !bannerState.recordCelebrated) {
                                 haptics.newRecord()
                             }
-                        }
-                        is TimingGame.GameEvent.Revived -> {
-                            // Der Vogel steht wieder auf: Sturz-Animation und
-                            // Tod-Effekte zurücknehmen, Angebot verbrauchen.
-                            fx.deathTime = -1f
-                            fx.flashAlpha = 0f
-                            fx.shakeTime = 0f
-                            continueAdOffer = false
-                            bannerState.timeLeft = 0f
-                            bannerText = ""
-                            haptics.unlock()
-                            audio.unlock()
                         }
                         is TimingGame.GameEvent.Settled -> {
                             haptics.thud()
@@ -346,16 +394,11 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             } else {
                                 audio.thud()
                             }
-                            // Weiterspielen anbieten? Einmal pro Lauf, nur in
-                            // KLASSIK — die Daily lebt vom identischen Lauf
-                            // für alle und verträgt keinen gekauften Vorteil.
-                            continueAdOffer = ads.enabled && ads.rewardedReady &&
-                                !dailyMode && !game.reviveUsed
-                            // Interstitial nur beim wirklich endgültigen
-                            // Game-Over: Solange noch ein Weiterspielen
-                            // angeboten wird, darf kein Vollbild-Spot die
-                            // Entscheidung überdecken.
-                            if (!dailyMode && !continueAdOffer) {
+                            // Tot ist tot: Jedes Game-Over ist endgültig, also
+                            // darf hier auch ein Interstitial kommen — wie oft,
+                            // entscheidet allein das Gate. Die Daily bleibt
+                            // ausgenommen, sie ist der ruhige Tageslauf.
+                            if (!dailyMode) {
                                 (context as? Activity)?.let { ads.onGameOver(it) }
                             }
                         }
@@ -450,7 +493,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     prepareRun()
                     game.tap()
                 },
-                onSkins = { showSkins = true },
+                onSkins = {
+                    // Vor dem Öffnen nachziehen: Der Startscreen kann seit
+                    // dem letzten Lauf einen Tageswechsel gesehen haben.
+                    refreshSkinPass(LocalDate.now().toEpochDay())
+                    showSkins = true
+                },
                 leaderboardAvailable = leaderboards.available,
                 onLeaderboard = { leaderboards.show() },
                 onHelp = { showHelp = true },
@@ -477,8 +525,20 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                         }
                     }
                 },
-                removeAdsVisible = ads.enabled,
-                onRemoveAds = { (context as? Activity)?.let { billing.purchase(it) } }
+                // Kein Preis von Google = kein Angebot. Ein Knopf, der
+                // ins Leere greift, ist schlimmer als gar keiner.
+                removeAdsPrice = if (ads.enabled) billing.priceLabel else null,
+                onRemoveAds = { (context as? Activity)?.let { billing.purchase(it) } },
+                privacyVisible = ads.enabled && ads.privacyOptionsRequired,
+                onPrivacy = { (context as? Activity)?.let { ads.showPrivacyOptions(it) } },
+                diagnostics = if (showDiagnostics) {
+                    "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n" +
+                        "WERBUNG: ${ads.status}\n" +
+                        "KAUF: ${billing.status}"
+                } else {
+                    null
+                },
+                onToggleDiagnostics = { showDiagnostics = !showDiagnostics }
             )
             TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
                 ScoreHud(
@@ -514,22 +574,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     // Sturz-Animation weiter und der Vogel fehlt im
                     // Startbild, obwohl er dort wieder kreisen soll.
                     fx.reset()
-                    continueAdOffer = false
                     bannerState.timeLeft = 0f
                     bannerText = ""
                     bannerState.lastStage = 0
                     bannerState.recordCelebrated = false
                 },
-                onHelp = { showHelp = true },
-                continueAdVisible = continueAdOffer,
-                onContinueAd = {
-                    // Erst die Belohnung, dann das Weiterspielen: Bricht die
-                    // Spielerin den Spot ab, passiert nichts und das
-                    // Game-Over bleibt stehen.
-                    (context as? Activity)?.let { activity ->
-                        ads.showRewarded(activity) { game.revive() }
-                    }
-                }
+                onHelp = { showHelp = true }
             )
         }
 
@@ -544,9 +594,29 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 onSelect = {
                     skin = it
                     store.selectedSkin = it
+                    // Die Skin-Wahl ist der einzige Wert, bei dem "neuer
+                    // gewinnt" gilt — sie muss deshalb sofort raus, sonst
+                    // ueberschreibt sie beim naechsten Abgleich die
+                    // juengere Wahl auf der Uhr.
+                    statsSync.publish()
                     showSkins = false
                 },
-                onClose = { showSkins = false }
+                onClose = { showSkins = false },
+                skinPass = skinPass,
+                adOfferReady = ads.enabled && ads.rewardedReady,
+                onWatchAdFor = { wanted ->
+                    // Erst der bestätigte Spot, dann der Pass: Bei Abbruch
+                    // passiert nichts, das Overlay bleibt stehen.
+                    (context as? Activity)?.let { activity ->
+                        ads.showRewarded(activity) {
+                            val today = LocalDate.now().toEpochDay()
+                            store.grantSkinPass(today, wanted)
+                            skinPass = wanted
+                            skin = wanted
+                            store.selectedSkin = wanted
+                        }
+                    }
+                }
             )
         }
     }

@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.16.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.20.
 
 ## Checkliste
 
@@ -13,10 +13,10 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.16.
 - [x] Screenshots 1080×1920: je 4 in DE und EN unter `store/screenshots/`
       (Generator: `python3 store/generate_screenshots.py`)
 - [ ] Optional: Play Games Services einrichten → Bestenlisten (Anleitung unten)
-- [ ] Optional: AdMob + In-App-Kauf „remove_ads" aktivieren (Anleitung
-      unten) — solange das nicht passiert, ist die App komplett werbefrei
-- [ ] Data-Safety-Formular: „Es werden keine Daten erhoben" (gilt nur
-      ohne AdMob — mit Werbung siehe Abschnitt unten)
+- [x] AdMob-IDs eingetragen — **Werbung ist aktiv** (Abschnitt unten)
+- [ ] In-App-Kauf „remove_ads" in der Play Console anlegen (Abschnitt unten)
+- [ ] Data-Safety-Formular **mit** Werbung ausfüllen (Abschnitt unten) —
+      „keine Daten erhoben" wäre jetzt falsch
 - [ ] IARC-Fragebogen (Content-Rating) ausfüllen
 - [ ] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
       oder per CI-Job `play-internal`, siehe unten)
@@ -81,13 +81,30 @@ sie zusammen mit der Web-PWA über den Workflow
 `.github/workflows/deploy-pages.yml` (läuft bei jedem Push auf `main`,
 der `web/` oder `docs/` ändert):
 
-- `https://robinrehbein.github.io/dottie./` → das Spiel (Web-PWA)
-- `https://robinrehbein.github.io/dottie./datenschutz/` → die
+- `https://dottie.robinrehbein.de/` → das Spiel (Web-PWA)
+- `https://dottie.robinrehbein.de/datenschutz/` → die
   Datenschutzerklärung — **diese URL** im Play-Listing als
   Datenschutz-URL eintragen
 
-Einmalige Voraussetzung: Repo → **Settings → Pages** → Source
-„GitHub Actions" (geht nur bei öffentlichem Repo oder mit GitHub Pro).
+Einmalige Voraussetzungen:
+
+1. Repo → **Settings → Pages** → Source „GitHub Actions" (geht nur bei
+   öffentlichem Repo oder mit GitHub Pro).
+2. Beim DNS-Anbieter von `robinrehbein.de` einen **CNAME-Eintrag**
+   anlegen: Name `dottie`, Ziel `robinrehbein.github.io.` (mit Punkt am
+   Ende, falls der Anbieter das verlangt).
+3. Repo → **Settings → Pages → Custom domain** auf
+   `dottie.robinrehbein.de` setzen und **Enforce HTTPS** ankreuzen,
+   sobald GitHub das Zertifikat ausgestellt hat (dauert nach dem
+   DNS-Eintrag einige Minuten bis Stunden).
+
+Die Datei `_site/CNAME` schreibt der Workflow selbst — sie muss im
+veröffentlichten Verzeichnis liegen, nicht im Repo-Wurzelverzeichnis,
+weil beim Deployment über Actions ausschließlich das Artefakt
+ausgeliefert wird.
+
+Die alte Adresse `robinrehbein.github.io/dottie./` leitet nach der
+Umstellung automatisch auf die neue um.
 
 Vorher die Kontakt-E-Mail in `docs/index.html` prüfen/anpassen — sie
 wird öffentlich sichtbar.
@@ -132,8 +149,11 @@ wird öffentlich sichtbar.
 > wird sofort gefeiert.
 >
 > **Ehrlich & schlank**
-> Keine Werbung, keine In-App-Käufe, keine Datensammelei, kein
-> Internet nötig. Nur du, der Punkt und dein Highscore.
+> Keine Datensammelei, kein Konto, kein Internet zum Spielen nötig.
+> Werbung finanziert die App: gelegentlich nach einem Spielende, und
+> freiwillig, wenn du ein gesperrtes Aussehen einen Tag lang testen
+> willst. Sie fasst weder deinen Lauf noch deinen Rekord an — und ein
+> einmaliger Kauf entfernt sie dauerhaft.
 
 **Kategorie:** Spiele → Arcade · **Tags:** Casual, Arcade, One-Tap
 
@@ -175,8 +195,10 @@ wird öffentlich sichtbar.
 > runs, and breaking your record gets celebrated the moment it happens.
 >
 > **Honest & lean**
-> No ads, no in-app purchases, no data collection, no internet needed.
-> Just you, the dot, and your high score.
+> No data collection, no account, no internet needed to play. Ads keep
+> the app alive: occasionally after a run ends, and voluntarily when you
+> want to try a locked look for a day. They never touch your run or your
+> record — and a single purchase removes them for good.
 
 **Assets:**
 
@@ -238,14 +260,18 @@ und die App bleibt komplett offline. So wird es scharf geschaltet:
 
 ## Werbung & Käufe aktivieren (AdMob + Play Billing)
 
-Ab v2.16 sind ein **Rewarded-Spot zum Weiterspielen**, gelegentliche
-**Interstitials** und der Kauf **„Werbung entfernen"** eingebaut — aber
-**hart deaktiviert**, solange in `app/src/main/res/values/ads.xml` die
-drei IDs leer sind. Ohne echte IDs wird das Ads-SDK nie initialisiert,
-es gibt keinen Consent-Dialog, keine Ad-Requests und keinen
-BillingClient; die UI sieht aus wie heute (kein WEITERSPIELEN-Knopf,
-keine „WERBUNG ENTFERNEN"-Zeile). Aktivieren ist also eine bewusste
-Entscheidung in genau zwei Dateien.
+Ab v2.17 sind ein **Rewarded-Spot für den Skin-Tagespass**,
+gelegentliche **Interstitials** und der Kauf **„Werbung entfernen"**
+eingebaut — aber **hart deaktiviert**, solange in
+`app/src/main/res/values/ads.xml` die drei IDs leer sind. Ohne echte IDs
+wird das Ads-SDK nie initialisiert, es gibt keinen Consent-Dialog, keine
+Ad-Requests und keinen BillingClient; die UI sieht aus wie heute (im
+Skin-Overlay keine Spot-Zeilen, keine „WERBUNG ENTFERNEN"-Zeile).
+Aktivieren ist also eine bewusste Entscheidung in genau zwei Dateien.
+
+Bewusst **nicht** eingebaut: Weiterspielen nach dem Tod. Das Versprechen
+des Spiels ist „Perfekt oder vorbei" — Werbung darf weder den Lauf noch
+den Rekord anfassen. Der Spot verkauft deshalb nur Kosmetik auf Zeit.
 
 ### 1. AdMob-Konto und App anlegen
 
@@ -254,48 +280,52 @@ Entscheidung in genau zwei Dateien.
 2. **Apps → App hinzufügen** → Android → „Ja, im Play Store" und DOTTIE.
    auswählen (Paket `de.robinrehbein.pointless`). Ergebnis ist die
    **App-ID** im Format `ca-app-pub-…~…` (Tilde!).
-3. **Anzeigenblöcke** anlegen: einen vom Typ **Rewarded** („Weiterspielen")
+3. **Anzeigenblöcke** anlegen: einen vom Typ **Rewarded** („Skin-Tagespass")
    und einen vom Typ **Interstitial** („Game-Over"). Beide liefern eine
    **Anzeigenblock-ID** im Format `ca-app-pub-…/…` (Schrägstrich!).
 4. Frisch angelegte Blöcke liefern erfahrungsgemäß erst nach einigen
    Stunden Anzeigen — bis dahin bleibt es still, das ist kein Fehler.
 
-### 2. IDs eintragen (zwei Dateien!)
+### 2. IDs eintragen
 
-1. `app/src/main/res/values/ads.xml`: `admob_app_id`,
-   `admob_rewarded_id`, `admob_interstitial_id` ausfüllen. Erst wenn
-   **alle drei** gefüllt sind, schaltet sich die Integration ein.
-2. `app/src/main/AndroidManifest.xml`: die `meta-data`
-   `com.google.android.gms.ads.APPLICATION_ID` trägt bis dahin Googles
-   **Beispiel-App-ID** als Platzhalter — die **muss** durch die echte
-   App-ID aus Schritt 1 ersetzt werden. Bleibt der Platzhalter stehen,
-   verdient die App nichts und AdMob kann das Konto sperren.
+Alle IDs stehen an genau einer Stelle: `app/src/main/res/values/ads.xml`.
+Das AndroidManifest verweist per `@string/admob_app_id` darauf, es gibt
+also nichts doppelt zu pflegen.
+
+**Stand:** Die App-ID ist eingetragen
+(`ca-app-pub-1786159152036324~8923812059`). Es fehlen noch
+`admob_rewarded_id` und `admob_interstitial_id` — bis beide gefüllt
+sind, bleibt die App werbefrei, obwohl die App-ID schon steht.
+
+Die App-ID darf nie wieder geleert werden: Das Ads-SDK startet über
+einen eigenen ContentProvider und bricht ohne gültige ID beim App-Start
+ab. Zum Abschalten reicht es, eine Anzeigenblock-ID zu leeren.
 
 Zum Ausprobieren gibt es Googles Test-IDs (sie stehen als Kommentar in
 `ads.xml`): Sie zeigen echte Test-Anzeigen, dürfen aber **nie** in ein
 Store-Release — Klicks auf echte Anzeigen im Eigentest ebenso wenig.
 
-### 3. app-ads.txt — ehrlich betrachtet
+### 3. app-ads.txt
 
-AdMob empfiehlt eine `app-ads.txt` auf der Website, die im Play-Listing
-als Entwickler-Website steht. Sie beweist Käufern, dass unser Inventar
-echt ist. Der Haken bei uns:
+Die Datei beweist Anzeigen-Käufern, dass unser Werbeplatz echt ist —
+ohne sie fällt ein Teil der Nachfrage weg, weil manche Käufer
+ausschließlich auf verifiziertes Inventar bieten.
 
-- Unsere Store-Website ist **<https://robinrehbein.github.io/dottie./>** —
-  das ist ein **Projekt-Pages-Pfad**, kein eigener Host.
-- Die Datei muss aber im **Root der Domain** liegen, also unter
-  `https://robinrehbein.github.io/app-ads.txt`. Ein
-  `…/dottie./app-ads.txt` wird von den Crawlern ignoriert.
-- Dafür bräuchte es ein **eigenes Repository namens
-  `robinrehbein.github.io`** (User-Pages), in dessen Root die Datei
-  liegt. Alternativ eine eigene Domain (z. B. `dottie.app`) als
-  Entwickler-Website eintragen und die Datei dort ablegen.
+Sie liegt als `web/app-ads.txt` im Repo und wird damit unter
+`https://dottie.robinrehbein.de/app-ads.txt` ausgeliefert. Inhalt:
 
-**Ohne `app-ads.txt` läuft AdMob trotzdem.** Es fällt nur ein Teil der
-Nachfrage weg (manche Käufer bieten ausschließlich auf verifiziertes
-Inventar), der eTPM ist also etwas niedriger. Für den Start ist das
-verkraftbar — die Datei lässt sich jederzeit nachreichen, ihr Inhalt
-ist eine einzige Zeile, die AdMob unter **Apps → app-ads.txt** anzeigt.
+```
+google.com, pub-1786159152036324, DIRECT, f08c47fec0942fa0
+```
+
+Damit Googles Crawler sie findet, muss im Play-Listing als
+**Entwickler-Website** genau `https://dottie.robinrehbein.de/`
+eingetragen sein: Gesucht wird immer im Wurzelverzeichnis dieses Hosts.
+Mit dem früheren Projekt-Pages-Pfad ging das nicht — deshalb war die
+Datei bis zur eigenen Domain nicht möglich.
+
+Nach dem Eintragen prüft AdMob unter **Apps → app-ads.txt**, ob die
+Datei erkannt wurde; das dauert bis zu ein paar Tage.
 
 ### 4. In-App-Produkt „remove_ads" anlegen
 
@@ -307,10 +337,28 @@ erstellen**:
 | Produkt-ID | `remove_ads` (genau so, steht im Code) |
 | Typ | Einmaliger Kauf, **nicht** verbrauchbar |
 | Name | „Werbung entfernen" / „Remove ads" |
-| Beschreibung | Entfernt dauerhaft alle Anzeigen. Weiterspielen nach dem Tod bleibt möglich. |
-| Preis | Vorschlag **2,99 €** (Play rechnet die anderen Währungen um) |
+| Beschreibung | Entfernt dauerhaft alle Anzeigen. Skins werden weiter durch Spielen freigeschaltet. |
+| Preis | **1,99 €** (Play rechnet die anderen Währungen um) |
 
 Danach **aktivieren** — inaktive Produkte liefern im Kaufdialog nichts.
+
+Warum 1,99 € und nicht 0,99 €: Bei den meisten Spielen ist „Werbung
+entfernen" ein Genervt-Kauf. Hier stört die Werbung kaum — frühestens ab
+dem sechsten Tod, dann drei Minuten Ruhe, in der Daily gar nicht. Wer
+trotzdem kauft, tut das eher aus Zuneigung zum Spiel als aus Not, und
+für den ist der Unterschied zwischen einem und zwei Euro belanglos. Nach
+Mehrwertsteuer und Googles 15 % bleiben 1,42 € statt 0,71 € — also
+doppelt so viel, ohne dass nennenswert weniger Leute kaufen. Weiter nach
+oben (2,99 €) wäre unangemessen: So aufdringlich ist die Werbung nicht,
+und das Store-Versprechen „ehrlich und schlank" soll eins bleiben.
+
+Der Preis steht **nirgends im Code**: Die App zeigt den Wert an, den
+Google für das Land der Spielerin ausliefert (`formattedPrice`), samt
+Währung und Steuersatz. Eine feste Zeichenkette stünde in der Hälfte der
+Welt falsch da. Solange Google kein kaufbares Produkt liefert — Produkt
+nicht angelegt, nicht aktiviert, App nicht über Play installiert oder
+kein Play-Dienst vorhanden — **erscheint die Kauf-Zeile gar nicht erst**,
+statt als toter Knopf dazustehen.
 Der Kauf hängt am Google-Konto: Nach einer Neuinstallation stellt die
 App ihn beim Start selbst wieder her (`queryPurchases`), ein
 „Kauf wiederherstellen"-Knopf ist deshalb nicht nötig. Testen geht
@@ -318,81 +366,59 @@ kostenlos über **Einstellungen → Lizenztests** (Lizenz-Tester kaufen
 zum Preis 0) — der Kauf funktioniert erst, wenn die App über einen
 Play-Track installiert wurde, nicht per `adb install`.
 
-### 5. Data-Safety und Datenschutz nachziehen
+### 4b. Versteckte Diagnose-Zeile beim Gerätetest
 
-Mit aktiver Werbung stimmt „Es werden keine Daten erhoben" **nicht
-mehr**. Vor dem nächsten Release anpassen:
+Ein **langer Druck auf den Titel „DOTTIE."** im Startbildschirm blendet
+den Klartext-Zustand von Werbung und Kauf ein; nochmal drücken blendet
+ihn wieder aus. Nötig, weil von außen alle Fehlerbilder identisch
+aussehen — nämlich nach gar nichts:
 
-- **Data-Safety-Formular** (Play Console → App-Inhalte): „Gerätekennungen
-  oder andere IDs" → **Werbe-ID (AAID)** wird erhoben und **geteilt**,
-  Zweck **Werbung/Marketing**, nicht verschlüsselt übertragbar
-  verneinen/bejahen gemäß Googles Vorgaben; zusätzlich unter
-  **Anzeigen** „Die App enthält Werbung" ankreuzen (das setzt auch das
-  „Enthält Anzeigen"-Label im Listing).
-- **Store-Texte**: Der Absatz „Ehrlich & schlank / Honest & lean" oben
-  behauptet „keine Werbung, keine In-App-Käufe" — beides muss dann raus
-  bzw. umformuliert werden (z. B. „Werbung lässt sich einmalig
-  entfernen").
-- **`docs/index.html`**: Textbaustein unten einsetzen.
+| Anzeige | Bedeutung |
+|---|---|
+| `WERBUNG: aus — keine IDs` | `ads.xml` ist leer |
+| `WERBUNG: keine Einwilligung — SDK nicht gestartet` | In AdMob fehlt eine **veröffentlichte** DSGVO-Mitteilung (Datenschutz & Mitteilungen → Europäische Verordnungen). Häufigster Fall, und der Grund, warum dann auch das Anzeigenprüftool nicht aufs Schütteln reagiert. |
+| `WERBUNG: Spot: … (Code 3)` | „No fill" — alles richtig eingebaut, Google hat nur keine Anzeige. Bei frischen Anzeigenblöcken stundenlang normal. |
+| `KAUF: keine Play-Verbindung (Code 3)` | App nicht über Play installiert (seitlich installierte APK) |
+| `KAUF: Produkt nicht gefunden (Code …)` | Produkt fehlt, ist inaktiv oder wurde gerade erst angelegt — die Abfrage findet es erst nach einigen Stunden |
+| `KAUF: kaufbar für 1,99 €` | alles in Ordnung |
 
-### 6. Textbaustein für docs/index.html (erst beim Aktivieren einfügen)
+Die Zeile nennt außerdem Versionsname und -code, damit beim Test nie
+unklar ist, welcher Build gerade läuft. Normale Spieler finden sie nicht:
+Niemand drückt lange auf eine Überschrift.
 
-Deutsch — als neuer Abschnitt vor „Kinder", außerdem den Satz unter
-„Kurz gesagt" und den Abschnitt „Internetzugriff" entsprechend
-entschärfen:
+### 5. Data-Safety und Anzeigen-Label in der Play Console
 
-```html
-  <h2>Werbung</h2>
-  <p>DOTTIE. zeigt Werbung über <strong>Google AdMob</strong>: einen
-  optionalen Video-Spot zum Weiterspielen nach einem Lauf sowie
-  gelegentliche Vollbild-Anzeigen zwischen Läufen. Dabei verarbeitet
-  Google die <strong>Werbe-ID (AAID)</strong> deines Geräts sowie
-  technische Angaben (Gerätetyp, grobe Region, IP-Adresse), um
-  Anzeigen auszuliefern und Betrug zu erkennen. Verantwortlich dafür
-  ist Google Ireland Ltd.; Details:
-  <a href="https://business.safety.google/privacy/">Google-Datenschutz</a>.
-  Die Werbe-ID lässt sich in den Android-Einstellungen unter
-  „Datenschutz → Werbung" zurücksetzen oder löschen.</p>
-  <p>Vor der ersten Anzeige fragt die App über Googles
-  <strong>User-Messaging-Platform (UMP)</strong> nach deiner
-  Einwilligung; ohne Einwilligung werden keine (bzw. nur nicht
-  personalisierte) Anzeigen geladen. Die Auswahl lässt sich jederzeit
-  über denselben Dialog ändern.</p>
-  <p>Über <strong>Google Play Billing</strong> kann die Werbung
-  einmalig dauerhaft entfernt werden („Werbung entfernen"). Den
-  Zahlungsvorgang wickelt ausschließlich Google Play ab — wir erhalten
-  keine Zahlungsdaten, nur die Information, dass der Kauf besteht.</p>
-```
+Die Datenschutzerklärung (`docs/index.html`) und die Store-Texte oben
+sind bereits auf aktive Werbung umgeschrieben. Offen bleibt der Teil,
+der nur in der Play Console geht:
 
-Englisch — für den Footer-Absatz („English summary"):
-
-```html
-    <p><em>English summary:</em> DOTTIE. shows ads via
-    <strong>Google AdMob</strong> (an optional rewarded video to continue
-    a run, plus occasional interstitials between runs). Google processes
-    your device's <strong>advertising ID (AAID)</strong> and technical
-    data (device type, coarse region, IP address) to serve ads and
-    prevent fraud. Before the first ad, the app asks for your consent via
-    Google's <strong>User Messaging Platform</strong>; you can change
-    that choice at any time. Ads can be removed permanently with a
-    one-time purchase handled entirely by <strong>Google Play
-    Billing</strong> — we never receive payment data. High scores, daily
-    challenge progress, unlocked skins, and settings stay on your device.
-    Contact: robin@join-noah.de</p>
-```
+- **Data-Safety-Formular** (Play Console → App-Inhalte → Datensicherheit):
+  „Gerätekennungen oder andere IDs" → **Werbe-ID (AAID)** wird erhoben
+  **und geteilt**, Zweck **Werbung/Marketing**. Als Verarbeiter tritt
+  Google auf. „Es werden keine Daten erhoben" wäre jetzt falsch.
+- **Anzeigen-Label**: unter App-Inhalte → **Anzeigen** „Ja, die App
+  enthält Werbung" ankreuzen. Das setzt das „Enthält Anzeigen"-Label im
+  Listing.
+- **IARC-Fragebogen**: beim Ausfüllen angeben, dass die App Werbung
+  enthält und digitale Käufe anbietet — sonst weicht das Rating später
+  vom tatsächlichen Inhalt ab.
 
 ### Wie sich das Spiel dann verhält
 
-- **Weiterspielen (Rewarded)**: erscheint nur im Klassik-Modus, nur wenn
-  ein Spot geladen ist und **einmal pro Lauf**. Score und Treffer
-  bleiben, die Perfekt-Serie beginnt neu, und der Punkt startet eine
-  knappe halbe Runde vor der frischen Zone — nach einem gesehenen Spot
-  darf niemand sofort wieder sterben. Die Daily Challenge bleibt
-  bewusst außen vor: gleicher Lauf für alle, keine gekauften Vorteile.
-- **Interstitials**: frühestens ab dem **4. Tod einer Sitzung** und
-  mindestens **90 Sekunden** nach dem letzten Spot (`InterstitialGate`,
-  per Unit-Test abgesichert) — und nie in dem Game-Over, in dem gerade
-  Weiterspielen angeboten wird.
+- **Skin-Tagespass (Rewarded)**: Im SKINS-Overlay werden gesperrte
+  Skins antippbar, sobald ein Spot geladen ist. Nach dem gesehenen Spot
+  ist genau **dieser eine** Skin bis Mitternacht spielbar und direkt
+  ausgewählt; ein Spot für einen anderen Skin ersetzt den Pass. Der Lauf
+  bleibt unberührt — der Tod ist endgültig, Rekorde entstehen weiter nur
+  durch Spielen. Auch die dauerhafte Freischaltung bleibt exklusiv an
+  den Medaillen-Zielen hängen: Ein Pass zählt nicht als „freigeschaltet"
+  und löst die Freischalt-Feier nicht aus. Beim Tageswechsel fällt eine
+  nur geliehene Auswahl automatisch auf KLASSIK zurück.
+- **Interstitials**: frühestens ab dem **6. Tod einer Sitzung** und
+  mindestens **180 Sekunden** nach dem letzten Spot (`InterstitialGate`,
+  per Unit-Test abgesichert) — nur im Klassik-Modus, die Daily Challenge
+  bleibt werbefrei. Die Werte sind absichtlich zurückhaltend: Das Spiel
+  lebt vom sofortigen nächsten Versuch.
 
 ## Wear-App im Play Store mitverteilen
 
@@ -423,8 +449,14 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 28` / `versionName
-"2.17"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 29` / `versionName
+"2.18"`. Vor jedem Store-Upload beides anheben und committen.
+
+Achtung: `versionCode 28` wurde bereits zweimal gebaut — einmal mit
+Skins und Himmel-Umlauf (Build 101), einmal zusätzlich mit dem
+Tagespass (Build 108). Zwei Zweige hatten dieselbe Nummer vergeben.
+Wer ein AAB weitergibt, sollte deshalb immer vom jeweils neuesten
+Build ausgehen und den versionCode vorher anheben.
 
 Die Wear-App zählt in einem eigenen Bereich **ab 100001**
 (`wear/build.gradle.kts`), damit sich die beiden Zähler nie in die

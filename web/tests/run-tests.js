@@ -974,10 +974,14 @@ function driveToZoneAndTap(game) {
       return q.slice(3, -1); // ohne Anführungszeichen und führendes "./"
     });
 
-  // sw.js selbst wird von der Registrierung geladen, nicht aus dem Cache
-  // bedient; alles andere muss in der Liste stehen, sonst fehlt es offline.
+  // Nicht im Cache erwartet: sw.js selbst wird von der Registrierung
+  // geladen, nicht aus dem Cache bedient, und app-ads.txt holt sich nur
+  // der Crawler eines Werbenetzes — offline braucht die Datei niemand.
+  var NICHT_GECACHT = ["sw.js", "app-ads.txt"];
+
+  // Alles andere muss in der Liste stehen, sonst fehlt es offline.
   shipped(webDir, "").forEach(function (file) {
-    if (file === "sw.js") return;
+    if (NICHT_GECACHT.indexOf(file) !== -1) return;
     assert(
       assets.indexOf(file) !== -1,
       "sw.js cacht " + file + " (ASSETS-Liste unvollständig)"

@@ -3,6 +3,7 @@ package de.robinrehbein.punkt.data
 import android.content.Context
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.SyncState
 
 /**
  * Persistiert Highscore, Daily-Challenge-Stand, Bestleistungen und den
@@ -52,12 +53,46 @@ class ScoreStore(context: Context) {
             prefs.edit().putBoolean(KEY_ADS_REMOVED, value).apply()
         }
 
-    /** Gewählter Punkt-Skin, KLASSIK als Fallback. */
+    /**
+     * Gewählter Punkt-Skin, KLASSIK als Fallback. Beim Setzen wird der
+     * Zeitpunkt mitgeschrieben: Für den Abgleich mit der Uhr ist die
+     * Skin-Wahl der einzige Wert, bei dem nicht "größer", sondern
+     * "neuer" gewinnt (siehe SyncState).
+     */
     var selectedSkin: DotSkin
         get() = DotSkin.fromName(prefs.getString(KEY_SKIN, null))
         set(value) {
-            prefs.edit().putString(KEY_SKIN, value.name).apply()
+            prefs.edit()
+                .putString(KEY_SKIN, value.name)
+                .putLong(KEY_SKIN_CHANGED, System.currentTimeMillis())
+                .apply()
         }
+
+    // ===== Skin-Tagespass (Rewarded) =====
+
+    /**
+     * Der per Spot geliehene Skin — aber nur, wenn der Pass zu [epochDay]
+     * gehört. Wie beim Tagesbest entscheidet allein der Vergleich mit dem
+     * gespeicherten Tag; abgelaufene Pässe werden nicht aufgeräumt,
+     * sondern beantworten die Frage einfach mit null.
+     */
+    fun skinPassFor(epochDay: Long): DotSkin? {
+        if (prefs.getLong(KEY_SKIN_PASS_DAY, Long.MIN_VALUE) != epochDay) return null
+        val name = prefs.getString(KEY_SKIN_PASS_SKIN, null) ?: return null
+        return DotSkin.entries.firstOrNull { it.name == name }
+    }
+
+    /**
+     * Gewährt den Tagespass. Es gibt immer nur EINEN: Ein neuer Spot für
+     * einen anderen Skin ersetzt den alten — der Pass ist zum Probieren
+     * da, gesammelt wird weiter über Medaillen.
+     */
+    fun grantSkinPass(epochDay: Long, skin: DotSkin) {
+        prefs.edit()
+            .putLong(KEY_SKIN_PASS_DAY, epochDay)
+            .putString(KEY_SKIN_PASS_SKIN, skin.name)
+            .apply()
+    }
 
     // ===== Daily Challenge =====
 
@@ -139,6 +174,82 @@ class ScoreStore(context: Context) {
         bestDailyStreak = dailyStreak
     )
 
+    // ===== Abgleich mit der Uhr =====
+
+    /**
+     * Der lokale Stand als Austauschformat für den Data Layer.
+     *
+     * Ein nur geliehener Skin (Tagespass) wird bewusst nicht mitgeteilt:
+     * Er ist morgen wieder weg, und die Uhr könnte ihn gar nicht
+     * annehmen, weil sie ihre Freischaltungen selbst aus den
+     * Bestleistungen ableitet. Damit bleibt die Regel auch hier gültig —
+     * geliehen ist nicht verdient.
+     */
+    fun syncState(): SyncState {
+        val chosen = selectedSkin
+        val shareSkin = chosen.isUnlocked(stats())
+        return SyncState(
+            bestScore = bestScore,
+            runCount = runCount,
+            bestPerfectStreak = bestPerfectStreak,
+            dailyDay = dailyDay,
+            dailyBest = dailyBest,
+            dailyStreak = dailyStreak,
+            skin = if (shareSkin) chosen.name else "",
+            skinChangedAt = if (shareSkin) prefs.getLong(KEY_SKIN_CHANGED, 0L) else 0L
+        )
+    }
+
+    /**
+     * Übernimmt einen zusammengeführten Stand und meldet, ob sich dabei
+     * lokal etwas geändert hat. Genau diese Rückmeldung bremst den
+     * Abgleich: Nur wer wirklich dazugelernt hat, antwortet der
+     * Gegenseite — sonst würden sich beide Geräte endlos gegenseitig
+     * bestätigen.
+     *
+     * Der Skin wird nur übernommen, wenn er hier auch spielbar ist: Die
+     * Uhr kennt ihre eigenen Freischaltungen, und ein dort erspielter
+     * Skin wäre am Telefon sonst plötzlich aktiv, ohne verdient zu sein.
+     * Der Zeitstempel wandert trotzdem mit, damit die Entscheidung nicht
+     * bei jedem Abgleich erneut aufschlägt.
+     */
+    fun applySync(state: SyncState): Boolean {
+        val before = syncState()
+        if (before == state) return false
+        val editor = prefs.edit()
+        if (state.bestScore > before.bestScore) editor.putInt(KEY_BEST, state.bestScore)
+        if (state.runCount > before.runCount) editor.putInt(KEY_RUNS, state.runCount)
+        if (state.bestPerfectStreak > before.bestPerfectStreak) {
+            editor.putInt(KEY_BEST_PERFECT, state.bestPerfectStreak)
+        }
+        if (state.dailyDay != before.dailyDay ||
+            state.dailyBest != before.dailyBest ||
+            state.dailyStreak != before.dailyStreak
+        ) {
+            editor.putLong(KEY_DAILY_DAY, state.dailyDay)
+            editor.putInt(KEY_DAILY_BEST, state.dailyBest)
+            editor.putInt(KEY_DAILY_STREAK, state.dailyStreak)
+        }
+        // Bewusst gegen den ROHEN Zeitstempel geprüft, nicht gegen den aus
+        // syncState(): Wer sich gerade einen Tagespass-Skin ausgesucht
+        // hat, teilt diese Wahl zwar nicht mit, soll sie aber auch nicht
+        // von einer älteren Wahl der Uhr weggerissen bekommen.
+        if (state.skinChangedAt > prefs.getLong(KEY_SKIN_CHANGED, 0L)) {
+            editor.putLong(KEY_SKIN_CHANGED, state.skinChangedAt)
+            val incoming = DotSkin.fromName(state.skin)
+            // stats() liest die Werte, die gerade erst geschrieben werden —
+            // deshalb hier mit den zusammengeführten Zahlen prüfen.
+            val merged = DotSkin.Stats(
+                bestScore = maxOf(state.bestScore, before.bestScore),
+                bestPerfectStreak = maxOf(state.bestPerfectStreak, before.bestPerfectStreak),
+                bestDailyStreak = maxOf(state.dailyStreak, before.dailyStreak)
+            )
+            if (incoming.isUnlocked(merged)) editor.putString(KEY_SKIN, incoming.name)
+        }
+        editor.apply()
+        return true
+    }
+
     private companion object {
         const val PREFS_NAME = "punkt_scores"
         const val KEY_BEST = "best_score_timing"
@@ -151,5 +262,8 @@ class ScoreStore(context: Context) {
         const val KEY_DAILY_BEST = "daily_best"
         const val KEY_DAILY_DAY = "daily_day"
         const val KEY_DAILY_STREAK = "daily_streak"
+        const val KEY_SKIN_CHANGED = "skin_changed_at"
+        const val KEY_SKIN_PASS_SKIN = "skin_pass_skin"
+        const val KEY_SKIN_PASS_DAY = "skin_pass_day"
     }
 }

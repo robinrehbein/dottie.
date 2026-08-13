@@ -22,7 +22,7 @@ import de.robinrehbein.punkt.data.ScoreStore
 
 /**
  * Alles rund um AdMob an einer Stelle: UMP-Consent, ein Rewarded-Spot
- * fürs Weiterspielen und gelegentliche Interstitials.
+ * für den Skin-Tagespass und gelegentliche Interstitials.
  *
  * Die Integration ist hart feature-geflaggt, genau wie die
  * Play-Games-Bestenlisten: Solange in res/values/ads.xml eine der drei
@@ -65,8 +65,29 @@ class AdsManager(
     var enabled by mutableStateOf(configured && !store.adsRemoved)
         private set
 
-    /** Liegt ein Rewarded-Spot bereit? Gate für den WEITERSPIELEN-Button. */
+    /** Liegt ein Rewarded-Spot bereit? Gate für das Tagespass-Angebot. */
     var rewardedReady by mutableStateOf(false)
+        private set
+
+    /**
+     * Muss die App einen dauerhaften Weg zurück ins Einwilligungs-Formular
+     * anbieten? Googles UMP beantwortet das je nach Region: In der EU ist
+     * eine einmal erteilte Einwilligung ohne Widerrufsmöglichkeit
+     * wertlos, außerhalb gibt es oft gar kein Formular. Beobachtbar, weil
+     * die Antwort erst nach dem Netzabruf feststeht — der Startscreen
+     * blendet die Zeile dann nach.
+     */
+    var privacyOptionsRequired by mutableStateOf(false)
+        private set
+
+    /**
+     * Klartext-Zustand für die versteckte Diagnose-Zeile (langer Druck auf
+     * den Titel). Von außen sieht "keine Einwilligung" genauso aus wie
+     * "keine Anzeige verfügbar" — nämlich nach gar nichts. Ohne Rechner
+     * und Logcat ist das sonst nicht auseinanderzuhalten, und genau daran
+     * ist beim Gerätetest schon zweimal eine Stunde draufgegangen.
+     */
+    var status by mutableStateOf(if (activity == null) "keine Activity" else "nicht gestartet")
         private set
 
     private var rewarded: RewardedAd? = null
@@ -82,8 +103,12 @@ class AdsManager(
      * hier entscheidet sich, ob Google überhaupt kontaktiert wird.
      */
     fun start() {
+        if (!configured) { status = "aus — keine IDs"; return }
+        if (store.adsRemoved) { status = "aus — gekauft"; return }
         if (!enabled || activity == null || started) return
         started = true
+        status = "frage Einwilligung ab"
+
         try {
             requestConsentThenInitialize(activity)
         } catch (t: Throwable) {
@@ -109,33 +134,76 @@ class AdsManager(
                     if (formError != null) {
                         Log.w(TAG, "Consent-Formular: ${formError.message}")
                     }
+                    if (formError != null) status = "Consent-Formular: ${formError.message}"
+                    updatePrivacyOptionsRequired()
                     initializeIfAllowed()
                 }
             },
             { requestError ->
                 Log.w(TAG, "Consent-Abfrage: ${requestError.message}")
+                status = "Consent-Abfrage fehlgeschlagen: ${requestError.message}"
+                updatePrivacyOptionsRequired()
                 initializeIfAllowed()
             }
         )
+    }
+
+    private fun updatePrivacyOptionsRequired() {
+        privacyOptionsRequired = consentInformation?.privacyOptionsRequirementStatus ==
+            ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+    }
+
+    /**
+     * Öffnet Googles Einwilligungs-Formular erneut, damit sich eine
+     * einmal getroffene Wahl auch wieder ändern lässt. Ohne diesen Weg
+     * wäre die Einwilligung nach DSGVO nicht widerrufbar — und Google
+     * verlangt ihn ausdrücklich, sobald [privacyOptionsRequired] gilt.
+     */
+    fun showPrivacyOptions(activity: Activity) {
+        UserMessagingPlatform.showPrivacyOptionsForm(activity) { formError ->
+            if (formError != null) {
+                Log.w(TAG, "Datenschutz-Formular: ${formError.message}")
+                return@showPrivacyOptionsForm
+            }
+            // Ein Widerruf kann die Auslieferung beenden — dann laufen die
+            // bereits geladenen Spots ins Leere. Neu bewerten statt raten.
+            updatePrivacyOptionsRequired()
+            if (consentInformation?.canRequestAds() != true) {
+                rewarded = null
+                rewardedReady = false
+                interstitial = null
+            } else {
+                loadRewarded()
+                loadInterstitial()
+            }
+        }
     }
 
     private fun initializeIfAllowed() {
         if (!enabled || activity == null) return
         if (consentInformation?.canRequestAds() != true) {
             Log.i(TAG, "Kein Consent für Anzeigen — es bleibt werbefrei")
+            // Der haeufigste Stolperstein: In AdMob fehlt eine
+            // veroeffentlichte DSGVO-Mitteilung, dann gibt es kein
+            // Formular, der Status bleibt "erforderlich" und das SDK
+            // startet nie — auch das Anzeigenprueftool reagiert dann nicht.
+            status = "keine Einwilligung — SDK nicht gestartet"
             return
         }
         try {
+            status = "SDK startet"
             MobileAds.initialize(activity) {
+                status = "SDK bereit"
                 loadRewarded()
                 loadInterstitial()
             }
         } catch (t: Throwable) {
             Log.w(TAG, "MobileAds-Init fehlgeschlagen", t)
+            status = "SDK-Start fehlgeschlagen"
         }
     }
 
-    // ===== Rewarded: Weiterspielen nach dem Tod =====
+    // ===== Rewarded: Skin-Tagespass =====
 
     private fun loadRewarded() {
         if (!enabled || activity == null || rewarded != null) return
@@ -147,11 +215,16 @@ class AdsManager(
                 override fun onAdLoaded(ad: RewardedAd) {
                     rewarded = ad
                     rewardedReady = true
+                    status = "Spot bereit"
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     rewarded = null
                     rewardedReady = false
+                    // "No fill" (Code 3) heisst: alles richtig eingebaut,
+                    // Google hat nur gerade keine Anzeige. Bei frischen
+                    // Anzeigenbloecken stundenlang der Normalfall.
+                    status = "Spot: ${error.message} (Code ${error.code})"
                     Log.i(TAG, "Rewarded nicht geladen: ${error.message}")
                 }
             }
@@ -161,7 +234,7 @@ class AdsManager(
     /**
      * Zeigt den Rewarded-Spot. [onReward] läuft nur, wenn Google die
      * Belohnung wirklich bestätigt — ein Abbruch führt zu gar nichts,
-     * das Game-Over bleibt dann einfach stehen.
+     * der Skin bleibt dann einfach gesperrt.
      */
     fun showRewarded(activity: Activity, onReward: () -> Unit) {
         val ad = rewarded
@@ -171,8 +244,8 @@ class AdsManager(
         var earned = false
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
-                // Nächsten Spot vorladen, damit der Button beim übernächsten
-                // Tod wieder sofort bereitsteht.
+                // Nächsten Spot vorladen, damit das Angebot beim nächsten
+                // Blick in die Skins wieder sofort bereitsteht.
                 loadRewarded()
                 if (earned) onReward()
             }
@@ -212,9 +285,8 @@ class AdsManager(
     }
 
     /**
-     * Meldet ein endgültiges Game-Over (also keins, aus dem gerade per
-     * Rewarded weitergespielt wurde) und zeigt ggf. ein Interstitial.
-     * Die Häufigkeit regelt allein [InterstitialGate].
+     * Meldet ein Game-Over und zeigt ggf. ein Interstitial. Jeder Tod ist
+     * endgültig — die Häufigkeit regelt deshalb allein [InterstitialGate].
      */
     fun onGameOver(activity: Activity) {
         if (!enabled) return

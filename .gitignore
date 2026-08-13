@@ -13,6 +13,11 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Build-Ordner jedes Moduls. Bisher stand hier nur "/build" fuer die
+# Wurzel, den Rest erledigten die .gitignore-Dateien der Module — ein
+# neues Modul ohne eigene Datei hat seinen kompletten build/-Ordner
+# eingecheckt. Das Muster hier greift auf jeder Ebene.
+build/
 # Sitzungs- und Fehlerdateien des Kotlin-Compiler-Daemons
 /.kotlin
 

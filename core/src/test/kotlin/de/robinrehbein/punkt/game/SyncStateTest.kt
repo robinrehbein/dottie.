@@ -1,0 +1,114 @@
+package de.robinrehbein.punkt.game
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/**
+ * Die Zusammenführung ist der Kern des Handy-Uhr-Abgleichs: Sie läuft auf
+ * beiden Geräten, ohne dass eine Seite entscheidet. Deshalb prüfen die
+ * Tests nicht nur einzelne Regeln, sondern auch die beiden Eigenschaften,
+ * ohne die der Abgleich nie zur Ruhe käme.
+ */
+class SyncStateTest {
+
+    private val phone = SyncState(
+        bestScore = 20,
+        runCount = 40,
+        bestPerfectStreak = 3,
+        dailyDay = 100L,
+        dailyBest = 8,
+        dailyStreak = 2,
+        skin = "GOLD",
+        skinChangedAt = 1_000L
+    )
+
+    private val watch = SyncState(
+        bestScore = 25,
+        runCount = 12,
+        bestPerfectStreak = 2,
+        dailyDay = 100L,
+        dailyBest = 5,
+        dailyStreak = 2,
+        skin = "FROST",
+        skinChangedAt = 2_000L
+    )
+
+    @Test
+    fun `Bestleistungen nehmen den hoeheren Wert`() {
+        val merged = phone.mergedWith(watch)
+        assertEquals(25, merged.bestScore)
+        assertEquals(40, merged.runCount)
+        assertEquals(3, merged.bestPerfectStreak)
+    }
+
+    @Test
+    fun `die juengere Skin-Wahl gewinnt`() {
+        assertEquals("FROST", phone.mergedWith(watch).skin)
+        assertEquals("FROST", watch.mergedWith(phone).skin)
+    }
+
+    @Test
+    fun `bei gleichem Zeitstempel entscheiden beide Geraete gleich`() {
+        val a = phone.copy(skin = "GOLD", skinChangedAt = 500L)
+        val b = phone.copy(skin = "FROST", skinChangedAt = 500L)
+        assertEquals(a.mergedWith(b).skin, b.mergedWith(a).skin)
+    }
+
+    @Test
+    fun `am selben Tag zaehlt der bessere Tageslauf`() {
+        assertEquals(8, phone.mergedWith(watch).dailyBest)
+    }
+
+    @Test
+    fun `gestern auf der Uhr und heute am Telefon setzt die Serie fort`() {
+        val yesterdayOnWatch = watch.copy(dailyDay = 99L, dailyStreak = 5, dailyBest = 7)
+        // Das Telefon steht bei 1, weil es von gestern nichts wusste.
+        val todayOnPhone = phone.copy(dailyDay = 100L, dailyStreak = 1, dailyBest = 3)
+
+        val merged = todayOnPhone.mergedWith(yesterdayOnWatch)
+        assertEquals(100L, merged.dailyDay)
+        assertEquals(6, merged.dailyStreak)
+        assertEquals(3, merged.dailyBest)
+    }
+
+    @Test
+    fun `ein ausgelassener Tag reisst die Serie`() {
+        val longAgo = watch.copy(dailyDay = 90L, dailyStreak = 9)
+        val today = phone.copy(dailyDay = 100L, dailyStreak = 1, dailyBest = 3)
+
+        val merged = today.mergedWith(longAgo)
+        assertEquals(100L, merged.dailyDay)
+        assertEquals(1, merged.dailyStreak)
+    }
+
+    @Test
+    fun `ein Geraet ohne Daily-Lauf uebernimmt den Stand des anderen`() {
+        val fresh = SyncState()
+        assertEquals(100L, fresh.mergedWith(phone).dailyDay)
+        assertEquals(2, fresh.mergedWith(phone).dailyStreak)
+        assertEquals(100L, phone.mergedWith(fresh).dailyDay)
+    }
+
+    @Test
+    fun `zusammenfuehren ist kommutativ`() {
+        assertEquals(phone.mergedWith(watch), watch.mergedWith(phone))
+    }
+
+    @Test
+    fun `zusammenfuehren ist idempotent`() {
+        val merged = phone.mergedWith(watch)
+        assertEquals(merged, merged.mergedWith(merged))
+        assertEquals(merged, merged.mergedWith(phone))
+        assertEquals(merged, merged.mergedWith(watch))
+    }
+
+    @Test
+    fun `auch die Serien-Fortsetzung kommt nur einmal zum Zug`() {
+        val yesterday = watch.copy(dailyDay = 99L, dailyStreak = 5)
+        val today = phone.copy(dailyDay = 100L, dailyStreak = 1)
+        val merged = today.mergedWith(yesterday)
+        // Ein zweiter Durchlauf mit demselben alten Stand darf die Serie
+        // nicht ein weiteres Mal hochzaehlen.
+        assertEquals(merged, merged.mergedWith(yesterday))
+    }
+}

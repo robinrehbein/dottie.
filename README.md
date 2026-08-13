@@ -63,7 +63,9 @@ Wachstum ein:
   Perfekt-Serie auf, Tinte zieht einen Schweif). Freigeschaltet über
   Rekord, beste Perfekt-Serie oder Daily-Serie; der Regenbogen kommt
   zuletzt, wenn alle anderen gesammelt sind. Auswahl über den
-  SKINS-Button, gesperrte Skins zeigen ihre Bedingung.
+  SKINS-Button, gesperrte Skins zeigen ihre Bedingung — und lassen sich
+  dort per freiwilligem Spot einen Tag lang ausprobieren (siehe
+  Monetarisierung).
 
   Farben und Schwellen liegen in `SkinPaint` (`:core`): Ein Skin ist dort
   eine Funktion über das 13x13-Raster des Vogels, kein Tripel aus drei
@@ -81,15 +83,65 @@ Ab v2.11 gibt es zusätzlich eine optionale **tägliche Erinnerung** an
 die Daily Challenge (Opt-in über den Startscreen, komplett lokal per
 WorkManager, ab Android 13 hinter der Notification-Permission).
 
-Ab v2.16 ist die **Monetarisierung vorbereitet, aber hart deaktiviert**:
-ein Rewarded-Spot zum Weiterspielen (einmal pro Lauf, nur Klassik),
-seltene Interstitials (frühestens ab dem 4. Tod einer Sitzung, mit
-90-Sekunden-Sperre) und der einmalige Kauf „Werbung entfernen" über Play
-Billing. Solange in `res/values/ads.xml` keine echten AdMob-IDs stehen —
-und das ist der Auslieferungszustand — wird kein SDK initialisiert, es
-gibt keine Requests, keinen Consent-Dialog und keinen BillingClient; die
-UI sieht exakt aus wie ohne die Abhängigkeiten. Anleitung zum
-Scharfschalten samt Datenschutz-Textbausteinen in PUBLISHING.md.
+Ab v2.17 ist die **Monetarisierung aktiv**: ein freiwilliger
+Rewarded-Spot für den **Skin-Tagespass**, seltene Interstitials
+(frühestens ab dem 6. Tod einer Sitzung, mit 180-Sekunden-Sperre) und der
+einmalige Kauf „Werbung entfernen" über Play Billing. Die AdMob-IDs
+stehen in `res/values/ads.xml`; leert man eine der beiden
+Anzeigenblock-IDs, fällt alles wieder in den werbefreien Zustand zurück —
+kein SDK-Init, keine Requests, kein Consent-Dialog, kein BillingClient,
+und die UI sieht aus wie ohne die Abhängigkeiten. Vor der ersten Anzeige
+fragt Googles UMP nach der Einwilligung; wo das Pflicht ist, führt eine
+Zeile auf dem Startscreen dauerhaft zurück in dieses Formular.
+Datenschutzerklärung: `docs/index.html`, restliche Schritte in
+PUBLISHING.md.
+
+**Die Design-Entscheidung dahinter:** Werbung rührt weder den Lauf noch
+den Rekord an. Der Tod ist endgültig — „Perfekt oder vorbei" ist das
+Versprechen des Spiels, und ein gekauftes Weiterspielen würde genau das
+entwerten. Der freiwillige Spot schaltet stattdessen einen gesperrten
+Punkt-Skin zum Ausprobieren frei: genau einen, nur für den laufenden
+Kalendertag, danach fällt die Auswahl automatisch auf KLASSIK zurück.
+Dauerhaft verdient werden Skins weiterhin ausschließlich über Medaillen
+und Serien — ein Tagespass zählt nicht als Freischaltung und löst die
+„NEUER SKIN FREIGESCHALTET!"-Feier nicht aus.
+
+Der Tagespass ist eine reine Android-Sache: Er hängt am Rewarded-Spot,
+und PWA (`web/`) sowie iOS (`ios/`) haben keine Werbung — dort ändert
+sich nichts.
+
+## Abgleich zwischen Telefon und Uhr (ab v2.19)
+
+Rekord, Lauf-Zahl, beste Perfekt-Serie, Daily-Stand und die Skin-Wahl
+gleichen sich über den **Wearable Data Layer** ab (Modul `:sync`). Es
+gibt dabei bewusst **keine Haupt- und keine Nebenrolle**: Jedes Gerät
+legt seinen Stand ab, liest den der Gegenseite und führt beide mit
+`SyncState.mergedWith` (`:core`) zusammen. Weil das Zusammenführen
+kommutativ und idempotent ist, landen beide Seiten zwangsläufig beim
+selben Ergebnis — unabhängig davon, wer zuerst online war oder wie oft
+dieselbe Nachricht ankommt. Ohne diese beiden Eigenschaften könnten sich
+zwei Geräte endlos gegenseitig neue Stände schicken.
+
+Die Regeln:
+
+- **Bestleistungen**: der höhere Wert gewinnt. Ein Rekord, der einmal
+  existiert hat, darf durch den Abgleich nie verschwinden.
+- **Skin-Wahl**: die *neuere* gewinnt, nicht die „größere" — eine
+  Auswahl ist eine Entscheidung, kein Rekord. Ein nur geliehener
+  Tagespass-Skin wird gar nicht erst mitgeteilt: geliehen ist nicht
+  verdient, und die Uhr leitet ihre Freischaltungen ohnehin selbst aus
+  den Bestleistungen ab.
+- **Daily-Serie**: der Sonderfall. Wer gestern auf der Uhr und heute am
+  Telefon gespielt hat, hat die Serie fortgesetzt — auch wenn das
+  Telefon für sich genommen bei 1 stand, weil es von gestern nichts
+  wusste. Bei aufeinanderfolgenden Tagen zählt deshalb `gestern + 1`,
+  bei einer echten Lücke reißt die Serie wie gewohnt.
+
+Der Abgleich läuft nur, solange eine der beiden Apps offen ist — bewusst
+ohne Hintergrunddienst. Beim Öffnen wird geholt, was die Gegenseite
+zuletzt abgelegt hat, auch wenn deren App längst geschlossen ist. Ohne
+gekoppelte Uhr oder ohne Play-Dienste passiert schlicht nichts; das
+Spiel läuft davon unberührt.
 
 ## Sprachen (ab v2.11)
 
@@ -148,8 +200,8 @@ portiert, offline spielbar (Service Worker). Auf iPhones ist das der
 kostenlose Verteilweg: Safari → Teilen → „Zum Home-Bildschirm".
 Der Workflow `deploy-pages.yml` veröffentlicht sie bei jedem Push auf
 `main` nach GitHub Pages:
-**<https://robinrehbein.github.io/dottie./>** (Datenschutzerklärung
-unter `/datenschutz/`). Tests: `node web/tests/run-tests.js`.
+**<https://dottie.robinrehbein.de/>** (Datenschutzerklärung unter
+`/datenschutz/`). Tests: `node web/tests/run-tests.js`.
 
 ## iOS-Port
 

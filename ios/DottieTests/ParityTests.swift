@@ -161,8 +161,11 @@ final class ParityTests: XCTestCase {
     func testSky() throws {
         XCTAssertEqual(try vectors.int("sky.cycle"), SkinPaint.skyCycle)
 
-        let stages = try vectors.strings("sky.stages").map { ParityVectors.color($0) }
-        XCTAssertEqual(stages, SkinPaint.skyStages, "Himmelsstufen")
+        // Ohne Alpha vergleichen, siehe assertColor.
+        let stages = try vectors.strings("sky.stages")
+            .map { ParityVectors.color($0) & 0x00FFFFFF }
+        XCTAssertEqual(stages, SkinPaint.skyStages.map { $0 & 0x00FFFFFF },
+                       "Himmelsstufen")
 
         let expected = try vectors.strings("sky.stageForScore").map { Int($0) ?? -1 }
         let actual = stride(from: 0, through: 70, by: 5).map { SkinPaint.skyStage($0) }
@@ -395,10 +398,18 @@ final class ParityTests: XCTestCase {
         return names.isEmpty ? "-" : names.joined(separator: "+")
     }
 
-    /// Farben pro Kanal mit ±2 Toleranz: Der Swift-Port rechnet Skins in
+    /// Verglichen werden nur Rot, Grün und Blau — **ohne Alpha**.
+    ///
+    /// Die beiden Ports stellen Farben verschieden dar: Kotlin führt sie
+    /// als ARGB-Long (`0xFFRRGGBB`), damit `:core` ohne Compose-Typen
+    /// auskommt; der Swift-Port führt sie als 24-Bit-RGB (`0xRRGGBB`) und
+    /// setzt die Deckkraft erst beim Erzeugen der `UIColor`. Alle Werte
+    /// in `:core` sind vollflächig deckend, es geht also nichts verloren.
+    ///
+    /// Toleranz ±2 pro Kanal: Der Swift-Port rechnet die Skin-Muster in
     /// CGFloat (Double), Kotlin in Float — das darf eine Rundung kosten.
     private func assertColor(_ expected: UInt32, _ actual: UInt32, _ label: String) {
-        for shift in [24, 16, 8, 0] {
+        for shift in [16, 8, 0] {
             let a = Int((expected >> UInt32(shift)) & 0xFF)
             let b = Int((actual >> UInt32(shift)) & 0xFF)
             XCTAssertLessThanOrEqual(
