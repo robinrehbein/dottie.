@@ -60,12 +60,13 @@ final class PixelLabel: SKNode {
     }
 }
 
-/// Motive für [PixelIconButton], gezeichnet auf einem 16er-Raster —
+/// Motive für die Icon-Knöpfe, gezeichnet auf einem 16er-Raster —
 /// dieselbe Aufzählung wie PixelIcon in app/.../components/PixelButton.kt.
-/// Die Glocke fehlt hier, weil iOS keine Tages-Erinnerung hat.
 enum PixelIconKind {
     case speakerOn
     case speakerOff
+    case bellOn
+    case bellOff
 }
 
 /// Blockiger Button mit Treppenkanten, 1:1 aus drawPixelBorder in
@@ -205,13 +206,27 @@ final class PixelButton: SKNode {
         func block(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ c: UIColor) {
             addRect(to: node, buttonSize: size, x: x * u, y: y * u, w: w * u, h: h * u, color: c)
         }
-        block(3, 6, 2.5, 4, color)
-        block(5.5, 5, 1.5, 6, color)
-        block(7, 4, 1.5, 8, color)
-        if icon == .speakerOn {
-            block(10, 6, 1.2, 4, color)
-            block(12, 4.5, 1.2, 7, color)
-        } else {
+        switch icon {
+        case .speakerOn, .speakerOff:
+            // Korpus plus Trichter nach rechts
+            block(3, 6, 2.5, 4, color)
+            block(5.5, 5, 1.5, 6, color)
+            block(7, 4, 1.5, 8, color)
+            if icon == .speakerOn {
+                // Zwei blockige Schallwellen
+                block(10, 6, 1.2, 4, color)
+                block(12, 4.5, 1.2, 7, color)
+            }
+        case .bellOn, .bellOff:
+            // Knauf, Kuppel, Koerper, Rand, Kloeppel
+            block(7.2, 2.5, 1.6, 1.5, color)
+            block(5.5, 3.8, 5, 2.2, color)
+            block(4.5, 6, 7, 3.5, color)
+            block(3.5, 9.3, 9, 1.6, color)
+            block(7.2, 11.2, 1.6, 1.6, color)
+        }
+        if icon == .speakerOff || icon == .bellOff {
+            // Treppen-Durchstreichung von links oben nach rechts unten
             for i in 0..<6 {
                 let d = 2.5 + CGFloat(i) * 1.9
                 block(d, d, 2.2, 2.2, strike)
@@ -280,6 +295,7 @@ final class ReadyOverlay: SKNode {
     private let statsLabel: PixelLabel
     private let runLabel: PixelLabel
     private let soundButton: PixelButton
+    private let reminderButton: PixelButton
     private var buttons: [PixelButton] = []
 
     init(sceneSize: CGSize, safeTop: CGFloat, safeBottom: CGFloat) {
@@ -298,6 +314,14 @@ final class ReadyOverlay: SKNode {
             background: Palette.panelSand,
             borderWidth: 3,
             icon: .speakerOn
+        )
+        reminderButton = PixelButton(
+            name: "btn.reminder",
+            text: "",
+            size: CGSize(width: 48, height: 48),
+            background: Palette.panelSand,
+            borderWidth: 3,
+            icon: .bellOff
         )
         super.init()
 
@@ -322,8 +346,12 @@ final class ReadyOverlay: SKNode {
         ])))
         addChild(hint)
 
+        // Ton und Erinnerung nebeneinander oben links, wie am Phone
+        // (die beiden PixelIconButton in GameOverlays.kt, 10dp Abstand).
         soundButton.position = CGPoint(x: 16 + 24, y: h - safeTop - 40)
         addChild(soundButton)
+        reminderButton.position = CGPoint(x: 16 + 24 + 48 + 10, y: h - safeTop - 40)
+        addChild(reminderButton)
 
         let helpButton = PixelButton(
             name: "btn.help",
@@ -360,18 +388,26 @@ final class ReadyOverlay: SKNode {
         runLabel.position = CGPoint(x: w / 2, y: safeBottom + 42)
         addChild(runLabel)
 
-        buttons = [soundButton, helpButton, dailyButton, skinsButton]
+        buttons = [soundButton, reminderButton, helpButton, dailyButton, skinsButton]
     }
 
     required init?(coder aDecoder: NSCoder) {
         return nil
     }
 
-    func refresh(bestScore: Int, runNumber: Int, soundOn: Bool, dailyBest: Int, dailyStreak: Int) {
+    func refresh(
+        bestScore: Int,
+        runNumber: Int,
+        soundOn: Bool,
+        reminderOn: Bool,
+        dailyBest: Int,
+        dailyStreak: Int
+    ) {
         bestLabel.text = L10n.format("best_score", bestScore)
         bestLabel.isHidden = bestScore <= 0
 
         soundButton.icon = soundOn ? .speakerOn : .speakerOff
+        reminderButton.icon = reminderOn ? .bellOn : .bellOff
 
         var parts: [String] = []
         if dailyBest > 0 {

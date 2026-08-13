@@ -122,3 +122,9 @@
 "skin_hint_chamaeleon" = "BEST 30";
 "skin_hint_kombo" = "8 PERFECTS IN A ROW";
 "skin_hint_tinte" = "BEST 55";
+
+/* Tages-Erinnerung */
+"notif_title" = "Your Daily Challenge is waiting!";
+"notif_text" = "Today's pattern is ready. One tap decides.";
+"notif_text_streak_one" = "Streak: 1 day — don't let it break!";
+"notif_text_streak" = "Streak: %d days — don't let it break!";

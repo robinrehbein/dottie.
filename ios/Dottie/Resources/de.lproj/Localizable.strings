@@ -121,3 +121,9 @@
 "skin_hint_chamaeleon" = "REKORD 30";
 "skin_hint_kombo" = "8 PERFEKTE IN SERIE";
 "skin_hint_tinte" = "REKORD 55";
+
+/* Tages-Erinnerung */
+"notif_title" = "Deine Daily Challenge wartet!";
+"notif_text" = "Die heutige Abfolge ist bereit. Ein Tap entscheidet.";
+"notif_text_streak_one" = "Serie: 1 Tag — nicht reißen lassen!";
+"notif_text_streak" = "Serie: %d Tage — nicht reißen lassen!";

@@ -118,6 +118,10 @@ final class GameScene: SKScene {
         buildOverlays(safeInsets: view.safeAreaInsets)
         rebuildBirdTextures()
         enterReady()
+        // Bei jedem Start neu planen: Die Erinnerungen sind im Voraus
+        // gesetzt, und ob heute schon gespielt wurde, weiss erst dieser
+        // Moment (siehe DailyReminder).
+        DailyReminder.refresh(store: store)
     }
 
     private func flipY(_ yTopDown: CGFloat) -> CGFloat {
@@ -422,6 +426,8 @@ final class GameScene: SKScene {
             store.submitPerfectStreak(runMaxPerfect)
             if dailyMode {
                 store.submitDailyRun(epochDay: runEpochDay, score: game.score)
+                // Heute gespielt -> die heutige Erinnerung faellt weg.
+                DailyReminder.refresh(store: store)
             }
             skinUnlockedThisRun = DotSkin.unlockedCount(store.stats()) > unlockedBefore
             taunt = L10n.pickTaunt(
@@ -484,6 +490,7 @@ final class GameScene: SKScene {
             bestScore: store.bestScore,
             runNumber: store.runCount,
             soundOn: !store.soundMuted,
+            reminderOn: store.reminderEnabled,
             dailyBest: store.dailyBestFor(epochDay: today),
             dailyStreak: store.dailyStreakPreviewFor(epochDay: today)
         )
@@ -745,6 +752,8 @@ final class GameScene: SKScene {
             store.soundMuted = !store.soundMuted
             audio.muted = store.soundMuted
             enterReadyRefreshOnly()
+        case "btn.reminder":
+            toggleReminder()
         case "btn.help":
             helpOverlay?.isHidden = false
         case "btn.daily":
@@ -770,12 +779,33 @@ final class GameScene: SKScene {
         }
     }
 
+    /// Erinnerung an/aus. Beim Einschalten fragt iOS beim ersten Mal nach
+    /// der Berechtigung; lehnt die Nutzerin ab, bleibt der Schalter aus —
+    /// ein aktivierter Schalter ohne Zustellung wäre eine Lüge.
+    private func toggleReminder() {
+        if store.reminderEnabled {
+            store.reminderEnabled = false
+            DailyReminder.cancel()
+            enterReadyRefreshOnly()
+            return
+        }
+        DailyReminder.requestPermission { [weak self] granted in
+            guard let self = self else { return }
+            self.store.reminderEnabled = granted
+            if granted {
+                DailyReminder.refresh(store: self.store)
+            }
+            self.enterReadyRefreshOnly()
+        }
+    }
+
     private func enterReadyRefreshOnly() {
         let today = DailyChallenge.todayEpochDay()
         readyOverlay?.refresh(
             bestScore: store.bestScore,
             runNumber: store.runCount,
             soundOn: !store.soundMuted,
+            reminderOn: store.reminderEnabled,
             dailyBest: store.dailyBestFor(epochDay: today),
             dailyStreak: store.dailyStreakPreviewFor(epochDay: today)
         )

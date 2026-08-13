@@ -1,10 +1,24 @@
 name: Build iOS
 
-# NUR manuell (Actions → Build iOS → "Run workflow"): macOS-Minuten
-# kosten auf privaten Repos das 10-fache der Linux-Minuten — deshalb
-# bewusst kein push-Trigger. Der Lauf ist der Kompilier-Beweis für den
-# Swift-Port, denn lokal gibt es keine Apple-Toolchain.
+# Der Lauf ist der einzige Kompilier-Beweis für den Swift-Port — auf
+# einem Linux-Rechner gibt es keine Apple-Toolchain, ein Fehler fiele
+# sonst erst beim Öffnen in Xcode auf.
+#
+# Früher war der Trigger bewusst nur manuell, weil macOS-Minuten auf
+# privaten Repos das Zehnfache kosten. Seit das Repo öffentlich ist,
+# entfällt der Grund: Für öffentliche Repositories sind die Läufe
+# kostenlos. Deshalb jetzt automatisch, aber nur wenn sich am
+# iOS-Verzeichnis oder an diesem Workflow etwas ändert.
 on:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - ".github/workflows/build-ios.yml"
+  pull_request:
+    paths:
+      - "ios/**"
+      - ".github/workflows/build-ios.yml"
   workflow_dispatch:
 
 jobs:
