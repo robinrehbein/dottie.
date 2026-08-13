@@ -701,10 +701,9 @@ final class HelpOverlay: SKNode {
 /// über Titel und Hinweis hinauslaufen.
 final class SkinOverlay: SKNode {
 
-    /// Was eine Berührung im Picker bedeutet: Ein Zug scrollt nur, ein
-    /// Tipp wählt oder schließt.
-    /// `scrolled` statt `none`: Ein Fall namens `none` ließe sich beim
-    /// Auswerten leicht mit `Optional.none` verwechseln.
+    /// Was eine Berührung im Picker bedeutet: Ein Zug scrollt nur, ein Tipp
+    /// wählt oder schließt. Der Fall heißt `scrolled` und nicht `none` —
+    /// letzteres ließe sich beim Auswerten mit `Optional.none` verwechseln.
     enum TouchResult {
         case scrolled
         case select(DotSkin)

@@ -206,7 +206,7 @@ object SkinPaint {
         SkinId.THERMO -> 0xFFFFD847
         SkinId.MEDAILLE -> 0xFFC0C0C0
         SkinId.TAGESZEIT -> 0xFF8FD8FF
-        SkinId.JAHRESZEIT -> 0xFF4EC0CA
+        SkinId.JAHRESZEIT -> 0xFFFFC93C
         SkinId.KUERBIS -> 0xFFF5821F
         SkinId.ZUCKERSTANGE -> 0xFFE8452F
         SkinId.HERZ -> 0xFFFF6FA8
@@ -251,7 +251,7 @@ object SkinPaint {
         SkinId.THERMO -> 0xFFE0A400
         SkinId.MEDAILLE -> 0xFF8F8F9C
         SkinId.TAGESZEIT -> 0xFF3D4A8C
-        SkinId.JAHRESZEIT -> 0xFF2E8E98
+        SkinId.JAHRESZEIT -> 0xFFE09218
         SkinId.KUERBIS -> 0xFFC25E10
         SkinId.ZUCKERSTANGE -> 0xFFC2301F
         SkinId.HERZ -> 0xFFD6407E
@@ -894,8 +894,14 @@ object SkinPaint {
      */
     private fun seasonPalette(month: Int): LongArray = when (month) {
         3, 4, 5 -> longArrayOf(0xFFFFB8D9, 0xFFE086B4, 0xFFFFFFFF, 5)
-        6, 7, 8 -> longArrayOf(0xFF4EC0CA, 0xFF2E8E98, 0xFFFFF3B8, 7)
-        9, 10, 11 -> longArrayOf(0xFFE08A3C, 0xFFB2571F, 0xFF7A3B1F, 4)
+        // Sommer ist Sonne, nicht Himmel: Das naheliegende Türkis wäre
+        // exakt die Himmelsfarbe der ersten Stufe gewesen — der Vogel
+        // hätte drei Monate im Jahr nur aus Kontur und Auge bestanden.
+        6, 7, 8 -> longArrayOf(0xFFFFC93C, 0xFFE09218, 0xFFFFF6C0, 7)
+        // Aus demselben Grund trägt der Herbst Rost statt Sonnenuntergang:
+        // 0xFFE08A3C lag sieben Farbschritte neben der Himmelsstufe bei
+        // Score 20 — nah genug, um im Lauf zu verschwinden.
+        9, 10, 11 -> longArrayOf(0xFFC2551E, 0xFF8E3A14, 0xFFFFB84E, 4)
         else -> longArrayOf(0xFFDCF3FF, 0xFFA8C8DE, 0xFFFFFFFF, 6)
     }
 

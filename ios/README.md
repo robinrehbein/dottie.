@@ -25,13 +25,18 @@ parallel zur Android-App in `app/` und der Wear-App in `wear/`.
   Szenerie (Bäume/Blumen/Sträucher mit Parallaxe), Wolken, „DOTTIE."-Titel,
   Mario-Tod (Freeze → Hüpfer → Kopfüber-Fall), Medaillen (10/20/30/40),
   Spott-Texte, REKORD-Banner, Freischalt-Zelebration, Flash + Shake.
-- Features: Classic + Daily, 7 Skins (gleiche Farben und
-  Freischalt-Bedingungen), Sound an/aus (persistiert), Haptik
+- Features: Classic + Daily, 42 Skins (gleiche Farben, Muster und
+  Freischalt-Bedingungen wie `:core`; das Menü ist nach Familien
+  gegliedert und scrollt), Sound an/aus (persistiert), Haptik
   (UIImpactFeedbackGenerator), Persistenz via UserDefaults,
   Texte EN/DE (Localizable.strings), Bytesized-Pixel-Font.
 
 **Bewusst nicht dabei (wie beauftragt):** Teilen/Score-Card,
 Daily-Reminder-Notification, Leaderboards/Game Center.
+
+**Kein Billing:** Die drei Gönner-Skins (DIAMANT, PHOENIX, ONYX) stehen im
+Menü, `patronOwned` ist auf iOS aber fest `false` — sie bleiben sichtbar,
+aber gesperrt, bis es einen Kauf gibt.
 
 ## Build (CI, macOS-Runner)
 

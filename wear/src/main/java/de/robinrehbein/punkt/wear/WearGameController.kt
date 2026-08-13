@@ -237,9 +237,8 @@ internal class WearGameController(context: Context) {
      * nicht die Anzeige-Vorschau (die fällt nach einer Lücke auf 0).
      *
      * patronOwned bleibt false: Auf der Uhr gibt es kein Billing, die
-     * Gönner-Skins bleiben hier gesperrt. Sie können nur über den
-     * Abgleich mit dem Telefon dazukommen — dann steht der gekaufte Skin
-     * als gewählter Skin im Stand, und applySync übernimmt ihn.
+     * Gönner-Skins bleiben hier gesperrt — auch dann, wenn das Telefon
+     * einen davon als gewählten Skin schickt (siehe applySync).
      */
     private fun skinStats(): WearDotSkin.Stats = WearDotSkin.Stats(
         bestScore = bestScore,

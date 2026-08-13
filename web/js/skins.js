@@ -246,8 +246,8 @@
    */
   function seasonPalette(month) {
     if (month >= 3 && month <= 5) return ["#FFB8D9", "#E086B4", "#FFFFFF", 5];
-    if (month >= 6 && month <= 8) return ["#4EC0CA", "#2E8E98", "#FFF3B8", 7];
-    if (month >= 9 && month <= 11) return ["#E08A3C", "#B2571F", "#7A3B1F", 4];
+    if (month >= 6 && month <= 8) return ["#FFC93C", "#E09218", "#FFF6C0", 7];
+    if (month >= 9 && month <= 11) return ["#C2551E", "#8E3A14", "#FFB84E", 4];
     return ["#DCF3FF", "#A8C8DE", "#FFFFFF", 6];
   }
 
@@ -609,7 +609,7 @@
     },
     {
       name: "JAHRESZEIT", titleKey: "skin_jahreszeit", hintKey: "skin_hint_jahreszeit",
-      body: "#4EC0CA", shade: "#2E8E98", shine: "#FFFFFF",
+      body: "#FFC93C", shade: "#E09218", shine: "#FFFFFF",
       cell: function (col, row, state) {
         var p = seasonPalette(state.month);
         if ((col * 3 + row * 5) % 11 === p[3]) return p[2];

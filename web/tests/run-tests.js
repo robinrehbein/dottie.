@@ -466,8 +466,72 @@ function driveToZoneAndTap(game) {
       "Skin " + s.name + " steht still"
     );
   });
+  // Das Skin-Menue haengt an den Familien: Jeder Skin muss unter genau
+  // einer Ueberschrift landen, und keine darf leer bleiben.
+  var familien = 0, offen = null, zugeordnet = 0;
+  DotSkin.SKINS.forEach(function (s) {
+    var key = DotSkin.familyTitleKey(s);
+    if (key) {
+      familien++;
+      offen = key;
+    }
+    assert(offen !== null, "Skin " + s.name + " steht unter einer Ueberschrift");
+    zugeordnet++;
+  });
+  assertEq(familien, DotSkin.FAMILIES.length, "jede Familie beginnt genau einmal");
+  assertEq(zugeordnet, DotSkin.SKINS.length, "alle Skins sind einsortiert");
+  assertEq(DotSkin.familyTitleKey(DotSkin.fromName("KLASSIK")), "skin_family_einfarbig",
+    "die Liste beginnt mit den einfarbigen");
+  DotSkin.FAMILIES.forEach(function (f) {
+    assert(Strings.STRINGS.de[f.titleKey] && Strings.STRINGS.en[f.titleKey],
+      "Ueberschrift " + f.titleKey + " gibt es in beiden Sprachen");
+  });
+
+  // Namen und Hinweise: jeder Skin traegt beide Texte in beiden Sprachen.
+  DotSkin.SKINS.forEach(function (s) {
+    ["de", "en"].forEach(function (lang) {
+      assert(!!Strings.STRINGS[lang][s.titleKey], lang + ": Name fuer " + s.name);
+      if (s.hintKey) {
+        assert(!!Strings.STRINGS[lang][s.hintKey], lang + ": Hinweis fuer " + s.name);
+      }
+    });
+    assert(s.name === "KLASSIK" || !!s.hintKey, "nur KLASSIK kommt ohne Hinweis aus");
+  });
+
   assertEq(DotSkin.fromName("LAVA").name, "LAVA", "fromName findet");
   assertEq(DotSkin.fromName("quatsch").name, "KLASSIK", "fromName-Fallback");
+
+  // Das Rauschen von KONFETTI und DIAMANT rechnet in Kotlin in 32-Bit-Int
+  // mit Ueberlauf. Gegengeprueft wird hier mit BigInt — eine zweite,
+  // unabhaengige Rechnung, die den Ueberlauf exakt nachbildet. Ohne
+  // Math.imul und ">>>" liefe der Port ab 2^53 auseinander.
+  function noiseRef(col, row, seed) {
+    function i32(v) { return BigInt.asIntN(32, v); }
+    function ushr(v, k) { return BigInt.asUintN(32, v) >> BigInt(k); }
+    var n = i32(BigInt(col) * 73856093n) ^ i32(BigInt(row) * 19349663n) ^
+      i32(BigInt(seed) * 83492791n);
+    n = i32(n);
+    n = i32((n ^ ushr(n, 13)) * 1274126177n);
+    var v = i32(n ^ ushr(n, 16));
+    return v < 0n ? i32(-v) : v;
+  }
+  var rauschen = 0;
+  [0, 1, 2, 7, 41, 137, 1000, 65535, 123456789].forEach(function (seed) {
+    for (var row = 0; row < DotSkin.GRID; row++) {
+      for (var col = 0; col < DotSkin.GRID; col++) {
+        assertEq(BigInt(DotSkin.noise(col, row, seed)), noiseRef(col, row, seed),
+          "Rauschen (" + col + "," + row + "," + seed + ")");
+        rauschen++;
+      }
+    }
+  });
+  assertEq(rauschen, 9 * DotSkin.GRID * DotSkin.GRID, "Rauschen breit geprueft");
+  // Es muss auch streuen, sonst waere KONFETTI eine einfarbige Kugel.
+  var bunt = 0;
+  for (var f = 0; f < DotSkin.GRID * DotSkin.GRID; f++) {
+    if (DotSkin.noise(f % DotSkin.GRID, Math.floor(f / DotSkin.GRID), 3) % 100 < 38) bunt++;
+  }
+  assert(bunt > 20 && bunt < 140, "Konfetti trifft einen Teil der Felder (" + bunt + ")");
 
   assertEq(MedalTier.forScore(9), null, "keine Medaille unter 10");
   assertEq(MedalTier.forScore(10).name, "BRONZE", "Bronze ab 10");
@@ -517,6 +581,43 @@ function driveToZoneAndTap(game) {
   assertEq(ScoreStore.dailyBestFor(101), 2, "neuer Tag, neuer Tagesbest");
   assertEq(ScoreStore.dailyStreakPreviewFor(102), 2, "Preview am Folgetag");
   assertEq(ScoreStore.dailyStreakPreviewFor(105), 0, "Preview nach Luecke");
+
+  // ===== Ausdauer-Achsen =====
+  assertEq(ScoreStore.totalScore, 8, "Punkte summieren sich (5 + 3)");
+  assertEq(ScoreStore.daysPlayed, 0, "ohne Kalender kein Tages-Zaehler");
+
+  // 15.06.2026 ist Epoch-Day 20619 — zwei Laeufe am selben Tag zaehlen
+  // einen Tag, der Folgetag einen zweiten.
+  ScoreStore.submitRun(4, 20619, 2026, 6);
+  ScoreStore.submitRun(2, 20619, 2026, 6);
+  assertEq(ScoreStore.totalScore, 14, "Punktesumme waechst weiter");
+  assertEq(ScoreStore.daysPlayed, 1, "zwei Laeufe am selben Tag = ein Tag");
+  ScoreStore.submitRun(1, 20620, 2026, 6);
+  assertEq(ScoreStore.daysPlayed, 2, "Folgetag zaehlt einen Tag dazu");
+  assertEq(ScoreStore.stats().monthsPlayed, 1, "ein Monat gesehen");
+  ScoreStore.submitRun(1, 20650, 2026, 7);
+  assertEq(ScoreStore.stats().monthsPlayed, 2, "zweiter Monat gesehen");
+  ScoreStore.submitRun(1, 21015, 2027, 7);
+  assertEq(ScoreStore.stats().monthsPlayed, 2, "derselbe Monat im Folgejahr zaehlt nicht doppelt");
+
+  // Saison: fuenf Tage im Oktober oeffnen den Kuerbis — und er bleibt.
+  var kuerbis = DotSkin.SEASONS[0];
+  assertEq(ScoreStore.seasonEarned, 0, "noch keine Saison verdient");
+  for (var tag = 0; tag < 4; tag++) ScoreStore.submitRun(3, 20730 + tag, 2026, 10);
+  assertEq(ScoreStore.seasonEarned, 0, "vier Tage reichen dem Kuerbis nicht");
+  ScoreStore.submitRun(3, 20734, 2026, 10);
+  assertEq(ScoreStore.seasonEarned, kuerbis.bit, "fuenf Tage im Oktober oeffnen den Kuerbis");
+  assert(DotSkin.isUnlocked(DotSkin.fromName("KUERBIS"), ScoreStore.stats()),
+    "KUERBIS ist damit freigeschaltet");
+  ScoreStore.submitRun(3, 20760, 2026, 11);
+  assertEq(ScoreStore.seasonEarned, kuerbis.bit, "im November bleibt der Kuerbis");
+  ScoreStore.submitRun(3, 21095, 2027, 10);
+  assertEq(ScoreStore.seasonEarned, kuerbis.bit,
+    "das neue Fenster faengt bei null an, ohne das Bit zu verlieren");
+
+  assertEq(ScoreStore.patronOwned, false, "im Web gibt es kein Goenner-Paket");
+  assert(!DotSkin.isUnlocked(DotSkin.fromName("ONYX"), ScoreStore.stats()),
+    "Goenner-Skins bleiben im Web gesperrt");
 })();
 
 // ===== Pixel-Rahmen der Knöpfe (PixelButton.kt) =====
@@ -775,6 +876,264 @@ function driveToZoneAndTap(game) {
   // die vier Saison- und die drei Goenner-Skins.
   assertEq(geprueft, kotlinIds.length - 9,
     "alle Schwellen ausser Klassik, Regenbogen, Saison und Goenner geprueft");
+
+  // ===== Die neuen Skins: Muster, Tabellen und Achsen aus :core =====
+
+  /** "0xFF4EC0CA, 0xFF..., 5" -> ["#4EC0CA", ..., 5] */
+  function kotlinValues(text) {
+    return text.split(",").map(function (raw) {
+      var v = raw.trim();
+      var hex = v.match(/^0x[Ff]{2}([0-9A-Fa-f]{6})$/);
+      return hex ? "#" + hex[1].toUpperCase() : parseInt(v, 10);
+    });
+  }
+
+  /** Inhalt eines longArrayOf(...) hinter "val NAME". */
+  function kotlinTable(name) {
+    var i = paintKt.indexOf("val " + name);
+    assert(i >= 0, "Tabelle " + name + " in SkinPaint.kt gefunden");
+    var open = paintKt.indexOf("longArrayOf(", i);
+    return kotlinValues(paintKt.slice(open + 12, paintKt.indexOf(")", open)));
+  }
+
+  /** Alle longArrayOf(...)-Zeilen eines arrayOf(...)-Blocks. */
+  function kotlinTable2d(name) {
+    var i = paintKt.indexOf("val " + name);
+    assert(i >= 0, "Tabelle " + name + " in SkinPaint.kt gefunden");
+    var block = paintKt.slice(i, paintKt.indexOf("\n    )", i));
+    return (block.match(/longArrayOf\(([^)]*)\)/g) || []).map(function (row) {
+      return kotlinValues(row.slice(12, -1));
+    });
+  }
+
+  [
+    ["SPRINKLE_COLORS", DotSkin.SPRINKLE_COLORS],
+    ["CONFETTI_COLORS", DotSkin.CONFETTI_COLORS],
+    ["DISCO_COLORS", DotSkin.DISCO_COLORS],
+    ["DIAMOND_COLORS", DotSkin.DIAMOND_COLORS]
+  ].forEach(function (pair) {
+    assertEq(pair[1].join(","), kotlinTable(pair[0]).join(","), "Tabelle " + pair[0]);
+  });
+
+  [
+    ["EASTER_COLORS", DotSkin.EASTER_COLORS],
+    ["MEDAL_COLORS", DotSkin.MEDAL_COLORS]
+  ].forEach(function (pair) {
+    var kt = kotlinTable2d(pair[0]);
+    assertEq(pair[1].length, kt.length, "Tabelle " + pair[0] + " hat gleich viele Zeilen");
+    kt.forEach(function (row, i) {
+      assertEq(pair[1][i].join(","), row.join(","), "Tabelle " + pair[0] + " Zeile " + i);
+    });
+  });
+
+  // Die beiden Paletten werden ueber ihren ganzen Wertebereich verglichen —
+  // eine verrutschte Stundengrenze faellt sonst erst abends auf.
+  function paletteBranches(head) {
+    var block = paintKt.slice(paintKt.indexOf(head));
+    block = block.slice(0, block.indexOf("\n    }"));
+    // Die Bedingung steht mal als Bereich (in 5..8), mal als Aufzaehlung
+    // (3, 4, 5) und einmal als else — alle drei Formen lesen.
+    var out = [], bm;
+    var re = /([^\n]+?) -> longArrayOf\(([^)]*)\)/g;
+    while ((bm = re.exec(block)) !== null) {
+      var head = bm[1].trim();
+      var range = head.match(/^in (\d+)\.\.(\d+)$/);
+      out.push({
+        werte: head === "else" ? null
+          : range ? { from: parseInt(range[1], 10), to: parseInt(range[2], 10) }
+            : head.split(",").map(function (v) { return parseInt(v.trim(), 10); }),
+        values: kotlinValues(bm[2])
+      });
+    }
+    return out;
+  }
+
+  function paletteFor(branches, value) {
+    for (var i = 0; i < branches.length; i++) {
+      var b = branches[i];
+      if (b.werte === null) return b.values;
+      if (Array.isArray(b.werte)) {
+        if (b.werte.indexOf(value) >= 0) return b.values;
+      } else if (value >= b.werte.from && value <= b.werte.to) {
+        return b.values;
+      }
+    }
+    return null;
+  }
+
+  var dayBranches = paletteBranches("private fun dayPalette(hour: Int): LongArray = when (hour) {");
+  assertEq(dayBranches.length, 4, "vier Tageszeiten in Kotlin");
+  for (var hour = 0; hour < 24; hour++) {
+    assertEq(DotSkin.dayPalette(hour).join(","), paletteFor(dayBranches, hour).join(","),
+      "Tages-Palette Stunde " + hour);
+  }
+
+  var seasonBranches = paletteBranches("private fun seasonPalette(month: Int): LongArray = when (month) {");
+  assertEq(seasonBranches.length, 4, "vier Jahreszeiten in Kotlin");
+  for (var mo = 1; mo <= 12; mo++) {
+    assertEq(DotSkin.seasonPalette(mo).join(","), paletteFor(seasonBranches, mo).join(","),
+      "Jahreszeit-Palette Monat " + mo);
+  }
+
+  // Saison-Fenster: Monat, geforderte Tage und Bit muessen sich decken,
+  // sonst verdient das Web den Kuerbis im falschen Monat oder setzt das
+  // Bit des Herzens.
+  var seasonEnum = paintKt.slice(paintKt.indexOf("enum class Season("));
+  seasonEnum = seasonEnum.slice(0, seasonEnum.indexOf(";"));
+  var seasonRows = [], sm;
+  var seasonRe = /\n    (\w+)\(SkinId\.(\w+), (\d+), (\d+)\)/g;
+  while ((sm = seasonRe.exec(seasonEnum)) !== null) {
+    seasonRows.push({ skin: sm[2], month: parseInt(sm[3], 10), days: parseInt(sm[4], 10) });
+  }
+  assertEq(seasonRows.length, 4, "vier Saison-Eintraege in Kotlin");
+  assertEq(DotSkin.SEASONS.length, seasonRows.length, "gleich viele Saisons im Web");
+  seasonRows.forEach(function (row, i) {
+    var web = DotSkin.SEASONS[i];
+    assertEq(web.skin, row.skin, "Saison " + i + " gehoert zu " + row.skin);
+    assertEq(web.month, row.month, "Saison " + row.skin + " Monat");
+    assertEq(web.requiredDays, row.days, "Saison " + row.skin + " Tage");
+    // Season.bit ist 1 shl ordinal — die Reihenfolge ist das Bit.
+    assertEq(web.bit, 1 << i, "Saison " + row.skin + " Bit");
+    assertEq(DotSkin.seasonForMonth(row.month).skin, row.skin, "Monat " + row.month + " gehoert " + row.skin);
+  });
+  assertEq(DotSkin.seasonForMonth(1), null, "im Januar gibt es nichts zu verdienen");
+
+  /** Namen aus einem einzeiligen/mehrzeiligen when-Zweig von SkinPaint. */
+  function idsIn(head, stop) {
+    var block = paintKt.slice(paintKt.indexOf(head) + head.length);
+    block = block.slice(0, block.indexOf(stop));
+    return (block.match(/SkinId\.(\w+)/g) || []).map(function (s) { return s.slice(7); });
+  }
+
+  function webNames(pruefer) {
+    return DotSkin.SKINS.filter(pruefer).map(function (s) { return s.name; }).join(",");
+  }
+
+  assertEq(
+    webNames(DotSkin.isAnimated),
+    idsIn("fun isAnimated(id: SkinId): Boolean = when (id) {", "else -> false").join(","),
+    "dieselben bewegten Skins wie in Kotlin"
+  );
+  assertEq(
+    webNames(DotSkin.hasTrail),
+    idsIn("fun hasTrail(id: SkinId): Boolean =", "\n").join(","),
+    "dieselben Schweif-Skins wie in Kotlin"
+  );
+  assertEq(
+    webNames(DotSkin.isPatron),
+    idsIn("fun isPatron(id: SkinId): Boolean = when (id) {", "-> true").join(","),
+    "dieselben Goenner-Skins wie in Kotlin"
+  );
+  assertEq(
+    webNames(DotSkin.isSeasonal),
+    seasonRows.map(function (r) { return r.skin; }).join(","),
+    "dieselben Saison-Skins wie in Kotlin"
+  );
+  assertEq(
+    DotSkin.collectableCount(),
+    kotlinIds.length - seasonRows.length - 3,
+    "gleich viele sammelbare Skins wie in Kotlin"
+  );
+
+  assertEq(DotSkin.HEAT_SCORE,
+    parseInt((paintKt.match(/const val HEAT_SCORE = (\d+)/) || [])[1], 10),
+    "THERMO glueht bei derselben Punktzahl durch");
+  assertEq(DotSkin.TRAIL_STEPS,
+    parseInt((paintKt.match(/const val TRAIL_STEPS = (\d+)/) || [])[1], 10),
+    "gleich viele Schweif-Nachbilder");
+
+  // Medaillenstufe: dieselben Schwellen wie SkinPaint.medalTier.
+  var tierBlock = paintKt.slice(paintKt.indexOf("fun medalTier(score: Int): Int = when {"));
+  tierBlock = tierBlock.slice(0, tierBlock.indexOf("\n    }"));
+  var tierRe = /score >= (\d+) -> (\d+)/g;
+  var tierRows = [], tm;
+  while ((tm = tierRe.exec(tierBlock)) !== null) {
+    tierRows.push([parseInt(tm[1], 10), parseInt(tm[2], 10)]);
+  }
+  assertEq(tierRows.length, 4, "vier Medaillen-Schwellen in Kotlin");
+  tierRows.forEach(function (row) {
+    assertEq(DotSkin.medalTier(row[0]), row[1], "Stufe " + row[1] + " ab " + row[0]);
+    assertEq(DotSkin.medalTier(row[0] - 1), row[1] - 1, "unter " + row[0] + " noch Stufe " + (row[1] - 1));
+  });
+  assertEq(DotSkin.medalTier(0), 0, "ohne Punkte keine Medaille");
+  assertEq(DotSkin.MEDAL_COLORS.length, tierRows.length + 1, "eine Legierung je Stufe");
+
+  // Muster-Koordinaten: Die Listen im Web muessen Feld fuer Feld denselben
+  // Flecken treffen wie die Hilfsfunktionen in Kotlin.
+  function kotlinPairs(fn) {
+    var i = paintKt.indexOf("private fun " + fn + "(col: Int, row: Int): Boolean");
+    assert(i >= 0, "Hilfsfunktion " + fn + " gefunden");
+    var block = paintKt.slice(i, paintKt.indexOf("\n\n", i));
+    var out = [], pm;
+    var re = /\(col == (\d+) && row == (\d+)\)/g;
+    while ((pm = re.exec(block)) !== null) out.push(pm[1] + "," + pm[2]);
+    return out.join("|");
+  }
+
+  function webPairs(list) {
+    return list.map(function (p) { return p[0] + "," + p[1]; }).join("|");
+  }
+
+  var skinsSrc = fs.readFileSync(path.join(__dirname, "..", "js", "skins.js"), "utf8");
+  function webList(name) {
+    var m2 = skinsSrc.match(new RegExp("var " + name + " = (\\[[\\s\\S]*?\\]);\\n"));
+    assert(!!m2, "Liste " + name + " in skins.js gefunden");
+    return eval(m2[1]); // eslint-disable-line no-eval
+  }
+
+  [
+    ["isSeed", "MELON_SEEDS"], ["isDot", "MUSHROOM_DOTS"],
+    ["isRedPatch", "KOI_RED"], ["isOrangePatch", "KOI_ORANGE"],
+    ["isStar", "GALAXY_STARS"], ["isNebula", "GALAXY_NEBULA"],
+    ["isBallPatch", "BALL_PATCHES"], ["isSprinkle", "DONUT_SPRINKLES"],
+    ["isBolt", "BOLT"]
+  ].forEach(function (pair) {
+    assertEq(webPairs(webList(pair[1])), kotlinPairs(pair[0]),
+      "Muster " + pair[1] + " deckt sich mit " + pair[0]);
+  });
+
+  // Farb-Literale je Skin: Der Zweig in SkinPaint.cell und die cell-Funktion
+  // im Web muessen dieselben Farben nennen. Zweige ohne eigenes Literal
+  // (die einfarbigen, die body/shade nachschlagen) sind schon oben geprueft.
+  var cellStart = paintKt.indexOf("fun cell(id: SkinId, col: Int, row: Int, state: SkinState = SkinState()): Long {");
+  var cellBlock = paintKt.slice(cellStart, paintKt.indexOf("// ===== Muster-Details =====", cellStart));
+  var branchIds = [], branchBuf = "", branches = {};
+  function closeBranch() {
+    if (!branchIds.length) return;
+    var hexes = (branchBuf.match(/0x[Ff]{2}[0-9A-Fa-f]{6}/g) || [])
+      .map(function (h) { return "#" + h.slice(4).toUpperCase(); });
+    branchIds.forEach(function (id) { branches[id] = hexes; });
+  }
+  cellBlock.split("\n").forEach(function (line) {
+    // Ein Zweig beginnt erst, wenn der vorige seinen Pfeil hatte — die
+    // einfarbigen Skins teilen sich einen Kopf ueber zwei Zeilen.
+    var head = /^ {12}SkinId\./.test(line);
+    if (head && branchBuf.indexOf("->") >= 0) {
+      closeBranch();
+      branchIds = [];
+      branchBuf = "";
+    }
+    branchBuf += line + "\n";
+    if (branchIds.length === 0 && branchBuf.indexOf("->") >= 0) {
+      branchIds = (branchBuf.slice(0, branchBuf.indexOf("->")).match(/SkinId\.(\w+)/g) || [])
+        .map(function (s) { return s.slice(7); });
+    }
+  });
+  closeBranch();
+  assertEq(Object.keys(branches).length, kotlinIds.length, "jeder Skin hat einen Zweig in cell()");
+
+  var verglichen = 0;
+  Object.keys(branches).forEach(function (id) {
+    var kt = branches[id];
+    if (!kt.length) return; // einfarbig: holt body/shade aus den Tabellen
+    var web = (DotSkin.fromName(id).cell.toString().match(/#[0-9A-F]{6}/g) || []);
+    function unique(list) {
+      return list.filter(function (v, i) { return list.indexOf(v) === i; }).sort().join(",");
+    }
+    assertEq(unique(web), unique(kt), "Skin " + id + " nennt dieselben Farben wie SkinPaint");
+    verglichen++;
+  });
+  assert(verglichen >= 25, "genug Skin-Zweige verglichen (" + verglichen + ")");
 
   var m;
 

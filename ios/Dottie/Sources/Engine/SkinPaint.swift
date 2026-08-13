@@ -237,8 +237,8 @@ enum SkinPaint {
     private static func seasonPalette(_ month: Int) -> [UInt32] {
         switch month {
         case 3, 4, 5: return [0xFFB8D9, 0xE086B4, 0xFFFFFF, 5]
-        case 6, 7, 8: return [0x4EC0CA, 0x2E8E98, 0xFFF3B8, 7]
-        case 9, 10, 11: return [0xE08A3C, 0xB2571F, 0x7A3B1F, 4]
+        case 6, 7, 8: return [0xFFC93C, 0xE09218, 0xFFF6C0, 7]
+        case 9, 10, 11: return [0xC2551E, 0x8E3A14, 0xFFB84E, 4]
         default: return [0xDCF3FF, 0xA8C8DE, 0xFFFFFF, 6]
         }
     }
@@ -315,7 +315,7 @@ enum SkinPaint {
         case .thermo: return 0xFFD847
         case .medaille: return 0xC0C0C0
         case .tageszeit: return 0x8FD8FF
-        case .jahreszeit: return 0x4EC0CA
+        case .jahreszeit: return 0xFFC93C
         case .kuerbis: return 0xF5821F
         case .zuckerstange: return 0xE8452F
         case .herz: return 0xFF6FA8
@@ -362,7 +362,7 @@ enum SkinPaint {
         case .thermo: return 0xE0A400
         case .medaille: return 0x8F8F9C
         case .tageszeit: return 0x3D4A8C
-        case .jahreszeit: return 0x2E8E98
+        case .jahreszeit: return 0xE09218
         case .kuerbis: return 0xC25E10
         case .zuckerstange: return 0xC2301F
         case .herz: return 0xD6407E

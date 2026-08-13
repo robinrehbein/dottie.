@@ -211,7 +211,11 @@ class ScoreStore(context: Context) {
         val window = year * 100 + month
         val sameWindow = prefs.getInt(KEY_SEASON_WINDOW, 0) == window
         val daysSoFar = if (sameWindow) prefs.getInt(KEY_SEASON_DAYS, 0) else 0
-        val lastDay = if (sameWindow) prefs.getLong(KEY_SEASON_LAST_DAY, Long.MIN_VALUE) else Long.MIN_VALUE
+        val lastDay = if (sameWindow) {
+            prefs.getLong(KEY_SEASON_LAST_DAY, Long.MIN_VALUE)
+        } else {
+            Long.MIN_VALUE
+        }
         val days = if (lastDay == epochDay) daysSoFar else daysSoFar + 1
 
         editor.putInt(KEY_SEASON_WINDOW, window)

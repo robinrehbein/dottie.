@@ -55,21 +55,49 @@ Wachstum ein:
   und Twist-Abfolge. Gespeichert werden Tagesbest und die Tages-Serie
   („SERIE: 5 TAGE"); nur der erste Lauf des Tages schreibt die Serie
   fort, eine Lücke reißt sie.
-- **Skins**: 21 Punkt-Skins in drei Familien — einfarbige (Klassik,
+- **Skins**: 42 Punkt-Skins in sechs Familien — einfarbige (Klassik,
   Minze, Lava, Gold, Frost, Schatten, Prisma), gemusterte (Biene, Melone,
-  Fliegenpilz, Koi, Galaxie, Karo) und solche, die sich bewegen
-  (Regenbogen, Aurora, Magma, Neon, Chrom) oder auf den Lauf reagieren
-  (Chamäleon folgt der Himmelsstufe, Kombo lädt sich mit der
-  Perfekt-Serie auf, Tinte zieht einen Schweif). Freigeschaltet über
-  Rekord, beste Perfekt-Serie oder Daily-Serie; der Regenbogen kommt
+  Fliegenpilz, Koi, Galaxie, Karo, Ei, Tiger, Pinguin, Fussball, Donut),
+  bewegte (Regenbogen, Aurora, Magma, Neon, Chrom, Welle, Gewitter,
+  Konfetti, Disco, Holo) und reagierende (Chamäleon folgt der
+  Himmelsstufe, Kombo lädt sich mit der Perfekt-Serie auf, Tinte zieht
+  einen Schweif, Thermo glüht mit dem Score, Medaille wechselt mit der
+  Medaillenstufe die Legierung, Tageszeit und Jahreszeit folgen der Uhr
+  des Geräts). Dazu vier Saison- und drei Gönner-Skins, siehe unten.
+
+  Freigeschaltet wird über Rekord, beste Perfekt-Serie, Daily-Serie —
+  und seit v2.20 zusätzlich über **Ausdauer**: Anzahl Läufe, Punkte
+  insgesamt, gespielte Tage, verschiedene Monate. Der Grund: Vorher
+  hingen 14 von 21 Skins am Rekord, der letzte bei 60 Punkten. Wer bei
+  Rekord 25 stehenbleibt, sammelte nie wieder etwas; jetzt fällt der
+  erste zusätzliche Skin nach 25 Läufen. Der Regenbogen kommt weiterhin
   zuletzt, wenn alle anderen gesammelt sind. Auswahl über den
-  SKINS-Button, gesperrte Skins zeigen ihre Bedingung — und lassen sich
-  dort per freiwilligem Spot einen Tag lang ausprobieren (siehe
-  Monetarisierung).
+  SKINS-Button, nach Familien gegliedert; gesperrte Skins zeigen ihre
+  Bedingung — und lassen sich dort per freiwilligem Spot einen Tag lang
+  ausprobieren (siehe Monetarisierung).
+
+  **Saison-Skins** (Kürbis im Oktober, Zuckerstange im Dezember, Herz im
+  Februar, Osterei im April) sind nur in ihrem Monat verdienbar, dafür
+  danach für immer. Geprüft wird deshalb eine gespeicherte Maske und nie
+  der Kalender — sonst wäre der Kürbis im November wieder weg. Verpasst
+  ist nicht verloren, das Fenster kommt jedes Jahr wieder.
+
+  **Gönner-Skins** (Diamant, Phönix, Onyx) sind gekauft, nicht verdient.
+  Sie lösen keine Freischalt-Feier aus, zählen nicht im Sammlungsstand
+  und sind keine Bedingung für den Regenbogen — sonst hinge der Abschluss
+  der Sammlung am Konto statt am Spielen. Aus demselben Grund zählen
+  Saison-Skins ebenfalls nicht mit: Der Regenbogen soll nicht ein Jahr
+  auf einen Kalendermonat warten müssen.
 
   Farben und Schwellen liegen in `SkinPaint` (`:core`): Ein Skin ist dort
   eine Funktion über das 13x13-Raster des Vogels, kein Tripel aus drei
   Farben mehr — Android, Wear, PWA und iOS zeichnen alle dasselbe Raster.
+  Zwei Regeln sichert `:core` per Test ab: Kein Skin färbt sich flächig
+  wie die grüne Zielzone — mit zwei benannten Ausnahmen im Bestand, denn
+  die Schale der Melone trägt exakt GrassDark und Auroras Welle läuft
+  durch den Grünbereich, den der Regenbogen ausdrücklich überspringt —
+  und reagierende Skins schlüsseln ihren Frame über ihren Auslöser, damit
+  der Textur-Cache auf iOS überhaupt greift.
 - **Teilen**: Der TEILEN-Button im Game-Over rendert eine Score-Card
   als PNG (komplett im Code, wie alles hier) und öffnet den
   System-Share-Dialog — Score, Medaille, Skin und Daily-Serie inklusive.
@@ -221,10 +249,14 @@ Phone (`DailyChallenge` in `:core`), umgeschaltet über die Zeile
 Tages-Serie werden lokal geführt (nur der erste Lauf des Tages schreibt
 die Serie fort, eine Lücke reißt sie). Dazu alle Punkt-Skins mit den
 Freischalt-Bedingungen des Phones (gemeinsames Farbwerk in `:core`) —
-ein Tap auf die kleine Skin-Münze im Startscreen schaltet zyklisch zum
-nächsten freigeschalteten Skin.
-Rekord, Daily-Stand und Skin-Wahl werden lokal auf der Uhr gespeichert,
-getrennt vom Telefon-Store.
+ein Tap auf die kleine Skin-Münze im Startscreen öffnet eine scrollbare
+Liste aller freigeschalteten Skins (Drehkrone schiebt den Cursor Skin für
+Skin weiter, Tap auf eine Zeile wählt direkt). Die Gönner-Skins bleiben
+auf der Uhr gesperrt — dort gibt es kein Billing.
+Rekord, Daily-Stand, Skin-Wahl und die Ausdauer-Zähler (Läufe,
+Punktesumme, Tage, Monate, Saison-Fortschritt) werden lokal auf der Uhr
+gespeichert, getrennt vom Telefon-Store — die Uhr schaltet ihre Skins
+also auch ohne Telefon frei.
 Auf Uhren mit Zusatztasten (z. B. dem Quick-Button der Galaxy Watch Ultra)
 lässt sich statt per Touch auch per Tastendruck tappen — praktisch, weil
 der Finger beim Timing sonst genau die Zielzone verdeckt.

@@ -154,6 +154,7 @@
       if (getInt("season_window") !== key) {
         setInt("season_window", key);
         days = 0;
+        setInt("season_days", 0);
         setInt("season_last_day", 0);
       }
       if (getInt("season_last_day") !== epochDay) {
