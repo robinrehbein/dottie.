@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.19.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.20.
 
 ## Checkliste
 
@@ -354,6 +354,26 @@ App ihn beim Start selbst wieder her (`queryPurchases`), ein
 kostenlos über **Einstellungen → Lizenztests** (Lizenz-Tester kaufen
 zum Preis 0) — der Kauf funktioniert erst, wenn die App über einen
 Play-Track installiert wurde, nicht per `adb install`.
+
+### 4b. Versteckte Diagnose-Zeile beim Gerätetest
+
+Ein **langer Druck auf den Titel „DOTTIE."** im Startbildschirm blendet
+den Klartext-Zustand von Werbung und Kauf ein; nochmal drücken blendet
+ihn wieder aus. Nötig, weil von außen alle Fehlerbilder identisch
+aussehen — nämlich nach gar nichts:
+
+| Anzeige | Bedeutung |
+|---|---|
+| `WERBUNG: aus — keine IDs` | `ads.xml` ist leer |
+| `WERBUNG: keine Einwilligung — SDK nicht gestartet` | In AdMob fehlt eine **veröffentlichte** DSGVO-Mitteilung (Datenschutz & Mitteilungen → Europäische Verordnungen). Häufigster Fall, und der Grund, warum dann auch das Anzeigenprüftool nicht aufs Schütteln reagiert. |
+| `WERBUNG: Spot: … (Code 3)` | „No fill" — alles richtig eingebaut, Google hat nur keine Anzeige. Bei frischen Anzeigenblöcken stundenlang normal. |
+| `KAUF: keine Play-Verbindung (Code 3)` | App nicht über Play installiert (seitlich installierte APK) |
+| `KAUF: Produkt nicht gefunden (Code …)` | Produkt fehlt, ist inaktiv oder wurde gerade erst angelegt — die Abfrage findet es erst nach einigen Stunden |
+| `KAUF: kaufbar für 1,99 €` | alles in Ordnung |
+
+Die Zeile nennt außerdem Versionsname und -code, damit beim Test nie
+unklar ist, welcher Build gerade läuft. Normale Spieler finden sie nicht:
+Niemand drückt lange auf eine Überschrift.
 
 ### 5. Data-Safety und Anzeigen-Label in der Play Console
 

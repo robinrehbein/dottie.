@@ -32,8 +32,9 @@ android {
         // verschiedene Staende faelschlich fuer dieselbe Fassung.
         //
         // v2.19: Abgleich mit der Uhr ueber den Wearable Data Layer.
-        versionCode = 30
-        versionName = "2.19"
+        // v2.20: Versteckte Diagnose-Zeile (langer Druck auf den Titel).
+        versionCode = 31
+        versionName = "2.20"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -94,6 +95,10 @@ android {
     }
     buildFeatures {
         compose = true
+        // Fuer die versteckte Diagnose-Zeile: Sie nennt Versionsname und
+        // -code, damit beim Geraetetest nie wieder unklar ist, welcher
+        // Build gerade laeuft.
+        buildConfig = true
     }
 }
 

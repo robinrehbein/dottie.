@@ -80,6 +80,16 @@ class AdsManager(
     var privacyOptionsRequired by mutableStateOf(false)
         private set
 
+    /**
+     * Klartext-Zustand für die versteckte Diagnose-Zeile (langer Druck auf
+     * den Titel). Von außen sieht "keine Einwilligung" genauso aus wie
+     * "keine Anzeige verfügbar" — nämlich nach gar nichts. Ohne Rechner
+     * und Logcat ist das sonst nicht auseinanderzuhalten, und genau daran
+     * ist beim Gerätetest schon zweimal eine Stunde draufgegangen.
+     */
+    var status by mutableStateOf(if (activity == null) "keine Activity" else "nicht gestartet")
+        private set
+
     private var rewarded: RewardedAd? = null
     private var interstitial: InterstitialAd? = null
     private var started = false
@@ -93,8 +103,12 @@ class AdsManager(
      * hier entscheidet sich, ob Google überhaupt kontaktiert wird.
      */
     fun start() {
+        if (!configured) { status = "aus — keine IDs"; return }
+        if (store.adsRemoved) { status = "aus — gekauft"; return }
         if (!enabled || activity == null || started) return
         started = true
+        status = "frage Einwilligung ab"
+
         try {
             requestConsentThenInitialize(activity)
         } catch (t: Throwable) {
@@ -120,12 +134,14 @@ class AdsManager(
                     if (formError != null) {
                         Log.w(TAG, "Consent-Formular: ${formError.message}")
                     }
+                    if (formError != null) status = "Consent-Formular: ${formError.message}"
                     updatePrivacyOptionsRequired()
                     initializeIfAllowed()
                 }
             },
             { requestError ->
                 Log.w(TAG, "Consent-Abfrage: ${requestError.message}")
+                status = "Consent-Abfrage fehlgeschlagen: ${requestError.message}"
                 updatePrivacyOptionsRequired()
                 initializeIfAllowed()
             }
@@ -167,15 +183,23 @@ class AdsManager(
         if (!enabled || activity == null) return
         if (consentInformation?.canRequestAds() != true) {
             Log.i(TAG, "Kein Consent für Anzeigen — es bleibt werbefrei")
+            // Der haeufigste Stolperstein: In AdMob fehlt eine
+            // veroeffentlichte DSGVO-Mitteilung, dann gibt es kein
+            // Formular, der Status bleibt "erforderlich" und das SDK
+            // startet nie — auch das Anzeigenprueftool reagiert dann nicht.
+            status = "keine Einwilligung — SDK nicht gestartet"
             return
         }
         try {
+            status = "SDK startet"
             MobileAds.initialize(activity) {
+                status = "SDK bereit"
                 loadRewarded()
                 loadInterstitial()
             }
         } catch (t: Throwable) {
             Log.w(TAG, "MobileAds-Init fehlgeschlagen", t)
+            status = "SDK-Start fehlgeschlagen"
         }
     }
 
@@ -191,11 +215,16 @@ class AdsManager(
                 override fun onAdLoaded(ad: RewardedAd) {
                     rewarded = ad
                     rewardedReady = true
+                    status = "Spot bereit"
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     rewarded = null
                     rewardedReady = false
+                    // "No fill" (Code 3) heisst: alles richtig eingebaut,
+                    // Google hat nur gerade keine Anzeige. Bei frischen
+                    // Anzeigenbloecken stundenlang der Normalfall.
+                    status = "Spot: ${error.message} (Code ${error.code})"
                     Log.i(TAG, "Rewarded nicht geladen: ${error.message}")
                 }
             }

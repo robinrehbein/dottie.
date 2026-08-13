@@ -196,7 +196,14 @@ internal fun ReadyOverlay(
     // Widerruf der Werbe-Einwilligung. Google blendet die Zeile selbst
     // nur dort ein, wo sie nötig ist (im Wesentlichen die EU).
     privacyVisible: Boolean = false,
-    onPrivacy: () -> Unit = {}
+    onPrivacy: () -> Unit = {},
+    // Versteckte Diagnose: langer Druck auf den Titel blendet den
+    // Klartext-Zustand von Werbung und Kauf ein. Nach aussen sieht
+    // "keine Einwilligung" genauso aus wie "keine Anzeige verfuegbar" —
+    // ohne Rechner ist das sonst nicht auseinanderzuhalten. Ein langer
+    // Druck auf eine Ueberschrift passiert niemandem versehentlich.
+    diagnostics: String? = null,
+    onToggleDiagnostics: () -> Unit = {}
 ) {
     val blink by rememberInfiniteTransition(label = "blink").animateFloat(
         initialValue = 1f,
@@ -260,7 +267,10 @@ internal fun ReadyOverlay(
                 text = "DOTTIE.",
                 style = ScoreShadowStyle,
                 fontSize = 64.sp,
-                color = Color.White
+                color = Color.White,
+                modifier = Modifier.pointerInput(Unit) {
+                    detectTapGestures(onLongPress = { onToggleDiagnostics() })
+                }
             )
             if (bestScore > 0) {
                 Text(
@@ -268,6 +278,16 @@ internal fun ReadyOverlay(
                     style = ScoreShadowStyle,
                     fontSize = 22.sp,
                     color = Color.White
+                )
+            }
+            if (diagnostics != null) {
+                Text(
+                    text = diagnostics,
+                    fontFamily = Bytesized,
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.85f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 6.dp, start = 16.dp, end = 16.dp)
                 )
             }
         }

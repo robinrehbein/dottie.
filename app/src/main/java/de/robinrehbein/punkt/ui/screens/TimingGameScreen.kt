@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.BuildConfig
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.ads.AdsManager
 import de.robinrehbein.punkt.billing.BillingManager
@@ -194,6 +195,8 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         mutableStateOf(store.skinPassFor(LocalDate.now().toEpochDay()))
     }
     var showSkins by remember { mutableStateOf(false) }
+    // Versteckte Diagnose-Zeile (langer Druck auf den Titel).
+    var showDiagnostics by remember { mutableStateOf(false) }
     var skinUnlockedThisRun by remember { mutableStateOf(false) }
     var newMedalThisRun by remember { mutableStateOf(false) }
     var dailyBestToday by remember {
@@ -527,7 +530,15 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 removeAdsPrice = if (ads.enabled) billing.priceLabel else null,
                 onRemoveAds = { (context as? Activity)?.let { billing.purchase(it) } },
                 privacyVisible = ads.enabled && ads.privacyOptionsRequired,
-                onPrivacy = { (context as? Activity)?.let { ads.showPrivacyOptions(it) } }
+                onPrivacy = { (context as? Activity)?.let { ads.showPrivacyOptions(it) } },
+                diagnostics = if (showDiagnostics) {
+                    "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n" +
+                        "WERBUNG: ${ads.status}\n" +
+                        "KAUF: ${billing.status}"
+                } else {
+                    null
+                },
+                onToggleDiagnostics = { showDiagnostics = !showDiagnostics }
             )
             TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
                 ScoreHud(
