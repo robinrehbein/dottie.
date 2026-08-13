@@ -200,8 +200,8 @@ portiert, offline spielbar (Service Worker). Auf iPhones ist das der
 kostenlose Verteilweg: Safari → Teilen → „Zum Home-Bildschirm".
 Der Workflow `deploy-pages.yml` veröffentlicht sie bei jedem Push auf
 `main` nach GitHub Pages:
-**<https://robinrehbein.github.io/dottie./>** (Datenschutzerklärung
-unter `/datenschutz/`). Tests: `node web/tests/run-tests.js`.
+**<https://dottie.robinrehbein.de/>** (Datenschutzerklärung unter
+`/datenschutz/`). Tests: `node web/tests/run-tests.js`.
 
 ## Wear-OS-Prototyp (experimentell)
 

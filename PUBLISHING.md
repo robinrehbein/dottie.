@@ -81,13 +81,30 @@ sie zusammen mit der Web-PWA über den Workflow
 `.github/workflows/deploy-pages.yml` (läuft bei jedem Push auf `main`,
 der `web/` oder `docs/` ändert):
 
-- `https://robinrehbein.github.io/dottie./` → das Spiel (Web-PWA)
-- `https://robinrehbein.github.io/dottie./datenschutz/` → die
+- `https://dottie.robinrehbein.de/` → das Spiel (Web-PWA)
+- `https://dottie.robinrehbein.de/datenschutz/` → die
   Datenschutzerklärung — **diese URL** im Play-Listing als
   Datenschutz-URL eintragen
 
-Einmalige Voraussetzung: Repo → **Settings → Pages** → Source
-„GitHub Actions" (geht nur bei öffentlichem Repo oder mit GitHub Pro).
+Einmalige Voraussetzungen:
+
+1. Repo → **Settings → Pages** → Source „GitHub Actions" (geht nur bei
+   öffentlichem Repo oder mit GitHub Pro).
+2. Beim DNS-Anbieter von `robinrehbein.de` einen **CNAME-Eintrag**
+   anlegen: Name `dottie`, Ziel `robinrehbein.github.io.` (mit Punkt am
+   Ende, falls der Anbieter das verlangt).
+3. Repo → **Settings → Pages → Custom domain** auf
+   `dottie.robinrehbein.de` setzen und **Enforce HTTPS** ankreuzen,
+   sobald GitHub das Zertifikat ausgestellt hat (dauert nach dem
+   DNS-Eintrag einige Minuten bis Stunden).
+
+Die Datei `_site/CNAME` schreibt der Workflow selbst — sie muss im
+veröffentlichten Verzeichnis liegen, nicht im Repo-Wurzelverzeichnis,
+weil beim Deployment über Actions ausschließlich das Artefakt
+ausgeliefert wird.
+
+Die alte Adresse `robinrehbein.github.io/dottie./` leitet nach der
+Umstellung automatisch auf die neue um.
 
 Vorher die Kontakt-E-Mail in `docs/index.html` prüfen/anpassen — sie
 wird öffentlich sichtbar.
@@ -288,33 +305,27 @@ Zum Ausprobieren gibt es Googles Test-IDs (sie stehen als Kommentar in
 `ads.xml`): Sie zeigen echte Test-Anzeigen, dürfen aber **nie** in ein
 Store-Release — Klicks auf echte Anzeigen im Eigentest ebenso wenig.
 
-### 3. app-ads.txt — ehrlich betrachtet
+### 3. app-ads.txt
 
-AdMob empfiehlt eine `app-ads.txt` auf der Website, die im Play-Listing
-als Entwickler-Website steht. Sie beweist Käufern, dass unser Inventar
-echt ist. Der Haken bei uns:
+Die Datei beweist Anzeigen-Käufern, dass unser Werbeplatz echt ist —
+ohne sie fällt ein Teil der Nachfrage weg, weil manche Käufer
+ausschließlich auf verifiziertes Inventar bieten.
 
-- Unsere Store-Website ist **<https://robinrehbein.github.io/dottie./>** —
-  das ist ein **Projekt-Pages-Pfad**, kein eigener Host.
-- Die Datei muss aber im **Root der Domain** liegen, also unter
-  `https://robinrehbein.github.io/app-ads.txt`. Ein
-  `…/dottie./app-ads.txt` wird von den Crawlern ignoriert.
-- Dafür bräuchte es ein **eigenes Repository namens
-  `robinrehbein.github.io`** (User-Pages), in dessen Root die Datei
-  liegt. Alternativ eine eigene Domain (z. B. `dottie.app`) als
-  Entwickler-Website eintragen und die Datei dort ablegen.
-
-**Ohne `app-ads.txt` läuft AdMob trotzdem.** Es fällt nur ein Teil der
-Nachfrage weg (manche Käufer bieten ausschließlich auf verifiziertes
-Inventar), der eTPM ist also etwas niedriger. Für den Start ist das
-verkraftbar — die Datei lässt sich jederzeit nachreichen. Ihr Inhalt ist
-eine einzige Zeile; für dieses Konto lautet sie:
+Sie liegt als `web/app-ads.txt` im Repo und wird damit unter
+`https://dottie.robinrehbein.de/app-ads.txt` ausgeliefert. Inhalt:
 
 ```
 google.com, pub-1786159152036324, DIRECT, f08c47fec0942fa0
 ```
 
-(AdMob zeigt dieselbe Zeile unter **Apps → app-ads.txt** an.)
+Damit Googles Crawler sie findet, muss im Play-Listing als
+**Entwickler-Website** genau `https://dottie.robinrehbein.de/`
+eingetragen sein: Gesucht wird immer im Wurzelverzeichnis dieses Hosts.
+Mit dem früheren Projekt-Pages-Pfad ging das nicht — deshalb war die
+Datei bis zur eigenen Domain nicht möglich.
+
+Nach dem Eintragen prüft AdMob unter **Apps → app-ads.txt**, ob die
+Datei erkannt wurde; das dauert bis zu ein paar Tage.
 
 ### 4. In-App-Produkt „remove_ads" anlegen
 

@@ -1,5 +1,6 @@
 # Veröffentlicht die Web-PWA (web/) plus Datenschutzerklärung auf
-# GitHub Pages. Voraussetzung: Settings → Pages → Source "GitHub Actions".
+# GitHub Pages unter der eigenen Domain dottie.robinrehbein.de.
+# Voraussetzung: Settings → Pages → Source "GitHub Actions".
 #
 # Site-Layout:
 #   /            -> das Spiel (web/, Cache-First-Service-Worker)
@@ -52,6 +53,11 @@ jobs:
           cp docs/index.html _site/datenschutz/index.html
           # Pages soll die Dateien 1:1 ausliefern, kein Jekyll-Build
           touch _site/.nojekyll
+          # Eigene Domain. Die Datei muss im veröffentlichten Verzeichnis
+          # liegen, nicht im Repo-Wurzelverzeichnis: Beim Deployment über
+          # Actions wird ausschließlich das Artefakt ausgeliefert, ein
+          # CNAME daneben im Repo bliebe wirkungslos.
+          echo "dottie.robinrehbein.de" > _site/CNAME
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
