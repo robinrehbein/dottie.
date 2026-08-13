@@ -32,6 +32,21 @@
   var bannerState = { timeLeft: 0, priority: 0, lastStage: 0, recordCelebrated: false };
   var runState = { epochDay: 0, maxPerfect: 0 };
 
+  /**
+   * Die Geräte-Uhr, aus der sich TAGESZEIT und JAHRESZEIT kleiden und an
+   * der die Ausdauer-Zähler hängen. Bewusst bei jedem Zugriff frisch
+   * gelesen: Eine PWA läuft über Mitternacht hinweg weiter.
+   */
+  function clockNow() {
+    var now = new Date();
+    return {
+      hour: now.getHours(),
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+      epochDay: DailyChallenge.todayEpochDay()
+    };
+  }
+
   var dailyMode = false;
   var isNewRecord = false;
   var taunt = "";
@@ -172,8 +187,19 @@
 
   function buildSkinList() {
     var stats = ScoreStore.stats();
+    var clock = clockNow();
     el.skinList.innerHTML = "";
     DotSkin.SKINS.forEach(function (s) {
+      // 42 Skins am Stück sind eine Wand — die Familien-Überschriften
+      // teilen die Liste in Abschnitte, durch die man scrollen kann.
+      var familyKey = DotSkin.familyTitleKey(s);
+      if (familyKey) {
+        var heading = document.createElement("div");
+        heading.className = "skin-family";
+        heading.textContent = t(familyKey);
+        el.skinList.appendChild(heading);
+      }
+
       var unlocked = DotSkin.isUnlocked(s, stats);
       var row = document.createElement("div");
       row.className = "skin-row" + (unlocked ? "" : " locked");
@@ -190,7 +216,9 @@
       var chipCtx = chip.getContext("2d");
       chipCtx.scale(chipDpr, chipDpr);
       chipCtx.globalAlpha = unlocked ? 1 : 0.3;
-      Renderer.drawSkinPreview(chipCtx, chipSize, s);
+      // Mit der Uhr im Zustand: TAGESZEIT und JAHRESZEIT zeigen in der
+      // Vorschau dasselbe Kleid, das sie auch im Lauf tragen würden.
+      Renderer.drawSkinPreview(chipCtx, chipSize, s, clock);
       chipCtx.globalAlpha = 1;
       row.appendChild(chip);
 
@@ -206,6 +234,10 @@
         sub.classList.add("selected");
       } else if (unlocked) {
         sub.textContent = t("skin_tap_select");
+      } else if (DotSkin.isPatron(s)) {
+        // Im Web gibt es kein Billing: Die Gönner-Skins bleiben sichtbar,
+        // aber gesperrt — mit dem Hinweis, wo es sie gibt.
+        sub.textContent = t(s.hintKey) + " — " + t("skin_patron_web_only");
       } else {
         sub.textContent = s.hintKey ? t(s.hintKey) : "";
       }
@@ -428,7 +460,10 @@
           var previousBest = ScoreStore.bestScore;
           newMedalThisRun = MedalTier.isUpgrade(game.score, previousBest);
           var unlockedBefore = DotSkin.unlockedCount(ScoreStore.stats());
-          isNewRecord = ScoreStore.submitRun(game.score);
+          var clock = clockNow();
+          isNewRecord = ScoreStore.submitRun(
+            game.score, clock.epochDay, clock.year, clock.month
+          );
           ScoreStore.submitPerfectStreak(runState.maxPerfect);
           if (dailyMode) {
             ScoreStore.submitDailyRun(runState.epochDay, game.score);
@@ -538,7 +573,7 @@
     }
 
     syncUI();
-    Renderer.drawWorld(ctx, canvas.width, canvas.height, game, fx, skin);
+    Renderer.drawWorld(ctx, canvas.width, canvas.height, game, fx, skin, clockNow());
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

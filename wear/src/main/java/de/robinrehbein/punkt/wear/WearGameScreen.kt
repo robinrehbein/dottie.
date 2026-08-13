@@ -1,12 +1,14 @@
 package de.robinrehbein.punkt.wear
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,8 +24,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
+import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.TimingGame
 import kotlinx.coroutines.isActive
 
@@ -36,6 +41,12 @@ private val WearCelebrateGold = Color(0xFFFFE95E)
 
 /** Über diese Restzeit blendet das Rekord-Banner am Ende weich aus. */
 private const val BANNER_FADE_SECONDS = 0.4f
+
+/**
+ * Abdunklung hinter dem Skin-Wähler. Nicht ganz deckend: Die Bahn dahinter
+ * bleibt als Kontext sichtbar, die Namen bleiben trotzdem lesbar.
+ */
+private val WearScrim = Color(0xF00E1018)
 
 /**
  * Wear-OS-Version von "STOPP": Classic- und Daily-Modus aus :core plus
@@ -82,7 +93,12 @@ internal fun WearGameScreen(controller: WearGameController) {
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 controller.frameTick // Frame-Abhängigkeit: erzwingt Neuzeichnen.
-                drawWearWorld(controller.game, controller.skin)
+                drawWearWorld(
+                    game = controller.game,
+                    skin = controller.skin,
+                    hour = controller.clockHour,
+                    month = controller.clockMonth
+                )
             }
 
             when (controller.phase) {
@@ -96,7 +112,9 @@ internal fun WearGameScreen(controller: WearGameController) {
                     dailyStreak = controller.dailyStreak,
                     onToggleMode = { controller.toggleDailyMode() },
                     skin = controller.skin,
-                    onCycleSkin = { controller.cycleSkin() }
+                    hour = controller.clockHour,
+                    month = controller.clockMonth,
+                    onOpenSkins = { controller.openSkinPicker() }
                 )
                 TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
                     WearRunningOverlay(
@@ -120,7 +138,141 @@ internal fun WearGameScreen(controller: WearGameController) {
                     onToggleMode = { controller.toggleDailyMode() }
                 )
             }
+
+            // Der Wähler liegt über allem: Sein eigener Tap-Handler
+            // schluckt den ganzflächigen Start-Tap der Parent-Box, damit
+            // ein Griff daneben nicht mitten in der Auswahl einen Lauf
+            // startet.
+            if (controller.skinPickerOpen) {
+                WearSkinPicker(
+                    skins = controller.unlockedSkins,
+                    selected = controller.skin,
+                    collected = controller.collectedSkins,
+                    hour = controller.clockHour,
+                    month = controller.clockMonth,
+                    onPick = { controller.chooseSkin(it) },
+                    onClose = { controller.closeSkinPicker() }
+                )
+            }
         }
+    }
+}
+
+/**
+ * Skin-Wähler: eine scrollbare Liste aller freigeschalteten Skins.
+ *
+ * Warum keine Durchtipp-Münze mehr: Mit 42 Skins wäre "einen weiter je
+ * Tap" im Schnitt ein Dutzend Taps für einen bestimmten Skin, und man
+ * sähe dabei nie, was noch kommt. In der Liste ist jeder sichtbare Skin
+ * genau einen Tap entfernt, und die Kopfzeile zeigt nebenbei den
+ * Sammlungsstand.
+ *
+ * Bedienbar bleibt sie auf jedem Weg: Wischen scrollt, die Drehkrone
+ * schiebt den Cursor Skin für Skin weiter (MainActivity leitet sie
+ * dorthin um, solange der Wähler offen ist — der Rotary-Tap wäre hier
+ * sinnlos), und ein Tap neben der Liste oder auf die letzte Zeile
+ * schließt. Der Cursor wählt sofort sichtbar aus; festgeschrieben wird
+ * beim Schließen (siehe WearGameController).
+ */
+@Composable
+private fun WearSkinPicker(
+    skins: List<WearDotSkin>,
+    selected: WearDotSkin,
+    collected: Int,
+    hour: Int,
+    month: Int,
+    onPick: (WearDotSkin) -> Unit,
+    onClose: () -> Unit
+) {
+    val listState = rememberScalingLazyListState()
+    val cursor = skins.indexOf(selected).coerceAtLeast(0)
+    // Die Liste zieht dem Cursor nach, damit die Auswahl bei Krone und
+    // beim Öffnen nie außerhalb des Bildes steht (+1 für die Kopfzeile).
+    LaunchedEffect(cursor) { listState.animateScrollToItem(cursor + 1) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(WearScrim)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onClose() })
+            }
+    ) {
+        ScalingLazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            item {
+                Text(
+                    text = stringResource(
+                        R.string.skins,
+                        collected,
+                        SkinPaint.collectableCount()
+                    ),
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 13.sp,
+                    fontFamily = WearBytesized
+                )
+            }
+            items(skins.size) { index ->
+                val entry = skins[index]
+                WearSkinRow(
+                    skin = entry,
+                    selected = entry == selected,
+                    hour = hour,
+                    month = month,
+                    onPick = { onPick(entry) }
+                )
+            }
+            item {
+                Text(
+                    text = stringResource(R.string.back),
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 13.sp,
+                    fontFamily = WearBytesized,
+                    modifier = Modifier
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { onClose() })
+                        }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Eine Zeile des Wählers: Vorschau-Münze plus Name. Der Name der
+ * Aufzählung IST die Bezeichnung — die Uhr ist einsprachig (siehe
+ * WearDotSkin). Der gewählte Skin steht in Gold, das reicht als Marke und
+ * spart ein Häkchen-Symbol auf einer ohnehin schmalen Zeile.
+ */
+@Composable
+private fun WearSkinRow(
+    skin: WearDotSkin,
+    selected: Boolean,
+    hour: Int,
+    month: Int,
+    onPick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            // Tap-Fläche über die ganze Zeilenbreite inkl. Polster — auf
+            // dem kleinen Display zählt jedes zusätzliche Pixel Ziel.
+            .pointerInput(skin) {
+                detectTapGestures(onTap = { onPick() })
+            }
+            .padding(horizontal = 16.dp, vertical = 7.dp)
+    ) {
+        Canvas(modifier = Modifier.size(18.dp)) {
+            drawWearSkinCoin(skin, hour, month)
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = skin.name,
+            color = if (selected) WearDotBody else Color.White,
+            fontSize = 14.sp,
+            fontFamily = WearBytesized
+        )
     }
 }
 
@@ -135,7 +287,9 @@ private fun WearReadyOverlay(
     dailyStreak: Int,
     onToggleMode: () -> Unit,
     skin: WearDotSkin,
-    onCycleSkin: () -> Unit
+    hour: Int,
+    month: Int,
+    onOpenSkins: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -193,19 +347,19 @@ private fun WearReadyOverlay(
             // Up-Event, dadurch feuert der ganzflächige Start-Tap der
             // Parent-Box hier nicht mit. Das Padding liegt INNERHALB des
             // pointerInput-Knotens und vergrößert so die Tap-Fläche.
-            // Der Skin-Wechsel läuft über die Vorschau-Münze statt über den
-            // (in READY weiter kreisenden) Vogel — ein bewegtes Ziel wäre
-            // auf dem kleinen Display kaum zu treffen.
+            // Die Vorschau-Münze zeigt den gewählten Skin und öffnet den
+            // Wähler — nicht der (in READY weiter kreisende) Vogel: ein
+            // bewegtes Ziel wäre auf dem kleinen Display kaum zu treffen.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
                         .pointerInput(Unit) {
-                            detectTapGestures(onTap = { onCycleSkin() })
+                            detectTapGestures(onTap = { onOpenSkins() })
                         }
                         .padding(6.dp)
                 ) {
                     Canvas(modifier = Modifier.size(16.dp)) {
-                        drawWearSkinCoin(skin)
+                        drawWearSkinCoin(skin, hour, month)
                     }
                 }
                 Text(

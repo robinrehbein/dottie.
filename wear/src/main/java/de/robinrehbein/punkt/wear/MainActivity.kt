@@ -107,7 +107,12 @@ class MainActivity : ComponentActivity() {
             KeyEvent.KEYCODE_STEM_1,
             KeyEvent.KEYCODE_STEM_2,
             KeyEvent.KEYCODE_STEM_3 -> {
-                if (event == null || event.repeatCount == 0) controller.tap()
+                if (event == null || event.repeatCount == 0) {
+                    // Im Skin-Wähler bestätigt die Taste die Auswahl,
+                    // statt einen Lauf zu starten — sonst käme man mit
+                    // Krone und Taste allein nie wieder heraus.
+                    if (controller.skinPickerOpen) controller.closeSkinPicker() else controller.tap()
+                }
                 true
             }
             else -> super.onKeyDown(keyCode, event)
@@ -149,11 +154,20 @@ class MainActivity : ComponentActivity() {
                 if (sign(delta) != sign(rotaryAccumulated)) rotaryAccumulated = 0f
                 rotaryAccumulated += delta
                 if (abs(rotaryAccumulated) >= ROTARY_UNITS_PER_TAP) {
+                    val steps = sign(rotaryAccumulated).toInt()
                     rotaryAccumulated = 0f
-                    val now = SystemClock.elapsedRealtime()
-                    if (now - lastRotaryTapMs >= ROTARY_TAP_DEBOUNCE_MS) {
-                        lastRotaryTapMs = now
-                        controller.tap()
+                    if (controller.skinPickerOpen) {
+                        // Im Wähler ist die Krone kein Tap, sondern der
+                        // Cursor: eine Raste = ein Skin weiter. Ohne
+                        // Entprellung — hier ist ein Schritt zu viel
+                        // folgenlos, im Lauf wäre er ein Fehl-Tap.
+                        controller.moveSkinCursor(steps)
+                    } else {
+                        val now = SystemClock.elapsedRealtime()
+                        if (now - lastRotaryTapMs >= ROTARY_TAP_DEBOUNCE_MS) {
+                            lastRotaryTapMs = now
+                            controller.tap()
+                        }
                     }
                 }
             }

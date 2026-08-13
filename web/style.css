@@ -477,6 +477,20 @@ body {
 
 #skin-list { width: 100%; }
 
+/* Familien-Überschrift: gliedert die 42 Skins in sechs Abschnitte, damit
+   die Liste beim Scrollen nicht zu einer Wand wird. Tonfall wie die
+   Twist-Überschrift im Hilfe-Overlay. */
+.skin-family {
+  align-self: flex-start;
+  font-size: 16px;
+  color: var(--accent);
+  text-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--outline);
+  padding: 0 48px;
+  margin: 14px 0 4px;
+}
+
+#skin-list > .skin-family:first-child { margin-top: 0; }
+
 .skin-row {
   display: flex;
   align-items: center;

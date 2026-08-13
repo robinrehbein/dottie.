@@ -13,9 +13,11 @@ import de.robinrehbein.punkt.R
  * gemusterte, animierte und auf den Lauf reagierende Skins möglich, ohne
  * dass die Renderer Sonderfälle kennen.
  *
- * Freischaltungen hängen an dauerhaften Leistungen (Rekord, beste
- * Perfekt-Serie, Daily-Serie), nie an Käufen — Sammeln ist die Belohnung
- * fürs Spielen.
+ * Freischaltungen hängen an dauerhaften Leistungen (Rekord, Serien,
+ * Ausdauer) — Sammeln ist die Belohnung fürs Spielen. Die drei
+ * Gönner-Skins sind die einzige Ausnahme, und sie bleiben deshalb
+ * konsequent draußen: keine Feier, kein Sammlungsstand, keine Bedingung
+ * für den REGENBOGEN.
  */
 enum class DotSkin(
     val id: SkinId,
@@ -37,6 +39,11 @@ enum class DotSkin(
     KOI(SkinId.KOI, R.string.skin_koi, R.string.skin_hint_koi),
     GALAXIE(SkinId.GALAXIE, R.string.skin_galaxie, R.string.skin_hint_galaxie),
     KARO(SkinId.KARO, R.string.skin_karo, R.string.skin_hint_karo),
+    EI(SkinId.EI, R.string.skin_ei, R.string.skin_hint_ei),
+    TIGER(SkinId.TIGER, R.string.skin_tiger, R.string.skin_hint_tiger),
+    PINGUIN(SkinId.PINGUIN, R.string.skin_pinguin, R.string.skin_hint_pinguin),
+    FUSSBALL(SkinId.FUSSBALL, R.string.skin_fussball, R.string.skin_hint_fussball),
+    DONUT(SkinId.DONUT, R.string.skin_donut, R.string.skin_hint_donut),
 
     // Bewegt
     REGENBOGEN(SkinId.REGENBOGEN, R.string.skin_regenbogen, R.string.skin_hint_regenbogen),
@@ -44,11 +51,32 @@ enum class DotSkin(
     MAGMA(SkinId.MAGMA, R.string.skin_magma, R.string.skin_hint_magma),
     NEON(SkinId.NEON, R.string.skin_neon, R.string.skin_hint_neon),
     CHROM(SkinId.CHROM, R.string.skin_chrom, R.string.skin_hint_chrom),
+    WELLE(SkinId.WELLE, R.string.skin_welle, R.string.skin_hint_welle),
+    GEWITTER(SkinId.GEWITTER, R.string.skin_gewitter, R.string.skin_hint_gewitter),
+    KONFETTI(SkinId.KONFETTI, R.string.skin_konfetti, R.string.skin_hint_konfetti),
+    DISCO(SkinId.DISCO, R.string.skin_disco, R.string.skin_hint_disco),
+    HOLO(SkinId.HOLO, R.string.skin_holo, R.string.skin_hint_holo),
 
     // Reagierend
     CHAMAELEON(SkinId.CHAMAELEON, R.string.skin_chamaeleon, R.string.skin_hint_chamaeleon),
     KOMBO(SkinId.KOMBO, R.string.skin_kombo, R.string.skin_hint_kombo),
-    TINTE(SkinId.TINTE, R.string.skin_tinte, R.string.skin_hint_tinte);
+    TINTE(SkinId.TINTE, R.string.skin_tinte, R.string.skin_hint_tinte),
+    THERMO(SkinId.THERMO, R.string.skin_thermo, R.string.skin_hint_thermo),
+    MEDAILLE(SkinId.MEDAILLE, R.string.skin_medaille, R.string.skin_hint_medaille),
+    TAGESZEIT(SkinId.TAGESZEIT, R.string.skin_tageszeit, R.string.skin_hint_tageszeit),
+    JAHRESZEIT(SkinId.JAHRESZEIT, R.string.skin_jahreszeit, R.string.skin_hint_jahreszeit),
+
+    // Saison — nur im eigenen Monat verdienbar, dann für immer
+    KUERBIS(SkinId.KUERBIS, R.string.skin_kuerbis, R.string.skin_hint_kuerbis),
+    ZUCKERSTANGE(SkinId.ZUCKERSTANGE, R.string.skin_zuckerstange, R.string.skin_hint_zuckerstange),
+    HERZ(SkinId.HERZ, R.string.skin_herz, R.string.skin_hint_herz),
+    OSTEREI(SkinId.OSTEREI, R.string.skin_osterei, R.string.skin_hint_osterei),
+
+    // Gönner — gekauft, nicht verdient: Der "Hinweis" ist deshalb kein
+    // Ziel, sondern der Kauf selbst.
+    DIAMANT(SkinId.DIAMANT, R.string.skin_diamant, R.string.skin_hint_goenner),
+    PHOENIX(SkinId.PHOENIX, R.string.skin_phoenix, R.string.skin_hint_goenner),
+    ONYX(SkinId.ONYX, R.string.skin_onyx, R.string.skin_hint_goenner);
 
     /** Stellvertreter-Farben für Münzen, Prägung und Score-Karte. */
     val body: Long get() = SkinPaint.body(id)
@@ -66,11 +94,65 @@ enum class DotSkin(
     /** Braucht das Auge eine Kontur zum Körper hin? Siehe SkinPaint. */
     val needsEyeOutline: Boolean get() = SkinPaint.needsEyeOutline(id)
 
-    /** Dauerhafte Bestleistungen, gegen die Freischaltungen geprüft werden. */
+    /** Saison-Skin — nur in seinem Monat verdienbar, danach für immer. */
+    val isSeasonal: Boolean get() = SkinPaint.isSeasonal(id)
+
+    /** Gekaufter Gönner-Skin (kein Verdienst, keine Feier). */
+    val isPatron: Boolean get() = SkinPaint.isPatron(id)
+
+    /** Zählt für den Sammlungsstand — und damit für den REGENBOGEN. */
+    val countsForCollection: Boolean get() = SkinPaint.countsForCollection(id)
+
+    /**
+     * Familie für die Gliederung des Skin-Menüs. Bei 42 Skins ist eine
+     * ungegliederte Liste nicht mehr lesbar; die Einteilung folgt genau
+     * den Blöcken von [SkinId] in :core, damit beide Seiten dieselbe
+     * Ordnung erzählen.
+     */
+    val family: Family get() = when (this) {
+        KLASSIK, MINZE, LAVA, GOLD, FROST, SCHATTEN, PRISMA -> Family.EINFARBIG
+        BIENE, MELONE, PILZ, KOI, GALAXIE, KARO,
+        EI, TIGER, PINGUIN, FUSSBALL, DONUT -> Family.GEMUSTERT
+        REGENBOGEN, AURORA, MAGMA, NEON, CHROM,
+        WELLE, GEWITTER, KONFETTI, DISCO, HOLO -> Family.BEWEGT
+        CHAMAELEON, KOMBO, TINTE,
+        THERMO, MEDAILLE, TAGESZEIT, JAHRESZEIT -> Family.REAGIEREND
+        KUERBIS, ZUCKERSTANGE, HERZ, OSTEREI -> Family.SAISON
+        DIAMANT, PHOENIX, ONYX -> Family.GOENNER
+    }
+
+    /** Überschriften des Skin-Menüs. */
+    enum class Family(@StringRes val titleRes: Int) {
+        EINFARBIG(R.string.skin_family_solid),
+        GEMUSTERT(R.string.skin_family_pattern),
+        BEWEGT(R.string.skin_family_moving),
+        REAGIEREND(R.string.skin_family_reactive),
+        SAISON(R.string.skin_family_season),
+        GOENNER(R.string.skin_family_patron)
+    }
+
+    /**
+     * Alles, woraus Freischaltungen entstehen. Die ersten drei Werte sind
+     * Bestleistungen (Können), die folgenden Ausdauer (Menge) — wer nie
+     * Rekord 60 sieht, sammelt über die Ausdauer-Achsen trotzdem weiter.
+     *
+     * Alle neuen Felder tragen einen Standardwert: Aufrufer, die nur
+     * Bestleistungen kennen (Tests, Vorschauen), bleiben so gültig.
+     */
     data class Stats(
         val bestScore: Int,
         val bestPerfectStreak: Int,
-        val bestDailyStreak: Int
+        val bestDailyStreak: Int,
+        val runCount: Int = 0,
+        val totalScore: Int = 0,
+        /** Kalendertage mit mindestens einem Lauf. */
+        val daysPlayed: Int = 0,
+        /** ANZAHL der Monate mit Lauf, nicht die Maske (siehe ScoreStore). */
+        val monthsPlayed: Int = 0,
+        /** Bitmaske der verdienten Saison-Skins (siehe Season.bit in :core). */
+        val seasonEarned: Int = 0,
+        /** Gönner-Paket gekauft — schaltet nur die Gönner-Familie frei. */
+        val patronOwned: Boolean = false
     )
 
     /**
@@ -90,12 +172,40 @@ enum class DotSkin(
         isUnlocked(stats) || this == pass
 
     companion object {
-        private fun Stats.toPaint() = SkinStats(bestScore, bestPerfectStreak, bestDailyStreak)
+        private fun Stats.toPaint() = SkinStats(
+            bestScore = bestScore,
+            bestPerfectStreak = bestPerfectStreak,
+            bestDailyStreak = bestDailyStreak,
+            runCount = runCount,
+            totalScore = totalScore,
+            daysPlayed = daysPlayed,
+            monthsPlayed = monthsPlayed,
+            seasonEarned = seasonEarned,
+            patronOwned = patronOwned
+        )
 
         /** Skin zu einem gespeicherten Namen, KLASSIK als Fallback. */
         fun fromName(name: String?): DotSkin =
             entries.firstOrNull { it.name == name } ?: KLASSIK
 
-        fun unlockedCount(stats: Stats): Int = entries.count { it.isUnlocked(stats) }
+        /**
+         * Sammlungsstand: nur Skins, die für die Sammlung zählen — Saison
+         * und Gönner bleiben außen vor (siehe SkinPaint.unlockedCount).
+         * An dieser Zahl hängt auch die Bedingung des REGENBOGEN.
+         */
+        fun unlockedCount(stats: Stats): Int = SkinPaint.unlockedCount(stats.toPaint())
+
+        /** Wie viele Skins der Sammlungsstand insgesamt erreichen kann. */
+        fun collectableCount(): Int = SkinPaint.collectableCount()
+
+        /**
+         * Wie viele Skins VERDIENT sind — Saison zählt mit, Gönner nicht.
+         * Genau daran hängt die "NEUER SKIN FREIGESCHALTET!"-Feier: Ein
+         * Saison-Skin ist Anwesenheit und darf gefeiert werden, ein
+         * gekaufter ist es nicht. [unlockedCount] taugt dafür nicht, weil
+         * es Saison-Skins bewusst nicht mitzählt.
+         */
+        fun earnedCount(stats: Stats): Int =
+            entries.count { !it.isPatron && it.isUnlocked(stats) }
     }
 }

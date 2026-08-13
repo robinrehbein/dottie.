@@ -127,16 +127,20 @@ enum PixelArt {
     }
 
     /// Kleine Skin-Vorschau für die Auswahl: nur der Körper im Muster des
-    /// Skins, ohne Gesicht — bei 36 Punkten wäre es sonst Matsch.
+    /// Skins, ohne Gesicht — bei 36 Punkten wäre es sonst Matsch. Bewegte
+    /// Skins stehen still (Zeitpunkt 0), Uhr und Kalender kommen aber vom
+    /// Gerät: TAGESZEIT und JAHRESZEIT sollen in der Auswahl das Kleid
+    /// zeigen, das sie im Lauf gerade tragen.
     static func skinPreviewTexture(skin: DotSkin, size: CGFloat) -> SKTexture {
         let d = max(size, 8)
+        let state = SkinPaint.State.now()
         return texture(size: CGSize(width: d, height: d)) { ctx in
             pixelCircle(
                 ctx,
                 rect: CGRect(x: 0, y: 0, width: d, height: d),
                 outline: Palette.outline
             ) { col, row in
-                UIColor(rgb: skin.cell(col, row))
+                UIColor(rgb: skin.cell(col, row, state))
             }
         }
     }

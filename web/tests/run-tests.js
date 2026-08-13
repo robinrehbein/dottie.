@@ -346,6 +346,12 @@ function driveToZoneAndTap(game) {
 
 // ===== DotSkin / MedalTier =====
 (function () {
+  /** Ein Stand, der alles verdient hat, was sich verdienen laesst. */
+  var alles = {
+    bestScore: 80, bestPerfectStreak: 15, bestDailyStreak: 21,
+    runCount: 300, totalScore: 5000, daysPlayed: 7, monthsPlayed: 3
+  };
+
   var none = { bestScore: 0, bestPerfectStreak: 0, bestDailyStreak: 0 };
   assertEq(DotSkin.unlockedCount(none), 1, "nur KLASSIK am Anfang");
   assertEq(DotSkin.unlockedCount({ bestScore: 10, bestPerfectStreak: 0, bestDailyStreak: 0 }), 2, "MINZE ab Rekord 10");
@@ -356,26 +362,70 @@ function driveToZoneAndTap(game) {
   assertEq(DotSkin.unlockedCount({ bestScore: 0, bestPerfectStreak: 0, bestDailyStreak: 3 }), 2, "PRISMA ab Daily-Serie 3");
   assertEq(DotSkin.unlockedCount({ bestScore: 40, bestPerfectStreak: 4, bestDailyStreak: 3 }), 10, "Bestand plus Muster");
   assertEq(
-    DotSkin.unlockedCount({ bestScore: 60, bestPerfectStreak: 12, bestDailyStreak: 14 }),
-    DotSkin.SKINS.length,
-    "alle " + DotSkin.SKINS.length + " Skins"
+    DotSkin.unlockedCount(alles),
+    DotSkin.collectableCount(),
+    "alle " + DotSkin.collectableCount() + " sammelbaren Skins"
   );
+  assertEq(DotSkin.collectableCount(), DotSkin.SKINS.length - 7,
+    "Saison (4) und Goenner (3) zaehlen nicht fuer die Sammlung");
+
+  // Gekauft ist nicht verdient: Das Goenner-Paket oeffnet drei Skins,
+  // bewegt den Sammlungsstand aber um keinen Zaehler.
+  var mitPaket = Object.assign({}, alles, { patronOwned: true });
+  assertEq(DotSkin.unlockedCount(mitPaket), DotSkin.collectableCount(),
+    "Goenner-Skins zaehlen nicht im Sammlungsstand");
+  ["DIAMANT", "PHOENIX", "ONYX"].forEach(function (name) {
+    assert(!DotSkin.isUnlocked(DotSkin.fromName(name), alles), name + " bleibt ohne Paket zu");
+    assert(DotSkin.isUnlocked(DotSkin.fromName(name), mitPaket), name + " oeffnet mit Paket");
+  });
+
+  // Saison: nur die Maske oeffnet, und sie oeffnet genau ihren Skin.
+  DotSkin.SEASONS.forEach(function (season) {
+    var skin = DotSkin.fromName(season.skin);
+    assert(!DotSkin.isUnlocked(skin, alles), season.skin + " bleibt ohne Bit zu");
+    assert(DotSkin.isUnlocked(skin, { seasonEarned: season.bit }), season.skin + " oeffnet mit seinem Bit");
+    DotSkin.SEASONS.forEach(function (other) {
+      if (other === season) return;
+      assert(!DotSkin.isUnlocked(DotSkin.fromName(other.skin), { seasonEarned: season.bit }),
+        season.skin + "-Bit oeffnet nicht " + other.skin);
+    });
+  });
+  assertEq(DotSkin.unlockedCount({ seasonEarned: 15 }), 1,
+    "alle Saison-Bits aendern den Sammlungsstand nicht");
+
+  // Die Ausdauer-Achsen zaehlen unabhaengig vom Rekord.
+  assert(DotSkin.isUnlocked(DotSkin.fromName("EI"), { runCount: 25 }), "EI ab 25 Laeufen");
+  assert(!DotSkin.isUnlocked(DotSkin.fromName("EI"), { runCount: 24 }), "EI nicht bei 24 Laeufen");
+  assert(DotSkin.isUnlocked(DotSkin.fromName("DONUT"), { totalScore: 1000 }), "DONUT ab 1000 Punkten");
+  assert(!DotSkin.isUnlocked(DotSkin.fromName("DONUT"), { totalScore: 999 }), "DONUT nicht bei 999");
+  assert(DotSkin.isUnlocked(DotSkin.fromName("TAGESZEIT"), { daysPlayed: 7 }), "TAGESZEIT ab 7 Tagen");
+  assert(DotSkin.isUnlocked(DotSkin.fromName("JAHRESZEIT"), { monthsPlayed: 3 }), "JAHRESZEIT ab 3 Monaten");
 
   // Der Regenbogen kommt erst, wenn alles andere offen ist.
   var fastAlles = { bestScore: 999, bestPerfectStreak: 99, bestDailyStreak: 13 };
   assert(!DotSkin.isUnlocked(DotSkin.fromName("REGENBOGEN"), fastAlles), "Regenbogen wartet auf Aurora");
   assert(
-    DotSkin.isUnlocked(DotSkin.fromName("REGENBOGEN"), { bestScore: 60, bestPerfectStreak: 12, bestDailyStreak: 14 }),
-    "Regenbogen schliesst die Sammlung ab"
+    !DotSkin.isUnlocked(DotSkin.fromName("REGENBOGEN"),
+      { bestScore: 999, bestPerfectStreak: 99, bestDailyStreak: 99 }),
+    "Regenbogen wartet auch auf die Ausdauer-Skins"
   );
+  assert(DotSkin.isUnlocked(DotSkin.fromName("REGENBOGEN"), alles),
+    "Regenbogen schliesst die Sammlung ab");
+  assert(DotSkin.isUnlocked(DotSkin.fromName("REGENBOGEN"),
+    Object.assign({}, alles, { seasonEarned: 0, patronOwned: false })),
+    "Regenbogen haengt nicht an Saison und Goennern");
 
   // Jedes Feld jedes Skins liefert eine gueltige Farbe — auch bewegte und
-  // reagierende, in jedem Zustand.
+  // reagierende, in jedem Zustand (inklusive aller Stunden und Monate).
   var zustaende = [
     undefined,
     { elapsed: 0.4, score: 0, perfectStreak: 0 },
     { elapsed: 2.7, score: 33, perfectStreak: 4 },
-    { elapsed: 9.9, score: 99, perfectStreak: 12 }
+    { elapsed: 9.9, score: 99, perfectStreak: 12 },
+    { elapsed: 1.3, score: 12, perfectStreak: 2, hour: 0, month: 1 },
+    { elapsed: 4.6, score: 45, perfectStreak: 6, hour: 7, month: 4 },
+    { elapsed: 7.2, score: 21, perfectStreak: 1, hour: 18, month: 10 },
+    { elapsed: 20.5, score: 80, perfectStreak: 9, hour: 23, month: 12 }
   ];
   var felder = 0;
   DotSkin.SKINS.forEach(function (s) {
@@ -402,7 +452,8 @@ function driveToZoneAndTap(game) {
   assertEq(
     DotSkin.SKINS.filter(function (s) { return DotSkin.needsEyeOutline(s); })
       .map(function (s) { return s.name; }).join(","),
-    "PILZ,KOI,KARO,CHROM",
+    "PILZ,KOI,KARO,EI,PINGUIN,FUSSBALL,DONUT,CHROM,WELLE,KONFETTI,DISCO," +
+      "ZUCKERSTANGE,HERZ,OSTEREI,DIAMANT",
     "Augen-Kontur trifft dieselben Skins wie in Kotlin"
   );
 
@@ -695,14 +746,21 @@ function driveToZoneAndTap(game) {
   var felder2 = {
     "stats.bestScore": "bestScore",
     "stats.bestPerfectStreak": "bestPerfectStreak",
-    "stats.bestDailyStreak": "bestDailyStreak"
+    "stats.bestDailyStreak": "bestDailyStreak",
+    "stats.runCount": "runCount",
+    "stats.totalScore": "totalScore",
+    "stats.daysPlayed": "daysPlayed",
+    "stats.monthsPlayed": "monthsPlayed"
   };
   var geprueft = 0;
   Object.keys(regeln).forEach(function (id) {
-    var rm = regeln[id].match(/(stats\.\w+) >= (\d+)/);
-    if (!rm) return; // KLASSIK (immer offen) und REGENBOGEN (Sammlung)
+    // Kotlin schreibt grosse Schwellen als 1_000 — der Unterstrich gehoert
+    // zur Zahl, sonst laese der Test hier eine 1.
+    var rm = regeln[id].match(/(stats\.\w+) >= ([\d_]+)/);
+    if (!rm) return; // KLASSIK, REGENBOGEN, Saison und Goenner
     var feld = felder2[rm[1]];
-    var schwelle = parseInt(rm[2], 10);
+    assert(!!feld, "Achse " + rm[1] + " ist im Web bekannt");
+    var schwelle = parseInt(rm[2].replace(/_/g, ""), 10);
     var skin = DotSkin.fromName(id);
     function stats(wert) {
       var st = { bestScore: 0, bestPerfectStreak: 0, bestDailyStreak: 0 };
@@ -713,7 +771,10 @@ function driveToZoneAndTap(game) {
     assert(DotSkin.isUnlocked(skin, stats(schwelle)), "Skin " + id + " oeffnet bei " + schwelle);
     geprueft++;
   });
-  assertEq(geprueft, kotlinIds.length - 2, "alle Schwellen ausser Klassik und Regenbogen geprueft");
+  // Ohne Schwelle bleiben KLASSIK (immer offen), REGENBOGEN (Sammlung),
+  // die vier Saison- und die drei Goenner-Skins.
+  assertEq(geprueft, kotlinIds.length - 9,
+    "alle Schwellen ausser Klassik, Regenbogen, Saison und Goenner geprueft");
 
   var m;
 

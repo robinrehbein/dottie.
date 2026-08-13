@@ -123,6 +123,58 @@
 "skin_hint_kombo" = "8 PERFECTS IN A ROW";
 "skin_hint_tinte" = "BEST 55";
 
+/* Familien-Ueberschriften im Skin-Menue */
+"skin_family_solid" = "SOLID";
+"skin_family_pattern" = "PATTERNED";
+"skin_family_animated" = "ANIMATED";
+"skin_family_reactive" = "REACTIVE";
+"skin_family_season" = "SEASONAL";
+"skin_family_patron" = "PATRON";
+
+/* Skins ab v2.20 */
+"skin_ei" = "EGG";
+"skin_tiger" = "TIGER";
+"skin_pinguin" = "PENGUIN";
+"skin_fussball" = "FOOTBALL";
+"skin_donut" = "DONUT";
+"skin_welle" = "WAVE";
+"skin_gewitter" = "STORM";
+"skin_konfetti" = "CONFETTI";
+"skin_disco" = "DISCO";
+"skin_holo" = "HOLO";
+"skin_thermo" = "THERMO";
+"skin_medaille" = "MEDAL";
+"skin_tageszeit" = "DAYTIME";
+"skin_jahreszeit" = "SEASON";
+"skin_kuerbis" = "PUMPKIN";
+"skin_zuckerstange" = "CANDY CANE";
+"skin_herz" = "HEART";
+"skin_osterei" = "EASTER EGG";
+"skin_diamant" = "DIAMOND";
+"skin_phoenix" = "PHOENIX";
+"skin_onyx" = "ONYX";
+"skin_hint_ei" = "25 RUNS";
+"skin_hint_tiger" = "100 RUNS";
+"skin_hint_pinguin" = "BEST 65";
+"skin_hint_fussball" = "300 RUNS";
+"skin_hint_donut" = "1,000 POINTS TOTAL";
+"skin_hint_welle" = "BEST 70";
+"skin_hint_gewitter" = "15 PERFECTS IN A ROW";
+"skin_hint_konfetti" = "5,000 POINTS TOTAL";
+"skin_hint_disco" = "DAILY STREAK: 21 DAYS";
+"skin_hint_holo" = "BEST 80";
+"skin_hint_thermo" = "BEST 75";
+"skin_hint_medaille" = "200 RUNS";
+"skin_hint_tageszeit" = "PLAYED ON 7 DAYS";
+"skin_hint_jahreszeit" = "PLAYED IN 3 MONTHS";
+"skin_hint_kuerbis" = "OCTOBER: PLAY ON 5 DAYS";
+"skin_hint_zuckerstange" = "DECEMBER: PLAY ON 5 DAYS";
+"skin_hint_herz" = "FEBRUARY: PLAY ON 3 DAYS";
+"skin_hint_osterei" = "APRIL: PLAY ON 5 DAYS";
+"skin_hint_diamant" = "PATRON PACK";
+"skin_hint_phoenix" = "PATRON PACK";
+"skin_hint_onyx" = "PATRON PACK";
+
 /* Tages-Erinnerung */
 "notif_title" = "Your Daily Challenge is waiting!";
 "notif_text" = "Today's pattern is ready. One tap decides.";

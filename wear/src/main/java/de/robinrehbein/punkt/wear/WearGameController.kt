@@ -1,6 +1,8 @@
 package de.robinrehbein.punkt.wear
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.os.SystemClock
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -8,9 +10,12 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.robinrehbein.punkt.game.DailyChallenge
+import de.robinrehbein.punkt.game.Season
+import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SyncState
 import de.robinrehbein.punkt.game.TimingGame
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /** SharedPreferences-Datei und -Schlüssel für den lokalen Uhren-Rekord. */
 private const val PREFS_NAME = "punkt_wear"
@@ -31,14 +36,35 @@ private const val KEY_DAILY_BEST = "daily_best"
 private const val KEY_DAILY_DAY = "daily_day"
 private const val KEY_DAILY_STREAK = "daily_streak"
 
-/**
- * Nur für den Abgleich mit dem Telefon: Wann der Skin zuletzt bewusst
- * gewechselt wurde, und die Lauf-Zahl des Telefons. Die Uhr zählt ihre
- * Läufe selbst nicht — sie trägt den Wert nur weiter, damit er beim
- * Hin- und Herschicken nicht verloren geht.
- */
+/** Wann der Skin zuletzt bewusst gewechselt wurde — nur für den Abgleich. */
 private const val KEY_SKIN_CHANGED = "skin_changed_at"
+
+/**
+ * Ausdauer-Zähler. Sie hängen nicht am Können und sind der einzige Weg,
+ * auf dem nach dem letzten Rekord noch Skins dazukommen (EI, TIGER,
+ * DONUT, TAGESZEIT ...). Die Uhr zählt sie seit den neuen Skins selbst,
+ * statt sie nur vom Telefon durchzureichen — sonst wären die Ausdauer-
+ * Skins auf einer Uhr ohne Telefon unerreichbar.
+ *
+ * [KEY_MONTHS_PLAYED] ist eine 12-Bit-Maske (Bit 0 = Januar): Derselbe
+ * Monat in zwei Jahren darf nicht doppelt zählen.
+ */
 private const val KEY_RUNS = "run_count"
+private const val KEY_TOTAL_SCORE = "total_score"
+private const val KEY_DAYS_PLAYED = "days_played"
+private const val KEY_LAST_PLAYED_DAY = "last_played_day"
+private const val KEY_MONTHS_PLAYED = "months_played"
+
+/**
+ * Saison: [KEY_SEASON_EARNED] ist die dauerhafte Maske (Season.bit) und
+ * wird nie wieder gelöscht. Die drei anderen sind nur der Fortschritt im
+ * laufenden Fenster — Schlüssel Jahr*100+Monat, damit der Zähler im
+ * nächsten Oktober von vorn anfängt.
+ */
+private const val KEY_SEASON_EARNED = "season_earned"
+private const val KEY_SEASON_WINDOW = "season_window"
+private const val KEY_SEASON_DAYS = "season_days"
+private const val KEY_SEASON_LAST_DAY = "season_last_day"
 
 /**
  * Zustands-Holder außerhalb der Composition. MainActivity braucht ihn in
@@ -99,6 +125,34 @@ internal class WearGameController(context: Context) {
     var skin by mutableStateOf(WearDotSkin.fromName(prefs.getString(KEY_SKIN, null)))
         private set
 
+    /** Ist der Skin-Wähler offen? Nur aus dem READY-Overlay erreichbar. */
+    var skinPickerOpen by mutableStateOf(false)
+        private set
+
+    /**
+     * Die aktuell wählbaren Skins, beim Öffnen des Wählers einmal aus den
+     * Ständen abgeleitet. Während der Wähler offen ist, ändert sich daran
+     * nichts — es läuft ja gerade kein Versuch.
+     */
+    var unlockedSkins by mutableStateOf(listOf(WearDotSkin.KLASSIK))
+        private set
+
+    /** Sammlungsstand für die Kopfzeile des Wählers (ohne Saison/Gönner). */
+    var collectedSkins by mutableIntStateOf(0)
+        private set
+
+    /**
+     * Stunde (0-23) und Monat (1-12) der Geräte-Uhr — TAGESZEIT und
+     * JAHRESZEIT ziehen daraus ihr Kleid. Höchstens minütlich frisch
+     * geholt: Ein LocalDateTime.now() je Frame wäre für diese Auflösung
+     * nur Müll für den Sammler.
+     */
+    var clockHour = 12
+        private set
+    var clockMonth = 6
+        private set
+    private var clockCheckedAt = 0L
+
     /** Beste jemals erreichte Perfekt-Serie (für Skin-Freischaltungen). */
     private var bestPerfectStreak = prefs.getInt(KEY_BEST_PERFECT, 0)
 
@@ -129,6 +183,17 @@ internal class WearGameController(context: Context) {
     init {
         audio.muted = !soundOn
         refreshDailyDisplay()
+        refreshClock(force = true)
+    }
+
+    /** Stunde und Monat nachziehen, höchstens einmal je CLOCK_REFRESH_MS. */
+    private fun refreshClock(force: Boolean = false) {
+        val now = SystemClock.elapsedRealtime()
+        if (!force && now - clockCheckedAt < CLOCK_REFRESH_MS) return
+        clockCheckedAt = now
+        val stamp = LocalDateTime.now()
+        clockHour = stamp.hour
+        clockMonth = stamp.monthValue
     }
 
     /**
@@ -164,30 +229,82 @@ internal class WearGameController(context: Context) {
         refreshDailyDisplay()
     }
 
+    // ===== Skin-Wahl =====
+
     /**
-     * Nächster freigeschalteter Skin (zyklisch), gesperrte werden über-
-     * sprungen. Die Freischaltungen werden wie am Phone bei jedem Aufruf
-     * frisch aus den Bestleistungen abgeleitet — ein neuer Rekord macht
-     * einen Skin also ab sofort wählbar, ganz ohne Unlock-Popup. Für die
-     * Daily-Serie zählt der gespeicherte Stand (nicht die Anzeige-
-     * Vorschau), exakt wie stats() im Phone-Store.
+     * Alle Stände, aus denen sich Freischaltungen ableiten — wie stats()
+     * im Phone-Store. Für die Daily-Serie zählt der gespeicherte Stand,
+     * nicht die Anzeige-Vorschau (die fällt nach einer Lücke auf 0).
+     *
+     * patronOwned bleibt false: Auf der Uhr gibt es kein Billing, die
+     * Gönner-Skins bleiben hier gesperrt. Sie können nur über den
+     * Abgleich mit dem Telefon dazukommen — dann steht der gekaufte Skin
+     * als gewählter Skin im Stand, und applySync übernimmt ihn.
      */
-    fun cycleSkin() {
-        val stats = WearDotSkin.Stats(
-            bestScore = bestScore,
-            bestPerfectStreak = bestPerfectStreak,
-            bestDailyStreak = prefs.getInt(KEY_DAILY_STREAK, 0)
-        )
-        val unlocked = WearDotSkin.entries.filter { it.isUnlocked(stats) }
-        if (unlocked.size <= 1) return
-        skin = unlocked[(unlocked.indexOf(skin) + 1) % unlocked.size]
+    private fun skinStats(): WearDotSkin.Stats = WearDotSkin.Stats(
+        bestScore = bestScore,
+        bestPerfectStreak = bestPerfectStreak,
+        bestDailyStreak = prefs.getInt(KEY_DAILY_STREAK, 0),
+        runCount = prefs.getInt(KEY_RUNS, 0),
+        totalScore = prefs.getInt(KEY_TOTAL_SCORE, 0),
+        daysPlayed = prefs.getInt(KEY_DAYS_PLAYED, 0),
+        // SkinStats will die ANZAHL der Monate, nicht die Maske.
+        monthsPlayed = Integer.bitCount(prefs.getInt(KEY_MONTHS_PLAYED, 0)),
+        seasonEarned = prefs.getInt(KEY_SEASON_EARNED, 0)
+    )
+
+    /**
+     * Öffnet den Skin-Wähler. Die Liste wird hier einmal frisch aus den
+     * Ständen abgeleitet — ein neuer Rekord macht einen Skin also ab dem
+     * nächsten Öffnen wählbar, ganz ohne Unlock-Popup.
+     */
+    fun openSkinPicker() {
+        val stats = skinStats()
+        unlockedSkins = WearDotSkin.entries.filter { it.isUnlocked(stats) }
+        collectedSkins = SkinPaint.unlockedCount(stats.toSkinStats())
+        skinPickerOpen = true
+    }
+
+    /** Ein Tap auf eine Zeile: Skin übernehmen und den Wähler schließen. */
+    fun chooseSkin(next: WearDotSkin) {
+        previewSkin(next)
+        closeSkinPicker()
+    }
+
+    /**
+     * Krone im Wähler: Cursor um [steps] Skins weiter, zyklisch. Der Skin
+     * wird sofort sichtbar, aber noch nicht festgeschrieben — siehe
+     * [closeSkinPicker].
+     */
+    fun moveSkinCursor(steps: Int) {
+        val list = unlockedSkins
+        if (list.size <= 1) return
+        val at = list.indexOf(skin).coerceAtLeast(0)
+        previewSkin(list[((at + steps) % list.size + list.size) % list.size])
+    }
+
+    /** Zeigt einen Skin an, ohne ihn zu speichern. */
+    private fun previewSkin(next: WearDotSkin) {
+        if (next == skin) return
+        skin = next
+        // Kurzes Klick-Feedback, damit der Wechsel auch haptisch ankommt.
+        haptics.hit()
+    }
+
+    /**
+     * Schließt den Wähler und schreibt die Wahl fest — erst hier, nicht
+     * bei jedem Rasten der Krone: Sonst ginge für jeden übersprungenen
+     * Skin ein Abgleich ans Telefon raus, und der Zeitstempel des letzten
+     * Wechsels wäre der eines Skins, den niemand gewählt hat.
+     */
+    fun closeSkinPicker() {
+        skinPickerOpen = false
+        if (skin.name == prefs.getString(KEY_SKIN, null)) return
         prefs.edit()
             .putString(KEY_SKIN, skin.name)
             .putLong(KEY_SKIN_CHANGED, System.currentTimeMillis())
             .apply()
         onStateChanged?.invoke()
-        // Kurzes Klick-Feedback, damit der Wechsel auch haptisch ankommt.
-        haptics.hit()
     }
 
     /** Schaltet den Ton um und merkt sich die Wahl in den Prefs. */
@@ -220,6 +337,13 @@ internal class WearGameController(context: Context) {
         dailyDay = prefs.getLong(KEY_DAILY_DAY, 0L),
         dailyBest = prefs.getInt(KEY_DAILY_BEST, 0),
         dailyStreak = prefs.getInt(KEY_DAILY_STREAK, 0),
+        totalScore = prefs.getInt(KEY_TOTAL_SCORE, 0),
+        daysPlayed = prefs.getInt(KEY_DAYS_PLAYED, 0),
+        lastPlayedDay = prefs.getLong(KEY_LAST_PLAYED_DAY, 0L),
+        // Hier die MASKE, nicht der Zähler: SyncState verodert sie mit der
+        // des Telefons, damit kein Monat verlorengeht (siehe SyncState).
+        monthsPlayed = prefs.getInt(KEY_MONTHS_PLAYED, 0),
+        seasonEarned = prefs.getInt(KEY_SEASON_EARNED, 0),
         skin = skin.name,
         skinChangedAt = prefs.getLong(KEY_SKIN_CHANGED, 0L)
     )
@@ -247,14 +371,35 @@ internal class WearGameController(context: Context) {
             editor.putInt(KEY_DAILY_BEST, state.dailyBest)
             editor.putInt(KEY_DAILY_STREAK, state.dailyStreak)
         }
+        if (state.totalScore > before.totalScore) {
+            editor.putInt(KEY_TOTAL_SCORE, state.totalScore)
+        }
+        if (state.daysPlayed > before.daysPlayed) editor.putInt(KEY_DAYS_PLAYED, state.daysPlayed)
+        if (state.lastPlayedDay > before.lastPlayedDay) {
+            editor.putLong(KEY_LAST_PLAYED_DAY, state.lastPlayedDay)
+        }
+        // Masken werden verodert statt maximiert — jede Seite kennt
+        // Monate und Saison-Erfolge, die die andere nie gesehen hat.
+        val months = before.monthsPlayed or state.monthsPlayed
+        if (months != before.monthsPlayed) editor.putInt(KEY_MONTHS_PLAYED, months)
+        val seasons = before.seasonEarned or state.seasonEarned
+        if (seasons != before.seasonEarned) editor.putInt(KEY_SEASON_EARNED, seasons)
         if (state.skinChangedAt > before.skinChangedAt) {
             editor.putLong(KEY_SKIN_CHANGED, state.skinChangedAt)
-            // Freischaltungen leitet die Uhr aus den Bestleistungen ab —
-            // mit den zusammengeführten Zahlen, nicht mit den alten.
+            // Freischaltungen leitet die Uhr aus den Ständen ab — mit den
+            // zusammengeführten Zahlen, nicht mit den alten. patronOwned
+            // bleibt auch hier false: Wählt das Telefon einen Gönner-Skin,
+            // behält die Uhr ihren eigenen, statt einen Kauf zu zeigen,
+            // von dem sie nichts weiß.
             val merged = WearDotSkin.Stats(
                 bestScore = maxOf(state.bestScore, before.bestScore),
                 bestPerfectStreak = maxOf(state.bestPerfectStreak, before.bestPerfectStreak),
-                bestDailyStreak = maxOf(state.dailyStreak, before.dailyStreak)
+                bestDailyStreak = maxOf(state.dailyStreak, before.dailyStreak),
+                runCount = maxOf(state.runCount, before.runCount),
+                totalScore = maxOf(state.totalScore, before.totalScore),
+                daysPlayed = maxOf(state.daysPlayed, before.daysPlayed),
+                monthsPlayed = Integer.bitCount(months),
+                seasonEarned = seasons
             )
             val incoming = WearDotSkin.fromName(state.skin)
             if (incoming.isUnlocked(merged)) editor.putString(KEY_SKIN, incoming.name)
@@ -273,6 +418,7 @@ internal class WearGameController(context: Context) {
     /** Ein Frame der Spiel-Loop; wird aus WearGameScreens LaunchedEffect gerufen. */
     fun update(dt: Float) {
         blinkClock += dt
+        refreshClock()
         recordBannerTimeLeft = (recordBannerTimeLeft - dt).coerceAtLeast(0f)
         val events = game.update(dt)
         var twistUnlockedThisFrame = false
@@ -316,6 +462,10 @@ internal class WearGameController(context: Context) {
                         bestPerfectStreak = runMaxPerfect
                         prefs.edit().putInt(KEY_BEST_PERFECT, bestPerfectStreak).apply()
                     }
+                    // Ausdauer-Zähler fortschreiben (Läufe, Punktesumme,
+                    // Tage, Monate, Saison) — sie tragen die Skins, die
+                    // nicht am Rekord hängen.
+                    recordRun(game.score)
                     if (dailyMode) {
                         submitDailyRun(runEpochDay, game.score)
                     }
@@ -369,12 +519,62 @@ internal class WearGameController(context: Context) {
      * Bahn blind weiter und man stirbt unsichtbar, bis man zurückkommt.
      */
     fun onAppPaused() {
+        // Offener Wähler: Die Wahl jetzt festschreiben, sonst ginge sie
+        // mit der Composition verloren (sie wird erst beim Schließen
+        // gespeichert).
+        if (skinPickerOpen) closeSkinPicker()
         if (game.phase == TimingGame.Phase.RUNNING || game.phase == TimingGame.Phase.DYING) {
             game.reset()
             phase = TimingGame.Phase.READY
             score = 0
             recordBannerTimeLeft = 0f
         }
+    }
+
+    /**
+     * Ausdauer-Buchhaltung eines beendeten Laufs. Gerechnet wird mit dem
+     * Tag, dem der Lauf zugerechnet ist (fixiert beim Start), nicht mit
+     * "jetzt" — ein Lauf über Mitternacht darf nicht in zwei Töpfe fallen.
+     */
+    private fun recordRun(score: Int) {
+        val date = LocalDate.ofEpochDay(runEpochDay)
+        val editor = prefs.edit()
+        editor.putInt(KEY_RUNS, prefs.getInt(KEY_RUNS, 0) + 1)
+        editor.putInt(KEY_TOTAL_SCORE, prefs.getInt(KEY_TOTAL_SCORE, 0) + score)
+        // Der letzte Tag steht als Marke daneben, damit mehrere Läufe an
+        // einem Tag nur einen Tag zählen.
+        if (prefs.getLong(KEY_LAST_PLAYED_DAY, Long.MIN_VALUE) != runEpochDay) {
+            editor.putLong(KEY_LAST_PLAYED_DAY, runEpochDay)
+            editor.putInt(KEY_DAYS_PLAYED, prefs.getInt(KEY_DAYS_PLAYED, 0) + 1)
+        }
+        val monthBit = 1 shl (date.monthValue - 1)
+        editor.putInt(KEY_MONTHS_PLAYED, prefs.getInt(KEY_MONTHS_PLAYED, 0) or monthBit)
+        applySeasonProgress(editor, date)
+        editor.apply()
+    }
+
+    /**
+     * Saison-Fortschritt: Tage mit mindestens einem Lauf im aktiven
+     * Saison-Monat. Ist die Marke erreicht, wandert das Bit in die
+     * dauerhafte Maske und bleibt dort — der Kalender allein würde den
+     * Kürbis im November wieder wegnehmen.
+     */
+    private fun applySeasonProgress(editor: SharedPreferences.Editor, date: LocalDate) {
+        val season = Season.forMonth(date.monthValue) ?: return
+        val earned = prefs.getInt(KEY_SEASON_EARNED, 0)
+        if (earned and season.bit != 0) return
+        // Fenster-Schlüssel: Derselbe Monat im nächsten Jahr fängt bei
+        // null an, sonst ließe sich der Skin über Jahre zusammenstückeln.
+        val window = date.year * 100 + date.monthValue
+        val freshWindow = prefs.getInt(KEY_SEASON_WINDOW, 0) != window
+        if (!freshWindow && prefs.getLong(KEY_SEASON_LAST_DAY, Long.MIN_VALUE) == runEpochDay) {
+            return
+        }
+        val days = if (freshWindow) 1 else prefs.getInt(KEY_SEASON_DAYS, 0) + 1
+        editor.putInt(KEY_SEASON_WINDOW, window)
+            .putInt(KEY_SEASON_DAYS, days)
+            .putLong(KEY_SEASON_LAST_DAY, runEpochDay)
+        if (days >= season.requiredDays) editor.putInt(KEY_SEASON_EARNED, earned or season.bit)
     }
 
     /**
@@ -446,5 +646,8 @@ internal class WearGameController(context: Context) {
     private companion object {
         /** Anzeigedauer des Rekord-Banners im Lauf, wie am Phone (2,2s). */
         const val RECORD_BANNER_SECONDS = 2.2f
+
+        /** Wie oft Stunde und Monat der Geräte-Uhr neu geholt werden. */
+        const val CLOCK_REFRESH_MS = 60_000L
     }
 }

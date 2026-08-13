@@ -693,7 +693,23 @@ final class HelpOverlay: SKNode {
 }
 
 /// Vollflächiger Skin-Picker über dunklem Scrim, im Stil der Hilfe.
+///
+/// 42 Skins passen auf kein Telefon. Die Liste ist deshalb nach Familien
+/// gegliedert (EINFARBIG … GOENNER) und läuft in einem Fenster, das per
+/// Wischen gescrollt wird; Titel und Schließen-Hinweis bleiben stehen. Das
+/// Fenster ist ein SKCropNode — ohne Maske würden die gescrollten Zeilen
+/// über Titel und Hinweis hinauslaufen.
 final class SkinOverlay: SKNode {
+
+    /// Was eine Berührung im Picker bedeutet: Ein Zug scrollt nur, ein
+    /// Tipp wählt oder schließt.
+    /// `scrolled` statt `none`: Ein Fall namens `none` ließe sich beim
+    /// Auswerten leicht mit `Optional.none` verwechseln.
+    enum TouchResult {
+        case scrolled
+        case select(DotSkin)
+        case close
+    }
 
     private struct Row {
         let skin: DotSkin
@@ -705,11 +721,28 @@ final class SkinOverlay: SKNode {
 
     private var rows: [Row] = []
     private let rowHeight: CGFloat = 58
+    private let headerHeight: CGFloat = 36
+
+    private let contentNode = SKNode()
+    private let scrollThumb: SKSpriteNode
+    private let listTop: CGFloat
+    private let listBottom: CGFloat
+    private var maxScroll: CGFloat = 0
+    private var scrollOffset: CGFloat = 0
+
+    private var dragStartY: CGFloat = 0
+    private var dragStartOffset: CGFloat = 0
+    private var dragged = false
 
     init(sceneSize: CGSize) {
-        super.init()
         let w = sceneSize.width
         let h = sceneSize.height
+        listTop = h - 158
+        listBottom = 84
+        scrollThumb = SKSpriteNode(
+            color: UIColor(white: 1, alpha: 0.35), size: CGSize(width: 4, height: 40)
+        )
+        super.init()
 
         let scrim = SKSpriteNode(
             color: Palette.outline.withAlphaComponent(0.92),
@@ -722,45 +755,76 @@ final class SkinOverlay: SKNode {
         title.position = CGPoint(x: w / 2, y: h - 120)
         addChild(title)
 
-        var y = h - 180
-        for skin in DotSkin.allCases {
-            // Vorschau als echter Vogel statt als Farbfläche: Bei
-            // gemusterten Skins sagt ein einzelner Farbwert nichts mehr
-            // aus. Bewegte Skins stehen dabei still (Zeitpunkt 0).
-            let swatch = SKSpriteNode(texture: PixelArt.skinPreviewTexture(skin: skin, size: 36))
-            swatch.size = CGSize(width: 36, height: 36)
-            swatch.position = CGPoint(x: 64, y: y)
-            addChild(swatch)
+        // Sichtfenster der Liste: Alles darüber und darunter wird
+        // weggeschnitten, damit gescrollte Zeilen nicht im Titel landen.
+        let crop = SKCropNode()
+        let mask = SKSpriteNode(
+            color: .white, size: CGSize(width: w, height: listTop - listBottom)
+        )
+        mask.position = CGPoint(x: w / 2, y: (listTop + listBottom) / 2)
+        crop.maskNode = mask
+        crop.addChild(contentNode)
+        addChild(crop)
 
-            let titleLabel = PixelLabel(
-                text: L10n.text(skin.titleKey), fontSize: 20, color: .white, shadow: false
+        var y = listTop - 24
+        for family in DotSkin.Family.allCases {
+            let header = PixelLabel(
+                text: L10n.text(family.titleKey), fontSize: 15,
+                color: Palette.dotBody, shadow: false
             )
-            titleLabel.position = CGPoint(x: 96, y: y + 10)
-            alignLeft(titleLabel)
-            addChild(titleLabel)
+            header.position = CGPoint(x: 40, y: y)
+            alignLeft(header)
+            contentNode.addChild(header)
+            y -= headerHeight
 
-            let statusLabel = PixelLabel(
-                text: "", fontSize: 14, color: UIColor(white: 1, alpha: 0.7), shadow: false
-            )
-            statusLabel.position = CGPoint(x: 96, y: y - 12)
-            alignLeft(statusLabel)
-            addChild(statusLabel)
+            for skin in DotSkin.allCases where skin.family == family {
+                // Vorschau als echter Vogel statt als Farbfläche: Bei
+                // gemusterten Skins sagt ein einzelner Farbwert nichts mehr
+                // aus. Bewegte Skins stehen dabei still (Zeitpunkt 0).
+                let swatch = SKSpriteNode(
+                    texture: PixelArt.skinPreviewTexture(skin: skin, size: 36)
+                )
+                swatch.size = CGSize(width: 36, height: 36)
+                swatch.position = CGPoint(x: 64, y: y)
+                contentNode.addChild(swatch)
 
-            rows.append(Row(
-                skin: skin,
-                centerY: y,
-                swatch: swatch,
-                titleLabel: titleLabel,
-                statusLabel: statusLabel
-            ))
-            y -= rowHeight
+                let titleLabel = PixelLabel(
+                    text: L10n.text(skin.titleKey), fontSize: 20, color: .white, shadow: false
+                )
+                titleLabel.position = CGPoint(x: 96, y: y + 10)
+                alignLeft(titleLabel)
+                contentNode.addChild(titleLabel)
+
+                let statusLabel = PixelLabel(
+                    text: "", fontSize: 14, color: UIColor(white: 1, alpha: 0.7), shadow: false
+                )
+                statusLabel.position = CGPoint(x: 96, y: y - 12)
+                alignLeft(statusLabel)
+                contentNode.addChild(statusLabel)
+
+                rows.append(Row(
+                    skin: skin,
+                    centerY: y,
+                    swatch: swatch,
+                    titleLabel: titleLabel,
+                    statusLabel: statusLabel
+                ))
+                y -= rowHeight
+            }
+            y -= 8
         }
+        maxScroll = max(0, (listTop - y) - (listTop - listBottom))
+
+        scrollThumb.position = CGPoint(x: w - 12, y: listTop - 20)
+        scrollThumb.isHidden = maxScroll <= 0
+        addChild(scrollThumb)
+        applyScroll()
 
         let closeHint = PixelLabel(
             text: L10n.text("tap_to_close"), fontSize: 14,
             color: UIColor(white: 1, alpha: 0.6), shadow: false
         )
-        closeHint.position = CGPoint(x: w / 2, y: max(y, 40))
+        closeHint.position = CGPoint(x: w / 2, y: 48)
         addChild(closeHint)
     }
 
@@ -774,6 +838,62 @@ final class SkinOverlay: SKNode {
 
     required init?(coder aDecoder: NSCoder) {
         return nil
+    }
+
+    // MARK: - Scrollen
+
+    /// Inhalt an den Offset schieben und den Balken nachziehen. Der Balken
+    /// ist die einzige Anzeige, dass es unter der Liste weitergeht.
+    private func applyScroll() {
+        scrollOffset = min(max(scrollOffset, 0), maxScroll)
+        contentNode.position = CGPoint(x: 0, y: scrollOffset)
+        guard maxScroll > 0 else {
+            return
+        }
+        let window = listTop - listBottom
+        let thumbHeight = max(30, window * window / (window + maxScroll))
+        let travel = window - thumbHeight
+        let progress = scrollOffset / maxScroll
+        scrollThumb.size = CGSize(width: 4, height: thumbHeight)
+        scrollThumb.position = CGPoint(
+            x: scrollThumb.position.x,
+            y: listTop - thumbHeight / 2 - travel * progress
+        )
+    }
+
+    func touchBegan(at point: CGPoint) {
+        dragStartY = point.y
+        dragStartOffset = scrollOffset
+        dragged = false
+    }
+
+    func touchMoved(to point: CGPoint) {
+        let dy = point.y - dragStartY
+        // Ein paar Punkt Toleranz: Ein Tipp mit zitterndem Daumen soll
+        // weiter als Tipp gelten, nicht als Zug.
+        if abs(dy) > 6 {
+            dragged = true
+        }
+        scrollOffset = dragStartOffset - dy
+        applyScroll()
+    }
+
+    /// Liefert, was die Berührung bedeutet hat. Nach einem Zug bleibt der
+    /// Picker offen — sonst würde jedes Scrollen ihn schließen.
+    func touchEnded(at point: CGPoint, stats: DotSkin.Stats) -> TouchResult {
+        if dragged {
+            return .scrolled
+        }
+        guard point.y <= listTop && point.y >= listBottom else {
+            return .close
+        }
+        let contentY = point.y - scrollOffset
+        for row in rows where abs(contentY - row.centerY) <= rowHeight / 2 {
+            // Auf eine gesperrte Zeile getippt: Der Picker schließt wie
+            // bei jedem Tipp daneben — der Hinweis unten verspricht genau das.
+            return row.skin.isUnlocked(stats) ? .select(row.skin) : .close
+        }
+        return .close
     }
 
     func refresh(stats: DotSkin.Stats, selected: DotSkin) {
@@ -796,15 +916,17 @@ final class SkinOverlay: SKNode {
                 row.statusLabel.color = UIColor(white: 1, alpha: 0.45)
             }
         }
+        scrollTo(selected)
     }
 
-    /// Skin an dieser Position — nil, wenn keine Zeile getroffen wurde.
-    func skinAt(point: CGPoint, stats: DotSkin.Stats) -> DotSkin? {
-        for row in rows {
-            if abs(point.y - row.centerY) <= rowHeight / 2 && row.skin.isUnlocked(stats) {
-                return row.skin
-            }
+    /// Beim Öffnen zum gewählten Skin springen: Bei 42 Zeilen wäre er
+    /// sonst irgendwo weit unten und man sucht seinen eigenen Vogel.
+    private func scrollTo(_ skin: DotSkin) {
+        guard maxScroll > 0, let row = rows.first(where: { $0.skin == skin }) else {
+            return
         }
-        return nil
+        let window = listTop - listBottom
+        scrollOffset = listTop - row.centerY - window / 2
+        applyScroll()
     }
 }

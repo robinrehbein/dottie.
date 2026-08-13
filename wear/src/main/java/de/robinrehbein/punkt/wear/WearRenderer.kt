@@ -96,8 +96,11 @@ private const val WEAR_CORE_ZONE = 0.68f
  * Zeichnet die komplette Spielwelt für das runde Wear-Display: Himmel je
  * nach Score-Stufe, die Bahn als Perlenkette und den Vogel — kein
  * Szenerie-/Boden-Hintergrund wie am Phone, das Display ist dafür zu klein.
+ *
+ * [hour] und [month] kommen von der Geräte-Uhr (Controller): TAGESZEIT
+ * und JAHRESZEIT ziehen daraus ihr Kleid.
  */
-internal fun DrawScope.drawWearWorld(game: TimingGame, skin: WearDotSkin) {
+internal fun DrawScope.drawWearWorld(game: TimingGame, skin: WearDotSkin, hour: Int, month: Int) {
     val d = size.minDimension
     val cx = size.width / 2f
     val cy = size.height / 2f
@@ -114,7 +117,7 @@ internal fun DrawScope.drawWearWorld(game: TimingGame, skin: WearDotSkin) {
     // (Mario-Hüpfer in der DYING-Phase) — die Bahn bleibt leer, bis der
     // nächste Lauf startet. Am Phone regelt das fx.deathTime genauso.
     if (game.phase != TimingGame.Phase.OVER && game.isDotVisible) {
-        drawWearDot(game, cx, cy, radius, d, skin)
+        drawWearDot(game, cx, cy, radius, d, skin, hour, month)
     }
 }
 
@@ -194,7 +197,9 @@ private fun DrawScope.drawWearDot(
     cy: Float,
     radius: Float,
     minDimension: Float,
-    skin: WearDotSkin
+    skin: WearDotSkin,
+    hour: Int,
+    month: Int
 ) {
     val px = cx + cos(game.angle) * radius
     var py = cy + sin(game.angle) * radius
@@ -219,7 +224,9 @@ private fun DrawScope.drawWearDot(
     val state = SkinState(
         elapsed = game.elapsed,
         score = game.score,
-        perfectStreak = game.perfectStreak
+        perfectStreak = game.perfectStreak,
+        hour = hour,
+        month = month
     )
 
     fun drawBird(centerX: Float, centerY: Float, alpha: Float = 1f) {
@@ -315,25 +322,29 @@ internal fun DrawScope.drawWearMedalCoin(tier: WearMedalTier) {
 }
 
 /**
- * Kleine Skin-Vorschau-Münze fürs READY-Overlay: Pixel-Kreis in den
- * Farben des gewählten Skins mit Glanzpunkt — dieselbe Zeichnung wie die
- * Medaillen-Münze, nur eben in Skin-Farben. Ein Tap darauf schaltet
- * zyklisch zum nächsten freigeschalteten Skin (siehe cycleSkin im
- * WearGameController).
+ * Kleine Skin-Vorschau-Münze: im READY-Overlay der Knopf zum Skin-Wähler,
+ * in dessen Liste das Symbol jeder Zeile. Pixel-Kreis in den Farben des
+ * Skins mit Glanzpunkt — dieselbe Zeichnung wie die Medaillen-Münze.
+ *
+ * Bewusst als Standbild (elapsed = 0): Eine Liste mit lauter animierten
+ * Münzen würde die Uhr pro Frame durch dutzende Raster jagen. Stunde und
+ * Monat kommen trotzdem mit, sonst zeigten TAGESZEIT und JAHRESZEIT in
+ * der Vorschau ein anderes Kleid als im Lauf.
  */
-internal fun DrawScope.drawWearSkinCoin(skin: WearDotSkin) {
+internal fun DrawScope.drawWearSkinCoin(skin: WearDotSkin, hour: Int, month: Int) {
     val r = size.minDimension / 2f
     val cx = size.width / 2f
     val cy = size.height / 2f
+    val state = SkinState(hour = hour, month = month)
     drawWearPixelCircle(
         outline = WearOutlineColor,
         centerX = cx,
         centerY = cy,
         radius = r
-    ) { col, row -> skin.cell(col, row) }
+    ) { col, row -> skin.cell(col, row, state) }
     val u = (r * 2f) / WEAR_GRID
     drawRect(
-        color = skin.shine,
+        color = skin.shineColor(state),
         topLeft = Offset(cx - r + 2.5f * u, cy - r + 2.5f * u),
         size = Size(2f * u, 2f * u)
     )
