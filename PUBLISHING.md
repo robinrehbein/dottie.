@@ -327,9 +327,19 @@ erstellen**:
 | Typ | Einmaliger Kauf, **nicht** verbrauchbar |
 | Name | „Werbung entfernen" / „Remove ads" |
 | Beschreibung | Entfernt dauerhaft alle Anzeigen. Skins werden weiter durch Spielen freigeschaltet. |
-| Preis | **0,99 €** (Play rechnet die anderen Währungen um) |
+| Preis | **1,99 €** (Play rechnet die anderen Währungen um) |
 
 Danach **aktivieren** — inaktive Produkte liefern im Kaufdialog nichts.
+
+Warum 1,99 € und nicht 0,99 €: Bei den meisten Spielen ist „Werbung
+entfernen" ein Genervt-Kauf. Hier stört die Werbung kaum — frühestens ab
+dem sechsten Tod, dann drei Minuten Ruhe, in der Daily gar nicht. Wer
+trotzdem kauft, tut das eher aus Zuneigung zum Spiel als aus Not, und
+für den ist der Unterschied zwischen einem und zwei Euro belanglos. Nach
+Mehrwertsteuer und Googles 15 % bleiben 1,42 € statt 0,71 € — also
+doppelt so viel, ohne dass nennenswert weniger Leute kaufen. Weiter nach
+oben (2,99 €) wäre unangemessen: So aufdringlich ist die Werbung nicht,
+und das Store-Versprechen „ehrlich und schlank" soll eins bleiben.
 
 Der Preis steht **nirgends im Code**: Die App zeigt den Wert an, den
 Google für das Land der Spielerin ausliefert (`formattedPrice`), samt
