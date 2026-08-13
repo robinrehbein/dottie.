@@ -63,7 +63,9 @@ Wachstum ein:
   Perfekt-Serie auf, Tinte zieht einen Schweif). Freigeschaltet über
   Rekord, beste Perfekt-Serie oder Daily-Serie; der Regenbogen kommt
   zuletzt, wenn alle anderen gesammelt sind. Auswahl über den
-  SKINS-Button, gesperrte Skins zeigen ihre Bedingung.
+  SKINS-Button, gesperrte Skins zeigen ihre Bedingung — und lassen sich
+  dort per freiwilligem Spot einen Tag lang ausprobieren (siehe
+  Monetarisierung).
 
   Farben und Schwellen liegen in `SkinPaint` (`:core`): Ein Skin ist dort
   eine Funktion über das 13x13-Raster des Vogels, kein Tripel aus drei
