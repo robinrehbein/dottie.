@@ -94,6 +94,19 @@ internal class FxState {
 
     /** Sekunden seit dem Tod (Mario-Hüpfer), negativ = kein Tod aktiv. */
     var deathTime = -1f
+
+    /**
+     * Alle Effekte auf den Ruhezustand — nötig überall dort, wo ein Lauf
+     * endet, ohne dass gleich der nächste startet (Rückkehr ins Menü).
+     * Vor allem [deathTime]: Bliebe der Sturz aktiv, wäre der Vogel im
+     * READY-Bild längst unten aus dem Kader gefallen und unsichtbar.
+     */
+    fun reset() {
+        flashAlpha = 0f
+        shakeTime = 0f
+        celebrateTime = 0f
+        deathTime = -1f
+    }
 }
 
 // ===== Overlays =====
