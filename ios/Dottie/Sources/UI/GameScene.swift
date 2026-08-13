@@ -261,7 +261,7 @@ final class GameScene: SKScene {
         addChild(ready)
         self.readyOverlay = ready
 
-        let over = GameOverOverlay(sceneSize: size)
+        let over = GameOverOverlay(sceneSize: size, safeTop: safeTop)
         over.zPosition = 100
         over.isHidden = true
         addChild(over)
