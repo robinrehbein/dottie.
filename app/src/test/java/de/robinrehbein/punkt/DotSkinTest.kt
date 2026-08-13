@@ -10,8 +10,33 @@ import org.junit.Test
 
 class DotSkinTest {
 
-    private fun stats(best: Int = 0, perfect: Int = 0, daily: Int = 0) =
-        DotSkin.Stats(bestScore = best, bestPerfectStreak = perfect, bestDailyStreak = daily)
+    private fun stats(
+        best: Int = 0,
+        perfect: Int = 0,
+        daily: Int = 0,
+        runs: Int = 0,
+        total: Int = 0,
+        days: Int = 0,
+        months: Int = 0,
+        season: Int = 0,
+        patron: Boolean = false
+    ) = DotSkin.Stats(
+        bestScore = best,
+        bestPerfectStreak = perfect,
+        bestDailyStreak = daily,
+        runCount = runs,
+        totalScore = total,
+        daysPlayed = days,
+        monthsPlayed = months,
+        seasonEarned = season,
+        patronOwned = patron
+    )
+
+    /** Alles, was sich ohne Saison und ohne Kauf verdienen lässt. */
+    private fun allEarned() = stats(
+        best = 80, perfect = 15, daily = 21,
+        runs = 300, total = 5_000, days = 7, months = 3
+    )
 
     @Test
     fun `Klassik ist immer frei`() {
@@ -55,12 +80,82 @@ class DotSkinTest {
     }
 
     @Test
-    fun `unlockedCount zaehlt ueber alle Bedingungen`() {
+    fun `unlockedCount zaehlt nur sammelbare Skins`() {
         assertEquals(1, DotSkin.unlockedCount(stats()))
+        // Saison und Goenner zaehlen nie mit — der Sammlungsstand ist eine
+        // Leistungsanzeige, und der Regenbogen haengt an ihm.
+        assertEquals(DotSkin.collectableCount(), DotSkin.unlockedCount(allEarned()))
         assertEquals(
-            DotSkin.entries.size,
-            DotSkin.unlockedCount(stats(best = 60, perfect = 12, daily = 14))
+            DotSkin.entries.count { it.countsForCollection },
+            DotSkin.collectableCount()
         )
+        assertTrue(DotSkin.collectableCount() < DotSkin.entries.size)
+    }
+
+    @Test
+    fun `ein gekaufter Skin hebt weder Sammlung noch Feier`() {
+        val ohne = stats()
+        val mit = stats(patron = true)
+        assertTrue(DotSkin.DIAMANT.isUnlocked(mit))
+        assertFalse(DotSkin.DIAMANT.isUnlocked(ohne))
+        assertEquals(DotSkin.unlockedCount(ohne), DotSkin.unlockedCount(mit))
+        // earnedCount traegt die Feier: Ein Kauf darf sie nie ausloesen.
+        assertEquals(DotSkin.earnedCount(ohne), DotSkin.earnedCount(mit))
+    }
+
+    @Test
+    fun `ein verdienter Saison-Skin wird gefeiert, obwohl er nicht sammelt`() {
+        val ohne = stats()
+        val mit = stats(season = 1) // Bit 0 = KUERBIS
+        assertTrue(DotSkin.KUERBIS.isUnlocked(mit))
+        assertEquals(DotSkin.unlockedCount(ohne), DotSkin.unlockedCount(mit))
+        assertEquals(DotSkin.earnedCount(ohne) + 1, DotSkin.earnedCount(mit))
+    }
+
+    @Test
+    fun `die Saison-Maske schaltet genau ihr eigenes Bit frei`() {
+        assertTrue(DotSkin.KUERBIS.isUnlocked(stats(season = 0b0001)))
+        assertFalse(DotSkin.ZUCKERSTANGE.isUnlocked(stats(season = 0b0001)))
+        assertTrue(DotSkin.ZUCKERSTANGE.isUnlocked(stats(season = 0b0010)))
+        assertTrue(DotSkin.HERZ.isUnlocked(stats(season = 0b0100)))
+        assertTrue(DotSkin.OSTEREI.isUnlocked(stats(season = 0b1000)))
+        assertFalse(DotSkin.OSTEREI.isUnlocked(stats(season = 0b0111)))
+    }
+
+    @Test
+    fun `die Ausdauer-Achsen haengen an den angekuendigten Schwellen`() {
+        assertFalse(DotSkin.EI.isUnlocked(stats(runs = 24)))
+        assertTrue(DotSkin.EI.isUnlocked(stats(runs = 25)))
+        assertFalse(DotSkin.TIGER.isUnlocked(stats(runs = 99)))
+        assertTrue(DotSkin.TIGER.isUnlocked(stats(runs = 100)))
+        assertFalse(DotSkin.MEDAILLE.isUnlocked(stats(runs = 199)))
+        assertTrue(DotSkin.MEDAILLE.isUnlocked(stats(runs = 200)))
+        assertFalse(DotSkin.FUSSBALL.isUnlocked(stats(runs = 299)))
+        assertTrue(DotSkin.FUSSBALL.isUnlocked(stats(runs = 300)))
+        assertFalse(DotSkin.DONUT.isUnlocked(stats(total = 999)))
+        assertTrue(DotSkin.DONUT.isUnlocked(stats(total = 1_000)))
+        assertFalse(DotSkin.KONFETTI.isUnlocked(stats(total = 4_999)))
+        assertTrue(DotSkin.KONFETTI.isUnlocked(stats(total = 5_000)))
+        assertFalse(DotSkin.TAGESZEIT.isUnlocked(stats(days = 6)))
+        assertTrue(DotSkin.TAGESZEIT.isUnlocked(stats(days = 7)))
+        assertFalse(DotSkin.JAHRESZEIT.isUnlocked(stats(months = 2)))
+        assertTrue(DotSkin.JAHRESZEIT.isUnlocked(stats(months = 3)))
+    }
+
+    @Test
+    fun `die neuen Rekord-Skins haengen an den angekuendigten Schwellen`() {
+        assertFalse(DotSkin.PINGUIN.isUnlocked(stats(best = 64)))
+        assertTrue(DotSkin.PINGUIN.isUnlocked(stats(best = 65)))
+        assertFalse(DotSkin.WELLE.isUnlocked(stats(best = 69)))
+        assertTrue(DotSkin.WELLE.isUnlocked(stats(best = 70)))
+        assertFalse(DotSkin.THERMO.isUnlocked(stats(best = 74)))
+        assertTrue(DotSkin.THERMO.isUnlocked(stats(best = 75)))
+        assertFalse(DotSkin.HOLO.isUnlocked(stats(best = 79)))
+        assertTrue(DotSkin.HOLO.isUnlocked(stats(best = 80)))
+        assertFalse(DotSkin.GEWITTER.isUnlocked(stats(perfect = 14)))
+        assertTrue(DotSkin.GEWITTER.isUnlocked(stats(perfect = 15)))
+        assertFalse(DotSkin.DISCO.isUnlocked(stats(daily = 20)))
+        assertTrue(DotSkin.DISCO.isUnlocked(stats(daily = 21)))
     }
 
     @Test
@@ -98,7 +193,42 @@ class DotSkinTest {
     @Test
     fun `Regenbogen kommt zuletzt`() {
         assertFalse(DotSkin.REGENBOGEN.isUnlocked(stats(best = 999, perfect = 99, daily = 13)))
-        assertTrue(DotSkin.REGENBOGEN.isUnlocked(stats(best = 60, perfect = 12, daily = 14)))
+        assertTrue(DotSkin.REGENBOGEN.isUnlocked(allEarned()))
+    }
+
+    @Test
+    fun `Regenbogen bleibt ohne Saison und ohne Kauf erreichbar`() {
+        // Sonst waere der Abschluss der Sammlung entweder ein Jahr lang
+        // gesperrt oder schlicht kaeuflich.
+        val ohne = allEarned()
+        assertEquals(0, ohne.seasonEarned)
+        assertFalse(ohne.patronOwned)
+        assertTrue(DotSkin.REGENBOGEN.isUnlocked(ohne))
+        DotSkin.entries.filter { it.isSeasonal || it.isPatron }.forEach {
+            assertFalse("${it.name} darf ohne Saison/Kauf nicht offen sein", it.isUnlocked(ohne))
+        }
+    }
+
+    @Test
+    fun `jede Familie liegt am Stueck`() {
+        // Das Skin-Menue setzt eine Ueberschrift, sobald die Familie
+        // wechselt — laege eine Familie in zwei Bloecken, stuende ihre
+        // Ueberschrift zweimal da.
+        val seen = mutableSetOf<DotSkin.Family>()
+        var last: DotSkin.Family? = null
+        DotSkin.entries.forEach { skin ->
+            if (skin.family != last) {
+                assertTrue("${skin.family} kommt ein zweites Mal", seen.add(skin.family))
+                last = skin.family
+            }
+        }
+        assertEquals(DotSkin.Family.entries.size, seen.size)
+        DotSkin.entries.filter { it.isPatron }.forEach {
+            assertEquals(DotSkin.Family.GOENNER, it.family)
+        }
+        DotSkin.entries.filter { it.isSeasonal }.forEach {
+            assertEquals(DotSkin.Family.SAISON, it.family)
+        }
     }
 
     @Test

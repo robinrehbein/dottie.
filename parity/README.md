@@ -19,9 +19,30 @@ herauskommen muss, und jeder Port prüft sich gegen dieselbe Datei.
 | Abschnitt | Inhalt | Kotlin | Swift | JS |
 |---|---|---|---|---|
 | `const.*`, `twist.*`, `daily.*` | Konstanten, Freischalt-Scores, Tages-Seeds | ✅ | ✅ | ✅ |
-| `medal.*`, `sky.*`, `skin.*` | Schwellen, Farben, Skin-Raster, Freischaltungen | ✅ | ✅ | ✅ |
+| `medal.*`, `sky.*` | Medaillen-Schwellen und -Farben, Himmelsstufen | ✅ | ✅ | ✅ |
+| `skin.*`, `season.*` | Reihenfolge, Farben, Raster, Freischaltungen, Saison-Regeln | ✅ | ✅ | ✅ |
 | `rng.*` | Kotlins XorWow-Generator Zahl für Zahl | ✅ | ✅ | — |
 | `trace.*` | ganze Läufe, Treffer für Treffer | ✅ | ✅ | — |
+
+Die Skin-Abschnitte im Einzelnen — sie sind der größte Teil der Datei,
+weil dort auch der größte Teil der Handarbeit steckt:
+
+- `skin.order`, `skin.grid`, `skin.collectableCount` — Reihenfolge (sie
+  ist zugleich der gespeicherte Wert) und der Sammlungsstand, an dem der
+  REGENBOGEN hängt.
+- `skin.chips.<ID>` — Stellvertreterfarben und die Eigenschaften
+  Schweif, Augen-Kontur, animiert, Saison, Gönner, zählt-für-die-Sammlung.
+- `skin.state.N` und `skin.cells.N.<ID>` — abgetastete Rasterfarben in
+  mehreren Zuständen. Der Zustand trägt `elapsed score perfectStreak
+  hour month`, deckt also auch die Skins ab, deren Farbe an Uhrzeit
+  (TAGESZEIT) oder Monat (JAHRESZEIT) hängt.
+- `skin.probe.N` und `skin.unlocked.N` — je Probe die neun
+  Bestleistungen (Rekord, Perfekt-Serie, Daily-Serie, Läufe, Punkte
+  insgesamt, Tage, Monate, Saison-Maske, Kauf) und dahinter, was damit
+  offen ist.
+- `season.<ID>` — Monat, Bit in `seasonEarned` und geforderte Tage. Ein
+  Saison-Skin wird nur in seinem Monat verdient, gilt danach aber für
+  immer; entschieden wird deshalb über die Maske, nie über den Kalender.
 
 Der Web-Port lässt `rng` und `trace` aus, und zwar bewusst: Er baut
 Kotlins `XorWowRandom` nicht nach (siehe Kommentar in `web/js/game.js`),

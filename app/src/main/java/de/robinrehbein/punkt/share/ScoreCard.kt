@@ -10,7 +10,9 @@ import androidx.core.content.FileProvider
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.SkinPaint
+import de.robinrehbein.punkt.game.SkinState
 import java.io.File
+import java.time.LocalDateTime
 import kotlin.math.sqrt
 
 /**
@@ -129,8 +131,14 @@ object ScoreCard {
             drawShadowed(context.getString(R.string.card_daily), cx, H * 0.20f, 56f, RECORD_YELLOW)
         }
 
-        // Punkt im gewählten Skin, mittig über dem Score
-        drawPixelDot(canvas, paint, cx, H * 0.32f, 110f, skin)
+        // Punkt im gewählten Skin, mittig über dem Score. Uhr und Kalender
+        // einmal je Bild ablesen: TAGESZEIT und JAHRESZEIT tragen auf der
+        // Karte das Kleid des Moments, in dem geteilt wird.
+        val now = LocalDateTime.now()
+        drawPixelDot(
+            canvas, paint, cx, H * 0.32f, 110f, skin,
+            SkinState(hour = now.hour, month = now.monthValue)
+        )
 
         drawShadowed(score.toString(), cx, H * 0.55f, 320f, Color.WHITE)
         // Mittig zwischen Score-Zahl (Baseline 0.55) und REKORD-Zeile (0.68),
@@ -256,10 +264,20 @@ object ScoreCard {
     /**
      * Der Spiel-Punkt samt Glanz und Auge im gewählten Skin. Bewegte Skins
      * stehen auf dem Bild still: Ein geteilter Screenshot ist ein Standbild,
-     * also zeichnet er den Zeitpunkt 0 (SkinState-Standardwert).
+     * also bleibt [SkinState.elapsed] bei 0 — Stunde und Monat trägt der
+     * Aufrufer bei, damit TAGESZEIT und JAHRESZEIT nicht ewig Mittag im
+     * Juni zeigen.
      */
-    private fun drawPixelDot(canvas: Canvas, paint: Paint, cx: Float, cy: Float, r: Float, skin: DotSkin) {
-        drawPixelCircle(canvas, paint, cx, cy, r) { col, row -> skin.cell(col, row).toInt() }
+    private fun drawPixelDot(
+        canvas: Canvas,
+        paint: Paint,
+        cx: Float,
+        cy: Float,
+        r: Float,
+        skin: DotSkin,
+        state: SkinState
+    ) {
+        drawPixelCircle(canvas, paint, cx, cy, r) { col, row -> skin.cell(col, row, state).toInt() }
         val u = r * 2f / 13f
         fun cellRect(col: Float, row: Float, cols: Float, rows: Float, color: Int) {
             paint.color = color

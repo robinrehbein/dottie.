@@ -96,6 +96,16 @@
     <!-- Skins -->
     <string name="skin_selected">AUSGEWAEHLT</string>
     <string name="skin_tap_select">TIPPEN ZUM WAEHLEN</string>
+    <!-- Familien-Ueberschriften im Skin-Menue (42 Skins brauchen Gliederung). -->
+    <string name="skin_family_solid">EINFARBIG</string>
+    <string name="skin_family_pattern">GEMUSTERT</string>
+    <string name="skin_family_moving">BEWEGT</string>
+    <string name="skin_family_reactive">REAGIEREND</string>
+    <string name="skin_family_season">SAISON</string>
+    <string name="skin_family_patron">GOENNER</string>
+    <!-- Goenner-Paket: nur sichtbar, wenn Google einen Preis liefert. -->
+    <string name="patron_pack">GOENNER-PAKET — %1$s</string>
+    <string name="patron_owned">DANKE!</string>
     <!-- Skin-Tagespass: nur sichtbar, wenn Werbung aktiv ist. -->
     <string name="skin_pass_today">HEUTE FREI</string>
     <string name="skin_pass_offer">HEUTE PER SPOT TESTEN</string>
@@ -140,6 +150,46 @@
     <string name="skin_hint_chamaeleon">REKORD 30</string>
     <string name="skin_hint_kombo">8 PERFEKTE IN SERIE</string>
     <string name="skin_hint_tinte">REKORD 55</string>
+    <string name="skin_ei">EI</string>
+    <string name="skin_tiger">TIGER</string>
+    <string name="skin_pinguin">PINGUIN</string>
+    <string name="skin_fussball">FUSSBALL</string>
+    <string name="skin_donut">DONUT</string>
+    <string name="skin_welle">WELLE</string>
+    <string name="skin_gewitter">GEWITTER</string>
+    <string name="skin_konfetti">KONFETTI</string>
+    <string name="skin_disco">DISCO</string>
+    <string name="skin_holo">HOLO</string>
+    <string name="skin_thermo">THERMO</string>
+    <string name="skin_medaille">MEDAILLE</string>
+    <string name="skin_tageszeit">TAGESZEIT</string>
+    <string name="skin_jahreszeit">JAHRESZEIT</string>
+    <string name="skin_kuerbis">KUERBIS</string>
+    <string name="skin_zuckerstange">ZUCKERSTANGE</string>
+    <string name="skin_herz">HERZ</string>
+    <string name="skin_osterei">OSTEREI</string>
+    <string name="skin_diamant">DIAMANT</string>
+    <string name="skin_phoenix">PHOENIX</string>
+    <string name="skin_onyx">ONYX</string>
+    <string name="skin_hint_ei">25 LAEUFE</string>
+    <string name="skin_hint_tiger">100 LAEUFE</string>
+    <string name="skin_hint_pinguin">REKORD 65</string>
+    <string name="skin_hint_fussball">300 LAEUFE</string>
+    <string name="skin_hint_donut">1.000 PUNKTE INSGESAMT</string>
+    <string name="skin_hint_welle">REKORD 70</string>
+    <string name="skin_hint_gewitter">15 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_konfetti">5.000 PUNKTE INSGESAMT</string>
+    <string name="skin_hint_disco">DAILY-SERIE: 21 TAGE</string>
+    <string name="skin_hint_holo">REKORD 80</string>
+    <string name="skin_hint_thermo">REKORD 75</string>
+    <string name="skin_hint_medaille">200 LAEUFE</string>
+    <string name="skin_hint_tageszeit">AN 7 TAGEN GESPIELT</string>
+    <string name="skin_hint_jahreszeit">IN 3 MONATEN GESPIELT</string>
+    <string name="skin_hint_kuerbis">IM OKTOBER AN 5 TAGEN SPIELEN</string>
+    <string name="skin_hint_zuckerstange">IM DEZEMBER AN 5 TAGEN SPIELEN</string>
+    <string name="skin_hint_herz">IM FEBRUAR AN 3 TAGEN SPIELEN</string>
+    <string name="skin_hint_osterei">IM APRIL AN 5 TAGEN SPIELEN</string>
+    <string name="skin_hint_goenner">GOENNER-PAKET</string>
 
     <!-- Score-Card / Teilen -->
     <string name="share_text">%1$d Punkte in DOTTIE. — schaffst du mehr?</string>

@@ -122,6 +122,58 @@
 "skin_hint_kombo" = "8 PERFEKTE IN SERIE";
 "skin_hint_tinte" = "REKORD 55";
 
+/* Familien-Ueberschriften im Skin-Menue */
+"skin_family_solid" = "EINFARBIG";
+"skin_family_pattern" = "GEMUSTERT";
+"skin_family_animated" = "BEWEGT";
+"skin_family_reactive" = "REAGIEREND";
+"skin_family_season" = "SAISON";
+"skin_family_patron" = "GOENNER";
+
+/* Skins ab v2.20 */
+"skin_ei" = "EI";
+"skin_tiger" = "TIGER";
+"skin_pinguin" = "PINGUIN";
+"skin_fussball" = "FUSSBALL";
+"skin_donut" = "DONUT";
+"skin_welle" = "WELLE";
+"skin_gewitter" = "GEWITTER";
+"skin_konfetti" = "KONFETTI";
+"skin_disco" = "DISCO";
+"skin_holo" = "HOLO";
+"skin_thermo" = "THERMO";
+"skin_medaille" = "MEDAILLE";
+"skin_tageszeit" = "TAGESZEIT";
+"skin_jahreszeit" = "JAHRESZEIT";
+"skin_kuerbis" = "KUERBIS";
+"skin_zuckerstange" = "ZUCKERSTANGE";
+"skin_herz" = "HERZ";
+"skin_osterei" = "OSTEREI";
+"skin_diamant" = "DIAMANT";
+"skin_phoenix" = "PHOENIX";
+"skin_onyx" = "ONYX";
+"skin_hint_ei" = "25 LAEUFE";
+"skin_hint_tiger" = "100 LAEUFE";
+"skin_hint_pinguin" = "REKORD 65";
+"skin_hint_fussball" = "300 LAEUFE";
+"skin_hint_donut" = "1.000 PUNKTE INSGESAMT";
+"skin_hint_welle" = "REKORD 70";
+"skin_hint_gewitter" = "15 PERFEKTE IN SERIE";
+"skin_hint_konfetti" = "5.000 PUNKTE INSGESAMT";
+"skin_hint_disco" = "DAILY-SERIE: 21 TAGE";
+"skin_hint_holo" = "REKORD 80";
+"skin_hint_thermo" = "REKORD 75";
+"skin_hint_medaille" = "200 LAEUFE";
+"skin_hint_tageszeit" = "AN 7 TAGEN GESPIELT";
+"skin_hint_jahreszeit" = "IN 3 MONATEN GESPIELT";
+"skin_hint_kuerbis" = "IM OKTOBER AN 5 TAGEN SPIELEN";
+"skin_hint_zuckerstange" = "IM DEZEMBER AN 5 TAGEN SPIELEN";
+"skin_hint_herz" = "IM FEBRUAR AN 3 TAGEN SPIELEN";
+"skin_hint_osterei" = "IM APRIL AN 5 TAGEN SPIELEN";
+"skin_hint_diamant" = "GOENNER-PAKET";
+"skin_hint_phoenix" = "GOENNER-PAKET";
+"skin_hint_onyx" = "GOENNER-PAKET";
+
 /* Tages-Erinnerung */
 "notif_title" = "Deine Daily Challenge wartet!";
 "notif_text" = "Die heutige Abfolge ist bereit. Ein Tap entscheidet.";

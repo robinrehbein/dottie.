@@ -285,7 +285,7 @@
   }
 
   /** Pixel-Vogel mit Auge/Glanz; Mario-Tod mit Hüpfer und 180°-Flip. */
-  function drawTimingDot(ctx, w, h, game, fx, cx, cy, radius, skin) {
+  function drawTimingDot(ctx, w, h, game, fx, cx, cy, radius, skin, clock) {
     var TG = global.TimingGame;
     var px = cx + Math.cos(game.angle) * radius;
     var py = cy + Math.sin(game.angle) * radius;
@@ -301,10 +301,15 @@
       }
     }
 
+    // hour und month kommen aus der Geräte-Uhr, nicht aus dem Lauf —
+    // TAGESZEIT und JAHRESZEIT ziehen daraus ihr Kleid. Fehlt die Uhr,
+    // bleibt es beim Standard (Mittag im Juni).
     var state = {
       elapsed: game.elapsed,
       score: game.score,
-      perfectStreak: game.perfectStreak
+      perfectStreak: game.perfectStreak,
+      hour: clock ? clock.hour : undefined,
+      month: clock ? clock.month : undefined
     };
     var shine = global.DotSkin.shine(skin, state);
 
@@ -372,7 +377,7 @@
   }
 
   /** Port von drawTimingWorld: ein kompletter Frame. */
-  function drawWorld(ctx, w, h, game, fx, skin) {
+  function drawWorld(ctx, w, h, game, fx, skin, clock) {
     var cell = Math.max(2, Math.floor(h / 220));
 
     // Screen-Shake beim Tod
@@ -404,7 +409,7 @@
     var radius = Math.min(w * 0.36, h * 0.28);
     drawTrack(ctx, game, cx, cy, radius, cell);
     if (game.isDotVisible()) {
-      drawTimingDot(ctx, w, h, game, fx, cx, cy, radius, skin);
+      drawTimingDot(ctx, w, h, game, fx, cx, cy, radius, skin, clock);
     }
     if (fx.celebrateTime > 0) {
       drawUnlockBurst(ctx, w, h, fx.celebrateTime, cx, cy, radius, cell);
@@ -489,10 +494,11 @@
    * Kleine Skin-Vorschau fuer die Auswahl: der Koerper im Muster des
    * Skins, ohne Gesicht — bei 36px waere es nur Matsch.
    */
-  function drawSkinPreview(ctx, size, skin) {
+  function drawSkinPreview(ctx, size, skin, clock) {
+    var state = clock ? { hour: clock.hour, month: clock.month } : undefined;
     ctx.clearRect(0, 0, size, size);
     drawPixelCircle(ctx, OutlineColor, size / 2, size / 2, size / 2, function (col, row) {
-      return global.DotSkin.cell(skin, col, row);
+      return global.DotSkin.cell(skin, col, row, state);
     });
   }
 

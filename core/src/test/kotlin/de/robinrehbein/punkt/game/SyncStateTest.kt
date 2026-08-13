@@ -42,6 +42,40 @@ class SyncStateTest {
     }
 
     @Test
+    fun `Ausdauer-Zaehler nehmen den hoeheren Wert, Masken werden verodert`() {
+        // Monats- und Saison-Masken dürfen NICHT maximiert werden: Wer im
+        // März auf der Uhr und im Mai am Telefon gespielt hat, hat beide
+        // Monate gesehen — das Maximum würde einen davon verschlucken.
+        val a = phone.copy(
+            totalScore = 900, daysPlayed = 12, lastPlayedDay = 100L,
+            monthsPlayed = 0b000000000100, seasonEarned = 0b0001
+        )
+        val b = watch.copy(
+            totalScore = 400, daysPlayed = 20, lastPlayedDay = 104L,
+            monthsPlayed = 0b000000010000, seasonEarned = 0b0100
+        )
+        val merged = a.mergedWith(b)
+        assertEquals(900, merged.totalScore)
+        assertEquals(20, merged.daysPlayed)
+        assertEquals(104L, merged.lastPlayedDay)
+        assertEquals(0b000000010100, merged.monthsPlayed)
+        assertEquals(0b0101, merged.seasonEarned)
+        assertEquals("Auch hier darf die Reihenfolge nichts ändern", merged, b.mergedWith(a))
+        assertEquals("Und zweimal zusammenführen ändert nichts", merged, merged.mergedWith(b))
+    }
+
+    @Test
+    fun `ein verdienter Saison-Skin geht beim Abgleich nie verloren`() {
+        // Der Kürbis ist im Oktober verdient worden. Ein Gerät, das ihn
+        // nicht kennt, darf ihn beim Zusammenführen nicht wegnehmen —
+        // verdient bleibt verdient, auch im November.
+        val mitKuerbis = phone.copy(seasonEarned = Season.KUERBIS.bit)
+        val ohne = watch.copy(seasonEarned = 0)
+        assertEquals(Season.KUERBIS.bit, mitKuerbis.mergedWith(ohne).seasonEarned)
+        assertEquals(Season.KUERBIS.bit, ohne.mergedWith(mitKuerbis).seasonEarned)
+    }
+
+    @Test
     fun `die juengere Skin-Wahl gewinnt`() {
         assertEquals("FROST", phone.mergedWith(watch).skin)
         assertEquals("FROST", watch.mergedWith(phone).skin)

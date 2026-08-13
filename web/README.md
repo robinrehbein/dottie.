@@ -52,7 +52,12 @@ Die App gibt vor, wie das Spiel aussieht — die PWA folgt ihr. Konkret:
   je eine Funktion über das 13x13-Raster des Vogels. Der Test liest
   Reihenfolge, Stellvertreter-Farben, Himmelsstufen und Freischalt-
   Schwellen direkt aus der Kotlin-Quelle und vergleicht sie mit dem
-  Web-Port — inklusive der Kanten jeder Schwelle.
+  Web-Port — inklusive der Kanten jeder Schwelle, der Muster-Koordinaten,
+  der Farbtabellen und des Saison-Fensters.
+- **Rauschen in 32-Bit.** KONFETTI und DIAMANT streuen über
+  `SkinPaint.noise`, das in Kotlin mit überlaufenden Ints rechnet. Der
+  Port benutzt dafür `Math.imul` und `>>>`; ein Test rechnet dasselbe
+  unabhängig mit BigInt nach, sonst liefe das Muster ab 2^53 auseinander.
 
 Bewusste Abweichungen (Browser-Grenzen, jeweils im Code kommentiert):
 
@@ -66,6 +71,11 @@ Bewusste Abweichungen (Browser-Grenzen, jeweils im Code kommentiert):
   Zwischenablage).
 - **Druck-Feedback.** Statt des Material-Ripples hellt sich der Knopf
   kurz auf — verschieben tut er sich wie am Phone nicht.
+- **Kein Gönner-Paket.** Im Web gibt es kein Billing, `patronOwned` ist
+  deshalb immer `false`. DIAMANT, PHOENIX und ONYX stehen trotzdem im
+  Menü — gesperrt und mit dem Hinweis, dass es sie nur in der App gibt.
+  Verdiente Skins zeigt das Web sonst vollständig; Saison-Skins werden
+  auch hier im eigenen Monat verdient und bleiben dann.
 
 ## Screenshots
 

@@ -36,7 +36,7 @@ final class ParityTests: XCTestCase {
     // MARK: - Format
 
     func testVectorVersion() throws {
-        XCTAssertEqual(try vectors.int("version"), 1,
+        XCTAssertEqual(try vectors.int("version"), 2,
                        "Format der Vektor-Datei hat sich geändert")
     }
 
@@ -178,9 +178,13 @@ final class ParityTests: XCTestCase {
                        "Reihenfolge der Skins (daran hängt der gespeicherte Wert)")
         XCTAssertEqual(try vectors.int("skin.grid"), SkinPaint.grid)
 
+        XCTAssertEqual(try vectors.int("skin.collectableCount"),
+                       DotSkin.collectableCount(),
+                       "Zahl der sammelbaren Skins (daran hängt der REGENBOGEN)")
+
         for skin in DotSkin.allCases {
             let row = try vectors.strings("skin.chips.\(skin.rawValue)")
-            XCTAssertEqual(row.count, 6, "skin.chips.\(skin.rawValue)")
+            XCTAssertEqual(row.count, 9, "skin.chips.\(skin.rawValue)")
             assertColor(ParityVectors.color(row[0]), SkinPaint.body(skin),
                         "\(skin.rawValue).body")
             assertColor(ParityVectors.color(row[1]), SkinPaint.shade(skin),
@@ -193,7 +197,32 @@ final class ParityTests: XCTestCase {
                            "\(skin.rawValue).needsEyeOutline")
             XCTAssertEqual(row[5] == "animated", SkinPaint.isAnimated(skin),
                            "\(skin.rawValue).isAnimated")
+            XCTAssertEqual(row[6] == "seasonal", SkinPaint.isSeasonal(skin),
+                           "\(skin.rawValue).isSeasonal")
+            XCTAssertEqual(row[7] == "patron", SkinPaint.isPatron(skin),
+                           "\(skin.rawValue).isPatron")
+            XCTAssertEqual(row[8] == "collectable", SkinPaint.countsForCollection(skin),
+                           "\(skin.rawValue).countsForCollection")
         }
+    }
+
+    /// Saison-Skins: nur die Maske entscheidet, nie der Kalender — genau
+    /// deshalb müssen Monat und Bit auf allen Plattformen gleich sein.
+    func testSeasons() throws {
+        for season in Season.allCases {
+            let row = try vectors.strings("season.\(season.skin.rawValue)")
+            XCTAssertEqual(row.count, 3, "season.\(season.skin.rawValue)")
+            XCTAssertEqual(Int(row[0]) ?? -1, season.month,
+                           "Monat von \(season.skin.rawValue)")
+            XCTAssertEqual(Int(row[1]) ?? -1, season.bit,
+                           "Bit von \(season.skin.rawValue)")
+            XCTAssertEqual(Int(row[2]) ?? -1, season.requiredDays,
+                           "Tage für \(season.skin.rawValue)")
+        }
+
+        let expected = try vectors.strings("season.forMonth")
+        let actual = (1...12).map { Season.forMonth($0)?.skin.rawValue ?? "-" }
+        XCTAssertEqual(expected, actual, "Saison je Kalendermonat")
     }
 
     func testSkinCells() throws {
@@ -208,7 +237,9 @@ final class ParityTests: XCTestCase {
             let state = SkinPaint.State(
                 elapsed: CGFloat(Float(stateRow[0]) ?? 0),
                 score: Int(stateRow[1]) ?? 0,
-                perfectStreak: Int(stateRow[2]) ?? 0
+                perfectStreak: Int(stateRow[2]) ?? 0,
+                hour: Int(stateRow[3]) ?? 12,
+                month: Int(stateRow[4]) ?? 6
             )
 
             for skin in DotSkin.allCases {
@@ -234,23 +265,32 @@ final class ParityTests: XCTestCase {
     }
 
     func testSkinUnlocks() throws {
-        for key in vectors.keys where key.hasPrefix("skin.unlocked.") {
-            let parts = key.dropFirst("skin.unlocked.".count).split(separator: ".")
-            guard parts.count == 3,
-                  let score = Int(parts[0]),
-                  let perfect = Int(parts[1]),
-                  let daily = Int(parts[2]) else {
-                XCTFail("Unlesbarer Schlüssel: \(key)")
-                continue
-            }
-            let stats = DotSkin.Stats(bestScore: score,
-                                      bestPerfectStreak: perfect,
-                                      bestDailyStreak: daily)
+        var probe = 0
+        while vectors.has("skin.probe.\(probe)") {
+            let key = "skin.unlocked.\(probe)"
+            let p = try vectors.strings("skin.probe.\(probe)")
+            XCTAssertEqual(p.count, 9, "skin.probe.\(probe): neun Felder erwartet")
+            let stats = DotSkin.Stats(
+                bestScore: Int(p[0]) ?? 0,
+                bestPerfectStreak: Int(p[1]) ?? 0,
+                bestDailyStreak: Int(p[2]) ?? 0,
+                runCount: Int(p[3]) ?? 0,
+                totalScore: Int(p[4]) ?? 0,
+                daysPlayed: Int(p[5]) ?? 0,
+                monthsPlayed: Int(p[6]) ?? 0,
+                seasonEarned: Int(p[7]) ?? 0,
+                patronOwned: p[8] == "1"
+            )
+            probe += 1
             let row = try vectors.strings(key)
             let open = DotSkin.allCases.filter { $0.isUnlocked(stats) }.map { $0.rawValue }
-            XCTAssertEqual(Int(row[0]) ?? -1, open.count, "Anzahl offener Skins bei \(key)")
+            // Erste Zahl ist der Sammlungsstand (ohne Saison und Gönner),
+            // danach steht jeder offene Skin.
+            XCTAssertEqual(Int(row[0]) ?? -1, DotSkin.unlockedCount(stats),
+                           "Sammlungsstand bei \(key)")
             XCTAssertEqual(Array(row.dropFirst()), open, "offene Skins bei \(key)")
         }
+        XCTAssertGreaterThan(probe, 0, "keine Freischalt-Proben in der Datei")
     }
 
     // MARK: - Zufallsgenerator

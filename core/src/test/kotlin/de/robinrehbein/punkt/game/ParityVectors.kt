@@ -35,7 +35,7 @@ import kotlin.random.Random
 object ParityVectors {
 
     /** Bei jeder Formatänderung hochzählen; die Ports prüfen sie. */
-    const val VERSION = 1
+    const val VERSION = 2
 
     /** Seed der Vektoren — irgendein fester Tag, nichts Magisches. */
     private const val SEED = 20240813L
@@ -45,29 +45,67 @@ object ParityVectors {
         2 to 6, 4 to 3, 6 to 2, 6 to 6, 8 to 5, 9 to 8, 6 to 10, 10 to 6
     )
 
-    /** Zustände, in denen die Skins abgetastet werden (bewegte Skins!). */
+    /**
+     * Zustände, in denen die Skins abgetastet werden. Deckt alles ab,
+     * woran eine Skin-Farbe hängen kann: Zeit (bewegte Skins), Score
+     * (CHAMÄLEON, THERMO, MEDAILLE), Perfekt-Serie (KOMBO), Uhrzeit
+     * (TAGESZEIT) und Monat (JAHRESZEIT).
+     */
     private val SAMPLE_STATES = listOf(
         SkinState(),
-        SkinState(elapsed = 1.75f, score = 23, perfectStreak = 3)
+        SkinState(elapsed = 1.75f, score = 23, perfectStreak = 3, hour = 20, month = 10),
+        SkinState(elapsed = 4.5f, score = 61, perfectStreak = 5, hour = 3, month = 2)
     )
 
-    /** Bestleistungen, mit denen die Freischalt-Regeln abgeklopft werden. */
+    /**
+     * Bestleistungen, mit denen die Freischalt-Regeln abgeklopft werden —
+     * je Achse an ihrer Kante und einmal alles zusammen. Seit die Skins
+     * auch an Ausdauer hängen (Läufe, Punkte insgesamt, gespielte Tage und
+     * Monate) sowie an Saison-Maske und Kauf, sind das neun Felder statt
+     * drei; die Datei führt sie deshalb durchnummeriert.
+     */
     private val UNLOCK_PROBES = listOf(
-        Triple(0, 0, 0),
-        Triple(9, 0, 0),
-        Triple(10, 0, 0),
-        Triple(25, 0, 0),
-        Triple(30, 0, 0),
-        Triple(40, 3, 0),
-        Triple(60, 0, 0),
-        Triple(0, 4, 0),
-        Triple(0, 6, 0),
-        Triple(0, 8, 0),
-        Triple(0, 12, 0),
-        Triple(0, 0, 3),
-        Triple(0, 0, 7),
-        Triple(0, 0, 14),
-        Triple(60, 12, 14)
+        SkinStats(0, 0, 0),
+        SkinStats(9, 0, 0),
+        SkinStats(10, 0, 0),
+        SkinStats(25, 0, 0),
+        SkinStats(30, 0, 0),
+        SkinStats(40, 3, 0),
+        SkinStats(60, 0, 0),
+        SkinStats(80, 0, 0),
+        SkinStats(0, 4, 0),
+        SkinStats(0, 8, 0),
+        SkinStats(0, 12, 0),
+        SkinStats(0, 15, 0),
+        SkinStats(0, 0, 3),
+        SkinStats(0, 0, 7),
+        SkinStats(0, 0, 14),
+        SkinStats(0, 0, 21),
+        // Ausdauer-Achsen, jeweils knapp darunter und genau auf der Kante.
+        SkinStats(0, 0, 0, runCount = 24),
+        SkinStats(0, 0, 0, runCount = 25),
+        SkinStats(0, 0, 0, runCount = 100),
+        SkinStats(0, 0, 0, runCount = 300),
+        SkinStats(0, 0, 0, totalScore = 999),
+        SkinStats(0, 0, 0, totalScore = 1_000),
+        SkinStats(0, 0, 0, totalScore = 5_000),
+        SkinStats(0, 0, 0, daysPlayed = 7),
+        SkinStats(0, 0, 0, monthsPlayed = 3),
+        // Saison: nur die Maske entscheidet, nie der Kalender.
+        SkinStats(0, 0, 0, seasonEarned = 1),
+        SkinStats(0, 0, 0, seasonEarned = 0b1111),
+        // Kauf schaltet die Gönner-Skins frei und sonst nichts.
+        SkinStats(0, 0, 0, patronOwned = true),
+        // Alles verdient: hier muss auch der Regenbogen fallen.
+        SkinStats(
+            bestScore = 80, bestPerfectStreak = 15, bestDailyStreak = 21,
+            runCount = 300, totalScore = 5_000, daysPlayed = 7, monthsPlayed = 3
+        ),
+        SkinStats(
+            bestScore = 80, bestPerfectStreak = 15, bestDailyStreak = 21,
+            runCount = 300, totalScore = 5_000, daysPlayed = 7, monthsPlayed = 3,
+            seasonEarned = 0b1111, patronOwned = true
+        )
     )
 
     fun build(): String {
@@ -196,6 +234,7 @@ object ParityVectors {
         section("Skins: Reihenfolge, Stellvertreterfarben, Eigenschaften.")
         line("skin.order", *SkinId.entries.map { it.name }.toTypedArray())
         line("skin.grid", SkinPaint.GRID.toString())
+        line("skin.collectableCount", SkinPaint.collectableCount().toString())
         SkinId.entries.forEach { id ->
             line(
                 "skin.chips.${id.name}",
@@ -204,22 +243,45 @@ object ParityVectors {
                 argb(SkinPaint.shine(id)),
                 if (SkinPaint.hasTrail(id)) "trail" else "-",
                 if (SkinPaint.needsEyeOutline(id)) "eyeoutline" else "-",
-                if (SkinPaint.isAnimated(id)) "animated" else "-"
+                if (SkinPaint.isAnimated(id)) "animated" else "-",
+                if (SkinPaint.isSeasonal(id)) "seasonal" else "-",
+                if (SkinPaint.isPatron(id)) "patron" else "-",
+                if (SkinPaint.countsForCollection(id)) "collectable" else "-"
             )
         }
         appendLine()
 
         section(
+            "Saison-Skins: Monat, Bit in SkinStats.seasonEarned und die\n" +
+                "# Anzahl Tage, die der Monat verlangt."
+        )
+        Season.entries.forEach { season ->
+            line(
+                "season.${season.skin.name}",
+                season.month.toString(),
+                season.bit.toString(),
+                season.requiredDays.toString()
+            )
+        }
+        line(
+            "season.forMonth",
+            *(1..12).map { Season.forMonth(it)?.skin?.name ?: "-" }.toTypedArray()
+        )
+        appendLine()
+
+        section(
             "Abgetastete Rasterfarben je Skin und Zustand — die Felder sind\n" +
                 "# ${SAMPLE_CELLS.joinToString(" ") { "(${it.first},${it.second})" }}.\n" +
-                "# Zustand: elapsed score perfectStreak."
+                "# Zustand: elapsed score perfectStreak hour month."
         )
         SAMPLE_STATES.forEachIndexed { index, state ->
             line(
                 "skin.state.$index",
                 f(state.elapsed),
                 state.score.toString(),
-                state.perfectStreak.toString()
+                state.perfectStreak.toString(),
+                state.hour.toString(),
+                state.month.toString()
             )
             SkinId.entries.forEach { id ->
                 line(
@@ -236,15 +298,29 @@ object ParityVectors {
         appendLine()
 
         section(
-            "Freischaltungen: je Bestleistung (Rekord, Perfekt-Serie,\n" +
-                "# Daily-Serie) die Liste der offenen Skins."
+            "Freischaltungen. Je Probe zwei Zeilen: skin.probe.N traegt die\n" +
+                "# Bestleistungen (bestScore bestPerfectStreak bestDailyStreak\n" +
+                "# runCount totalScore daysPlayed monthsPlayed seasonEarned\n" +
+                "# patronOwned), skin.unlocked.N die Zahl der sammelbaren Skins,\n" +
+                "# dahinter alle offenen."
         )
-        UNLOCK_PROBES.forEach { (score, perfect, daily) ->
-            val stats = SkinStats(score, perfect, daily)
+        UNLOCK_PROBES.forEachIndexed { index, stats ->
+            line(
+                "skin.probe.$index",
+                stats.bestScore.toString(),
+                stats.bestPerfectStreak.toString(),
+                stats.bestDailyStreak.toString(),
+                stats.runCount.toString(),
+                stats.totalScore.toString(),
+                stats.daysPlayed.toString(),
+                stats.monthsPlayed.toString(),
+                stats.seasonEarned.toString(),
+                if (stats.patronOwned) "1" else "0"
+            )
             val open = SkinId.entries.filter { SkinPaint.isUnlocked(it, stats) }
             line(
-                "skin.unlocked.$score.$perfect.$daily",
-                open.size.toString(),
+                "skin.unlocked.$index",
+                SkinPaint.unlockedCount(stats).toString(),
                 *open.map { it.name }.toTypedArray()
             )
         }

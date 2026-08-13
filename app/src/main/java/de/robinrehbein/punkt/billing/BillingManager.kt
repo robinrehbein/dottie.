@@ -19,32 +19,40 @@ import androidx.compose.runtime.setValue
 import de.robinrehbein.punkt.data.ScoreStore
 
 /**
- * Play Billing für den einen einmaligen Kauf "Werbung entfernen"
- * ([PRODUCT_ID], non-consumable).
+ * Play Billing für die beiden einmaligen Käufe: "Werbung entfernen"
+ * ([PRODUCT_ID]) und das Gönner-Paket ([PATRON_ID]) — beide
+ * non-consumable.
  *
  * Genau wie [de.robinrehbein.punkt.ads.AdsManager] hart feature-geflaggt:
  * Ohne AdMob-IDs gibt es keine Werbung, also auch nichts zu entfernen —
  * dann wird gar kein BillingClient gebaut und Google nie kontaktiert.
+ * Das Gönner-Paket hängt an derselben Flagge, weil es "Werbung entfernen"
+ * enthält: Zwei getrennte Schalter für dieselbe Monetarisierung wären
+ * eine zweite Wahrheit, die irgendwann auseinanderläuft.
  *
- * Beim Start läuft eine Wiederherstellung ([queryPurchases]): Der Kauf
- * hängt am Google-Konto, nicht am Gerät. Nach einer Neuinstallation ist
- * die App dadurch von selbst wieder werbefrei, ohne "Kauf
- * wiederherstellen"-Knopf.
+ * Beim Start läuft eine Wiederherstellung ([queryPurchases]): Die Käufe
+ * hängen am Google-Konto, nicht am Gerät. Nach einer Neuinstallation ist
+ * die App dadurch von selbst wieder werbefrei und die Gönner-Skins sind
+ * zurück, ohne "Kauf wiederherstellen"-Knopf.
  *
  * Fehler werden geschluckt und nur geloggt: Ein kaputter Billing-Dienst
- * darf das Spiel nicht behindern. Sichtbar wird das Angebot erst, wenn
- * Google tatsächlich ein kaufbares Produkt liefert ([priceLabel]) — ein
- * Knopf, der ins Leere greift, ist schlimmer als gar keiner.
+ * darf das Spiel nicht behindern. Sichtbar wird ein Angebot erst, wenn
+ * Google tatsächlich ein kaufbares Produkt liefert ([priceLabel],
+ * [patronPriceLabel]) — ein Knopf, der ins Leere greift, ist schlimmer
+ * als gar keiner. Das gilt pro Produkt: Fehlt in der Play Console nur
+ * das Gönner-Paket, bleibt der Rest unverändert kaufbar.
  */
 class BillingManager(
     private val activity: Activity?,
     private val store: ScoreStore,
     private val configured: Boolean,
-    private val onAdsRemoved: () -> Unit
+    private val onAdsRemoved: () -> Unit,
+    private val onPatronOwned: () -> Unit = {}
 ) {
 
     private var client: BillingClient? = null
     private var productDetails: ProductDetails? = null
+    private var patronDetails: ProductDetails? = null
 
     /**
      * Der von Google formatierte Preis ("0,99 €"), sobald das Produkt
@@ -55,6 +63,10 @@ class BillingManager(
      * Zeichenkette in der Hälfte der Welt falsch dastehen.
      */
     var priceLabel by mutableStateOf<String?>(null)
+        private set
+
+    /** Wie [priceLabel], nur für das Gönner-Paket. */
+    var patronPriceLabel by mutableStateOf<String?>(null)
         private set
 
     /** Klartext-Zustand für die versteckte Diagnose-Zeile. */
@@ -109,29 +121,37 @@ class BillingManager(
         }
     }
 
-    /** Preis und Angebot laden — ohne Details lässt sich nichts kaufen. */
+    /**
+     * Preise und Angebote laden — ohne Details lässt sich nichts kaufen.
+     * Beide Produkte wandern in EINE Abfrage: Google beantwortet sie
+     * zusammen, und was fehlt, fehlt eben einzeln.
+     */
     private fun queryProduct() {
         val billing = client ?: return
         val params = QueryProductDetailsParams.newBuilder()
             .setProductList(
-                listOf(
+                listOf(PRODUCT_ID, PATRON_ID).map { id ->
                     QueryProductDetailsParams.Product.newBuilder()
-                        .setProductId(PRODUCT_ID)
+                        .setProductId(id)
                         .setProductType(BillingClient.ProductType.INAPP)
                         .build()
-                )
+                }
             )
             .build()
         try {
             billing.queryProductDetailsAsync(params) { result, details ->
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                    val found = details.firstOrNull()
+                    val found = details.firstOrNull { it.productId == PRODUCT_ID }
                     productDetails = found
                     priceLabel = found?.oneTimePurchaseOfferDetails?.formattedPrice
+                    val patron = details.firstOrNull { it.productId == PATRON_ID }
+                    patronDetails = patron
+                    patronPriceLabel = patron?.oneTimePurchaseOfferDetails?.formattedPrice
                     status = when {
                         found == null -> "Produkt $PRODUCT_ID nicht in der Antwort"
                         priceLabel == null -> "Produkt da, aber ohne Preis"
-                        else -> "kaufbar für $priceLabel"
+                        else -> "kaufbar für $priceLabel" +
+                            (patronPriceLabel?.let { ", Gönner $it" } ?: ", ohne Gönner-Paket")
                     }
                 } else {
                     // Produkt in der Play Console nicht angelegt, App nicht
@@ -143,6 +163,8 @@ class BillingManager(
                     status = "Produkt nicht gefunden (Code ${result.responseCode})"
                     productDetails = null
                     priceLabel = null
+                    patronDetails = null
+                    patronPriceLabel = null
                 }
             }
         } catch (t: Throwable) {
@@ -171,9 +193,14 @@ class BillingManager(
     }
 
     /** Startet den Kaufdialog für "Werbung entfernen". */
-    fun purchase(activity: Activity) {
+    fun purchase(activity: Activity) = launchFlow(activity, productDetails)
+
+    /** Startet den Kaufdialog für das Gönner-Paket. */
+    fun purchasePatron(activity: Activity) = launchFlow(activity, patronDetails)
+
+    private fun launchFlow(activity: Activity, details: ProductDetails?) {
         val billing = client ?: return
-        val details = productDetails ?: return
+        if (details == null) return
         try {
             val flowParams = BillingFlowParams.newBuilder()
                 .setProductDetailsParamsList(
@@ -191,15 +218,24 @@ class BillingManager(
     }
 
     /**
-     * Schaltet die Werbung ab und bestätigt den Kauf. Ohne Acknowledge
-     * innerhalb von drei Tagen erstattet Google automatisch zurück —
-     * deshalb passiert es hier bei jedem Auftauchen des Kaufs, nicht nur
-     * direkt nach dem Kaufdialog.
+     * Schaltet frei, was der Kauf enthält, und bestätigt ihn. Ohne
+     * Acknowledge innerhalb von drei Tagen erstattet Google automatisch
+     * zurück — deshalb passiert es hier bei jedem Auftauchen des Kaufs,
+     * nicht nur direkt nach dem Kaufdialog.
      */
     private fun handlePurchase(purchase: Purchase) {
         if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED) return
-        if (PRODUCT_ID !in purchase.products) return
+        val patron = PATRON_ID in purchase.products
+        val removeAds = PRODUCT_ID in purchase.products
+        if (!patron && !removeAds) return
 
+        if (patron && !store.patronOwned) {
+            store.patronOwned = true
+            onPatronOwned()
+        }
+
+        // Das Gönner-Paket enthält "Werbung entfernen" — wer es kauft,
+        // soll nicht zweimal zahlen, um in Ruhe gelassen zu werden.
         if (!store.adsRemoved) {
             store.adsRemoved = true
             onAdsRemoved()
@@ -230,11 +266,13 @@ class BillingManager(
         }
         client = null
         productDetails = null
+        patronDetails = null
     }
 
     companion object {
-        /** Einmaliger, nicht verbrauchbarer Kauf (Play Console). */
+        /** Einmalige, nicht verbrauchbare Käufe (Play Console). */
         const val PRODUCT_ID = "remove_ads"
+        const val PATRON_ID = "patron_pack"
         private const val TAG = "BillingManager"
     }
 }
