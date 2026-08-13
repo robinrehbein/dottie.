@@ -195,6 +195,36 @@ enum SkinPaint {
     /// Hinterlässt der Skin Nachbilder auf der Bahn?
     static func hasTrail(_ id: DotSkin) -> Bool { id == .tinte }
 
+    /// Felder, an die das Auge grenzt — in beiden Blickrichtungen, damit
+    /// die Entscheidung nicht beim Richtungswechsel kippt.
+    private static let eyeNeighbours = [
+        (7, 3), (7, 4), (7, 5), (7, 6), (8, 2), (9, 2), (10, 2), (8, 7), (9, 7), (10, 7),
+        (5, 3), (5, 4), (5, 5), (5, 6), (4, 2), (3, 2), (2, 2), (4, 7), (3, 7), (2, 7)
+    ]
+
+    /// Ab welchem Abstand zu Weiß (0 bis 441 im RGB-Raum) ein Körper als
+    /// "zu hell fürs Auge" gilt.
+    private static let eyeOutlineDistance: CGFloat = 60
+
+    /// Braucht das Auge dieses Skins eine Kontur zum Körper hin? Auf sehr
+    /// hellen Körpern (Koi, Chrom) verschwände das weiße Auge sonst und
+    /// nur die Pupille bliebe stehen; auf allen anderen wirkt die Kontur
+    /// wie ein Kasten ums Auge. Gemessen im Ruhezustand, damit sie bei
+    /// bewegten Skins nicht mitten im Lauf an- und ausgeht.
+    static func needsEyeOutline(_ id: DotSkin) -> Bool {
+        return eyeNeighbours.contains { col, row in
+            distanceToWhite(cell(id, col, row)) < eyeOutlineDistance
+        }
+    }
+
+    /// Abstand einer RGB-Farbe zu Weiß.
+    private static func distanceToWhite(_ color: UInt32) -> CGFloat {
+        let r = 255 - CGFloat((color >> 16) & 0xFF)
+        let g = 255 - CGFloat((color >> 8) & 0xFF)
+        let b = 255 - CGFloat(color & 0xFF)
+        return sqrt(r * r + g * g + b * b)
+    }
+
     /// Hängt die Farbe an der Uhr (im Gegensatz zu Muster und Spielstand)?
     static func isAnimated(_ id: DotSkin) -> Bool {
         switch id {

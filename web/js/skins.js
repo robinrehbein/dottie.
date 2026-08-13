@@ -300,6 +300,36 @@
     return skin.shineColor ? skin.shineColor(normalize(state)) : skin.shine;
   }
 
+  /**
+   * Felder, an die das Auge grenzt — in beiden Blickrichtungen, damit die
+   * Entscheidung nicht beim Richtungswechsel kippt (Port von SkinPaint).
+   */
+  var EYE_NEIGHBOURS = [
+    [7, 3], [7, 4], [7, 5], [7, 6], [8, 2], [9, 2], [10, 2], [8, 7], [9, 7], [10, 7],
+    [5, 3], [5, 4], [5, 5], [5, 6], [4, 2], [3, 2], [2, 2], [4, 7], [3, 7], [2, 7]
+  ];
+
+  /** Ab welchem Abstand zu Weiss (0 bis 441) ein Koerper als zu hell gilt. */
+  var EYE_OUTLINE_DISTANCE = 60;
+
+  function distanceToWhite(hex) {
+    var c = channels(hex);
+    var r = 255 - c[0], g = 255 - c[1], b = 255 - c[2];
+    return Math.sqrt(r * r + g * g + b * b);
+  }
+
+  /**
+   * Braucht das Auge dieses Skins eine Kontur zum Koerper hin? Auf sehr
+   * hellen Koerpern (Koi, Chrom) verschwaende das weisse Auge sonst; auf
+   * allen anderen wirkt die Kontur wie ein Kasten ums Auge. Gemessen im
+   * Ruhezustand, damit sie bei bewegten Skins nicht flackert.
+   */
+  function needsEyeOutline(skin) {
+    return EYE_NEIGHBOURS.some(function (feld) {
+      return distanceToWhite(cell(skin, feld[0], feld[1])) < EYE_OUTLINE_DISTANCE;
+    });
+  }
+
   /** stats = { bestScore, bestPerfectStreak, bestDailyStreak } */
   function isUnlocked(skin, stats) {
     switch (skin.name) {
@@ -356,6 +386,7 @@
     TRAIL_SPACING: TRAIL_SPACING,
     cell: cell,
     shine: shine,
+    needsEyeOutline: needsEyeOutline,
     mix: mix,
     hsl: hsl,
     isUnlocked: isUnlocked,

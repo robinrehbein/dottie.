@@ -179,6 +179,45 @@ object SkinPaint {
         SkinId.TINTE -> 0xFFA8C0FF
     }
 
+    /**
+     * Felder, an die das Auge grenzt — in beiden Blickrichtungen, damit
+     * die Entscheidung nicht beim Richtungswechsel kippt. Das Auge selbst
+     * liegt (nach rechts blickend) auf Spalte 7,5 bis 11 und Zeile 3 bis 7.
+     */
+    private val EYE_NEIGHBOURS = listOf(
+        7 to 3, 7 to 4, 7 to 5, 7 to 6, 8 to 2, 9 to 2, 10 to 2, 8 to 7, 9 to 7, 10 to 7,
+        5 to 3, 5 to 4, 5 to 5, 5 to 6, 4 to 2, 3 to 2, 2 to 2, 4 to 7, 3 to 7, 2 to 7
+    )
+
+    /**
+     * Ab welchem Abstand zu Weiß (0 bis 441 im RGB-Raum) ein Körper als
+     * "zu hell fürs Auge" gilt. Der Wert liegt bewusst niedrig: Gold und
+     * Hellblau tragen den Kontrast zum weißen Auge noch selbst, Creme und
+     * gebürstetes Metall nicht mehr.
+     */
+    private const val EYE_OUTLINE_DISTANCE = 60f
+
+    /**
+     * Braucht das Auge dieses Skins eine Kontur zum Körper hin? Auf sehr
+     * hellen Körpern (Koi, Chrom) verschwände das weiße Auge sonst und nur
+     * die Pupille bliebe stehen; auf allen anderen wirkt die Kontur wie
+     * ein Kasten ums Auge und nimmt dem Vogel die weiche Silhouette.
+     *
+     * Gemessen wird im Ruhezustand, nicht pro Frame — sonst könnte die
+     * Kontur bei bewegten Skins mitten im Lauf an- und ausgehen.
+     */
+    fun needsEyeOutline(id: SkinId): Boolean = EYE_NEIGHBOURS.any { (col, row) ->
+        distanceToWhite(cell(id, col, row)) < EYE_OUTLINE_DISTANCE
+    }
+
+    /** Abstand einer ARGB-Farbe zu Weiß im RGB-Raum. */
+    private fun distanceToWhite(color: Long): Float {
+        val r = 255f - ((color shr 16) and 0xFF)
+        val g = 255f - ((color shr 8) and 0xFF)
+        val b = 255f - (color and 0xFF)
+        return sqrt(r * r + g * g + b * b)
+    }
+
     /** Drei Farben für Vorschau-Kacheln außerhalb des Spiels. */
     fun chips(id: SkinId): List<Long> = listOf(body(id), shade(id), shine(id))
 

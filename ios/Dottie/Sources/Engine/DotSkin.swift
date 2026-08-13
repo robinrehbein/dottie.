@@ -64,6 +64,9 @@ enum DotSkin: String, CaseIterable {
 
     var hasTrail: Bool { SkinPaint.hasTrail(self) }
 
+    /// Braucht das Auge eine Kontur zum Körper hin? Siehe SkinPaint.
+    var needsEyeOutline: Bool { SkinPaint.needsEyeOutline(self) }
+
     /// Dauerhafte Bestleistungen, gegen die Freischaltungen geprüft werden.
     struct Stats {
         let bestScore: Int

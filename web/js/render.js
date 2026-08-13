@@ -320,22 +320,28 @@
         rect(ctx, color, centerX - r + col * u, centerY - r + row * u, cols * u, rows * u);
       }
 
-      // Glanzpunkt und Auge folgen der sichtbaren Flugrichtung. Das Auge
-      // bekommt zum Koerper hin eine Kontur, sonst geht es auf hellen
-      // Skins (Koi, Chrom) im Koerper unter.
+      // Glanzpunkt und Auge folgen der sichtbaren Flugrichtung. Auf sehr
+      // hellen Skins (Koi, Chrom) bekommt das Auge zum Koerper hin eine
+      // Kontur, sonst ginge das Weiss im Koerper unter; wo der Koerper
+      // von selbst genug Kontrast hat, bleibt sie weg.
       var facingLeft = Math.sin(game.angle) * game.direction > 0;
+      var eyeOutline = global.DotSkin.needsEyeOutline(skin);
       if (facingLeft) {
         birdRect(GRID - 4.5, 2.5, 2, 2, shine);
-        birdRect(5.5, 3, 0.5, 4, OutlineColor);
-        birdRect(2, 2.5, 3.5, 0.5, OutlineColor);
-        birdRect(2, 7, 3.5, 0.5, OutlineColor);
+        if (eyeOutline) {
+          birdRect(5.5, 3, 0.5, 4, OutlineColor);
+          birdRect(2, 2.5, 3.5, 0.5, OutlineColor);
+          birdRect(2, 7, 3.5, 0.5, OutlineColor);
+        }
         birdRect(2, 3, 3.5, 4, "#FFFFFF");
         birdRect(2, 4, 1.5, 2, OutlineColor);
       } else {
         birdRect(2.5, 2.5, 2, 2, shine);
-        birdRect(7, 3, 0.5, 4, OutlineColor);
-        birdRect(7.5, 2.5, 3.5, 0.5, OutlineColor);
-        birdRect(7.5, 7, 3.5, 0.5, OutlineColor);
+        if (eyeOutline) {
+          birdRect(7, 3, 0.5, 4, OutlineColor);
+          birdRect(7.5, 2.5, 3.5, 0.5, OutlineColor);
+          birdRect(7.5, 7, 3.5, 0.5, OutlineColor);
+        }
         birdRect(7.5, 3, 3.5, 4, "#FFFFFF");
         birdRect(9.5, 4, 1.5, 2, OutlineColor);
       }

@@ -60,6 +60,9 @@ internal enum class WearDotSkin(val id: SkinId) {
 
     val hasTrail: Boolean get() = SkinPaint.hasTrail(id)
 
+    /** Braucht das Auge eine Kontur zum Körper hin? Siehe SkinPaint. */
+    val needsEyeOutline: Boolean get() = SkinPaint.needsEyeOutline(id)
+
     /** Dauerhafte Bestleistungen, gegen die Freischaltungen geprüft werden. */
     data class Stats(
         val bestScore: Int,

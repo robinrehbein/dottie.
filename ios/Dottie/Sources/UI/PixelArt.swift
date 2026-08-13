@@ -100,20 +100,26 @@ enum PixelArt {
             func block(_ col: CGFloat, _ row: CGFloat, _ cols: CGFloat, _ rows: CGFloat, _ color: UIColor) {
                 fill(ctx, color, col * u, row * u, cols * u, rows * u)
             }
-            // Das Auge bekommt zum Körper hin eine Kontur: Auf sehr hellen
-            // Skins (Koi, Chrom) ginge das Weiß sonst im Körper unter.
+            // Auf sehr hellen Skins (Koi, Chrom) bekommt das Auge zum
+            // Körper hin eine Kontur, sonst ginge das Weiß im Körper
+            // unter; wo der Körper von selbst Kontrast hat, bleibt sie weg.
+            let eyeOutline = skin.needsEyeOutline
             if facingLeft {
                 block(grid - 4.5, 2.5, 2, 2, shine)
-                block(5.5, 3, 0.5, 4, Palette.outline)
-                block(2, 2.5, 3.5, 0.5, Palette.outline)
-                block(2, 7, 3.5, 0.5, Palette.outline)
+                if eyeOutline {
+                    block(5.5, 3, 0.5, 4, Palette.outline)
+                    block(2, 2.5, 3.5, 0.5, Palette.outline)
+                    block(2, 7, 3.5, 0.5, Palette.outline)
+                }
                 block(2, 3, 3.5, 4, UIColor.white)
                 block(2, 4, 1.5, 2, Palette.outline)
             } else {
                 block(2.5, 2.5, 2, 2, shine)
-                block(7, 3, 0.5, 4, Palette.outline)
-                block(7.5, 2.5, 3.5, 0.5, Palette.outline)
-                block(7.5, 7, 3.5, 0.5, Palette.outline)
+                if eyeOutline {
+                    block(7, 3, 0.5, 4, Palette.outline)
+                    block(7.5, 2.5, 3.5, 0.5, Palette.outline)
+                    block(7.5, 7, 3.5, 0.5, Palette.outline)
+                }
                 block(7.5, 3, 3.5, 4, UIColor.white)
                 block(9.5, 4, 1.5, 2, Palette.outline)
             }

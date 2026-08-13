@@ -220,18 +220,23 @@ private fun DrawScope.drawWearDot(
         // hellen Skins (Koi, Chrom) im Körper unter.
         val facingLeft = sin(game.angle) * game.direction > 0f
         val shine = skin.shineColor(state)
+        val eyeOutline = skin.needsEyeOutline
         if (facingLeft) {
             rect(WEAR_GRID - 4.5f, 2.5f, 2f, 2f, shine)
-            rect(5.5f, 3f, 0.5f, 4f, WearOutlineColor)
-            rect(2f, 2.5f, 3.5f, 0.5f, WearOutlineColor)
-            rect(2f, 7f, 3.5f, 0.5f, WearOutlineColor)
+            if (eyeOutline) {
+                rect(5.5f, 3f, 0.5f, 4f, WearOutlineColor)
+                rect(2f, 2.5f, 3.5f, 0.5f, WearOutlineColor)
+                rect(2f, 7f, 3.5f, 0.5f, WearOutlineColor)
+            }
             rect(2f, 3f, 3.5f, 4f, Color.White)
             rect(2f, 4f, 1.5f, 2f, WearOutlineColor)
         } else {
             rect(2.5f, 2.5f, 2f, 2f, shine)
-            rect(7f, 3f, 0.5f, 4f, WearOutlineColor)
-            rect(7.5f, 2.5f, 3.5f, 0.5f, WearOutlineColor)
-            rect(7.5f, 7f, 3.5f, 0.5f, WearOutlineColor)
+            if (eyeOutline) {
+                rect(7f, 3f, 0.5f, 4f, WearOutlineColor)
+                rect(7.5f, 2.5f, 3.5f, 0.5f, WearOutlineColor)
+                rect(7.5f, 7f, 3.5f, 0.5f, WearOutlineColor)
+            }
             rect(7.5f, 3f, 3.5f, 4f, Color.White)
             rect(9.5f, 4f, 1.5f, 2f, WearOutlineColor)
         }
