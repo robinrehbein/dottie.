@@ -23,8 +23,8 @@ android {
         // Paket-ID hinweg. Die Phone-App zählt ab 25 aufwärts, Wear bekommt
         // deshalb einen eigenen Bereich ab 100001 — so kollidieren die
         // beiden Zähler nie.
-        versionCode = 100003
-        versionName = "0.2.1-wear"
+        versionCode = 100004
+        versionName = "0.2.2-wear"
     }
 
     signingConfigs {

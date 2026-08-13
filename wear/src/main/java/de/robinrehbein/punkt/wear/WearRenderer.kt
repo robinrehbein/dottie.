@@ -8,7 +8,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import de.robinrehbein.punkt.game.TimingGame
 import kotlin.math.abs
 import kotlin.math.cos
-import kotlin.math.floor
+import kotlin.math.round
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -65,6 +65,31 @@ private const val WEAR_DEATH_GRAVITY = 6f
  */
 private const val WEAR_DEATH_FLIP_SECONDS = 0.3f
 
+/** Segmentzahl der Bahn — dieselbe wie am Phone (drawTrack). */
+private const val WEAR_TRACK_SEGMENTS = 60
+
+/**
+ * Blockbreiten als Vielfaches des Segment-Abstands. Die Werte stammen aus
+ * der Phone-Bahn: Dort liegen bei 60 Segmenten rund 41 Pixel zwischen den
+ * Mittelpunkten, die neutralen Blöcke sind 30 Pixel breit (0,74) und die
+ * Zonen-Blöcke 50 (1,23). Genau daraus entsteht der gewollte Unterschied —
+ * die Kette behält ihre Lücken, die Zone überlappt sich zu einem
+ * durchgehenden Band.
+ *
+ * Warum am Abstand statt an einer festen Zellgröße (so war es vorher):
+ * `floor(d / 220)` ergibt auf einem 480er Uhren-Display die Zellgröße 2,
+ * damit waren die Blöcke nur 6 bzw. 14 Pixel breit — bei 29 Pixeln
+ * Abstand. Die Kette zerfiel in Staubkörner und die Zone blieb eine Reihe
+ * einzelner Quadrate statt eines Bandes. Am Abstand gerechnet stimmen die
+ * Proportionen auf jeder Displaygröße von selbst.
+ */
+private const val WEAR_SEG_NEUTRAL = 0.74f
+private const val WEAR_SEG_ZONE = 1.23f
+
+/** Farbkern im Verhältnis zum Block — am Phone 1.8/3 bzw. 3.4/5. */
+private const val WEAR_CORE_NEUTRAL = 0.6f
+private const val WEAR_CORE_ZONE = 0.68f
+
 /**
  * Zeichnet die komplette Spielwelt für das runde Wear-Display: Himmel je
  * nach Score-Stufe, die Bahn als Perlenkette und den Vogel — kein
@@ -74,16 +99,15 @@ internal fun DrawScope.drawWearWorld(game: TimingGame, skin: WearDotSkin) {
     val d = size.minDimension
     val cx = size.width / 2f
     val cy = size.height / 2f
-    // Proportional zu minDimension statt zur Bildhöhe wie am Phone — auf
-    // der Uhr sind Breite und Höhe (fast) identisch, aber minDimension ist
-    // robust gegenüber eckigen/ovalen Displays.
-    val cell = floor(d / 220f).coerceAtLeast(2f)
 
     val sky = WearSkyStages[(game.score / 5).coerceAtMost(WearSkyStages.size - 1)]
     drawRect(color = sky, topLeft = Offset.Zero, size = size)
 
+    // Radius proportional zu minDimension statt zur Bildhöhe wie am Phone —
+    // auf der Uhr sind Breite und Höhe (fast) identisch, aber minDimension
+    // ist robust gegenüber eckigen/ovalen Displays.
     val radius = d * 0.38f
-    drawWearTrack(game, cx, cy, radius, cell)
+    drawWearTrack(game, cx, cy, radius)
     // In OVER ist der Vogel bereits unten aus dem Bild gefallen
     // (Mario-Hüpfer in der DYING-Phase) — die Bahn bleibt leer, bis der
     // nächste Lauf startet. Am Phone regelt das fx.deathTime genauso.
@@ -93,19 +117,26 @@ internal fun DrawScope.drawWearWorld(game: TimingGame, skin: WearDotSkin) {
 }
 
 /**
- * Die Kreisbahn als Kette blockiger Zellen (Perlenketten-Look wie
- * drawTrack am Phone) — 40 statt 60 Segmente, damit die einzelnen Glieder
- * auf dem kleinen Display noch als Kette statt als durchgehender Ring
- * lesbar bleiben.
+ * Die Kreisbahn als Kette blockiger Zellen — dieselbe Zeichnung wie
+ * drawTrack am Phone, nur dass die Blockgrößen hier aus dem
+ * Segment-Abstand folgen (siehe WEAR_SEG_*), damit die Proportionen auf
+ * dem kleinen Display erhalten bleiben.
  */
 private fun DrawScope.drawWearTrack(
     game: TimingGame,
     cx: Float,
     cy: Float,
-    radius: Float,
-    cell: Float
+    radius: Float
 ) {
-    val segments = 40
+    val segments = WEAR_TRACK_SEGMENTS
+    // Abstand zwischen zwei Segment-Mittelpunkten. Auf ganze Pixel
+    // gerundet, damit die Blöcke ihre harten Kanten behalten.
+    val spacing = 2f * Math.PI.toFloat() * radius / segments
+    val neutralOuter = round(spacing * WEAR_SEG_NEUTRAL).coerceAtLeast(2f)
+    val zoneOuter = round(spacing * WEAR_SEG_ZONE).coerceAtLeast(4f)
+    val neutralInner = round(neutralOuter * WEAR_CORE_NEUTRAL).coerceAtLeast(1f)
+    val zoneInner = round(zoneOuter * WEAR_CORE_ZONE).coerceAtLeast(2f)
+
     val zoneHalf = game.effectiveZoneHalf()
     for (k in 0 until segments) {
         val a = k.toFloat() / segments * (2f * Math.PI.toFloat())
@@ -127,11 +158,8 @@ private fun DrawScope.drawWearTrack(
             game.zoneHalfWidth * TimingGame.PERFECT_SHARE
 
         val highlighted = inZone || inFake
-        // Zonen-Bloecke deutlich groesser als die neutrale Kette: Auf der
-        // echten Uhr waren 5f/3.4f zu klein, um die Zone im Augenwinkel zu
-        // treffen (Feedback vom Geraete-Test auf der Galaxy Watch Ultra).
-        val outer = if (highlighted) cell * 7f else cell * 3f
-        val inner = if (highlighted) cell * 5f else cell * 1.8f
+        val outer = if (highlighted) zoneOuter else neutralOuter
+        val inner = if (highlighted) zoneInner else neutralInner
         val innerColor = when {
             inPerfectCore -> WearGrassLight
             inZone -> WearGrassDark
