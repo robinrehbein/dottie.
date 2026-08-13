@@ -110,6 +110,39 @@ Der Tagespass ist eine reine Android-Sache: Er hängt am Rewarded-Spot,
 und PWA (`web/`) sowie iOS (`ios/`) haben keine Werbung — dort ändert
 sich nichts.
 
+## Abgleich zwischen Telefon und Uhr (ab v2.18)
+
+Rekord, Lauf-Zahl, beste Perfekt-Serie, Daily-Stand und die Skin-Wahl
+gleichen sich über den **Wearable Data Layer** ab (Modul `:sync`). Es
+gibt dabei bewusst **keine Haupt- und keine Nebenrolle**: Jedes Gerät
+legt seinen Stand ab, liest den der Gegenseite und führt beide mit
+`SyncState.mergedWith` (`:core`) zusammen. Weil das Zusammenführen
+kommutativ und idempotent ist, landen beide Seiten zwangsläufig beim
+selben Ergebnis — unabhängig davon, wer zuerst online war oder wie oft
+dieselbe Nachricht ankommt. Ohne diese beiden Eigenschaften könnten sich
+zwei Geräte endlos gegenseitig neue Stände schicken.
+
+Die Regeln:
+
+- **Bestleistungen**: der höhere Wert gewinnt. Ein Rekord, der einmal
+  existiert hat, darf durch den Abgleich nie verschwinden.
+- **Skin-Wahl**: die *neuere* gewinnt, nicht die „größere" — eine
+  Auswahl ist eine Entscheidung, kein Rekord. Ein nur geliehener
+  Tagespass-Skin wird gar nicht erst mitgeteilt: geliehen ist nicht
+  verdient, und die Uhr leitet ihre Freischaltungen ohnehin selbst aus
+  den Bestleistungen ab.
+- **Daily-Serie**: der Sonderfall. Wer gestern auf der Uhr und heute am
+  Telefon gespielt hat, hat die Serie fortgesetzt — auch wenn das
+  Telefon für sich genommen bei 1 stand, weil es von gestern nichts
+  wusste. Bei aufeinanderfolgenden Tagen zählt deshalb `gestern + 1`,
+  bei einer echten Lücke reißt die Serie wie gewohnt.
+
+Der Abgleich läuft nur, solange eine der beiden Apps offen ist — bewusst
+ohne Hintergrunddienst. Beim Öffnen wird geholt, was die Gegenseite
+zuletzt abgelegt hat, auch wenn deren App längst geschlossen ist. Ohne
+gekoppelte Uhr oder ohne Play-Dienste passiert schlicht nichts; das
+Spiel läuft davon unberührt.
+
 ## Sprachen (ab v2.11)
 
 Die App ist zweisprachig: **Englisch** ist die Standardsprache,

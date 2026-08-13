@@ -23,3 +23,4 @@ rootProject.name = "Punkt"
 include(":app")
 include(":core")
 include(":wear")
+include(":sync")

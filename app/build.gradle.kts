@@ -23,8 +23,9 @@ android {
         // reagierend), der Himmel im Tag-Nacht-Umlauf, und der
         // Rewarded-Spot schaltet einen Skin-Tagespass frei statt
         // Weiterspielen — der Tod bleibt endgueltig. Werbung ist aktiv.
-        versionCode = 28
-        versionName = "2.17"
+        // v2.18: Abgleich mit der Uhr ueber den Wearable Data Layer.
+        versionCode = 29
+        versionName = "2.18"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -91,6 +92,7 @@ android {
 dependencies {
 
     implementation(project(":core"))
+    implementation(project(":sync"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
