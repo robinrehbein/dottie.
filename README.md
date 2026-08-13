@@ -110,7 +110,7 @@ Der Tagespass ist eine reine Android-Sache: Er hängt am Rewarded-Spot,
 und PWA (`web/`) sowie iOS (`ios/`) haben keine Werbung — dort ändert
 sich nichts.
 
-## Abgleich zwischen Telefon und Uhr (ab v2.18)
+## Abgleich zwischen Telefon und Uhr (ab v2.19)
 
 Rekord, Lauf-Zahl, beste Perfekt-Serie, Daily-Stand und die Skin-Wahl
 gleichen sich über den **Wearable Data Layer** ab (Modul `:sync`). Es

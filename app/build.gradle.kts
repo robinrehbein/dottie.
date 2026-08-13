@@ -19,13 +19,21 @@ android {
         applicationId = "de.robinrehbein.pointless"
         minSdk = 28
         targetSdk = 36
-        // v2.17: 21 Punkt-Skins (gemustert, bewegt, auf den Lauf
+        // v2.18: 21 Punkt-Skins (gemustert, bewegt, auf den Lauf
         // reagierend), der Himmel im Tag-Nacht-Umlauf, und der
         // Rewarded-Spot schaltet einen Skin-Tagespass frei statt
         // Weiterspielen — der Tod bleibt endgueltig. Werbung ist aktiv.
-        // v2.18: Abgleich mit der Uhr ueber den Wearable Data Layer.
-        versionCode = 29
-        versionName = "2.18"
+        //
+        // Zur Zaehlung: 28 wurde zweimal gebaut und verteilt (Build 101
+        // mit Skins und Umlauf, Build 108 zusaetzlich mit Tagespass),
+        // deshalb sprang main auf 29 — und 29 ging als Build 110 raus.
+        // Der Uhr-Abgleich bekommt daher 30. Jeder verteilte Build muss
+        // seinen eigenen Code haben, sonst haelt Android zwei
+        // verschiedene Staende faelschlich fuer dieselbe Fassung.
+        //
+        // v2.19: Abgleich mit der Uhr ueber den Wearable Data Layer.
+        versionCode = 30
+        versionName = "2.19"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
