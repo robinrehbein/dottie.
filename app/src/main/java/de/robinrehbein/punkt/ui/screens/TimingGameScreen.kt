@@ -522,7 +522,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                         }
                     }
                 },
-                removeAdsVisible = ads.enabled,
+                // Kein Preis von Google = kein Angebot. Ein Knopf, der
+                // ins Leere greift, ist schlimmer als gar keiner.
+                removeAdsPrice = if (ads.enabled) billing.priceLabel else null,
                 onRemoveAds = { (context as? Activity)?.let { billing.purchase(it) } },
                 privacyVisible = ads.enabled && ads.privacyOptionsRequired,
                 onPrivacy = { (context as? Activity)?.let { ads.showPrivacyOptions(it) } }

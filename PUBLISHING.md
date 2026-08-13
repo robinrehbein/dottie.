@@ -327,9 +327,17 @@ erstellen**:
 | Typ | Einmaliger Kauf, **nicht** verbrauchbar |
 | Name | „Werbung entfernen" / „Remove ads" |
 | Beschreibung | Entfernt dauerhaft alle Anzeigen. Skins werden weiter durch Spielen freigeschaltet. |
-| Preis | Vorschlag **2,99 €** (Play rechnet die anderen Währungen um) |
+| Preis | **0,99 €** (Play rechnet die anderen Währungen um) |
 
 Danach **aktivieren** — inaktive Produkte liefern im Kaufdialog nichts.
+
+Der Preis steht **nirgends im Code**: Die App zeigt den Wert an, den
+Google für das Land der Spielerin ausliefert (`formattedPrice`), samt
+Währung und Steuersatz. Eine feste Zeichenkette stünde in der Hälfte der
+Welt falsch da. Solange Google kein kaufbares Produkt liefert — Produkt
+nicht angelegt, nicht aktiviert, App nicht über Play installiert oder
+kein Play-Dienst vorhanden — **erscheint die Kauf-Zeile gar nicht erst**,
+statt als toter Knopf dazustehen.
 Der Kauf hängt am Google-Konto: Nach einer Neuinstallation stellt die
 App ihn beim Start selbst wieder her (`queryPurchases`), ein
 „Kauf wiederherstellen"-Knopf ist deshalb nicht nötig. Testen geht

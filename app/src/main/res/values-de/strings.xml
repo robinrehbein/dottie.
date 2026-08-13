@@ -45,7 +45,7 @@
     <string name="share">TEILEN</string>
     <string name="menu">MENUE</string>
     <!-- Werbung: nur sichtbar, wenn in res/values/ads.xml echte IDs stehen. -->
-    <string name="remove_ads">WERBUNG ENTFERNEN</string>
+    <string name="remove_ads">WERBUNG ENTFERNEN — %1$s</string>
     <string name="ad_privacy">DATENSCHUTZ-EINSTELLUNGEN</string>
 
     <!-- Spott-Texte (Auswahl deterministisch über score+best) -->
