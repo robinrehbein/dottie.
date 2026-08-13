@@ -22,7 +22,7 @@ import de.robinrehbein.punkt.data.ScoreStore
 
 /**
  * Alles rund um AdMob an einer Stelle: UMP-Consent, ein Rewarded-Spot
- * fürs Weiterspielen und gelegentliche Interstitials.
+ * für den Skin-Tagespass und gelegentliche Interstitials.
  *
  * Die Integration ist hart feature-geflaggt, genau wie die
  * Play-Games-Bestenlisten: Solange in res/values/ads.xml eine der drei
@@ -65,8 +65,19 @@ class AdsManager(
     var enabled by mutableStateOf(configured && !store.adsRemoved)
         private set
 
-    /** Liegt ein Rewarded-Spot bereit? Gate für den WEITERSPIELEN-Button. */
+    /** Liegt ein Rewarded-Spot bereit? Gate für das Tagespass-Angebot. */
     var rewardedReady by mutableStateOf(false)
+        private set
+
+    /**
+     * Muss die App einen dauerhaften Weg zurück ins Einwilligungs-Formular
+     * anbieten? Googles UMP beantwortet das je nach Region: In der EU ist
+     * eine einmal erteilte Einwilligung ohne Widerrufsmöglichkeit
+     * wertlos, außerhalb gibt es oft gar kein Formular. Beobachtbar, weil
+     * die Antwort erst nach dem Netzabruf feststeht — der Startscreen
+     * blendet die Zeile dann nach.
+     */
+    var privacyOptionsRequired by mutableStateOf(false)
         private set
 
     private var rewarded: RewardedAd? = null
@@ -109,14 +120,47 @@ class AdsManager(
                     if (formError != null) {
                         Log.w(TAG, "Consent-Formular: ${formError.message}")
                     }
+                    updatePrivacyOptionsRequired()
                     initializeIfAllowed()
                 }
             },
             { requestError ->
                 Log.w(TAG, "Consent-Abfrage: ${requestError.message}")
+                updatePrivacyOptionsRequired()
                 initializeIfAllowed()
             }
         )
+    }
+
+    private fun updatePrivacyOptionsRequired() {
+        privacyOptionsRequired = consentInformation?.privacyOptionsRequirementStatus ==
+            ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+    }
+
+    /**
+     * Öffnet Googles Einwilligungs-Formular erneut, damit sich eine
+     * einmal getroffene Wahl auch wieder ändern lässt. Ohne diesen Weg
+     * wäre die Einwilligung nach DSGVO nicht widerrufbar — und Google
+     * verlangt ihn ausdrücklich, sobald [privacyOptionsRequired] gilt.
+     */
+    fun showPrivacyOptions(activity: Activity) {
+        UserMessagingPlatform.showPrivacyOptionsForm(activity) { formError ->
+            if (formError != null) {
+                Log.w(TAG, "Datenschutz-Formular: ${formError.message}")
+                return@showPrivacyOptionsForm
+            }
+            // Ein Widerruf kann die Auslieferung beenden — dann laufen die
+            // bereits geladenen Spots ins Leere. Neu bewerten statt raten.
+            updatePrivacyOptionsRequired()
+            if (consentInformation?.canRequestAds() != true) {
+                rewarded = null
+                rewardedReady = false
+                interstitial = null
+            } else {
+                loadRewarded()
+                loadInterstitial()
+            }
+        }
     }
 
     private fun initializeIfAllowed() {
@@ -135,7 +179,7 @@ class AdsManager(
         }
     }
 
-    // ===== Rewarded: Weiterspielen nach dem Tod =====
+    // ===== Rewarded: Skin-Tagespass =====
 
     private fun loadRewarded() {
         if (!enabled || activity == null || rewarded != null) return
@@ -161,7 +205,7 @@ class AdsManager(
     /**
      * Zeigt den Rewarded-Spot. [onReward] läuft nur, wenn Google die
      * Belohnung wirklich bestätigt — ein Abbruch führt zu gar nichts,
-     * das Game-Over bleibt dann einfach stehen.
+     * der Skin bleibt dann einfach gesperrt.
      */
     fun showRewarded(activity: Activity, onReward: () -> Unit) {
         val ad = rewarded
@@ -171,8 +215,8 @@ class AdsManager(
         var earned = false
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
-                // Nächsten Spot vorladen, damit der Button beim übernächsten
-                // Tod wieder sofort bereitsteht.
+                // Nächsten Spot vorladen, damit das Angebot beim nächsten
+                // Blick in die Skins wieder sofort bereitsteht.
                 loadRewarded()
                 if (earned) onReward()
             }
@@ -212,9 +256,8 @@ class AdsManager(
     }
 
     /**
-     * Meldet ein endgültiges Game-Over (also keins, aus dem gerade per
-     * Rewarded weitergespielt wurde) und zeigt ggf. ein Interstitial.
-     * Die Häufigkeit regelt allein [InterstitialGate].
+     * Meldet ein Game-Over und zeigt ggf. ein Interstitial. Jeder Tod ist
+     * endgültig — die Häufigkeit regelt deshalb allein [InterstitialGate].
      */
     fun onGameOver(activity: Activity) {
         if (!enabled) return

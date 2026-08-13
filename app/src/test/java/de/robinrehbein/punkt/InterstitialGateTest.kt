@@ -23,19 +23,17 @@ class InterstitialGateTest {
     private fun gateWith(clock: Clock) = InterstitialGate { clock.now }
 
     @Test
-    fun `the first three deaths of a session stay ad-free`() {
+    fun `the first five deaths of a session stay ad-free`() {
         val gate = gateWith(Clock())
 
-        assertFalse(gate.onDeathShouldShow())
-        assertFalse(gate.onDeathShouldShow())
-        assertFalse(gate.onDeathShouldShow())
-        assertEquals(3, gate.deathCount)
+        repeat(5) { assertFalse(gate.onDeathShouldShow()) }
+        assertEquals(5, gate.deathCount)
     }
 
     @Test
-    fun `the fourth death may show an interstitial`() {
+    fun `the sixth death may show an interstitial`() {
         val gate = gateWith(Clock())
-        repeat(3) { gate.onDeathShouldShow() }
+        repeat(5) { gate.onDeathShouldShow() }
 
         assertTrue(gate.onDeathShouldShow())
     }
@@ -44,14 +42,16 @@ class InterstitialGateTest {
     fun `no second interstitial right after one was shown`() {
         val clock = Clock()
         val gate = gateWith(clock)
-        repeat(3) { gate.onDeathShouldShow() }
+        repeat(5) { gate.onDeathShouldShow() }
         assertTrue(gate.onDeathShouldShow())
         gate.markShown()
 
-        // Zwei schnelle Läufe direkt danach — beide bleiben werbefrei.
+        // Mehrere schnelle Läufe direkt danach — alle bleiben werbefrei.
         clock.advanceSeconds(8)
         assertFalse(gate.onDeathShouldShow())
         clock.advanceSeconds(30)
+        assertFalse(gate.onDeathShouldShow())
+        clock.advanceSeconds(60)
         assertFalse(gate.onDeathShouldShow())
     }
 
@@ -59,14 +59,14 @@ class InterstitialGateTest {
     fun `after the interval another interstitial is allowed`() {
         val clock = Clock()
         val gate = gateWith(clock)
-        repeat(3) { gate.onDeathShouldShow() }
+        repeat(5) { gate.onDeathShouldShow() }
         gate.onDeathShouldShow()
         gate.markShown()
 
-        clock.advanceSeconds(89)
+        clock.advanceSeconds(179)
         assertFalse(gate.onDeathShouldShow())
 
-        clock.advanceSeconds(1) // genau 90 s Abstand
+        clock.advanceSeconds(1) // genau 180 s Abstand
         assertTrue(gate.onDeathShouldShow())
     }
 
@@ -74,7 +74,7 @@ class InterstitialGateTest {
     fun `an interstitial that never ran does not burn the time window`() {
         val clock = Clock()
         val gate = gateWith(clock)
-        repeat(3) { gate.onDeathShouldShow() }
+        repeat(5) { gate.onDeathShouldShow() }
 
         // Erlaubnis erteilt, aber nichts geladen → kein markShown().
         assertTrue(gate.onDeathShouldShow())
@@ -87,11 +87,11 @@ class InterstitialGateTest {
     fun `the death counter keeps running across shown ads`() {
         val clock = Clock()
         val gate = gateWith(clock)
-        repeat(6) {
+        repeat(8) {
             if (gate.onDeathShouldShow()) gate.markShown()
             clock.advanceSeconds(20)
         }
 
-        assertEquals(6, gate.deathCount)
+        assertEquals(8, gate.deathCount)
     }
 }

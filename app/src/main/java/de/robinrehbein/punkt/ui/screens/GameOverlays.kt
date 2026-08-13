@@ -191,7 +191,11 @@ internal fun ReadyOverlay(
     // Kauf-Zeile: nur sichtbar, wenn Werbung wirklich läuft. Ohne
     // AdMob-IDs (Standard) sieht der Startscreen exakt aus wie bisher.
     removeAdsVisible: Boolean = false,
-    onRemoveAds: () -> Unit = {}
+    onRemoveAds: () -> Unit = {},
+    // Widerruf der Werbe-Einwilligung. Google blendet die Zeile selbst
+    // nur dort ein, wo sie nötig ist (im Wesentlichen die EU).
+    privacyVisible: Boolean = false,
+    onPrivacy: () -> Unit = {}
 ) {
     val blink by rememberInfiniteTransition(label = "blink").animateFloat(
         initialValue = 1f,
@@ -362,6 +366,20 @@ internal fun ReadyOverlay(
                         .padding(horizontal = 16.dp, vertical = 6.dp)
                 )
             }
+            // Noch eine Spur zurückhaltender als die Kauf-Zeile: Der
+            // Widerruf muss dauerhaft erreichbar sein, aber niemand sucht
+            // ihn auf einem Startbildschirm — deshalb klein und blass.
+            if (privacyVisible) {
+                Text(
+                    text = stringResource(R.string.ad_privacy),
+                    style = ScoreShadowStyle,
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .clickable { onPrivacy() }
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            }
         }
     }
 }
@@ -379,13 +397,7 @@ internal fun GameOverOverlay(
     newMedal: Boolean,
     onShare: () -> Unit,
     onMenu: () -> Unit,
-    onHelp: () -> Unit,
-    // Weiterspielen gegen einen Rewarded-Spot: nur wenn Werbung aktiv,
-    // ein Spot geladen ist, der Lauf ein Klassik-Lauf ist und in diesem
-    // Lauf noch nicht wiederbelebt wurde. Ohne AdMob-IDs (Standard)
-    // sieht das Game-Over exakt aus wie bisher.
-    continueAdVisible: Boolean = false,
-    onContinueAd: () -> Unit = {}
+    onHelp: () -> Unit
 ) {
     val blink by rememberInfiniteTransition(label = "overBlink").animateFloat(
         initialValue = 1f,
@@ -537,23 +549,6 @@ internal fun GameOverOverlay(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-
-            // Steht über dem "TIPPEN = NOCHMAL"-Hinweis: Wer weiterspielen
-            // will, soll das Angebot sehen, bevor der Blick beim
-            // Neustart-Hinweis landet.
-            if (continueAdVisible) {
-                PixelButton(
-                    text = stringResource(R.string.continue_ad),
-                    onClick = onContinueAd,
-                    backgroundColor = GrassLight,
-                    borderColor = TextDark,
-                    textColor = TextDark,
-                    width = 244.dp,
-                    height = 52.dp,
-                    borderWidth = 3.dp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
 
             // Kein NOCHMAL-Button: Tap irgendwo startet sofort neu (nach
             // kurzer Wut-Tap-Sperre) — der blinkende Hinweis ist die
@@ -845,13 +840,22 @@ private fun TwistHelpRow(color: Color, title: String, text: String) {
  * Freigeschaltete Skins lassen sich antippen, gesperrte zeigen ihre
  * Freischalt-Bedingung. Ein Tap außerhalb schließt (und wird konsumiert,
  * damit er nicht als Spiel-Tap durchschlägt).
+ *
+ * [skinPass] ist der heute per Spot freigeschaltete Probier-Skin (siehe
+ * ScoreStore.skinPassFor); [adOfferReady] sagt, ob dafür gerade ein Spot
+ * bereitliegt. Beides ist ohne AdMob-IDs immer null bzw. false — dann
+ * gibt es weder Zusatzzeilen noch anklickbare gesperrte Skins, das
+ * Overlay ist Pixel für Pixel das alte.
  */
 @Composable
 internal fun SkinOverlay(
     stats: DotSkin.Stats,
     selected: DotSkin,
     onSelect: (DotSkin) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    skinPass: DotSkin? = null,
+    adOfferReady: Boolean = false,
+    onWatchAdFor: (DotSkin) -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -878,12 +882,18 @@ internal fun SkinOverlay(
             )
 
             DotSkin.entries.forEach { skin ->
-                val unlocked = skin.isUnlocked(stats)
+                // "Verdient" und "heute spielbar" bleiben getrennt: Der
+                // Tagespass macht den Skin nutzbar, nicht freigeschaltet.
+                val available = skin.isAvailable(stats, skinPass)
+                val onPass = skin == skinPass && !skin.isUnlocked(stats)
+                val adOffer = !available && adOfferReady
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = unlocked) { onSelect(skin) }
+                        .clickable(enabled = available || adOffer) {
+                            if (available) onSelect(skin) else onWatchAdFor(skin)
+                        }
                         .padding(horizontal = 48.dp, vertical = 10.dp)
                 ) {
                     // Vorschau als echter Vogel statt als Farbfläche: Bei
@@ -896,7 +906,7 @@ internal fun SkinOverlay(
                             centerX = d / 2f,
                             centerY = d / 2f,
                             radius = d / 2f,
-                            alpha = if (unlocked) 1f else 0.3f
+                            alpha = if (available) 1f else 0.3f
                         ) { col, row -> Color(skin.cell(col, row)) }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
@@ -905,22 +915,36 @@ internal fun SkinOverlay(
                             text = stringResource(skin.titleRes),
                             fontFamily = Bytesized,
                             fontSize = 20.sp,
-                            color = if (unlocked) Color.White else Color.White.copy(alpha = 0.45f)
+                            color = if (available) Color.White else Color.White.copy(alpha = 0.45f)
                         )
                         Text(
                             text = when {
                                 skin == selected -> stringResource(R.string.skin_selected)
-                                unlocked -> stringResource(R.string.skin_tap_select)
+                                available -> stringResource(R.string.skin_tap_select)
                                 else -> skin.unlockHintRes?.let { stringResource(it) } ?: ""
                             },
                             fontFamily = Bytesized,
                             fontSize = 14.sp,
                             color = when {
                                 skin == selected -> DotBody
-                                unlocked -> Color.White.copy(alpha = 0.7f)
+                                available -> Color.White.copy(alpha = 0.7f)
                                 else -> Color.White.copy(alpha = 0.45f)
                             }
                         )
+                        // Der Spot-Hinweis bekommt eine eigene, kleinere
+                        // Zeile: Die Freischalt-Bedingung ist die wichtigere
+                        // Information und bleibt deshalb ungekürzt oben.
+                        if (onPass || adOffer) {
+                            Text(
+                                text = stringResource(
+                                    if (onPass) R.string.skin_pass_today
+                                    else R.string.skin_pass_offer
+                                ),
+                                fontFamily = Bytesized,
+                                fontSize = 12.sp,
+                                color = GrassLight
+                            )
+                        }
                     }
                 }
             }

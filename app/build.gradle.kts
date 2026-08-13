@@ -20,7 +20,9 @@ android {
         minSdk = 28
         targetSdk = 36
         // v2.17: 21 Punkt-Skins (gemustert, bewegt, auf den Lauf
-        // reagierend) und der Himmel im Tag-Nacht-Umlauf.
+        // reagierend), der Himmel im Tag-Nacht-Umlauf, und der
+        // Rewarded-Spot schaltet einen Skin-Tagespass frei statt
+        // Weiterspielen — der Tod bleibt endgueltig. Werbung ist aktiv.
         versionCode = 28
         versionName = "2.17"
 

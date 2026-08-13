@@ -20,6 +20,9 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 dependencies {
-    // Unit-Tests für die Kern-Spiellogik (z. B. TimingGame.revive).
+    // Nur zum Testen: Die Skin-Muster (SkinPaint) rechnen hier, also
+    // gehören ihre Tests auch hierher. Die restliche Spiellogik wird
+    // weiterhin aus :app geprüft (TimingGameTest), wo der Test-Stack
+    // ohnehin steht.
     testImplementation(libs.junit)
 }

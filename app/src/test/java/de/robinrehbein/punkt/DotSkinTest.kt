@@ -110,4 +110,30 @@ class DotSkinTest {
             .map { it.groupValues[1].toLong(16) }
             .toList()
     }
+
+    @Test
+    fun `ohne Tagespass ist verfuegbar dasselbe wie freigeschaltet`() {
+        val s = stats(best = 25)
+        DotSkin.entries.forEach { skin ->
+            assertEquals(skin.isUnlocked(s), skin.isAvailable(s, null))
+        }
+    }
+
+    @Test
+    fun `der Tagespass macht genau einen gesperrten Skin spielbar`() {
+        val s = stats()
+        assertTrue(DotSkin.LAVA.isAvailable(s, DotSkin.LAVA))
+        assertFalse(DotSkin.GOLD.isAvailable(s, DotSkin.LAVA))
+        assertTrue(DotSkin.KLASSIK.isAvailable(s, DotSkin.LAVA))
+    }
+
+    @Test
+    fun `ein Tagespass schaltet nichts dauerhaft frei`() {
+        // Die Feier im Game-Over haengt an unlockedCount — ein geliehener
+        // Skin darf sie nicht ausloesen.
+        val s = stats()
+        assertFalse(DotSkin.LAVA.isUnlocked(s))
+        assertEquals(1, DotSkin.unlockedCount(s))
+        assertTrue(DotSkin.LAVA.isAvailable(s, DotSkin.LAVA))
+    }
 }

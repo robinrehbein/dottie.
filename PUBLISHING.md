@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.16.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.17.
 
 ## Checkliste
 
@@ -13,10 +13,10 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.16.
 - [x] Screenshots 1080×1920: je 4 in DE und EN unter `store/screenshots/`
       (Generator: `python3 store/generate_screenshots.py`)
 - [ ] Optional: Play Games Services einrichten → Bestenlisten (Anleitung unten)
-- [ ] Optional: AdMob + In-App-Kauf „remove_ads" aktivieren (Anleitung
-      unten) — solange das nicht passiert, ist die App komplett werbefrei
-- [ ] Data-Safety-Formular: „Es werden keine Daten erhoben" (gilt nur
-      ohne AdMob — mit Werbung siehe Abschnitt unten)
+- [x] AdMob-IDs eingetragen — **Werbung ist aktiv** (Abschnitt unten)
+- [ ] In-App-Kauf „remove_ads" in der Play Console anlegen (Abschnitt unten)
+- [ ] Data-Safety-Formular **mit** Werbung ausfüllen (Abschnitt unten) —
+      „keine Daten erhoben" wäre jetzt falsch
 - [ ] IARC-Fragebogen (Content-Rating) ausfüllen
 - [ ] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
       oder per CI-Job `play-internal`, siehe unten)
@@ -132,8 +132,11 @@ wird öffentlich sichtbar.
 > wird sofort gefeiert.
 >
 > **Ehrlich & schlank**
-> Keine Werbung, keine In-App-Käufe, keine Datensammelei, kein
-> Internet nötig. Nur du, der Punkt und dein Highscore.
+> Keine Datensammelei, kein Konto, kein Internet zum Spielen nötig.
+> Werbung finanziert die App: gelegentlich nach einem Spielende, und
+> freiwillig, wenn du ein gesperrtes Aussehen einen Tag lang testen
+> willst. Sie fasst weder deinen Lauf noch deinen Rekord an — und ein
+> einmaliger Kauf entfernt sie dauerhaft.
 
 **Kategorie:** Spiele → Arcade · **Tags:** Casual, Arcade, One-Tap
 
@@ -175,8 +178,10 @@ wird öffentlich sichtbar.
 > runs, and breaking your record gets celebrated the moment it happens.
 >
 > **Honest & lean**
-> No ads, no in-app purchases, no data collection, no internet needed.
-> Just you, the dot, and your high score.
+> No data collection, no account, no internet needed to play. Ads keep
+> the app alive: occasionally after a run ends, and voluntarily when you
+> want to try a locked look for a day. They never touch your run or your
+> record — and a single purchase removes them for good.
 
 **Assets:**
 
@@ -238,14 +243,18 @@ und die App bleibt komplett offline. So wird es scharf geschaltet:
 
 ## Werbung & Käufe aktivieren (AdMob + Play Billing)
 
-Ab v2.16 sind ein **Rewarded-Spot zum Weiterspielen**, gelegentliche
-**Interstitials** und der Kauf **„Werbung entfernen"** eingebaut — aber
-**hart deaktiviert**, solange in `app/src/main/res/values/ads.xml` die
-drei IDs leer sind. Ohne echte IDs wird das Ads-SDK nie initialisiert,
-es gibt keinen Consent-Dialog, keine Ad-Requests und keinen
-BillingClient; die UI sieht aus wie heute (kein WEITERSPIELEN-Knopf,
-keine „WERBUNG ENTFERNEN"-Zeile). Aktivieren ist also eine bewusste
-Entscheidung in genau zwei Dateien.
+Ab v2.17 sind ein **Rewarded-Spot für den Skin-Tagespass**,
+gelegentliche **Interstitials** und der Kauf **„Werbung entfernen"**
+eingebaut — aber **hart deaktiviert**, solange in
+`app/src/main/res/values/ads.xml` die drei IDs leer sind. Ohne echte IDs
+wird das Ads-SDK nie initialisiert, es gibt keinen Consent-Dialog, keine
+Ad-Requests und keinen BillingClient; die UI sieht aus wie heute (im
+Skin-Overlay keine Spot-Zeilen, keine „WERBUNG ENTFERNEN"-Zeile).
+Aktivieren ist also eine bewusste Entscheidung in genau zwei Dateien.
+
+Bewusst **nicht** eingebaut: Weiterspielen nach dem Tod. Das Versprechen
+des Spiels ist „Perfekt oder vorbei" — Werbung darf weder den Lauf noch
+den Rekord anfassen. Der Spot verkauft deshalb nur Kosmetik auf Zeit.
 
 ### 1. AdMob-Konto und App anlegen
 
@@ -254,22 +263,26 @@ Entscheidung in genau zwei Dateien.
 2. **Apps → App hinzufügen** → Android → „Ja, im Play Store" und DOTTIE.
    auswählen (Paket `de.robinrehbein.pointless`). Ergebnis ist die
    **App-ID** im Format `ca-app-pub-…~…` (Tilde!).
-3. **Anzeigenblöcke** anlegen: einen vom Typ **Rewarded** („Weiterspielen")
+3. **Anzeigenblöcke** anlegen: einen vom Typ **Rewarded** („Skin-Tagespass")
    und einen vom Typ **Interstitial** („Game-Over"). Beide liefern eine
    **Anzeigenblock-ID** im Format `ca-app-pub-…/…` (Schrägstrich!).
 4. Frisch angelegte Blöcke liefern erfahrungsgemäß erst nach einigen
    Stunden Anzeigen — bis dahin bleibt es still, das ist kein Fehler.
 
-### 2. IDs eintragen (zwei Dateien!)
+### 2. IDs eintragen
 
-1. `app/src/main/res/values/ads.xml`: `admob_app_id`,
-   `admob_rewarded_id`, `admob_interstitial_id` ausfüllen. Erst wenn
-   **alle drei** gefüllt sind, schaltet sich die Integration ein.
-2. `app/src/main/AndroidManifest.xml`: die `meta-data`
-   `com.google.android.gms.ads.APPLICATION_ID` trägt bis dahin Googles
-   **Beispiel-App-ID** als Platzhalter — die **muss** durch die echte
-   App-ID aus Schritt 1 ersetzt werden. Bleibt der Platzhalter stehen,
-   verdient die App nichts und AdMob kann das Konto sperren.
+Alle IDs stehen an genau einer Stelle: `app/src/main/res/values/ads.xml`.
+Das AndroidManifest verweist per `@string/admob_app_id` darauf, es gibt
+also nichts doppelt zu pflegen.
+
+**Stand:** Die App-ID ist eingetragen
+(`ca-app-pub-1786159152036324~8923812059`). Es fehlen noch
+`admob_rewarded_id` und `admob_interstitial_id` — bis beide gefüllt
+sind, bleibt die App werbefrei, obwohl die App-ID schon steht.
+
+Die App-ID darf nie wieder geleert werden: Das Ads-SDK startet über
+einen eigenen ContentProvider und bricht ohne gültige ID beim App-Start
+ab. Zum Abschalten reicht es, eine Anzeigenblock-ID zu leeren.
 
 Zum Ausprobieren gibt es Googles Test-IDs (sie stehen als Kommentar in
 `ads.xml`): Sie zeigen echte Test-Anzeigen, dürfen aber **nie** in ein
@@ -294,8 +307,14 @@ echt ist. Der Haken bei uns:
 **Ohne `app-ads.txt` läuft AdMob trotzdem.** Es fällt nur ein Teil der
 Nachfrage weg (manche Käufer bieten ausschließlich auf verifiziertes
 Inventar), der eTPM ist also etwas niedriger. Für den Start ist das
-verkraftbar — die Datei lässt sich jederzeit nachreichen, ihr Inhalt
-ist eine einzige Zeile, die AdMob unter **Apps → app-ads.txt** anzeigt.
+verkraftbar — die Datei lässt sich jederzeit nachreichen. Ihr Inhalt ist
+eine einzige Zeile; für dieses Konto lautet sie:
+
+```
+google.com, pub-1786159152036324, DIRECT, f08c47fec0942fa0
+```
+
+(AdMob zeigt dieselbe Zeile unter **Apps → app-ads.txt** an.)
 
 ### 4. In-App-Produkt „remove_ads" anlegen
 
@@ -307,7 +326,7 @@ erstellen**:
 | Produkt-ID | `remove_ads` (genau so, steht im Code) |
 | Typ | Einmaliger Kauf, **nicht** verbrauchbar |
 | Name | „Werbung entfernen" / „Remove ads" |
-| Beschreibung | Entfernt dauerhaft alle Anzeigen. Weiterspielen nach dem Tod bleibt möglich. |
+| Beschreibung | Entfernt dauerhaft alle Anzeigen. Skins werden weiter durch Spielen freigeschaltet. |
 | Preis | Vorschlag **2,99 €** (Play rechnet die anderen Währungen um) |
 
 Danach **aktivieren** — inaktive Produkte liefern im Kaufdialog nichts.
@@ -318,81 +337,39 @@ kostenlos über **Einstellungen → Lizenztests** (Lizenz-Tester kaufen
 zum Preis 0) — der Kauf funktioniert erst, wenn die App über einen
 Play-Track installiert wurde, nicht per `adb install`.
 
-### 5. Data-Safety und Datenschutz nachziehen
+### 5. Data-Safety und Anzeigen-Label in der Play Console
 
-Mit aktiver Werbung stimmt „Es werden keine Daten erhoben" **nicht
-mehr**. Vor dem nächsten Release anpassen:
+Die Datenschutzerklärung (`docs/index.html`) und die Store-Texte oben
+sind bereits auf aktive Werbung umgeschrieben. Offen bleibt der Teil,
+der nur in der Play Console geht:
 
-- **Data-Safety-Formular** (Play Console → App-Inhalte): „Gerätekennungen
-  oder andere IDs" → **Werbe-ID (AAID)** wird erhoben und **geteilt**,
-  Zweck **Werbung/Marketing**, nicht verschlüsselt übertragbar
-  verneinen/bejahen gemäß Googles Vorgaben; zusätzlich unter
-  **Anzeigen** „Die App enthält Werbung" ankreuzen (das setzt auch das
-  „Enthält Anzeigen"-Label im Listing).
-- **Store-Texte**: Der Absatz „Ehrlich & schlank / Honest & lean" oben
-  behauptet „keine Werbung, keine In-App-Käufe" — beides muss dann raus
-  bzw. umformuliert werden (z. B. „Werbung lässt sich einmalig
-  entfernen").
-- **`docs/index.html`**: Textbaustein unten einsetzen.
-
-### 6. Textbaustein für docs/index.html (erst beim Aktivieren einfügen)
-
-Deutsch — als neuer Abschnitt vor „Kinder", außerdem den Satz unter
-„Kurz gesagt" und den Abschnitt „Internetzugriff" entsprechend
-entschärfen:
-
-```html
-  <h2>Werbung</h2>
-  <p>DOTTIE. zeigt Werbung über <strong>Google AdMob</strong>: einen
-  optionalen Video-Spot zum Weiterspielen nach einem Lauf sowie
-  gelegentliche Vollbild-Anzeigen zwischen Läufen. Dabei verarbeitet
-  Google die <strong>Werbe-ID (AAID)</strong> deines Geräts sowie
-  technische Angaben (Gerätetyp, grobe Region, IP-Adresse), um
-  Anzeigen auszuliefern und Betrug zu erkennen. Verantwortlich dafür
-  ist Google Ireland Ltd.; Details:
-  <a href="https://business.safety.google/privacy/">Google-Datenschutz</a>.
-  Die Werbe-ID lässt sich in den Android-Einstellungen unter
-  „Datenschutz → Werbung" zurücksetzen oder löschen.</p>
-  <p>Vor der ersten Anzeige fragt die App über Googles
-  <strong>User-Messaging-Platform (UMP)</strong> nach deiner
-  Einwilligung; ohne Einwilligung werden keine (bzw. nur nicht
-  personalisierte) Anzeigen geladen. Die Auswahl lässt sich jederzeit
-  über denselben Dialog ändern.</p>
-  <p>Über <strong>Google Play Billing</strong> kann die Werbung
-  einmalig dauerhaft entfernt werden („Werbung entfernen"). Den
-  Zahlungsvorgang wickelt ausschließlich Google Play ab — wir erhalten
-  keine Zahlungsdaten, nur die Information, dass der Kauf besteht.</p>
-```
-
-Englisch — für den Footer-Absatz („English summary"):
-
-```html
-    <p><em>English summary:</em> DOTTIE. shows ads via
-    <strong>Google AdMob</strong> (an optional rewarded video to continue
-    a run, plus occasional interstitials between runs). Google processes
-    your device's <strong>advertising ID (AAID)</strong> and technical
-    data (device type, coarse region, IP address) to serve ads and
-    prevent fraud. Before the first ad, the app asks for your consent via
-    Google's <strong>User Messaging Platform</strong>; you can change
-    that choice at any time. Ads can be removed permanently with a
-    one-time purchase handled entirely by <strong>Google Play
-    Billing</strong> — we never receive payment data. High scores, daily
-    challenge progress, unlocked skins, and settings stay on your device.
-    Contact: robin@join-noah.de</p>
-```
+- **Data-Safety-Formular** (Play Console → App-Inhalte → Datensicherheit):
+  „Gerätekennungen oder andere IDs" → **Werbe-ID (AAID)** wird erhoben
+  **und geteilt**, Zweck **Werbung/Marketing**. Als Verarbeiter tritt
+  Google auf. „Es werden keine Daten erhoben" wäre jetzt falsch.
+- **Anzeigen-Label**: unter App-Inhalte → **Anzeigen** „Ja, die App
+  enthält Werbung" ankreuzen. Das setzt das „Enthält Anzeigen"-Label im
+  Listing.
+- **IARC-Fragebogen**: beim Ausfüllen angeben, dass die App Werbung
+  enthält und digitale Käufe anbietet — sonst weicht das Rating später
+  vom tatsächlichen Inhalt ab.
 
 ### Wie sich das Spiel dann verhält
 
-- **Weiterspielen (Rewarded)**: erscheint nur im Klassik-Modus, nur wenn
-  ein Spot geladen ist und **einmal pro Lauf**. Score und Treffer
-  bleiben, die Perfekt-Serie beginnt neu, und der Punkt startet eine
-  knappe halbe Runde vor der frischen Zone — nach einem gesehenen Spot
-  darf niemand sofort wieder sterben. Die Daily Challenge bleibt
-  bewusst außen vor: gleicher Lauf für alle, keine gekauften Vorteile.
-- **Interstitials**: frühestens ab dem **4. Tod einer Sitzung** und
-  mindestens **90 Sekunden** nach dem letzten Spot (`InterstitialGate`,
-  per Unit-Test abgesichert) — und nie in dem Game-Over, in dem gerade
-  Weiterspielen angeboten wird.
+- **Skin-Tagespass (Rewarded)**: Im SKINS-Overlay werden gesperrte
+  Skins antippbar, sobald ein Spot geladen ist. Nach dem gesehenen Spot
+  ist genau **dieser eine** Skin bis Mitternacht spielbar und direkt
+  ausgewählt; ein Spot für einen anderen Skin ersetzt den Pass. Der Lauf
+  bleibt unberührt — der Tod ist endgültig, Rekorde entstehen weiter nur
+  durch Spielen. Auch die dauerhafte Freischaltung bleibt exklusiv an
+  den Medaillen-Zielen hängen: Ein Pass zählt nicht als „freigeschaltet"
+  und löst die Freischalt-Feier nicht aus. Beim Tageswechsel fällt eine
+  nur geliehene Auswahl automatisch auf KLASSIK zurück.
+- **Interstitials**: frühestens ab dem **6. Tod einer Sitzung** und
+  mindestens **180 Sekunden** nach dem letzten Spot (`InterstitialGate`,
+  per Unit-Test abgesichert) — nur im Klassik-Modus, die Daily Challenge
+  bleibt werbefrei. Die Werte sind absichtlich zurückhaltend: Das Spiel
+  lebt vom sofortigen nächsten Versuch.
 
 ## Wear-App im Play Store mitverteilen
 
