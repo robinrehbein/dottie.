@@ -57,6 +57,12 @@ class BillingManager(
     var priceLabel by mutableStateOf<String?>(null)
         private set
 
+    /** Klartext-Zustand für die versteckte Diagnose-Zeile. */
+    var status by mutableStateOf(
+        if (!configured) "aus — keine Werbe-IDs" else "nicht verbunden"
+    )
+        private set
+
     private val purchasesUpdated = PurchasesUpdatedListener { result, purchases ->
         if (result.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
             purchases.forEach { handlePurchase(it) }
@@ -81,6 +87,9 @@ class BillingManager(
                 override fun onBillingSetupFinished(result: BillingResult) {
                     if (result.responseCode != BillingClient.BillingResponseCode.OK) {
                         Log.i(TAG, "Billing-Verbindung: ${result.responseCode}")
+                        // Code 3 (BILLING_UNAVAILABLE) heisst fast immer:
+                        // App nicht ueber Play installiert.
+                        status = "keine Play-Verbindung (Code ${result.responseCode})"
                         return
                     }
                     queryProduct()
@@ -92,6 +101,7 @@ class BillingManager(
                     // versucht es ohnehin neu, und ohne Verbindung ist
                     // der Kauf-Button eben wirkungslos.
                     Log.i(TAG, "Billing-Verbindung getrennt")
+                    status = "Verbindung getrennt"
                 }
             })
         } catch (t: Throwable) {
@@ -118,11 +128,19 @@ class BillingManager(
                     val found = details.firstOrNull()
                     productDetails = found
                     priceLabel = found?.oneTimePurchaseOfferDetails?.formattedPrice
+                    status = when {
+                        found == null -> "Produkt $PRODUCT_ID nicht in der Antwort"
+                        priceLabel == null -> "Produkt da, aber ohne Preis"
+                        else -> "kaufbar für $priceLabel"
+                    }
                 } else {
                     // Produkt in der Play Console nicht angelegt, App nicht
                     // über Play installiert, kein Play-Dienst: In allen drei
                     // Fällen bleibt das Angebot unsichtbar statt tot.
                     Log.i(TAG, "Produkt nicht gefunden: ${result.responseCode}")
+                    // Frisch angelegte Produkte brauchen Stunden, bis sie
+                    // ueber diese Abfrage auffindbar sind.
+                    status = "Produkt nicht gefunden (Code ${result.responseCode})"
                     productDetails = null
                     priceLabel = null
                 }
