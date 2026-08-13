@@ -107,7 +107,13 @@ der Cache-First-Service-Worker installierten Spieler:innen alte Dateien.
   (Port von `PixelButton.kt`)
 - `js/main.js` — Frame-Loop, Events, Overlays
 - `manifest.webmanifest`, `sw.js`, `icon-*.png` — PWA-Installation und
-  Offline-Cache
+  Offline-Cache. Die abgeleiteten Icons (`icon-192.png` und das
+  `maskable`-Icon, das Android in seine Systemform schneidet) erzeugt
+  `python3 store/generate_web_icons.py` aus `icon-512.png`.
+  Der Service Worker ist Cache-First für Assets, aber **Network-First für
+  die Seite selbst**: Ein vergessener `CACHE_VERSION`-Bump sperrt
+  installierte Spieler:innen damit nicht mehr auf einem alten Stand ein.
+  Dass die `ASSETS`-Liste vollständig ist, prüft `tests/run-tests.js`.
 - `tests/run-tests.js` — Logik-, Farb- und Text-Tests, laufen mit Node
 - `tests/screenshots.js`, `tests/screenshots/` — Vergleichsbilder gegen
   die Android-App

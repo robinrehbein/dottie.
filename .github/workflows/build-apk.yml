@@ -4,7 +4,10 @@ on:
   push:
     branches:
       - main
-      - claude/casual-game-mobile-levels-9twgfw
+  # Jeder Pull Request wird geprueft (Tests + Debug-Build). Vorher hing der
+  # Trigger an einem einzelnen, laengst gemergten Arbeits-Branch — auf allen
+  # anderen Branches lief gar nichts.
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -21,8 +24,11 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # :core ist ein reines Java-Library-Modul und kennt kein
+      # testDebugUnitTest — ohne den expliziten :core:test liefen seine
+      # Tests (inkl. der Paritaets-Vektoren) in der CI nie mit.
       - name: Run unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: ./gradlew --no-daemon :core:test testDebugUnitTest
 
       # Auf dem Arbeits-Branch reicht ein Build-Check: Kompiliert alles?
       # Die Debug-APK landet als Workflow-Artefakt (Actions → Run →

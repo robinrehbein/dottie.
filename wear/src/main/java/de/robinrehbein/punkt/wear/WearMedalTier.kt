@@ -2,29 +2,36 @@ package de.robinrehbein.punkt.wear
 
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
+import de.robinrehbein.punkt.game.MedalId
+import de.robinrehbein.punkt.game.MedalPaint
 
 /**
- * Medaillen-Stufen ab 10/20/30/40 Punkten — Schwellen, Namen und Farben
- * 1:1 aus dem Phone-Modul (MedalTier.kt und medalColors in
- * GameOverlays.kt) übernommen. Eigene Kopie statt Import, weil die
- * :app-Variante an den dortigen R.string-Ressourcen hängt und :wear
- * bewusst keine Abhängigkeit auf :app hat.
+ * Medaillen-Stufen auf der Uhr. Schwellen und Münzfarben kommen aus
+ * MedalPaint in :core — derselben Quelle wie am Phone, die beiden können
+ * also nicht mehr auseinanderlaufen. Eine eigene Aufzählung bleibt
+ * trotzdem: Sie hängt an den R.string-Ressourcen dieses Moduls, und
+ * :wear hat bewusst keine Abhängigkeit auf :app (wie WearDotSkin).
  */
 internal enum class WearMedalTier(
-    val threshold: Int,
-    @StringRes val nameRes: Int,
-    /** Körper- und Schattenfarbe der Münze (medalColors am Phone). */
-    val body: Color,
-    val shade: Color
+    val id: MedalId,
+    @StringRes val nameRes: Int
 ) {
-    BRONZE(10, R.string.medal_bronze, Color(0xFFCD7F32), Color(0xFF9C5A1E)),
-    SILVER(20, R.string.medal_silver, Color(0xFFC0C0C0), Color(0xFF8F8F9C)),
-    GOLD(30, R.string.medal_gold, Color(0xFFFFD700), Color(0xFFC9A400)),
-    PLATINUM(40, R.string.medal_platinum, Color(0xFFE5E4E2), Color(0xFFADB5C4));
+    BRONZE(MedalId.BRONZE, R.string.medal_bronze),
+    SILVER(MedalId.SILVER, R.string.medal_silver),
+    GOLD(MedalId.GOLD, R.string.medal_gold),
+    PLATINUM(MedalId.PLATINUM, R.string.medal_platinum);
+
+    val threshold: Int get() = MedalPaint.threshold(id)
+
+    /** Körperfarbe der Münze (medalColors am Phone). */
+    val body: Color get() = Color(MedalPaint.body(id))
+
+    /** Schatten- und Prägefarbe der Münze. */
+    val shade: Color get() = Color(MedalPaint.shade(id))
 
     companion object {
         /** Höchste erreichte Stufe, null unterhalb von Bronze. */
         fun forScore(score: Int): WearMedalTier? =
-            entries.lastOrNull { score >= it.threshold }
+            MedalPaint.forScore(score)?.let { id -> entries.first { it.id == id } }
     }
 }

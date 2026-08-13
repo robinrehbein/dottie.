@@ -39,10 +39,13 @@ Lokal gibt es in dieser Repo-Umgebung keine Apple-Toolchain — kompiliert
 wird über GitHub Actions:
 
 1. GitHub → **Actions** → Workflow **„Build iOS"** → **„Run workflow"**
-   (Branch wählen). Der Workflow läuft **nur manuell** — macOS-Minuten
-   sind auf privaten Repos 10x teurer als Linux-Minuten.
+   (Branch wählen). Der Workflow startet manuell — und automatisch bei
+   Pull Requests, die `ios/`, `core/` oder `parity/` anfassen. Sonst
+   bleibt er aus: macOS-Minuten sind auf privaten Repos 10x teurer als
+   Linux-Minuten.
 2. Der Lauf macht: `brew install xcodegen` → `cd ios && xcodegen`
-   (erzeugt `Dottie.xcodeproj` aus `project.yml`) → `xcodebuild` einmal
+   (erzeugt `Dottie.xcodeproj` aus `project.yml`) → `xcodebuild test`
+   (Paritäts-Tests im Simulator, siehe unten) → `xcodebuild` einmal
    für `generic/platform=iOS` (Device, unsigniert) und einmal für den
    Simulator.
 3. Artefakt: die unsignierte Simulator-`Dottie.app` — auf einem Mac per
@@ -51,6 +54,26 @@ wird über GitHub Actions:
 
 Lokal auf einem Mac genügt: `brew install xcodegen && cd ios && xcodegen
 && open Dottie.xcodeproj`.
+
+## Tests: Parität zur Kotlin-Engine
+
+Der Port hatte lange keine Tests — ausgerechnet der Teil, der bit-genau
+stimmen muss (`KotlinRandom`), war damit ungeprüft. Das Target
+**DottieTests** rechnet jetzt gegen `parity/golden-vectors.txt`, eine von
+`:core` erzeugte Datei mit Soll-Werten: Konstanten, Medaillen-Schwellen,
+Skin-Farben, die komplette Zahlenfolge des XorWow-Generators und zwei
+vollständige Läufe, Treffer für Treffer.
+
+```sh
+cd ios && xcodegen
+xcodebuild test -project Dottie.xcodeproj -scheme Dottie \
+  -destination 'platform=iOS Simulator,name=iPhone 16'
+```
+
+Es ist ein Logik-Test-Bundle ohne Host-App: Es übersetzt
+`Dottie/Sources/Engine` direkt mit und braucht deshalb keine Signierung.
+Schlagen die Tests nach einer Änderung an `:core` fehl, ist das die
+Ansage, den Port nachzuziehen — Details in `parity/README.md`.
 
 ## Was zum Verteilen noch fehlt
 

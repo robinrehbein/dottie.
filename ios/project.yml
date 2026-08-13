@@ -27,5 +27,28 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
     scheme:
-      testTargets: []
+      testTargets:
+        - DottieTests
       gatherCoverageData: false
+
+  # Logik-Tests ohne Host-App: Das Bundle uebersetzt die Engine-Quellen
+  # direkt mit, dadurch braucht es weder TEST_HOST noch Signierung und
+  # laeuft im Simulator der CI ohne weitere Einrichtung.
+  DottieTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: DottieTests
+      - path: Dottie/Sources/Engine
+      # Die Soll-Werte kommen aus :core (Kotlin) und liegen ausserhalb von
+      # ios/ — siehe parity/README.md.
+      - path: ../parity/golden-vectors.txt
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.robinrehbein.dottie.tests
+        GENERATE_INFOPLIST_FILE: true
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic

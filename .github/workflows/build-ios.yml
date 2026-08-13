@@ -1,11 +1,22 @@
 name: Build iOS
 
-# NUR manuell (Actions → Build iOS → "Run workflow"): macOS-Minuten
-# kosten auf privaten Repos das 10-fache der Linux-Minuten — deshalb
-# bewusst kein push-Trigger. Der Lauf ist der Kompilier-Beweis für den
-# Swift-Port, denn lokal gibt es keine Apple-Toolchain.
+# macOS-Minuten kosten auf privaten Repos das 10-fache der Linux-Minuten,
+# deshalb läuft dieser Workflow weiterhin nicht bei jedem Push. Er startet
+# manuell — und zusätzlich bei Pull Requests, die den Swift-Port oder
+# seine Vergleichsgrundlage anfassen: Der Port hat außer diesem Lauf keine
+# Absicherung, und ohne Trigger würden die Paritäts-Tests (parity/) erst
+# auffallen, wenn jemand von Hand daran denkt.
+#
+# Wenn die Minuten knapp werden: den pull_request-Block streichen, dann
+# ist alles wie vorher.
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "ios/**"
+      - "parity/**"
+      - "core/**"
+      - ".github/workflows/build-ios.yml"
 
 jobs:
   build:
@@ -31,6 +42,23 @@ jobs:
         run: |
           cd ios
           xcodegen
+
+      # Paritäts-Tests: Der Swift-Port rechnet dieselben Läufe nach, die
+      # :core in parity/golden-vectors.txt hinterlegt hat — inklusive des
+      # XorWow-Generators, an dem die Daily Challenge hängt. Läuft zuerst,
+      # damit ein inhaltlicher Fehler nicht hinter zwei Builds versteckt
+      # ist. Siehe parity/README.md.
+      - name: Paritäts-Tests im Simulator
+        run: |
+          cd ios
+          # Irgendein verfügbares iOS-Simulator-Gerät: Die Namen der Images
+          # (iPhone 15/16/…) ändern sich mit jeder Runner-Generation, die
+          # UDID-Abfrage überlebt das.
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json, sys; devices = json.load(sys.stdin)['devices']; print(next(e[0]['udid'] for r, e in devices.items() if 'iOS' in r and e))")
+          echo "Simulator: $UDID"
+          xcodebuild test -project Dottie.xcodeproj -scheme Dottie \
+            -destination "id=$UDID" \
+            CODE_SIGNING_ALLOWED=NO
 
       # Device-Build (generic/platform=iOS): beweist, dass der Code für
       # echte Geräte kompiliert und linkt. Ohne Signierung — dafür bräuchte

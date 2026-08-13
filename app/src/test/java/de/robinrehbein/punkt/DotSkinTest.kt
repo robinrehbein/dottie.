@@ -46,6 +46,15 @@ class DotSkinTest {
     }
 
     @Test
+    fun `DotSkin fuehrt SkinId in derselben Reihenfolge`() {
+        // Die Reihenfolge ist zugleich der gespeicherte Wert und die Folge
+        // im Skin-Picker — und :wear, ios/ und web/ fuehren dieselbe Liste
+        // (siehe skin.order in parity/golden-vectors.txt). Rutscht hier
+        // etwas, zeigen die anderen Plattformen etwas anderes an.
+        assertEquals(SkinId.entries.toList(), DotSkin.entries.map { it.id })
+    }
+
+    @Test
     fun `unlockedCount zaehlt ueber alle Bedingungen`() {
         assertEquals(1, DotSkin.unlockedCount(stats()))
         assertEquals(

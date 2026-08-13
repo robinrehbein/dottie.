@@ -19,6 +19,20 @@ tasks.withType<KotlinCompile>().configureEach {
     }
 }
 
+tasks.withType<Test>().configureEach {
+    // Reicht -Dparity.update=true an die Test-JVM weiter: Damit schreibt
+    // ParityVectorsTest parity/golden-vectors.txt neu, statt dagegen zu
+    // pruefen (siehe parity/README.md). Ohne die Weitergabe kaeme das
+    // Flag nie im Test an, weil Gradle Tests in einer eigenen JVM startet.
+    val parityUpdate = System.getProperty("parity.update")
+    if (parityUpdate != null) {
+        systemProperty("parity.update", parityUpdate)
+    }
+    // Beim Neuschreiben darf der Task nicht als UP-TO-DATE durchgewunken
+    // werden — sonst laeuft er gar nicht erst an.
+    outputs.upToDateWhen { parityUpdate != "true" }
+}
+
 dependencies {
     // Unit-Tests für die Kern-Spiellogik (z. B. TimingGame.revive).
     testImplementation(libs.junit)

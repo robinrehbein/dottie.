@@ -617,13 +617,13 @@ internal fun PixelPanel(content: @Composable () -> Unit) {
     }
 }
 
-/** Körper- und Schattenfarbe pro Medaillen-Stufe. */
-internal fun medalColors(tier: MedalTier): Pair<Color, Color> = when (tier) {
-    MedalTier.BRONZE -> Color(0xFFCD7F32) to Color(0xFF9C5A1E)
-    MedalTier.SILVER -> Color(0xFFC0C0C0) to Color(0xFF8F8F9C)
-    MedalTier.GOLD -> Color(0xFFFFD700) to Color(0xFFC9A400)
-    MedalTier.PLATINUM -> Color(0xFFE5E4E2) to Color(0xFFADB5C4)
-}
+/**
+ * Körper- und Schattenfarbe pro Medaillen-Stufe. Die Werte kommen aus
+ * MedalPaint (:core) — derselben Quelle, aus der sich auch die Uhr
+ * bedient.
+ */
+internal fun medalColors(tier: MedalTier): Pair<Color, Color> =
+    Color(tier.body) to Color(tier.shade)
 
 /**
  * Medaille ab 10 Punkten: rotes Band im V, Münze mit geprägtem Stern und

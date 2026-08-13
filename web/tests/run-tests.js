@@ -715,18 +715,10 @@ function driveToZoneAndTap(game) {
   });
   assertEq(geprueft, kotlinIds.length - 2, "alle Schwellen ausser Klassik und Regenbogen geprueft");
 
-  var m;
-
-  var medalRe = /MedalTier\.(\w+) -> Color\(0x[Ff]{2}([0-9A-Fa-f]{6})\) to Color\(0x[Ff]{2}([0-9A-Fa-f]{6})\)/g;
-  var medals = 0;
-  while ((m = medalRe.exec(overlays)) !== null) {
-    var tier = MedalTier.MEDALS.filter(function (t) { return t.name === m[1]; })[0];
-    assert(!!tier, "Medaille " + m[1] + " existiert im Web");
-    assertEq(tier.body, "#" + m[2].toUpperCase(), "Medaille " + m[1] + " body");
-    assertEq(tier.shade, "#" + m[3].toUpperCase(), "Medaille " + m[1] + " shade");
-    medals++;
-  }
-  assertEq(medals, 4, "vier Medaillen-Stufen geprüft");
+  // Medaillen-Farben standen früher hier: Sie wurden aus medalColors() in
+  // GameOverlays.kt gelesen. Seit MedalPaint (:core) die einzige Quelle
+  // ist, kommen Schwellen und Farben aus parity/golden-vectors.txt —
+  // siehe den Paritäts-Abschnitt weiter unten.
 
   // Texte: jeder Key, den die PWA kennt, muss wortgleich in strings.xml stehen.
   function xmlStrings(xml) {
@@ -761,6 +753,269 @@ function driveToZoneAndTap(game) {
     });
     assert(compared > 50, lang + ": genug Texte verglichen (" + compared + ")");
   });
+})();
+
+// ===== Paritäts-Vektoren aus :core (parity/golden-vectors.txt) =====
+//
+// Dieselbe Datei prüft der Swift-Port in ios/DottieTests. Was hier nicht
+// vorkommt: die Abschnitte rng.* und trace.*. Der Web-Port baut Kotlins
+// XorWow-Generator bewusst nicht nach (siehe js/game.js), seine Daily
+// Challenge hat also eine eigene Zonen-Abfolge — Regeln, Farben und
+// Konstanten müssen trotzdem überall gleich sein. Siehe parity/README.md.
+(function () {
+  var fs = require("fs");
+  var path = require("path");
+
+  var file = path.join(__dirname, "..", "..", "parity", "golden-vectors.txt");
+  var text;
+  try {
+    text = fs.readFileSync(file, "utf8");
+  } catch (e) {
+    // Die Tests laufen auch außerhalb des Repos (nur web/ ausgeliefert).
+    console.log("Hinweis: parity/golden-vectors.txt nicht gefunden — übersprungen.");
+    return;
+  }
+
+  var V = {};
+  var keys = [];
+  text.split("\n").forEach(function (raw) {
+    var line = raw.trim();
+    if (!line || line.charAt(0) === "#") return;
+    var parts = line.split(" ");
+    V[parts[0]] = parts.slice(1);
+    keys.push(parts[0]);
+  });
+
+  function one(key) { return (V[key] || [])[0]; }
+  function num(key) { return parseFloat(one(key)); }
+
+  /** "0xAARRGGBB" aus der Vektor-Datei als "#RRGGBB" wie im Web-Port. */
+  function rgb(token) {
+    return "#" + token.slice(-6).toUpperCase();
+  }
+
+  /** Farbvergleich mit ±2 pro Kanal (Float- vs. Double-Rundung). */
+  function sameColor(expected, actual) {
+    if (!actual) return false;
+    var a = expected.replace("#", "");
+    var b = actual.replace("#", "").toUpperCase();
+    if (a.length !== 6 || b.length !== 6) return false;
+    for (var i = 0; i < 6; i += 2) {
+      if (Math.abs(parseInt(a.substr(i, 2), 16) - parseInt(b.substr(i, 2), 16)) > 2) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  assertEq(parseInt(one("version"), 10), 1, "Paritäts-Vektoren: bekanntes Format");
+
+  // --- Konstanten der Engine: gleiche Namen wie in Kotlin und Swift.
+  var constCount = 0;
+  keys.forEach(function (key) {
+    if (key.indexOf("const.") !== 0) return;
+    var name = key.slice("const.".length);
+    assert(C[name] !== undefined, "js/game.js kennt Konstante " + name);
+    if (C[name] === undefined) return;
+    assert(approx(C[name], num(key), 1e-5), "Konstante " + name +
+      " (erwartet " + num(key) + ", ist " + C[name] + ")");
+    constCount++;
+  });
+  assert(constCount > 25, "genug Konstanten verglichen (" + constCount + ")");
+
+  // --- Twists
+  keys.forEach(function (key) {
+    if (key.indexOf("twist.unlock.") !== 0) return;
+    var twist = key.slice("twist.unlock.".length);
+    assertEq(TimingGame.unlockScore(twist), parseInt(one(key), 10),
+      "Freischalt-Score " + twist);
+  });
+
+  // --- Daily Challenge: Kotlin schreibt den Seed vorzeichenbehaftet,
+  //     der Web-Port rechnet vorzeichenlos — asIntN bringt beide zusammen.
+  keys.forEach(function (key) {
+    if (key.indexOf("daily.seed.") !== 0) return;
+    var day = parseInt(key.slice("daily.seed.".length), 10);
+    var actual = BigInt.asIntN(64, DailyChallenge.seedFor(day));
+    assertEq(actual.toString(), one(key), "Tages-Seed für Epoch-Day " + day);
+  });
+  keys.forEach(function (key) {
+    if (key.indexOf("daily.streak.") !== 0) return;
+    var p = key.slice("daily.streak.".length).split(".");
+    assertEq(
+      DailyChallenge.nextStreak(parseInt(p[0], 10), parseInt(p[1], 10), parseInt(p[2], 10)),
+      parseInt(one(key), 10),
+      "Serien-Regel " + key
+    );
+  });
+
+  // --- Medaillen
+  MedalTier.MEDALS.forEach(function (medal) {
+    var row = V["medal." + medal.name];
+    assert(row !== undefined, "Vektoren kennen Medaille " + medal.name);
+    if (!row) return;
+    assertEq(medal.threshold, parseInt(row[0], 10), "Schwelle " + medal.name);
+    assert(sameColor(rgb(row[1]), medal.body), "Münzfarbe " + medal.name);
+    assert(sameColor(rgb(row[2]), medal.shade), "Schattenfarbe " + medal.name);
+  });
+  keys.forEach(function (key) {
+    if (key.indexOf("medal.forScore.") !== 0) return;
+    var score = parseInt(key.slice("medal.forScore.".length), 10);
+    var current = MedalTier.forScore(score);
+    var next = MedalTier.next(score);
+    assertEq(current ? current.name : "-", V[key][0], "Medaille bei Score " + score);
+    assertEq(next ? next.name : "-", V[key][1], "nächste Medaille bei Score " + score);
+  });
+
+  // --- Himmel
+  assertEq(DotSkin.SKY_CYCLE, parseInt(one("sky.cycle"), 10), "Länge des Himmels-Umlaufs");
+  V["sky.stages"].forEach(function (token, i) {
+    assert(sameColor(rgb(token), DotSkin.SKY_STAGES[i]), "Himmelsstufe " + i);
+  });
+  V["sky.stageForScore"].forEach(function (expected, i) {
+    assertEq(DotSkin.skyStage(i * 5), parseInt(expected, 10),
+      "Himmelsstufe bei Score " + (i * 5));
+  });
+
+  // --- Skins: Reihenfolge, Stellvertreterfarben, Eigenschaften
+  assertEq(DotSkin.SKINS.map(function (s) { return s.name; }).join(","),
+    V["skin.order"].join(","), "Reihenfolge der Skins");
+  assertEq(DotSkin.GRID, parseInt(one("skin.grid"), 10), "Rastergröße");
+
+  DotSkin.SKINS.forEach(function (skin) {
+    var row = V["skin.chips." + skin.name];
+    assert(row !== undefined, "Vektoren kennen Skin " + skin.name);
+    if (!row) return;
+    assert(sameColor(rgb(row[0]), skin.body), skin.name + ": Körperfarbe");
+    assert(sameColor(rgb(row[1]), skin.shade), skin.name + ": Schattenfarbe");
+    assert(sameColor(rgb(row[2]), DotSkin.shine(skin)), skin.name + ": Glanzfarbe");
+    assertEq(!!skin.trail, row[3] === "trail", skin.name + ": Schweif");
+    assertEq(DotSkin.needsEyeOutline(skin), row[4] === "eyeoutline",
+      skin.name + ": Augen-Kontur");
+    assertEq(!!skin.animated, row[5] === "animated", skin.name + ": animiert");
+  });
+
+  // --- Abgetastete Rasterfarben je Zustand
+  var CELLS = [[2, 6], [4, 3], [6, 2], [6, 6], [8, 5], [9, 8], [6, 10], [10, 6]];
+  var stateIndex = 0;
+  var cellChecks = 0;
+  while (V["skin.state." + stateIndex]) {
+    var s = V["skin.state." + stateIndex];
+    var state = {
+      elapsed: parseFloat(s[0]),
+      score: parseInt(s[1], 10),
+      perfectStreak: parseInt(s[2], 10)
+    };
+    /* eslint-disable no-loop-func */
+    (function (index, state) {
+      DotSkin.SKINS.forEach(function (skin) {
+        var row = V["skin.cells." + index + "." + skin.name];
+        if (!row) return;
+        CELLS.forEach(function (cell, i) {
+          assert(
+            sameColor(rgb(row[i]), DotSkin.cell(skin, cell[0], cell[1], state)),
+            skin.name + " Feld (" + cell[0] + "," + cell[1] + ") Zustand " + index
+          );
+          cellChecks++;
+        });
+        var shineRow = V["skin.shine." + index + "." + skin.name];
+        if (shineRow) {
+          assert(sameColor(rgb(shineRow[0]), DotSkin.shine(skin, state)),
+            skin.name + " Glanz Zustand " + index);
+        }
+      });
+    })(stateIndex, state);
+    stateIndex++;
+  }
+  assert(cellChecks > 100, "genug Rasterfarben verglichen (" + cellChecks + ")");
+
+  // --- Freischaltungen
+  keys.forEach(function (key) {
+    if (key.indexOf("skin.unlocked.") !== 0) return;
+    var p = key.slice("skin.unlocked.".length).split(".");
+    var stats = {
+      bestScore: parseInt(p[0], 10),
+      bestPerfectStreak: parseInt(p[1], 10),
+      bestDailyStreak: parseInt(p[2], 10)
+    };
+    var open = DotSkin.SKINS.filter(function (skin) {
+      return DotSkin.isUnlocked(skin, stats);
+    }).map(function (skin) { return skin.name; });
+    assertEq(open.length, parseInt(V[key][0], 10), "Anzahl offener Skins bei " + key);
+    assertEq(open.join(","), V[key].slice(1).join(","), "offene Skins bei " + key);
+  });
+})();
+
+// ===== PWA-Auslieferung: Service Worker und Manifest =====
+(function () {
+  var fs = require("fs");
+  var path = require("path");
+  var webDir = path.join(__dirname, "..");
+
+  // Alle Dateien, die deploy-pages.yml nach _site kopiert (tests/ und
+  // README.md fliegen dort raus).
+  function shipped(dir, prefix) {
+    var out = [];
+    fs.readdirSync(dir, { withFileTypes: true }).forEach(function (entry) {
+      if (entry.name === "tests" || entry.name === "README.md") return;
+      var rel = prefix + entry.name;
+      if (entry.isDirectory()) {
+        out = out.concat(shipped(path.join(dir, entry.name), rel + "/"));
+      } else {
+        out.push(rel);
+      }
+    });
+    return out;
+  }
+
+  var sw = fs.readFileSync(path.join(webDir, "sw.js"), "utf8");
+  var assets = (sw.slice(sw.indexOf("var ASSETS = ["), sw.indexOf("];"))
+    .match(/"\.\/[^"]*"/g) || []).map(function (q) {
+      return q.slice(3, -1); // ohne Anführungszeichen und führendes "./"
+    });
+
+  // sw.js selbst wird von der Registrierung geladen, nicht aus dem Cache
+  // bedient; alles andere muss in der Liste stehen, sonst fehlt es offline.
+  shipped(webDir, "").forEach(function (file) {
+    if (file === "sw.js") return;
+    assert(
+      assets.indexOf(file) !== -1,
+      "sw.js cacht " + file + " (ASSETS-Liste unvollständig)"
+    );
+  });
+
+  assets.forEach(function (asset) {
+    if (asset === "") return; // "./" — die Startseite
+    assert(
+      fs.existsSync(path.join(webDir, asset)),
+      "sw.js listet nur existierende Dateien: " + asset
+    );
+  });
+
+  var manifest = JSON.parse(
+    fs.readFileSync(path.join(webDir, "manifest.webmanifest"), "utf8")
+  );
+  var icons = manifest.icons || [];
+  icons.forEach(function (icon) {
+    assert(
+      fs.existsSync(path.join(webDir, icon.src)),
+      "Manifest-Icon existiert: " + icon.src
+    );
+    assert(
+      assets.indexOf(icon.src) !== -1,
+      "Manifest-Icon ist offline verfügbar: " + icon.src
+    );
+  });
+  assert(
+    icons.some(function (i) { return (i.purpose || "").indexOf("maskable") !== -1; }),
+    "Manifest hat ein maskable-Icon (sonst schrumpft Android das Icon in einen weißen Kreis)"
+  );
+  assert(
+    icons.some(function (i) { return i.sizes === "192x192"; }) &&
+      icons.some(function (i) { return i.sizes === "512x512"; }),
+    "Manifest hat 192er- und 512er-Icon"
+  );
+  assertEq(manifest.theme_color, "#4EC0CA", "Manifest-Theme = Himmelblau");
 })();
 
 console.log(checks + " Checks, " + failures + " Fehler");
