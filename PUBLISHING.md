@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.17.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.18.
 
 ## Checkliste
 
@@ -400,8 +400,14 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 28` / `versionName
-"2.17"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 29` / `versionName
+"2.18"`. Vor jedem Store-Upload beides anheben und committen.
+
+Achtung: `versionCode 28` wurde bereits zweimal gebaut — einmal mit
+Skins und Himmel-Umlauf (Build 101), einmal zusätzlich mit dem
+Tagespass (Build 108). Zwei Zweige hatten dieselbe Nummer vergeben.
+Wer ein AAB weitergibt, sollte deshalb immer vom jeweils neuesten
+Build ausgehen und den versionCode vorher anheben.
 
 Die Wear-App zählt in einem eigenen Bereich **ab 100001**
 (`wear/build.gradle.kts`), damit sich die beiden Zähler nie in die
