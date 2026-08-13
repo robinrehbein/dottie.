@@ -2,6 +2,7 @@ package de.robinrehbein.punkt.game
 
 import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -25,35 +26,99 @@ import kotlin.math.sqrt
  * Compose- und Android-Typen bleibt und in Unit-Tests prüfbar ist.
  */
 enum class SkinId {
-    // Bestand
+    // Einfarbig
     KLASSIK, MINZE, LAVA, GOLD, FROST, SCHATTEN, PRISMA,
 
     // Gemustert
     BIENE, MELONE, PILZ, KOI, GALAXIE, KARO,
+    EI, TIGER, PINGUIN, FUSSBALL, DONUT,
 
     // Bewegt (Zeit)
     REGENBOGEN, AURORA, MAGMA, NEON, CHROM,
+    WELLE, GEWITTER, KONFETTI, DISCO, HOLO,
 
-    // Reagierend (Spielstand)
-    CHAMAELEON, KOMBO, TINTE
+    // Reagierend (Spielstand, Uhr, Kalender)
+    CHAMAELEON, KOMBO, TINTE,
+    THERMO, MEDAILLE, TAGESZEIT, JAHRESZEIT,
+
+    // Saison — nur im eigenen Monat verdienbar, dann für immer
+    KUERBIS, ZUCKERSTANGE, HERZ, OSTEREI,
+
+    // Gönner — gekauft, nicht verdient
+    DIAMANT, PHOENIX, ONYX
 }
 
 /**
  * Der Lauf-Zustand, aus dem sich bewegte und reagierende Skins speisen.
  * Für Standbilder (Auswahl, Score-Karte) reicht der Standardwert.
+ *
+ * [hour] (0-23) und [month] (1-12) kommen von der Uhr des Geräts, nicht
+ * aus dem Lauf: TAGESZEIT und JAHRESZEIT ziehen daraus ihr Kleid. Die
+ * Standardwerte zeigen den Mittag im Juni — so sieht jede Vorschau, die
+ * keinen Kalender kennt, dasselbe Bild.
  */
 data class SkinState(
     val elapsed: Float = 0f,
     val score: Int = 0,
-    val perfectStreak: Int = 0
+    val perfectStreak: Int = 0,
+    val hour: Int = 12,
+    val month: Int = 6
 )
 
-/** Dauerhafte Bestleistungen, gegen die Freischaltungen geprüft werden. */
+/**
+ * Alles, woraus sich Freischaltungen speisen. Die ersten drei Werte sind
+ * Bestleistungen (Können), die nächsten vier Ausdauer (Menge) — die
+ * Trennung ist Absicht: Wer nie Rekord 60 sieht, sammelt trotzdem weiter.
+ *
+ * [seasonEarned] ist eine Bitmaske über [Season.bit]: Saison-Skins werden
+ * nur in ihrem Monat verdient, bleiben danach aber für immer. Die Maske
+ * ist deshalb der einzige Weg, sie zu prüfen — der Kalender allein würde
+ * sie im November wieder wegnehmen.
+ *
+ * [patronOwned] ist kein Verdienst, sondern ein Kauf. Er schaltet nur die
+ * Gönner-Familie frei und zählt nirgends mit, wo Leistung gezählt wird.
+ */
 data class SkinStats(
     val bestScore: Int,
     val bestPerfectStreak: Int,
-    val bestDailyStreak: Int
+    val bestDailyStreak: Int,
+    val runCount: Int = 0,
+    val totalScore: Int = 0,
+    val daysPlayed: Int = 0,
+    val monthsPlayed: Int = 0,
+    val seasonEarned: Int = 0,
+    val patronOwned: Boolean = false
 )
+
+/**
+ * Die vier Saison-Skins und ihr Fenster. [requiredDays] zählt Tage mit
+ * mindestens einem Lauf innerhalb des Monats — bewusst kein Rekord und
+ * keine Serie: Ein Saison-Skin soll an Anwesenheit hängen, nicht an
+ * Können, sonst ist er für die Hälfte der Spieler:innen Deko.
+ *
+ * Verpasst ist nicht verloren: Das Fenster kommt jedes Jahr wieder.
+ */
+enum class Season(
+    val skin: SkinId,
+    /** Kalendermonat 1-12, in dem dieser Skin verdient werden kann. */
+    val month: Int,
+    val requiredDays: Int
+) {
+    KUERBIS(SkinId.KUERBIS, 10, 5),
+    ZUCKERSTANGE(SkinId.ZUCKERSTANGE, 12, 5),
+    HERZ(SkinId.HERZ, 2, 3),
+    OSTEREI(SkinId.OSTEREI, 4, 5);
+
+    /** Bit dieses Skins in [SkinStats.seasonEarned]. */
+    val bit: Int get() = 1 shl ordinal
+
+    companion object {
+        /** Der Skin, der in diesem Monat verdient werden kann — sonst null. */
+        fun forMonth(month: Int): Season? = entries.firstOrNull { it.month == month }
+
+        fun forSkin(id: SkinId): Season? = entries.firstOrNull { it.skin == id }
+    }
+}
 
 object SkinPaint {
 
@@ -128,6 +193,27 @@ object SkinPaint {
         SkinId.CHAMAELEON -> 0xFF8FD8DE
         SkinId.KOMBO -> 0xFFFFD847
         SkinId.TINTE -> 0xFF2A46A8
+        SkinId.EI -> 0xFFFFE58F
+        SkinId.TIGER -> 0xFFFF8A2B
+        SkinId.PINGUIN -> 0xFF2E3440
+        SkinId.FUSSBALL -> 0xFFF7F3EE
+        SkinId.DONUT -> 0xFFFF7FBF
+        SkinId.WELLE -> 0xFF2E86D8
+        SkinId.GEWITTER -> 0xFF4A5568
+        SkinId.KONFETTI -> 0xFFF7F3EE
+        SkinId.DISCO -> 0xFFC3CBD9
+        SkinId.HOLO -> 0xFF7FD8E8
+        SkinId.THERMO -> 0xFFFFD847
+        SkinId.MEDAILLE -> 0xFFC0C0C0
+        SkinId.TAGESZEIT -> 0xFF8FD8FF
+        SkinId.JAHRESZEIT -> 0xFF4EC0CA
+        SkinId.KUERBIS -> 0xFFF5821F
+        SkinId.ZUCKERSTANGE -> 0xFFE8452F
+        SkinId.HERZ -> 0xFFFF6FA8
+        SkinId.OSTEREI -> 0xFFFFB8D9
+        SkinId.DIAMANT -> 0xFFA8C8EE
+        SkinId.PHOENIX -> 0xFFFF8A2B
+        SkinId.ONYX -> 0xFF221C29
     }
 
     fun shade(id: SkinId): Long = when (id) {
@@ -152,6 +238,27 @@ object SkinPaint {
         SkinId.CHAMAELEON -> 0xFF3F9BA5
         SkinId.KOMBO -> 0xFFE0A400
         SkinId.TINTE -> 0xFF1F3A8A
+        SkinId.EI -> 0xFFE8B92E
+        SkinId.TIGER -> 0xFF2A1F1C
+        SkinId.PINGUIN -> 0xFF1B1F28
+        SkinId.FUSSBALL -> 0xFF2A2C33
+        SkinId.DONUT -> 0xFFC08A47
+        SkinId.WELLE -> 0xFF1F5FA8
+        SkinId.GEWITTER -> 0xFF2F3644
+        SkinId.KONFETTI -> 0xFFFF5A36
+        SkinId.DISCO -> 0xFF8892A6
+        SkinId.HOLO -> 0xFFC93BAA
+        SkinId.THERMO -> 0xFFE0A400
+        SkinId.MEDAILLE -> 0xFF8F8F9C
+        SkinId.TAGESZEIT -> 0xFF3D4A8C
+        SkinId.JAHRESZEIT -> 0xFF2E8E98
+        SkinId.KUERBIS -> 0xFFC25E10
+        SkinId.ZUCKERSTANGE -> 0xFFC2301F
+        SkinId.HERZ -> 0xFFD6407E
+        SkinId.OSTEREI -> 0xFFB096E8
+        SkinId.DIAMANT -> 0xFF4E6A96
+        SkinId.PHOENIX -> 0xFF8E2410
+        SkinId.ONYX -> 0xFF141018
     }
 
     /** Glanzpunkt — bei NEON wandert er mit der Leuchtfarbe mit. */
@@ -177,6 +284,27 @@ object SkinPaint {
         SkinId.CHAMAELEON -> 0xFFFFFFFF
         SkinId.KOMBO -> 0xFFFFF3B8
         SkinId.TINTE -> 0xFFA8C0FF
+        SkinId.EI -> 0xFFFFFFFF
+        SkinId.TIGER -> 0xFFFFE0B8
+        SkinId.PINGUIN -> 0xFFFFFFFF
+        SkinId.FUSSBALL -> 0xFFFFFFFF
+        SkinId.DONUT -> 0xFFFFFFFF
+        SkinId.WELLE -> 0xFFFFFFFF
+        SkinId.GEWITTER -> 0xFFFFF3B8
+        SkinId.KONFETTI -> 0xFFFFFFFF
+        SkinId.DISCO -> 0xFFFFFFFF
+        SkinId.HOLO -> 0xFFFFFFFF
+        SkinId.THERMO -> 0xFFFFFFFF
+        SkinId.MEDAILLE -> 0xFFFFFFFF
+        SkinId.TAGESZEIT -> 0xFFFFFFFF
+        SkinId.JAHRESZEIT -> 0xFFFFFFFF
+        SkinId.KUERBIS -> 0xFFFFE0B8
+        SkinId.ZUCKERSTANGE -> 0xFFFFFFFF
+        SkinId.HERZ -> 0xFFFFFFFF
+        SkinId.OSTEREI -> 0xFFFFFFFF
+        SkinId.DIAMANT -> 0xFFFFFFFF
+        SkinId.PHOENIX -> 0xFFFFF3B8
+        SkinId.ONYX -> 0xFFFFE07A
     }
 
     /**
@@ -222,7 +350,27 @@ object SkinPaint {
     fun chips(id: SkinId): List<Long> = listOf(body(id), shade(id), shine(id))
 
     /** Hinterlässt der Skin Nachbilder auf der Bahn? */
-    fun hasTrail(id: SkinId): Boolean = id == SkinId.TINTE
+    fun hasTrail(id: SkinId): Boolean = id == SkinId.TINTE || id == SkinId.PHOENIX
+
+    /** Saison-Skin? Verdienbar nur im eigenen Monat (siehe [Season]). */
+    fun isSeasonal(id: SkinId): Boolean = Season.forSkin(id) != null
+
+    /** Gekaufter Gönner-Skin? */
+    fun isPatron(id: SkinId): Boolean = when (id) {
+        SkinId.DIAMANT, SkinId.PHOENIX, SkinId.ONYX -> true
+        else -> false
+    }
+
+    /**
+     * Zählt dieser Skin für den Sammlungsstand — und damit für die
+     * Bedingung des REGENBOGEN?
+     *
+     * Saison-Skins nicht, sonst wäre der Regenbogen frühestens nach einem
+     * Jahr erreichbar. Gönner-Skins nicht, sonst wäre er käuflich. Beides
+     * würde aus dem Abschluss der Sammlung etwas machen, das nicht mehr
+     * am Spielen hängt.
+     */
+    fun countsForCollection(id: SkinId): Boolean = !isSeasonal(id) && !isPatron(id)
 
     /**
      * Bewegte Skins müssen nicht in jedem Frame neu gerastert werden — ein
@@ -234,12 +382,18 @@ object SkinPaint {
         isAnimated(id) -> (state.elapsed * 12f).toInt()
         id == SkinId.CHAMAELEON -> skyStage(state.score)
         id == SkinId.KOMBO -> min(state.perfectStreak, 5)
+        id == SkinId.THERMO -> min(state.score, HEAT_SCORE)
+        id == SkinId.MEDAILLE -> medalTier(state.score)
+        id == SkinId.TAGESZEIT -> state.hour
+        id == SkinId.JAHRESZEIT -> state.month
         else -> 0
     }
 
     /** Hängt die Farbe an der Uhr (im Gegensatz zu Muster und Spielstand)? */
     fun isAnimated(id: SkinId): Boolean = when (id) {
-        SkinId.REGENBOGEN, SkinId.AURORA, SkinId.MAGMA, SkinId.NEON, SkinId.CHROM -> true
+        SkinId.REGENBOGEN, SkinId.AURORA, SkinId.MAGMA, SkinId.NEON, SkinId.CHROM,
+        SkinId.WELLE, SkinId.GEWITTER, SkinId.KONFETTI, SkinId.DISCO, SkinId.HOLO,
+        SkinId.ZUCKERSTANGE, SkinId.DIAMANT, SkinId.PHOENIX, SkinId.ONYX -> true
         else -> false
     }
 
@@ -266,13 +420,53 @@ object SkinPaint {
         SkinId.KOMBO -> stats.bestPerfectStreak >= 8
         SkinId.KARO -> stats.bestPerfectStreak >= 10
         SkinId.NEON -> stats.bestPerfectStreak >= 12
+
+        // Ausdauer statt Können: Diese Achsen wachsen mit jedem Lauf, auch
+        // mit den schlechten. Ohne sie hängen fast alle Skins am Rekord,
+        // und wer bei 25 stehenbleibt, sammelt nie wieder etwas.
+        SkinId.EI -> stats.runCount >= 25
+        SkinId.TIGER -> stats.runCount >= 100
+        SkinId.MEDAILLE -> stats.runCount >= 200
+        SkinId.FUSSBALL -> stats.runCount >= 300
+        SkinId.DONUT -> stats.totalScore >= 1_000
+        SkinId.KONFETTI -> stats.totalScore >= 5_000
+        SkinId.TAGESZEIT -> stats.daysPlayed >= 7
+        SkinId.JAHRESZEIT -> stats.monthsPlayed >= 3
+
+        SkinId.PINGUIN -> stats.bestScore >= 65
+        SkinId.WELLE -> stats.bestScore >= 70
+        SkinId.THERMO -> stats.bestScore >= 75
+        SkinId.HOLO -> stats.bestScore >= 80
+        SkinId.GEWITTER -> stats.bestPerfectStreak >= 15
+        SkinId.DISCO -> stats.bestDailyStreak >= 21
+
+        // Saison: im eigenen Monat verdient, danach für immer gehalten.
+        // Geprüft wird deshalb die Maske, nie der Kalender — sonst wäre
+        // der Kürbis im November wieder weg.
+        SkinId.KUERBIS, SkinId.ZUCKERSTANGE, SkinId.HERZ, SkinId.OSTEREI ->
+            Season.forSkin(id)?.let { stats.seasonEarned and it.bit != 0 } ?: false
+
+        // Gönner: gekauft. Kein Verdienst, keine Feier, kein Zählwert.
+        SkinId.DIAMANT, SkinId.PHOENIX, SkinId.ONYX -> stats.patronOwned
+
         // Der Regenbogen ist der Abschluss der Sammlung: Er kommt erst,
-        // wenn alle anderen Skins offen sind (er selbst zählt nicht mit,
-        // sonst wäre die Bedingung zirkulär).
-        SkinId.REGENBOGEN -> SkinId.entries.all { it == SkinId.REGENBOGEN || isUnlocked(it, stats) }
+        // wenn alle Skins offen sind, die für die Sammlung zählen (er
+        // selbst zählt nicht mit, sonst wäre die Bedingung zirkulär —
+        // Saison und Gönner zählen nicht mit, siehe countsForCollection).
+        SkinId.REGENBOGEN -> SkinId.entries.all {
+            it == SkinId.REGENBOGEN || !countsForCollection(it) || isUnlocked(it, stats)
+        }
     }
 
-    fun unlockedCount(stats: SkinStats): Int = SkinId.entries.count { isUnlocked(it, stats) }
+    /**
+     * Wie viele Skins dauerhaft verdient sind. Gekaufte und Saison-Skins
+     * bleiben außen vor: Der Zähler ist eine Leistungsanzeige.
+     */
+    fun unlockedCount(stats: SkinStats): Int =
+        SkinId.entries.count { countsForCollection(it) && isUnlocked(it, stats) }
+
+    /** Wie viele Skins dieser Zähler insgesamt erreichen kann. */
+    fun collectableCount(): Int = SkinId.entries.count { countsForCollection(it) }
 
     // ===== Das Farbwerk =====
 
@@ -374,6 +568,201 @@ object SkinPaint {
                 val k = min(state.perfectStreak, 5) / 5f
                 shaded(col, row, mix(0xFF8C8790, 0xFFFFD847, k), mix(0xFF5F5B63, 0xFFE0A400, k))
             }
+
+            // ===== Gemustert =====
+
+            SkinId.EI -> {
+                // Gezackte Schalenkante: Die Kappe endet je Spalte etwas
+                // anders, sonst läge ein gerader Deckel auf dem Küken.
+                val jag = 3.5f + (if (col % 3 == 0) 1f else 0f) + (if (col % 2 == 0) 0.5f else 0f)
+                if (row <= jag) shaded(col, row, 0xFFF7F3EE, 0xFFDCD2C4)
+                else shaded(col, row, 0xFFFFE58F, 0xFFE8B92E)
+            }
+
+            SkinId.TIGER -> {
+                val wave = col + sin(row * 0.55f) * 2.2f
+                if (((wave % 6f) + 6f) % 6f < 1.7f) 0xFF2A1F1C
+                else shaded(col, row, 0xFFFF8A2B, 0xFFD2601A)
+            }
+
+            SkinId.PINGUIN -> when {
+                row >= 11 -> 0xFFF5A623
+                isBelly(col, row) -> shaded(col, row, 0xFFF7F3EE, 0xFFDCD2C4)
+                else -> shaded(col, row, 0xFF2E3440, 0xFF1B1F28)
+            }
+
+            SkinId.FUSSBALL ->
+                if (isBallPatch(col, row)) 0xFF2A2C33
+                else shaded(col, row, 0xFFF7F3EE, 0xFFD9CEC2)
+
+            SkinId.DONUT -> {
+                val edge = 5.5f + sin(col * 1.05f) * 1.3f
+                when {
+                    row > edge -> shaded(col, row, 0xFFE8B36A, 0xFFC08A47)
+                    isSprinkle(col, row) -> SPRINKLE_COLORS[(col + row) % SPRINKLE_COLORS.size]
+                    else -> shaded(col, row, 0xFFFF7FBF, 0xFFE04E9C)
+                }
+            }
+
+            // ===== Bewegt =====
+
+            SkinId.WELLE -> {
+                // Eine Wasserlinie, die im Körper schwappt — darüber Luft,
+                // an der Kante Schaum.
+                val line = 5.6f + sin(t * 1.7f + col * 0.52f) * 1.5f
+                when {
+                    row > line + 0.9f -> shaded(col, row, 0xFF2E86D8, 0xFF1F5FA8)
+                    row > line -> 0xFFBFE9FF
+                    else -> shaded(col, row, 0xFFDCF3FF, 0xFFBBD9E8)
+                }
+            }
+
+            SkinId.GEWITTER -> {
+                // Der Blitz ist kurz und selten: Er trägt den Skin, aber
+                // ein Dauerflackern würde den Punkt unlesbar machen.
+                val phase = t % 2.6f
+                val flash = when {
+                    phase < 0.14f -> 1f
+                    phase < 0.30f -> 0.35f
+                    else -> 0f
+                }
+                val base = shaded(col, row, 0xFF4A5568, 0xFF2F3644)
+                when {
+                    flash > 0f && isBolt(col, row) -> 0xFFFFF3B8
+                    flash > 0f -> mix(base, 0xFFFFE95E, 0.5f * flash)
+                    else -> base
+                }
+            }
+
+            SkinId.KONFETTI -> {
+                val step = floor(t * 0.9f).toInt()
+                val n = noise(col, row, step)
+                if (n % 100 < 38) CONFETTI_COLORS[n % CONFETTI_COLORS.size]
+                else shaded(col, row, 0xFFF7F3EE, 0xFFD9CEC2)
+            }
+
+            SkinId.DISCO -> {
+                val facet = (col / 2 + row / 2) % 2
+                val base = if (facet == 0) 0xFFC3CBD9 else 0xFF8892A6
+                val k = floor(t * 7f).toInt()
+                when {
+                    (col * 2 + row * 3 + k) % 11 == 0 -> 0xFFFFFFFF
+                    (col + row * 2 + k) % 13 == 0 -> DISCO_COLORS[(col + row + k) % DISCO_COLORS.size]
+                    col + row > GRID * 1.15f -> mix(base, 0xFF3B4152, 0.3f)
+                    else -> base
+                }
+            }
+
+            SkinId.HOLO -> {
+                // Sammelkarten-Folie. Der Grünbereich wird übersprungen wie
+                // beim REGENBOGEN — ein grüner Vogel sähe für einen Moment
+                // aus wie die Zielzone.
+                var h = ((col - row) * 13f + t * 60f) % 360f
+                if (h < 0f) h += 360f
+                if (h > 80f && h < 150f) h += 70f
+                var color = hsl(h, 0.75f, if (col + row > GRID * 1.15f) 0.46f else 0.66f)
+                val sweep = (t * 5f) % 20f - 4f
+                val d = abs(col + row * 0.6f - sweep)
+                if (d < 1.4f) color = mix(color, 0xFFFFFFFF, 1f - d / 1.4f)
+                color
+            }
+
+            // ===== Reagierend =====
+
+            SkinId.THERMO -> {
+                // Der Vogel heizt sich im Lauf auf: kalt bei 0, weißglühend
+                // bei HEAT_SCORE. Fortschrittsanzeige an der Stelle, auf
+                // die der Daumen ohnehin schaut.
+                val k = min(state.score, HEAT_SCORE) / HEAT_SCORE.toFloat()
+                val body = if (k < 0.5f) mix(0xFF8FD8FF, 0xFFFFD847, k * 2f)
+                else mix(0xFFFFD847, 0xFFFFF6E0, (k - 0.5f) * 2f)
+                val shade = if (k < 0.5f) mix(0xFF4FA3D8, 0xFFE0A400, k * 2f)
+                else mix(0xFFE0A400, 0xFFFF7A3C, (k - 0.5f) * 2f)
+                shaded(col, row, body, shade)
+            }
+
+            SkinId.MEDAILLE -> {
+                val tier = MEDAL_COLORS[medalTier(state.score)]
+                val dx = col - MID
+                val dy = row - MID
+                // Prägerand: außen dunkler, damit die Münze eine Kante hat.
+                if (sqrt(dx * dx + dy * dy) > RR - 1.85f) mix(tier[1], 0xFF000000, 0.18f)
+                else shaded(col, row, tier[0], tier[1])
+            }
+
+            SkinId.TAGESZEIT -> {
+                val p = dayPalette(state.hour)
+                if (p.size > 2 && isStar(col, row)) p[2]
+                else shaded(col, row, p[0], p[1])
+            }
+
+            SkinId.JAHRESZEIT -> {
+                val p = seasonPalette(state.month)
+                if ((col * 3 + row * 5) % 11 == p[3].toInt()) p[2]
+                else shaded(col, row, p[0], p[1])
+            }
+
+            // ===== Saison =====
+
+            SkinId.KUERBIS -> when {
+                row <= 1 && col in 5..7 -> 0xFF5AA020
+                isGrin(col, row) -> 0xFF2A1F1C
+                else -> {
+                    val rib = abs((((col + 1) % 4) + 4) % 4 - 2) < 1
+                    val body = if (rib) 0xFFD86A12 else 0xFFF5821F
+                    if (col + row > GRID * 1.15f) mix(body, 0xFF000000, 0.22f) else body
+                }
+            }
+
+            SkinId.ZUCKERSTANGE -> {
+                val band = floor((col + row - t * 4f) / 2.2f).toInt()
+                if (((band % 2) + 2) % 2 == 0) shaded(col, row, 0xFFE8452F, 0xFFC2301F)
+                else shaded(col, row, 0xFFF7F3EE, 0xFFDCD2C4)
+            }
+
+            SkinId.HERZ ->
+                // Das Herz sitzt tief: Weiter oben verdeckte es das Auge,
+                // und zwei Zeichen im selben Gesicht kämpfen gegeneinander.
+                if (isHeart(col, row)) shaded(col, row, 0xFFFFF0F5, 0xFFFFC8DC)
+                else shaded(col, row, 0xFFFF6FA8, 0xFFD6407E)
+
+            SkinId.OSTEREI -> {
+                val band = (row + (if (col % 2 == 0) 1 else 0)) / 2 % 4
+                if (band == 1 && col % 3 == 0) 0xFFFFFFFF
+                else shaded(col, row, EASTER_COLORS[band][0], EASTER_COLORS[band][1])
+            }
+
+            // ===== Gönner =====
+
+            SkinId.DIAMANT -> {
+                val facet = ((floor(col * 0.9f + row * 0.4f).toInt() % 3) + 3) % 3
+                var base = DIAMOND_COLORS[facet]
+                val sweep = (t * 7f) % 20f - 4f
+                val d = abs(col + row * 0.5f - sweep)
+                if (d < 1.2f) base = mix(base, 0xFFFFFFFF, 1f - d / 1.2f)
+                when {
+                    noise(col, row, floor(t * 3f).toInt()) % 37 == 0 -> 0xFFFFFFFF
+                    col + row > GRID * 1.15f -> mix(base, 0xFF4E6A96, 0.35f)
+                    else -> base
+                }
+            }
+
+            SkinId.PHOENIX -> {
+                val flicker = 0.5f + 0.5f * sin(t * 4f + col * 0.7f - row * 1.1f)
+                val heat = max(0f, 1f - row / 11f) * 0.6f + flicker * 0.5f
+                val color = if (heat > 0.9f) 0xFFFFF3B8 else mix(0xFFE5341A, 0xFFFFB020, min(1f, heat))
+                if (col + row > GRID * 1.15f) mix(color, 0xFF8E2410, 0.35f) else color
+            }
+
+            SkinId.ONYX -> {
+                val vein = sin(col * 1.15f + row * 0.85f) > 0.55f
+                if (!vein) {
+                    if (col + row > GRID * 1.15f) 0xFF141018 else 0xFF221C29
+                } else {
+                    val glow = 0.5f + 0.5f * sin(t * 1.6f + col * 0.5f + row * 0.4f)
+                    mix(0xFF8A6A1E, 0xFFFFE07A, glow)
+                }
+            }
         }
     }
 
@@ -401,6 +790,125 @@ object SkinPaint {
 
     private fun isNebula(col: Int, row: Int): Boolean =
         (col == 7 && row == 2) || (col == 4 && row == 6) || (col == 8 && row == 9)
+
+    /** Heller Bauch des PINGUIN — als Ellipse, damit er zur Kugel passt. */
+    private fun isBelly(col: Int, row: Int): Boolean {
+        val dx = (col - 6) * 0.9f
+        val dy = row - 8.2f
+        return sqrt(dx * dx + dy * dy) < 3.4f
+    }
+
+    /** Fünfeck in der Mitte plus angeschnittene Flecken am Rand. */
+    private fun isBallPatch(col: Int, row: Int): Boolean =
+        (col == 6 && row == 5) || (col == 5 && row == 6) || (col == 6 && row == 6) ||
+            (col == 7 && row == 6) || (col == 5 && row == 7) || (col == 6 && row == 7) ||
+            (col == 7 && row == 7) || (col == 6 && row == 8) ||
+            (col == 1 && row == 4) || (col == 2 && row == 4) || (col == 2 && row == 3) ||
+            (col == 10 && row == 9) || (col == 9 && row == 10) || (col == 3 && row == 11)
+
+    private fun isSprinkle(col: Int, row: Int): Boolean =
+        (col == 3 && row == 2) || (col == 5 && row == 1) || (col == 8 && row == 2) ||
+            (col == 4 && row == 4) || (col == 9 && row == 4) || (col == 6 && row == 3) ||
+            (col == 10 && row == 5) || (col == 2 && row == 4)
+
+    /** Zickzack des Blitzes — läuft von oben rechts nach unten links. */
+    private fun isBolt(col: Int, row: Int): Boolean =
+        (col == 7 && row == 2) || (col == 6 && row == 3) || (col == 6 && row == 4) ||
+            (col == 7 && row == 4) || (col == 5 && row == 5) || (col == 5 && row == 6) ||
+            (col == 6 && row == 6) || (col == 4 && row == 7) || (col == 4 && row == 8) ||
+            (col == 5 && row == 8) || (col == 3 && row == 9)
+
+    /** Geschnitztes Grinsen des KUERBIS, bewusst unterhalb des Auges. */
+    private fun isGrin(col: Int, row: Int): Boolean =
+        (row == 10 && col in 3..9) || (row == 9 && (col == 3 || col == 6 || col == 9))
+
+    /** Pixelherz, tief gesetzt — oben hat das Auge Vorrang. */
+    private fun isHeart(col: Int, row: Int): Boolean = when (row) {
+        6 -> col == 4 || col == 5 || col == 7 || col == 8
+        7, 8 -> col in 3..9
+        9 -> col in 4..8
+        10 -> col in 5..7
+        11 -> col == 6
+        else -> false
+    }
+
+    private val SPRINKLE_COLORS = longArrayOf(0xFF4EC0CA, 0xFFFFF3B8, 0xFFFFFFFF, 0xFFFF5A36)
+
+    private val CONFETTI_COLORS =
+        longArrayOf(0xFFFF5A36, 0xFF4EC0CA, 0xFFFFD847, 0xFFFF6FD8, 0xFF7B6FD0)
+
+    private val DISCO_COLORS = longArrayOf(0xFFFF6FD8, 0xFF4EC0CA, 0xFFFFD847)
+
+    private val DIAMOND_COLORS = longArrayOf(0xFFDCEBFF, 0xFFA8C8EE, 0xFF7FA8D8)
+
+    /** Bänder des OSTEREI: Körper- und Schattenfarbe je Band. */
+    private val EASTER_COLORS = arrayOf(
+        longArrayOf(0xFFFFB8D9, 0xFFE086B4),
+        longArrayOf(0xFFBFE9FF, 0xFF8FC8E8),
+        longArrayOf(0xFFFFF0A8, 0xFFE0CE6A),
+        longArrayOf(0xFFD9C2FF, 0xFFB096E8)
+    )
+
+    /**
+     * Bei welchem Score THERMO fertig durchgeglüht ist. Bewusst die
+     * Platin-Schwelle: Der Vogel ist genau dann weißglühend, wenn der Lauf
+     * die höchste Medaille erreicht hat.
+     */
+    const val HEAT_SCORE = 40
+
+    /** Legierungen von MEDAILLE: Zinn, Bronze, Silber, Gold, Platin. */
+    private val MEDAL_COLORS = arrayOf(
+        longArrayOf(0xFFB8BEC9, 0xFF8A909C),
+        longArrayOf(0xFFCD7F32, 0xFF9C5A1E),
+        longArrayOf(0xFFC0C0C0, 0xFF8F8F9C),
+        longArrayOf(0xFFFFD700, 0xFFC9A400),
+        longArrayOf(0xFFE5E4E2, 0xFFADB5C4)
+    )
+
+    /**
+     * Medaillenstufe eines Scores (0 = noch keine). Spiegelt MedalTier aus
+     * der App — der Gleichstand ist per Test abgesichert.
+     */
+    fun medalTier(score: Int): Int = when {
+        score >= 40 -> 4
+        score >= 30 -> 3
+        score >= 20 -> 2
+        score >= 10 -> 1
+        else -> 0
+    }
+
+    /**
+     * Kleid von TAGESZEIT nach Stunde: Morgenrot, Mittagsblau, Abendglut,
+     * Nachtblau mit Sternen. Nur die Nacht hat einen dritten Wert.
+     */
+    private fun dayPalette(hour: Int): LongArray = when (hour) {
+        in 5..8 -> longArrayOf(0xFFFFC58F, 0xFFE8935A)
+        in 9..16 -> longArrayOf(0xFF8FD8FF, 0xFF4FA3D8)
+        in 17..20 -> longArrayOf(0xFFFF8A3C, 0xFFC0616F)
+        else -> longArrayOf(0xFF3D4A8C, 0xFF232B55, 0xFFFFF3B8)
+    }
+
+    /**
+     * Kleid von JAHRESZEIT nach Kalendermonat (1-12): Körper, Schatten,
+     * Streufarbe und der Rest, bei dem die Streufarbe erscheint.
+     */
+    private fun seasonPalette(month: Int): LongArray = when (month) {
+        3, 4, 5 -> longArrayOf(0xFFFFB8D9, 0xFFE086B4, 0xFFFFFFFF, 5)
+        6, 7, 8 -> longArrayOf(0xFF4EC0CA, 0xFF2E8E98, 0xFFFFF3B8, 7)
+        9, 10, 11 -> longArrayOf(0xFFE08A3C, 0xFFB2571F, 0xFF7A3B1F, 4)
+        else -> longArrayOf(0xFFDCF3FF, 0xFFA8C8DE, 0xFFFFFFFF, 6)
+    }
+
+    /**
+     * Deterministisches Rauschen über Feld und Zeitschritt. Bewusst kein
+     * Zufall: Zwei Geräte, zwei Renderer und der Textur-Cache auf iOS
+     * müssen beim selben Zeitschritt dasselbe Bild ergeben.
+     */
+    private fun noise(col: Int, row: Int, seed: Int): Int {
+        var n = (col * 73856093) xor (row * 19349663) xor (seed * 83492791)
+        n = (n xor (n ushr 13)) * 1274126177
+        return abs(n xor (n ushr 16))
+    }
 
     /** Leuchtfarbe von NEON: springt im Vierteltakt weiter. */
     private fun neonGlow(state: SkinState): Long {

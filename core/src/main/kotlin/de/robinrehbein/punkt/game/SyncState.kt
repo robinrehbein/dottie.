@@ -25,6 +25,25 @@ data class SyncState(
     val dailyDay: Long = 0L,
     val dailyBest: Int = 0,
     val dailyStreak: Int = 0,
+    /**
+     * Summe aller je erspielten Punkte. Wie [runCount] keine echte Summe
+     * über beide Geräte — ohne Verlaufswissen ließe sie sich nicht bilden.
+     * Das Maximum ist die einzige Wahl, die beim wiederholten
+     * Zusammenführen stabil bleibt.
+     */
+    val totalScore: Int = 0,
+    /** Anzahl Kalendertage mit mindestens einem Lauf. */
+    val daysPlayed: Int = 0,
+    /** Letzter gespielter Kalendertag als Epoch-Day, 0 = noch nie. */
+    val lastPlayedDay: Long = 0L,
+    /**
+     * Bitmaske der Kalendermonate (Bit 0 = Januar), in denen je gespielt
+     * wurde. Masken werden verodert statt maximiert: Wer im März auf der
+     * Uhr und im Mai am Telefon gespielt hat, hat beide Monate gesehen.
+     */
+    val monthsPlayed: Int = 0,
+    /** Bitmaske der verdienten Saison-Skins (siehe Season.bit). */
+    val seasonEarned: Int = 0,
     /** Name des gewählten Skins; leer = nie bewusst gewählt. */
     val skin: String = "",
     /**
@@ -63,6 +82,14 @@ data class SyncState(
             dailyDay = daily.dailyDay,
             dailyBest = daily.dailyBest,
             dailyStreak = daily.dailyStreak,
+            totalScore = maxOf(totalScore, other.totalScore),
+            daysPlayed = maxOf(daysPlayed, other.daysPlayed),
+            lastPlayedDay = maxOf(lastPlayedDay, other.lastPlayedDay),
+            // Masken werden verodert: Beide Seiten kennen Monate und
+            // Saison-Erfolge, die die andere nie gesehen hat. Oder ist
+            // kommutativ und idempotent, genau wie Maximum.
+            monthsPlayed = monthsPlayed or other.monthsPlayed,
+            seasonEarned = seasonEarned or other.seasonEarned,
             skin = if (skinFromOther) other.skin else skin,
             skinChangedAt = maxOf(skinChangedAt, other.skinChangedAt)
         )
