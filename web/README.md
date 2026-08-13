@@ -46,8 +46,13 @@ Die App gibt vor, wie das Spiel aussieht — die PWA folgt ihr. Konkret:
   unteren Viertel doppelt breite Kante nicht; die Geometrie steckt
   deshalb in Hintergrund-Layern und bleibt bei jeder Pixeldichte scharf.
 - **Farben** kommen aus `js/render.js` (`Renderer.Palette`) und werden im
-  Test Wert für Wert gegen `GameOverlays.kt`, `TimingGameScreen.kt` und
-  `DotSkin.kt` geprüft — dasselbe für alle Texte gegen `strings.xml`.
+  Test Wert für Wert gegen `GameOverlays.kt` und `TimingGameScreen.kt`
+  geprüft — dasselbe für alle Texte gegen `strings.xml`.
+- **Skins** liegen in `js/skins.js` als Port von `SkinPaint.kt` (`:core`):
+  je eine Funktion über das 13x13-Raster des Vogels. Der Test liest
+  Reihenfolge, Stellvertreter-Farben, Himmelsstufen und Freischalt-
+  Schwellen direkt aus der Kotlin-Quelle und vergleicht sie mit dem
+  Web-Port — inklusive der Kanten jeder Schwelle.
 
 Bewusste Abweichungen (Browser-Grenzen, jeweils im Code kommentiert):
 

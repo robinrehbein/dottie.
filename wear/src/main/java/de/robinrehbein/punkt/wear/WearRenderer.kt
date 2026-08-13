@@ -5,6 +5,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
+import de.robinrehbein.punkt.game.SkinPaint
+import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.TimingGame
 import kotlin.math.abs
 import kotlin.math.cos
@@ -186,44 +188,72 @@ private fun DrawScope.drawWearDot(
         }
     }
 
-    fun drawBird() {
+    val state = SkinState(
+        elapsed = game.elapsed,
+        score = game.score,
+        perfectStreak = game.perfectStreak
+    )
+
+    fun drawBird(centerX: Float, centerY: Float, alpha: Float = 1f) {
         drawWearPixelCircle(
-            color = skin.body,
             outline = WearOutlineColor,
-            centerX = px,
-            centerY = py,
+            centerX = centerX,
+            centerY = centerY,
             radius = r,
-            shade = skin.shade
-        )
+            alpha = alpha
+        ) { col, row -> skin.cell(col, row, state) }
 
         val u = (r * 2f) / WEAR_GRID
         fun rect(col: Float, row: Float, cols: Float, rows: Float, color: Color) {
             drawRect(
                 color = color,
-                topLeft = Offset(px - r + col * u, py - r + row * u),
-                size = Size(cols * u, rows * u)
+                topLeft = Offset(centerX - r + col * u, centerY - r + row * u),
+                size = Size(cols * u, rows * u),
+                alpha = alpha
             )
         }
 
         // Auge/Glanzpunkt folgen der sichtbaren Flugrichtung wie am Phone
         // (drawTimingDot in TimingGameScreen.kt): horizontale Geschwindigkeit
         // ist ~ -sin(angle) * direction — zeigt sie nach links, wird gespiegelt.
+        // Das Auge bekommt zum Körper hin eine Kontur, sonst geht es auf
+        // hellen Skins (Koi, Chrom) im Körper unter.
         val facingLeft = sin(game.angle) * game.direction > 0f
+        val shine = skin.shineColor(state)
         if (facingLeft) {
-            rect(WEAR_GRID - 4.5f, 2.5f, 2f, 2f, skin.shine)
+            rect(WEAR_GRID - 4.5f, 2.5f, 2f, 2f, shine)
+            rect(5f, 3f, 0.5f, 4f, WearOutlineColor)
+            rect(2f, 2.5f, 3.5f, 0.5f, WearOutlineColor)
+            rect(2f, 7f, 3.5f, 0.5f, WearOutlineColor)
             rect(2f, 3f, 3.5f, 4f, Color.White)
             rect(2f, 4f, 1.5f, 2f, WearOutlineColor)
         } else {
-            rect(2.5f, 2.5f, 2f, 2f, skin.shine)
+            rect(2.5f, 2.5f, 2f, 2f, shine)
+            rect(7f, 3f, 0.5f, 4f, WearOutlineColor)
+            rect(7.5f, 2.5f, 3.5f, 0.5f, WearOutlineColor)
+            rect(7.5f, 7f, 3.5f, 0.5f, WearOutlineColor)
             rect(7.5f, 3f, 3.5f, 4f, Color.White)
             rect(9.5f, 4f, 1.5f, 2f, WearOutlineColor)
         }
     }
 
+    // Schweif-Skins (Tinte) lassen Nachbilder auf der Bahn zurück; die
+    // Positionen werden wie am Phone aus dem Winkel zurückgerechnet.
+    if (skin.hasTrail && game.phase == TimingGame.Phase.RUNNING) {
+        for (step in SkinPaint.TRAIL_STEPS downTo 1) {
+            val a = game.angle - game.direction * step * SkinPaint.TRAIL_SPACING
+            drawBird(
+                centerX = cx + cos(a) * radius,
+                centerY = cy + sin(a) * radius,
+                alpha = 0.34f / step
+            )
+        }
+    }
+
     if (flip > 0f) {
-        rotate(degrees = flip, pivot = Offset(px, py)) { drawBird() }
+        rotate(degrees = flip, pivot = Offset(px, py)) { drawBird(px, py) }
     } else {
-        drawBird()
+        drawBird(px, py)
     }
 }
 
@@ -237,13 +267,11 @@ internal fun DrawScope.drawWearMedalCoin(tier: WearMedalTier) {
     val cx = size.width / 2f
     val cy = size.height / 2f
     drawWearPixelCircle(
-        color = tier.body,
         outline = WearOutlineColor,
         centerX = cx,
         centerY = cy,
-        radius = r,
-        shade = tier.shade
-    )
+        radius = r
+    ) { col, row -> if (col + row > WEAR_GRID * 1.15f) tier.shade else tier.body }
     // Glanzpunkt oben links, wie auf der Phone-Münze.
     val u = (r * 2f) / WEAR_GRID
     drawRect(
@@ -265,13 +293,11 @@ internal fun DrawScope.drawWearSkinCoin(skin: WearDotSkin) {
     val cx = size.width / 2f
     val cy = size.height / 2f
     drawWearPixelCircle(
-        color = skin.body,
         outline = WearOutlineColor,
         centerX = cx,
         centerY = cy,
-        radius = r,
-        shade = skin.shade
-    )
+        radius = r
+    ) { col, row -> skin.cell(col, row) }
     val u = (r * 2f) / WEAR_GRID
     drawRect(
         color = skin.shine,
@@ -280,14 +306,18 @@ internal fun DrawScope.drawWearSkinCoin(skin: WearDotSkin) {
     )
 }
 
-/** Lokale Kopie von drawPixelCircle (GameOverlays.kt) — kein :app-Zugriff. */
+/**
+ * Lokale Kopie von drawPixelCircle (GameOverlays.kt) — kein :app-Zugriff.
+ * Die Füllfarbe kommt pro Feld aus [cell], damit gemusterte und bewegte
+ * Skins auf der Uhr genauso aussehen wie am Phone.
+ */
 private fun DrawScope.drawWearPixelCircle(
-    color: Color,
     outline: Color,
     centerX: Float,
     centerY: Float,
     radius: Float,
-    shade: Color = color
+    alpha: Float = 1f,
+    cell: (col: Int, row: Int) -> Color
 ) {
     val n = WEAR_GRID.toInt()
     val u = (radius * 2f) / WEAR_GRID
@@ -300,15 +330,12 @@ private fun DrawScope.drawWearPixelCircle(
             val dy = row - mid
             val dist = sqrt(dx * dx + dy * dy)
             if (dist <= rr) {
-                val cellColor = when {
-                    dist > rr - 1.1f -> outline
-                    row + col > WEAR_GRID * 1.15f -> shade
-                    else -> color
-                }
+                val cellColor = if (dist > rr - 1.1f) outline else cell(col, row)
                 drawRect(
                     color = cellColor,
                     topLeft = Offset(centerX - radius + col * u, centerY - radius + row * u),
-                    size = Size(u + 0.5f, u + 0.5f)
+                    size = Size(u + 0.5f, u + 0.5f),
+                    alpha = alpha
                 )
             }
         }

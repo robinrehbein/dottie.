@@ -54,11 +54,19 @@ Wachstum ein:
   und Twist-Abfolge. Gespeichert werden Tagesbest und die Tages-Serie
   („SERIE: 5 TAGE"); nur der erste Lauf des Tages schreibt die Serie
   fort, eine Lücke reißt sie.
-- **Skins**: Sieben Punkt-Skins (Klassik, Minze, Lava, Gold, Frost,
-  Schatten, Prisma), freigeschaltet über Medaillen-Schwellen (Rekord
-  10/20/30/40), die beste Perfekt-Serie (4) oder die Daily-Serie
-  (3 Tage). Auswahl über den SKINS-Button, gesperrte Skins zeigen ihre
-  Bedingung.
+- **Skins**: 21 Punkt-Skins in drei Familien — einfarbige (Klassik,
+  Minze, Lava, Gold, Frost, Schatten, Prisma), gemusterte (Biene, Melone,
+  Fliegenpilz, Koi, Galaxie, Karo) und solche, die sich bewegen
+  (Regenbogen, Aurora, Magma, Neon, Chrom) oder auf den Lauf reagieren
+  (Chamäleon folgt der Himmelsstufe, Kombo lädt sich mit der
+  Perfekt-Serie auf, Tinte zieht einen Schweif). Freigeschaltet über
+  Rekord, beste Perfekt-Serie oder Daily-Serie; der Regenbogen kommt
+  zuletzt, wenn alle anderen gesammelt sind. Auswahl über den
+  SKINS-Button, gesperrte Skins zeigen ihre Bedingung.
+
+  Farben und Schwellen liegen in `SkinPaint` (`:core`): Ein Skin ist dort
+  eine Funktion über das 13x13-Raster des Vogels, kein Tripel aus drei
+  Farben mehr — Android, Wear, PWA und iOS zeichnen alle dasselbe Raster.
 - **Teilen**: Der TEILEN-Button im Game-Over rendert eine Score-Card
   als PNG (komplett im Code, wie alles hier) und öffnet den
   System-Share-Dialog — Score, Medaille, Skin und Daily-Serie inklusive.
@@ -158,10 +166,10 @@ Auch die Daily Challenge läuft auf der Uhr: gleicher Tages-Seed wie am
 Phone (`DailyChallenge` in `:core`), umgeschaltet über die Zeile
 „KLASSIK / DAILY" auf dem Start- und Game-Over-Overlay; Tagesbest und
 Tages-Serie werden lokal geführt (nur der erste Lauf des Tages schreibt
-die Serie fort, eine Lücke reißt sie). Dazu die sieben Punkt-Skins mit
-den Freischalt-Bedingungen des Phones — ein Tap auf die kleine
-Skin-Münze im Startscreen schaltet zyklisch zum nächsten
-freigeschalteten Skin.
+die Serie fort, eine Lücke reißt sie). Dazu alle Punkt-Skins mit den
+Freischalt-Bedingungen des Phones (gemeinsames Farbwerk in `:core`) —
+ein Tap auf die kleine Skin-Münze im Startscreen schaltet zyklisch zum
+nächsten freigeschalteten Skin.
 Rekord, Daily-Stand und Skin-Wahl werden lokal auf der Uhr gespeichert,
 getrennt vom Telefon-Store.
 Auf Uhren mit Zusatztasten (z. B. dem Quick-Button der Galaxy Watch Ultra)
