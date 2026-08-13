@@ -180,6 +180,10 @@ zeigt dann, was in `ios/` und `web/` nachzuziehen ist. Alles Weitere in
 Skin-Farbwerk (`SkinPaint`) und Medaillen (`MedalPaint`) liegen in
 `:core`, beide Apps halten nur noch ihre eigenen Texte dazu.
 
+Ob und wann sich die drei Ports mit Kotlin Multiplatform wirklich
+zusammenlegen lassen — mit Aufwand, Kosten und Gegenargumenten —, steht
+in [ARCHITEKTUR.md](ARCHITEKTUR.md).
+
 ## Wear-OS-Prototyp (experimentell)
 
 Im Modul `:wear` liegt ein eigenständiger Prototyp für runde Wear-OS-Uhren:
