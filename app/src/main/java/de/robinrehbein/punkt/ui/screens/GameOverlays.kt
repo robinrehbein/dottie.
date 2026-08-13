@@ -94,6 +94,19 @@ internal class FxState {
 
     /** Sekunden seit dem Tod (Mario-Hüpfer), negativ = kein Tod aktiv. */
     var deathTime = -1f
+
+    /**
+     * Alle Effekte auf den Ruhezustand — nötig überall dort, wo ein Lauf
+     * endet, ohne dass gleich der nächste startet (Rückkehr ins Menü).
+     * Vor allem [deathTime]: Bliebe der Sturz aktiv, wäre der Vogel im
+     * READY-Bild längst unten aus dem Kader gefallen und unsichtbar.
+     */
+    fun reset() {
+        flashAlpha = 0f
+        shakeTime = 0f
+        celebrateTime = 0f
+        deathTime = -1f
+    }
 }
 
 // ===== Overlays =====
@@ -883,16 +896,19 @@ internal fun SkinOverlay(
                         }
                         .padding(horizontal = 48.dp, vertical = 10.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(OutlineColor)
-                            .padding(4.dp)
-                            .background(
-                                if (available) Color(skin.body)
-                                else Color(skin.body).copy(alpha = 0.25f)
-                            )
-                    )
+                    // Vorschau als echter Vogel statt als Farbfläche: Bei
+                    // gemusterten Skins sagt ein einzelner Farbwert nichts
+                    // mehr aus. Bewegte Skins stehen dabei still (Zeitpunkt 0).
+                    Canvas(modifier = Modifier.size(36.dp)) {
+                        val d = size.minDimension
+                        drawPixelCircle(
+                            outline = OutlineColor,
+                            centerX = d / 2f,
+                            centerY = d / 2f,
+                            radius = d / 2f,
+                            alpha = if (available) 1f else 0.3f
+                        ) { col, row -> Color(skin.cell(col, row)) }
+                    }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
@@ -971,14 +987,18 @@ internal fun pickTaunt(
 
 internal const val GRID = 13f
 
-/** Zeichnet einen blockigen "Pixel"-Kreis aus Rasterzellen. */
+/**
+ * Zeichnet einen blockigen "Pixel"-Kreis aus Rasterzellen. Die Füllfarbe
+ * kommt pro Feld aus [cell] — so zeichnet dieselbe Routine einfarbige,
+ * gemusterte und animierte Skins (siehe SkinPaint in :core).
+ */
 internal fun DrawScope.drawPixelCircle(
-    color: Color,
     outline: Color,
     centerX: Float,
     centerY: Float,
     radius: Float,
-    shade: Color = color
+    alpha: Float = 1f,
+    cell: (col: Int, row: Int) -> Color
 ) {
     val n = GRID.toInt()
     val u = (radius * 2f) / GRID
@@ -991,18 +1011,29 @@ internal fun DrawScope.drawPixelCircle(
             val dy = row - mid
             val dist = kotlin.math.sqrt(dx * dx + dy * dy)
             if (dist <= rr) {
-                val cellColor = when {
-                    dist > rr - 1.1f -> outline
-                    row + col > GRID * 1.15f -> shade
-                    else -> color
-                }
+                val cellColor = if (dist > rr - 1.1f) outline else cell(col, row)
                 drawRect(
                     color = cellColor,
                     topLeft = Offset(centerX - radius + col * u, centerY - radius + row * u),
-                    size = Size(u + 0.5f, u + 0.5f)
+                    size = Size(u + 0.5f, u + 0.5f),
+                    alpha = alpha
                 )
             }
         }
+    }
+}
+
+/** Einfarbige Variante mit Schattenseite — für Münzen und Deko. */
+internal fun DrawScope.drawPixelCircle(
+    color: Color,
+    outline: Color,
+    centerX: Float,
+    centerY: Float,
+    radius: Float,
+    shade: Color = color
+) {
+    drawPixelCircle(outline, centerX, centerY, radius) { col, row ->
+        if (col + row > GRID * 1.15f) shade else color
     }
 }
 

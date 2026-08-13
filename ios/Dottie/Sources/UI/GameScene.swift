@@ -44,6 +44,17 @@ final class GameScene: SKScene {
     private var lastUpdateTime: TimeInterval = 0
     private var lastPhase: TimingGame.Phase = .over // erzwingt READY-Setup im 1. Frame
 
+    /// Alle Effekte auf den Ruhezustand (FxState.reset am Phone) — nötig
+    /// überall dort, wo ein Lauf endet, ohne dass gleich der nächste
+    /// startet. Vor allem `deathTime`: Bliebe der Sturz aktiv, wäre der
+    /// Vogel im READY-Bild längst unten aus dem Kader gefallen.
+    private func resetFx() {
+        flashAlpha = 0
+        shakeTime = 0
+        celebrateTime = 0
+        deathTime = -1
+    }
+
     // MARK: - Layout-Konstanten (aus TimingGameScreen.kt)
 
     private static let celebrateSeconds: CGFloat = 1.1
@@ -71,6 +82,14 @@ final class GameScene: SKScene {
     private var birdNode = SKSpriteNode()
     private var birdTextureLeft: SKTexture?
     private var birdTextureRight: SKTexture?
+
+    /// Zustand, für den die Vogel-Texturen zuletzt gerastert wurden.
+    /// Bewegte Skins werden nur bei einem Wechsel neu gezeichnet (siehe
+    /// SkinPaint.frameKey) statt 60-mal pro Sekunde.
+    private var birdTextureKey = -1
+
+    /// Nachbilder auf der Bahn für Schweif-Skins (Tinte).
+    private var trailNodes: [SKSpriteNode] = []
     private var flashNode = SKSpriteNode()
 
     private var hud: HudOverlay?
@@ -204,6 +223,17 @@ final class GameScene: SKScene {
             }
         }
 
+        // Nachbilder liegen unter dem Vogel und sind normalerweise unsichtbar.
+        trailNodes = (0..<SkinPaint.trailSteps).map { _ in
+            let node = SKSpriteNode()
+            node.size = CGSize(width: birdRadius * 2, height: birdRadius * 2)
+            node.zPosition = 5
+            node.alpha = 0
+            node.isHidden = true
+            worldNode.addChild(node)
+            return node
+        }
+
         birdNode = SKSpriteNode()
         birdNode.size = CGSize(width: birdRadius * 2, height: birdRadius * 2)
         birdNode.zPosition = 6
@@ -250,9 +280,14 @@ final class GameScene: SKScene {
         self.skinOverlay = skins
     }
 
-    private func rebuildBirdTextures() {
-        birdTextureLeft = PixelArt.birdTexture(skin: skin, facingLeft: true, diameter: birdRadius * 2)
-        birdTextureRight = PixelArt.birdTexture(skin: skin, facingLeft: false, diameter: birdRadius * 2)
+    private func rebuildBirdTextures(state: SkinPaint.State = .still) {
+        birdTextureLeft = PixelArt.birdTexture(
+            skin: skin, facingLeft: true, diameter: birdRadius * 2, state: state
+        )
+        birdTextureRight = PixelArt.birdTexture(
+            skin: skin, facingLeft: false, diameter: birdRadius * 2, state: state
+        )
+        birdTextureKey = SkinPaint.frameKey(skin, state)
         birdNode.texture = birdTextureRight
     }
 
@@ -474,7 +509,7 @@ final class GameScene: SKScene {
         }
 
         // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht.
-        let stageIndex = min(game.score / 5, Palette.skyStages.count - 1)
+        let stageIndex = SkinPaint.skyStage(game.score)
         skyNode.color = Palette.skyStages[stageIndex]
 
         // Wolken driften nach links.
@@ -571,13 +606,46 @@ final class GameScene: SKScene {
             }
         }
 
+        // Bewegte und reagierende Skins: neu rastern, sobald sich das Bild
+        // wirklich ändert — nicht in jedem Frame.
+        let state = SkinPaint.State(
+            elapsed: CGFloat(game.elapsed),
+            score: game.score,
+            perfectStreak: game.perfectStreak
+        )
+        if SkinPaint.frameKey(skin, state) != birdTextureKey {
+            rebuildBirdTextures(state: state)
+        }
+
         birdNode.isHidden = !game.isDotVisible
         birdNode.position = CGPoint(x: px, y: flipY(pyA))
         birdNode.zRotation = flip
 
         // Glanzpunkt und Auge folgen der sichtbaren Flugrichtung.
         let facingLeft = sin(Float(angle)) * Float(game.direction) > 0
-        birdNode.texture = facingLeft ? birdTextureLeft : birdTextureRight
+        let texture = facingLeft ? birdTextureLeft : birdTextureRight
+        birdNode.texture = texture
+
+        // Schweif-Skins (Tinte) lassen Nachbilder auf der Bahn zurück. Die
+        // Positionen werden wie in den anderen Ports aus dem Winkel
+        // zurückgerechnet, es braucht also keinen eigenen Zustand.
+        let showTrail = skin.hasTrail && game.phase == .running && !birdNode.isHidden
+        for (index, node) in trailNodes.enumerated() {
+            guard showTrail else {
+                node.isHidden = true
+                continue
+            }
+            let step = CGFloat(index + 1)
+            let a = angle - CGFloat(game.direction) * step * SkinPaint.trailSpacing
+            node.isHidden = false
+            node.texture = texture
+            node.alpha = 0.34 / step
+            node.position = CGPoint(
+                x: trackCenter.x + cos(a) * trackRadius,
+                y: flipY((h - trackCenter.y) + sin(a) * trackRadius)
+            )
+            node.zRotation = flip
+        }
     }
 
     /// Port von drawUnlockBurst: goldener Ring aus Pixel-Blöcken, der von
@@ -689,6 +757,14 @@ final class GameScene: SKScene {
         case "btn.menu":
             dailyMode = false
             game.reset()
+            // Auch die Effekte zurücksetzen — sonst läuft die
+            // Sturz-Animation weiter und der Vogel fehlt im Startbild,
+            // obwohl er dort wieder kreisen soll.
+            resetFx()
+            bannerTimeLeft = 0
+            lastStage = 0
+            recordCelebrated = false
+            hud?.bannerLabel.text = ""
         default:
             break
         }

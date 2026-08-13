@@ -54,8 +54,12 @@
   }
 
   /** Zeichnet einen blockigen "Pixel"-Kreis aus Rasterzellen. */
-  function drawPixelCircle(ctx, color, outline, centerX, centerY, radius, shade) {
-    if (shade === undefined) shade = color;
+  /**
+   * Blockiger Pixel-Kreis. Die Fuellfarbe kommt pro Feld aus cell(col,row) —
+   * so zeichnet dieselbe Routine einfarbige, gemusterte und animierte Skins
+   * (siehe skins.js).
+   */
+  function drawPixelCircle(ctx, outline, centerX, centerY, radius, cell) {
     var n = GRID;
     var u = (radius * 2) / GRID;
     var mid = (GRID - 1) / 2;
@@ -67,14 +71,21 @@
         var dy = row - mid;
         var dist = Math.sqrt(dx * dx + dy * dy);
         if (dist <= rr) {
-          var cellColor = dist > rr - 1.1 ? outline
-            : (row + col > GRID * 1.15 ? shade : color);
+          var cellColor = dist > rr - 1.1 ? outline : cell(col, row);
           rect(ctx, cellColor,
             centerX - radius + col * u, centerY - radius + row * u,
             u + 0.5, u + 0.5);
         }
       }
     }
+  }
+
+  /** Einfarbige Variante mit Schattenseite — fuer Muenzen und Deko. */
+  function drawSolidPixelCircle(ctx, color, outline, centerX, centerY, radius, shade) {
+    if (shade === undefined) shade = color;
+    drawPixelCircle(ctx, outline, centerX, centerY, radius, function (col, row) {
+      return row + col > GRID * 1.15 ? shade : color;
+    });
   }
 
   /** Blockige Retro-Wolke aus drei gestapelten Rechtecken. */
@@ -290,24 +301,61 @@
       }
     }
 
-    function drawBird() {
-      drawPixelCircle(ctx, skin.body, OutlineColor, px, py, r, skin.shade);
+    var state = {
+      elapsed: game.elapsed,
+      score: game.score,
+      perfectStreak: game.perfectStreak
+    };
+    var shine = global.DotSkin.shine(skin, state);
+
+    function drawBird(centerX, centerY, alpha) {
+      if (alpha !== undefined && alpha < 1) ctx.globalAlpha = alpha;
+
+      drawPixelCircle(ctx, OutlineColor, centerX, centerY, r, function (col, row) {
+        return global.DotSkin.cell(skin, col, row, state);
+      });
 
       var u = (r * 2) / GRID;
       function birdRect(col, row, cols, rows, color) {
-        rect(ctx, color, px - r + col * u, py - r + row * u, cols * u, rows * u);
+        rect(ctx, color, centerX - r + col * u, centerY - r + row * u, cols * u, rows * u);
       }
 
-      // Glanzpunkt und Auge folgen der sichtbaren Flugrichtung.
+      // Glanzpunkt und Auge folgen der sichtbaren Flugrichtung. Auf sehr
+      // hellen Skins (Koi, Chrom) bekommt das Auge zum Koerper hin eine
+      // Kontur, sonst ginge das Weiss im Koerper unter; wo der Koerper
+      // von selbst genug Kontrast hat, bleibt sie weg.
       var facingLeft = Math.sin(game.angle) * game.direction > 0;
+      var eyeOutline = global.DotSkin.needsEyeOutline(skin);
       if (facingLeft) {
-        birdRect(GRID - 4.5, 2.5, 2, 2, skin.shine);
+        birdRect(GRID - 4.5, 2.5, 2, 2, shine);
+        if (eyeOutline) {
+          birdRect(5.5, 3, 0.5, 4, OutlineColor);
+          birdRect(2, 2.5, 3.5, 0.5, OutlineColor);
+          birdRect(2, 7, 3.5, 0.5, OutlineColor);
+        }
         birdRect(2, 3, 3.5, 4, "#FFFFFF");
         birdRect(2, 4, 1.5, 2, OutlineColor);
       } else {
-        birdRect(2.5, 2.5, 2, 2, skin.shine);
+        birdRect(2.5, 2.5, 2, 2, shine);
+        if (eyeOutline) {
+          birdRect(7, 3, 0.5, 4, OutlineColor);
+          birdRect(7.5, 2.5, 3.5, 0.5, OutlineColor);
+          birdRect(7.5, 7, 3.5, 0.5, OutlineColor);
+        }
         birdRect(7.5, 3, 3.5, 4, "#FFFFFF");
         birdRect(9.5, 4, 1.5, 2, OutlineColor);
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    // Schweif-Skins (Tinte) lassen Nachbilder auf der Bahn zurueck. Die
+    // Positionen werden aus dem Winkel zurueckgerechnet statt gespeichert —
+    // damit sehen alle Ports identisch aus, ohne eigenen Zustand.
+    if (skin.trail && game.phase === TG.Phase.RUNNING) {
+      for (var step = global.DotSkin.TRAIL_STEPS; step >= 1; step--) {
+        var a = game.angle - game.direction * step * global.DotSkin.TRAIL_SPACING;
+        drawBird(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius, 0.34 / step);
       }
     }
 
@@ -316,10 +364,10 @@
       ctx.translate(px, py);
       ctx.rotate((flip * Math.PI) / 180);
       ctx.translate(-px, -py);
-      drawBird();
+      drawBird(px, py);
       ctx.restore();
     } else {
-      drawBird();
+      drawBird(px, py);
     }
   }
 
@@ -339,7 +387,7 @@
     ctx.translate(shakeX, shakeY);
 
     // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht.
-    var sky = SkyStages[Math.min(Math.floor(game.score / 5), SkyStages.length - 1)];
+    var sky = SkyStages[global.DotSkin.skyStage(game.score)];
     rect(ctx, sky, -40, -40, w + 80, h + 80);
 
     // Langsam driftende Wolken
@@ -412,7 +460,7 @@
     var coinR = size * 0.33;
     var coinCx = size * 0.5;
     var coinCy = size * 0.6;
-    drawPixelCircle(ctx, body, OutlineColor, coinCx, coinCy, coinR, shade);
+    drawSolidPixelCircle(ctx, body, OutlineColor, coinCx, coinCy, coinR, shade);
 
     // Geprägter Stern (Plus-Form in Schattenfarbe) und Glanzpunkt
     var cu = (coinR * 2) / GRID;
@@ -437,7 +485,19 @@
     }
   }
 
+  /**
+   * Kleine Skin-Vorschau fuer die Auswahl: der Koerper im Muster des
+   * Skins, ohne Gesicht — bei 36px waere es nur Matsch.
+   */
+  function drawSkinPreview(ctx, size, skin) {
+    ctx.clearRect(0, 0, size, size);
+    drawPixelCircle(ctx, OutlineColor, size / 2, size / 2, size / 2, function (col, row) {
+      return global.DotSkin.cell(skin, col, row);
+    });
+  }
+
   var Renderer = {
+    drawSkinPreview: drawSkinPreview,
     drawWorld: drawWorld,
     drawMedal: drawMedal,
     CELEBRATE_SECONDS: CELEBRATE_SECONDS,

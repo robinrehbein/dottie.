@@ -9,6 +9,7 @@ import android.graphics.Paint
 import androidx.core.content.FileProvider
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.SkinPaint
 import java.io.File
 import kotlin.math.sqrt
 
@@ -24,7 +25,10 @@ object ScoreCard {
     private const val H = 1350
     private const val CELL = 6f
 
-    /** Himmelsfarbe pro 5er-Stufe — Kopie der SkyStages aus dem Spiel. */
+    /**
+     * Himmelsfarbe pro 5er-Stufe — Kopie der SkyStages aus dem Spiel; die
+     * Stufe zum Score kommt wie dort aus SkinPaint.skyStage.
+     */
     private val SKY = intArrayOf(
         0xFF4EC0CA.toInt(), 0xFF5B9BD5.toInt(), 0xFF7B6FD0.toInt(),
         0xFFC0616F.toInt(), 0xFFD98A3D.toInt(), 0xFF3D4A8C.toInt(),
@@ -98,7 +102,7 @@ object ScoreCard {
         }
 
         // Himmel nach erreichter Stufe, wie im Spiel
-        paint.color = SKY[(score / 5).coerceAtMost(SKY.size - 1)]
+        paint.color = SKY[SkinPaint.skyStage(score)]
         canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), paint)
 
         drawCloud(canvas, paint, W * 0.08f, H * 0.10f)
@@ -194,7 +198,9 @@ object ScoreCard {
         for ((c, r) in leftBand) block(c, r, 2f, 1.5f, 0xFFE53935.toInt())
         for ((c, r) in rightBand) block(c, r, 2f, 1.5f, 0xFFB02A28.toInt())
 
-        drawPixelCircle(canvas, paint, cx, cy, radius, color, shade)
+        drawPixelCircle(canvas, paint, cx, cy, radius) { col, row ->
+            if (col + row > 13 * 1.15f) shade else color
+        }
 
         val cu = radius * 2f / 13f
         fun emboss(c: Float, r: Float, w: Float, h: Float) {
@@ -223,8 +229,7 @@ object ScoreCard {
         cx: Float,
         cy: Float,
         radius: Float,
-        color: Int,
-        shade: Int = color
+        cell: (col: Int, row: Int) -> Int
     ) {
         val grid = 13
         val u = radius * 2f / grid
@@ -236,11 +241,7 @@ object ScoreCard {
                 val dy = row - mid
                 val dist = sqrt(dx * dx + dy * dy)
                 if (dist > rr) continue
-                paint.color = when {
-                    dist > rr - 1.1f -> OUTLINE
-                    row + col > grid * 1.15f -> shade
-                    else -> color
-                }
+                paint.color = if (dist > rr - 1.1f) OUTLINE else cell(col, row)
                 canvas.drawRect(
                     cx - radius + col * u,
                     cy - radius + row * u,
@@ -252,9 +253,13 @@ object ScoreCard {
         }
     }
 
-    /** Der Spiel-Punkt samt Glanz und Auge im gewählten Skin. */
+    /**
+     * Der Spiel-Punkt samt Glanz und Auge im gewählten Skin. Bewegte Skins
+     * stehen auf dem Bild still: Ein geteilter Screenshot ist ein Standbild,
+     * also zeichnet er den Zeitpunkt 0 (SkinState-Standardwert).
+     */
     private fun drawPixelDot(canvas: Canvas, paint: Paint, cx: Float, cy: Float, r: Float, skin: DotSkin) {
-        drawPixelCircle(canvas, paint, cx, cy, r, skin.body.toInt(), skin.shade.toInt())
+        drawPixelCircle(canvas, paint, cx, cy, r) { col, row -> skin.cell(col, row).toInt() }
         val u = r * 2f / 13f
         fun cellRect(col: Float, row: Float, cols: Float, rows: Float, color: Int) {
             paint.color = color
@@ -264,6 +269,13 @@ object ScoreCard {
             )
         }
         cellRect(2.5f, 2.5f, 2f, 2f, skin.shine.toInt())
+        // Kontur nur, wo das Auge auf hellem Körper sonst verschwände
+        // (wie im Spiel, siehe drawTimingDot).
+        if (skin.needsEyeOutline) {
+            cellRect(7f, 3f, 0.5f, 4f, OUTLINE)
+            cellRect(7.5f, 2.5f, 3.5f, 0.5f, OUTLINE)
+            cellRect(7.5f, 7f, 3.5f, 0.5f, OUTLINE)
+        }
         cellRect(7.5f, 3f, 3.5f, 4f, Color.WHITE)
         cellRect(9.5f, 4f, 1.5f, 2f, OUTLINE)
     }

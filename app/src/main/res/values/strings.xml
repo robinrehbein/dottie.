@@ -115,6 +115,34 @@
     <string name="skin_hint_frost">BEST 40 (PLATINUM)</string>
     <string name="skin_hint_schatten">4 PERFECTS IN A ROW</string>
     <string name="skin_hint_prisma">DAILY STREAK: 3 DAYS</string>
+    <string name="skin_biene">BEE</string>
+    <string name="skin_melone">MELON</string>
+    <string name="skin_pilz">TOADSTOOL</string>
+    <string name="skin_koi">KOI</string>
+    <string name="skin_galaxie">GALAXY</string>
+    <string name="skin_karo">CHECKER</string>
+    <string name="skin_regenbogen">RAINBOW</string>
+    <string name="skin_aurora">AURORA</string>
+    <string name="skin_magma">MAGMA</string>
+    <string name="skin_neon">NEON</string>
+    <string name="skin_chrom">CHROME</string>
+    <string name="skin_chamaeleon">CHAMELEON</string>
+    <string name="skin_kombo">COMBO</string>
+    <string name="skin_tinte">INK</string>
+    <string name="skin_hint_biene">6 PERFECTS IN A ROW</string>
+    <string name="skin_hint_melone">BEST 25</string>
+    <string name="skin_hint_pilz">BEST 35</string>
+    <string name="skin_hint_koi">DAILY STREAK: 7 DAYS</string>
+    <string name="skin_hint_galaxie">BEST 50</string>
+    <string name="skin_hint_karo">10 PERFECTS IN A ROW</string>
+    <string name="skin_hint_regenbogen">COLLECT EVERY OTHER SKIN</string>
+    <string name="skin_hint_aurora">DAILY STREAK: 14 DAYS</string>
+    <string name="skin_hint_magma">BEST 60</string>
+    <string name="skin_hint_neon">12 PERFECTS IN A ROW</string>
+    <string name="skin_hint_chrom">BEST 45</string>
+    <string name="skin_hint_chamaeleon">BEST 30</string>
+    <string name="skin_hint_kombo">8 PERFECTS IN A ROW</string>
+    <string name="skin_hint_tinte">BEST 55</string>
 
     <!-- Score-Card / Teilen -->
     <string name="share_text">%1$d points in DOTTIE. — can you beat that?</string>

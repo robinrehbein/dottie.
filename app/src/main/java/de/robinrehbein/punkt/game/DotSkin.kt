@@ -4,29 +4,67 @@ import androidx.annotation.StringRes
 import de.robinrehbein.punkt.R
 
 /**
- * Freischaltbare Punkt-Skins. Die Farben sind ARGB-Werte (keine
- * Compose-Typen), damit die Unlock-Logik pur und in Unit-Tests prüfbar
- * bleibt — die UI wickelt sie in Color(). Name und Freischalt-Hinweis
- * sind String-Ressourcen (DE/EN), die UI löst sie per stringResource auf.
+ * Freischaltbare Punkt-Skins. Name und Freischalt-Hinweis sind
+ * String-Ressourcen (DE/EN), die UI löst sie per stringResource auf.
+ *
+ * Farben und Freischalt-Schwellen liegen nicht mehr hier, sondern in
+ * [SkinPaint] im :core-Modul — dieselbe Quelle nutzt auch die Uhr. Ein
+ * Skin ist dort eine Funktion über das 13x13-Raster des Vogels: So sind
+ * gemusterte, animierte und auf den Lauf reagierende Skins möglich, ohne
+ * dass die Renderer Sonderfälle kennen.
  *
  * Freischaltungen hängen an dauerhaften Leistungen (Rekord, beste
  * Perfekt-Serie, Daily-Serie), nie an Käufen — Sammeln ist die Belohnung
  * fürs Spielen.
  */
 enum class DotSkin(
+    val id: SkinId,
     @StringRes val titleRes: Int,
-    @StringRes val unlockHintRes: Int?,
-    val body: Long,
-    val shade: Long,
-    val shine: Long
+    @StringRes val unlockHintRes: Int?
 ) {
-    KLASSIK(R.string.skin_klassik, null, 0xFFFFD847, 0xFFF5A623, 0xFFFFF3B8),
-    MINZE(R.string.skin_minze, R.string.skin_hint_minze, 0xFF4BE38C, 0xFF2BA55E, 0xFFC8FFE0),
-    LAVA(R.string.skin_lava, R.string.skin_hint_lava, 0xFFFF5A36, 0xFFC22F12, 0xFFFFC9A3),
-    GOLD(R.string.skin_gold, R.string.skin_hint_gold, 0xFFFFC400, 0xFFCC8F00, 0xFFFFF7CC),
-    FROST(R.string.skin_frost, R.string.skin_hint_frost, 0xFF8FD8FF, 0xFF4FA3D8, 0xFFE8F9FF),
-    SCHATTEN(R.string.skin_schatten, R.string.skin_hint_schatten, 0xFF6B4F8A, 0xFF43315C, 0xFFCBB8E8),
-    PRISMA(R.string.skin_prisma, R.string.skin_hint_prisma, 0xFFFF6FD8, 0xFFC93BAA, 0xFFB8F3FF);
+    KLASSIK(SkinId.KLASSIK, R.string.skin_klassik, null),
+    MINZE(SkinId.MINZE, R.string.skin_minze, R.string.skin_hint_minze),
+    LAVA(SkinId.LAVA, R.string.skin_lava, R.string.skin_hint_lava),
+    GOLD(SkinId.GOLD, R.string.skin_gold, R.string.skin_hint_gold),
+    FROST(SkinId.FROST, R.string.skin_frost, R.string.skin_hint_frost),
+    SCHATTEN(SkinId.SCHATTEN, R.string.skin_schatten, R.string.skin_hint_schatten),
+    PRISMA(SkinId.PRISMA, R.string.skin_prisma, R.string.skin_hint_prisma),
+
+    // Gemustert
+    BIENE(SkinId.BIENE, R.string.skin_biene, R.string.skin_hint_biene),
+    MELONE(SkinId.MELONE, R.string.skin_melone, R.string.skin_hint_melone),
+    PILZ(SkinId.PILZ, R.string.skin_pilz, R.string.skin_hint_pilz),
+    KOI(SkinId.KOI, R.string.skin_koi, R.string.skin_hint_koi),
+    GALAXIE(SkinId.GALAXIE, R.string.skin_galaxie, R.string.skin_hint_galaxie),
+    KARO(SkinId.KARO, R.string.skin_karo, R.string.skin_hint_karo),
+
+    // Bewegt
+    REGENBOGEN(SkinId.REGENBOGEN, R.string.skin_regenbogen, R.string.skin_hint_regenbogen),
+    AURORA(SkinId.AURORA, R.string.skin_aurora, R.string.skin_hint_aurora),
+    MAGMA(SkinId.MAGMA, R.string.skin_magma, R.string.skin_hint_magma),
+    NEON(SkinId.NEON, R.string.skin_neon, R.string.skin_hint_neon),
+    CHROM(SkinId.CHROM, R.string.skin_chrom, R.string.skin_hint_chrom),
+
+    // Reagierend
+    CHAMAELEON(SkinId.CHAMAELEON, R.string.skin_chamaeleon, R.string.skin_hint_chamaeleon),
+    KOMBO(SkinId.KOMBO, R.string.skin_kombo, R.string.skin_hint_kombo),
+    TINTE(SkinId.TINTE, R.string.skin_tinte, R.string.skin_hint_tinte);
+
+    /** Stellvertreter-Farben für Münzen, Prägung und Score-Karte. */
+    val body: Long get() = SkinPaint.body(id)
+    val shade: Long get() = SkinPaint.shade(id)
+    val shine: Long get() = SkinPaint.shine(id)
+
+    /** Farbe eines Rasterfelds des Vogels — siehe [SkinPaint.cell]. */
+    fun cell(col: Int, row: Int, state: SkinState = SkinState()): Long =
+        SkinPaint.cell(id, col, row, state)
+
+    fun shineColor(state: SkinState = SkinState()): Long = SkinPaint.shine(id, state)
+
+    val hasTrail: Boolean get() = SkinPaint.hasTrail(id)
+
+    /** Braucht das Auge eine Kontur zum Körper hin? Siehe SkinPaint. */
+    val needsEyeOutline: Boolean get() = SkinPaint.needsEyeOutline(id)
 
     /** Dauerhafte Bestleistungen, gegen die Freischaltungen geprüft werden. */
     data class Stats(
@@ -40,15 +78,7 @@ enum class DotSkin(
      * An ihr hängen die Freischalt-Feier im Game-Over und [unlockedCount],
      * und ein geliehener Skin darf sich nicht als Leistung ausgeben.
      */
-    fun isUnlocked(stats: Stats): Boolean = when (this) {
-        KLASSIK -> true
-        MINZE -> stats.bestScore >= 10
-        LAVA -> stats.bestScore >= 20
-        GOLD -> stats.bestScore >= 30
-        FROST -> stats.bestScore >= 40
-        SCHATTEN -> stats.bestPerfectStreak >= 4
-        PRISMA -> stats.bestDailyStreak >= 3
-    }
+    fun isUnlocked(stats: Stats): Boolean = SkinPaint.isUnlocked(id, stats.toPaint())
 
     /**
      * Jetzt spielbar? Also dauerhaft verdient ODER der eine Skin, für den
@@ -60,6 +90,8 @@ enum class DotSkin(
         isUnlocked(stats) || this == pass
 
     companion object {
+        private fun Stats.toPaint() = SkinStats(bestScore, bestPerfectStreak, bestDailyStreak)
+
         /** Skin zu einem gespeicherten Namen, KLASSIK als Fallback. */
         fun fromName(name: String?): DotSkin =
             entries.firstOrNull { it.name == name } ?: KLASSIK

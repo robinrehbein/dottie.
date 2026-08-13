@@ -45,6 +45,8 @@ import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
 import de.robinrehbein.punkt.game.MedalTier
+import de.robinrehbein.punkt.game.SkinPaint
+import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.notify.DailyReminder
 import de.robinrehbein.punkt.play.Leaderboards
@@ -62,7 +64,11 @@ import kotlin.math.sin
 private val FakeZoneColor = Color(0xFFB44FD8)
 private val FakeZoneCoreColor = Color(0xFF8A2FB0)
 
-/** Himmelsfarbe pro 5er-Stufe: von Tag über Abendrot bis Nacht. */
+/**
+ * Himmelsfarbe pro 5er-Stufe: von Tag über Abendrot bis Nacht. Welche
+ * Stufe zu einem Score gehört, rechnet SkinPaint.skyStage — der Zähler
+ * läuft im Umlauf, nach der Nacht geht es zurück Richtung Tag.
+ */
 private val SkyStages = listOf(
     Color(0xFF4EC0CA), // 0+  Tag (türkis)
     Color(0xFF5B9BD5), // 5+  Blau
@@ -513,6 +519,14 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 onMenu = {
                     dailyMode = false
                     game.reset()
+                    // Auch die Effekte zurücksetzen — sonst läuft die
+                    // Sturz-Animation weiter und der Vogel fehlt im
+                    // Startbild, obwohl er dort wieder kreisen soll.
+                    fx.reset()
+                    bannerState.timeLeft = 0f
+                    bannerText = ""
+                    bannerState.lastStage = 0
+                    bannerState.recordCelebrated = false
                 },
                 onHelp = { showHelp = true }
             )
@@ -572,7 +586,7 @@ private fun DrawScope.drawTimingWorld(game: TimingGame, fx: FxState, skin: DotSk
 
     translate(shake.x, shake.y) {
         // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht.
-        val sky = SkyStages[(game.score / 5).coerceAtMost(SkyStages.size - 1)]
+        val sky = SkyStages[SkinPaint.skyStage(game.score)]
         drawRect(color = sky, topLeft = Offset(-40f, -40f), size = Size(w + 80f, h + 80f))
 
         // Langsam driftende Wolken
@@ -960,22 +974,28 @@ private fun DrawScope.drawTimingDot(
         }
     }
 
-    fun drawBird() {
+    val state = SkinState(
+        elapsed = game.elapsed,
+        score = game.score,
+        perfectStreak = game.perfectStreak
+    )
+
+    fun drawBird(centerX: Float, centerY: Float, alpha: Float = 1f) {
         drawPixelCircle(
-            color = Color(skin.body),
             outline = OutlineColor,
-            centerX = px,
-            centerY = py,
+            centerX = centerX,
+            centerY = centerY,
             radius = r,
-            shade = Color(skin.shade)
-        )
+            alpha = alpha
+        ) { col, row -> Color(skin.cell(col, row, state)) }
 
         val u = (r * 2f) / GRID
         fun rect(col: Float, row: Float, cols: Float, rows: Float, color: Color) {
             drawRect(
                 color = color,
-                topLeft = Offset(px - r + col * u, py - r + row * u),
-                size = Size(cols * u, rows * u)
+                topLeft = Offset(centerX - r + col * u, centerY - r + row * u),
+                size = Size(cols * u, rows * u),
+                alpha = alpha
             )
         }
 
@@ -983,21 +1003,53 @@ private fun DrawScope.drawTimingDot(
         // horizontale Geschwindigkeit ist ~ -sin(angle) * direction — zeigt
         // sie nach links, wird das Gesicht gespiegelt. Der Wechsel passiert
         // genau dort, wo der Vogel senkrecht fliegt, und fällt kaum auf.
+        //
+        // Auf sehr hellen Skins (Koi, Chrom) ginge das weiße Auge im
+        // Körper unter — dort bekommt es zum Körper hin eine Kontur.
+        // Wo der Körper von selbst genug Kontrast hat, bleibt sie weg:
+        // Sie wirkte dort wie ein Kasten ums Auge. Zur Silhouette hin
+        // fehlt sie immer, dort grenzt ohnehin die Kontur des Kreises an.
         val facingLeft = sin(game.angle) * game.direction > 0f
+        val shine = Color(skin.shineColor(state))
+        val eyeOutline = skin.needsEyeOutline
         if (facingLeft) {
-            rect(GRID - 4.5f, 2.5f, 2f, 2f, Color(skin.shine))
+            rect(GRID - 4.5f, 2.5f, 2f, 2f, shine)
+            if (eyeOutline) {
+                rect(5.5f, 3f, 0.5f, 4f, OutlineColor)
+                rect(2f, 2.5f, 3.5f, 0.5f, OutlineColor)
+                rect(2f, 7f, 3.5f, 0.5f, OutlineColor)
+            }
             rect(2f, 3f, 3.5f, 4f, Color.White)
             rect(2f, 4f, 1.5f, 2f, OutlineColor)
         } else {
-            rect(2.5f, 2.5f, 2f, 2f, Color(skin.shine))
+            rect(2.5f, 2.5f, 2f, 2f, shine)
+            if (eyeOutline) {
+                rect(7f, 3f, 0.5f, 4f, OutlineColor)
+                rect(7.5f, 2.5f, 3.5f, 0.5f, OutlineColor)
+                rect(7.5f, 7f, 3.5f, 0.5f, OutlineColor)
+            }
             rect(7.5f, 3f, 3.5f, 4f, Color.White)
             rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
         }
     }
 
+    // Schweif-Skins (Tinte) lassen Nachbilder auf der Bahn zurück. Die
+    // Positionen werden aus dem Winkel zurückgerechnet statt gespeichert —
+    // damit sehen alle Ports identisch aus, ohne eigenen Zustand.
+    if (skin.hasTrail && game.phase == TimingGame.Phase.RUNNING) {
+        for (step in SkinPaint.TRAIL_STEPS downTo 1) {
+            val a = game.angle - game.direction * step * SkinPaint.TRAIL_SPACING
+            drawBird(
+                centerX = cx + cos(a) * radius,
+                centerY = cy + sin(a) * radius,
+                alpha = 0.34f / step
+            )
+        }
+    }
+
     if (flip > 0f) {
-        rotate(degrees = flip, pivot = Offset(px, py)) { drawBird() }
+        rotate(degrees = flip, pivot = Offset(px, py)) { drawBird(px, py) }
     } else {
-        drawBird()
+        drawBird(px, py)
     }
 }

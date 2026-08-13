@@ -19,5 +19,10 @@ tasks.withType<KotlinCompile>().configureEach {
     }
 }
 
-// Keine Abhängigkeiten — auch keine Test-Bibliothek: Die Spiellogik wird
-// aus :app getestet (TimingGameTest), wo der Test-Stack ohnehin steht.
+dependencies {
+    // Nur zum Testen: Die Skin-Muster (SkinPaint) rechnen hier, also
+    // gehören ihre Tests auch hierher. Die restliche Spiellogik wird
+    // weiterhin aus :app geprüft (TimingGameTest), wo der Test-Stack
+    // ohnehin steht.
+    testImplementation(libs.junit)
+}
