@@ -22,7 +22,7 @@ import de.robinrehbein.punkt.data.ScoreStore
 
 /**
  * Alles rund um AdMob an einer Stelle: UMP-Consent, ein Rewarded-Spot
- * fürs Weiterspielen und gelegentliche Interstitials.
+ * für den Skin-Tagespass und gelegentliche Interstitials.
  *
  * Die Integration ist hart feature-geflaggt, genau wie die
  * Play-Games-Bestenlisten: Solange in res/values/ads.xml eine der drei
@@ -65,7 +65,7 @@ class AdsManager(
     var enabled by mutableStateOf(configured && !store.adsRemoved)
         private set
 
-    /** Liegt ein Rewarded-Spot bereit? Gate für den WEITERSPIELEN-Button. */
+    /** Liegt ein Rewarded-Spot bereit? Gate für das Tagespass-Angebot. */
     var rewardedReady by mutableStateOf(false)
         private set
 
@@ -135,7 +135,7 @@ class AdsManager(
         }
     }
 
-    // ===== Rewarded: Weiterspielen nach dem Tod =====
+    // ===== Rewarded: Skin-Tagespass =====
 
     private fun loadRewarded() {
         if (!enabled || activity == null || rewarded != null) return
@@ -161,7 +161,7 @@ class AdsManager(
     /**
      * Zeigt den Rewarded-Spot. [onReward] läuft nur, wenn Google die
      * Belohnung wirklich bestätigt — ein Abbruch führt zu gar nichts,
-     * das Game-Over bleibt dann einfach stehen.
+     * der Skin bleibt dann einfach gesperrt.
      */
     fun showRewarded(activity: Activity, onReward: () -> Unit) {
         val ad = rewarded
@@ -171,8 +171,8 @@ class AdsManager(
         var earned = false
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
-                // Nächsten Spot vorladen, damit der Button beim übernächsten
-                // Tod wieder sofort bereitsteht.
+                // Nächsten Spot vorladen, damit das Angebot beim nächsten
+                // Blick in die Skins wieder sofort bereitsteht.
                 loadRewarded()
                 if (earned) onReward()
             }
@@ -212,9 +212,8 @@ class AdsManager(
     }
 
     /**
-     * Meldet ein endgültiges Game-Over (also keins, aus dem gerade per
-     * Rewarded weitergespielt wurde) und zeigt ggf. ein Interstitial.
-     * Die Häufigkeit regelt allein [InterstitialGate].
+     * Meldet ein Game-Over und zeigt ggf. ein Interstitial. Jeder Tod ist
+     * endgültig — die Häufigkeit regelt deshalb allein [InterstitialGate].
      */
     fun onGameOver(activity: Activity) {
         if (!enabled) return

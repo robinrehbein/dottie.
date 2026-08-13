@@ -72,15 +72,29 @@ Ab v2.11 gibt es zusätzlich eine optionale **tägliche Erinnerung** an
 die Daily Challenge (Opt-in über den Startscreen, komplett lokal per
 WorkManager, ab Android 13 hinter der Notification-Permission).
 
-Ab v2.16 ist die **Monetarisierung vorbereitet, aber hart deaktiviert**:
-ein Rewarded-Spot zum Weiterspielen (einmal pro Lauf, nur Klassik),
-seltene Interstitials (frühestens ab dem 4. Tod einer Sitzung, mit
-90-Sekunden-Sperre) und der einmalige Kauf „Werbung entfernen" über Play
-Billing. Solange in `res/values/ads.xml` keine echten AdMob-IDs stehen —
-und das ist der Auslieferungszustand — wird kein SDK initialisiert, es
-gibt keine Requests, keinen Consent-Dialog und keinen BillingClient; die
-UI sieht exakt aus wie ohne die Abhängigkeiten. Anleitung zum
-Scharfschalten samt Datenschutz-Textbausteinen in PUBLISHING.md.
+Ab v2.17 ist die **Monetarisierung vorbereitet, aber hart deaktiviert**:
+ein Rewarded-Spot für den **Skin-Tagespass**, seltene Interstitials
+(frühestens ab dem 6. Tod einer Sitzung, mit 180-Sekunden-Sperre) und der
+einmalige Kauf „Werbung entfernen" über Play Billing. Solange in
+`res/values/ads.xml` keine echten AdMob-IDs stehen — und das ist der
+Auslieferungszustand — wird kein SDK initialisiert, es gibt keine
+Requests, keinen Consent-Dialog und keinen BillingClient; die UI sieht
+exakt aus wie ohne die Abhängigkeiten. Anleitung zum Scharfschalten samt
+Datenschutz-Textbausteinen in PUBLISHING.md.
+
+**Die Design-Entscheidung dahinter:** Werbung rührt weder den Lauf noch
+den Rekord an. Der Tod ist endgültig — „Perfekt oder vorbei" ist das
+Versprechen des Spiels, und ein gekauftes Weiterspielen würde genau das
+entwerten. Der freiwillige Spot schaltet stattdessen einen gesperrten
+Punkt-Skin zum Ausprobieren frei: genau einen, nur für den laufenden
+Kalendertag, danach fällt die Auswahl automatisch auf KLASSIK zurück.
+Dauerhaft verdient werden Skins weiterhin ausschließlich über Medaillen
+und Serien — ein Tagespass zählt nicht als Freischaltung und löst die
+„NEUER SKIN FREIGESCHALTET!"-Feier nicht aus.
+
+Der Tagespass ist eine reine Android-Sache: Er hängt am Rewarded-Spot,
+und PWA (`web/`) sowie iOS (`ios/`) haben keine Werbung — dort ändert
+sich nichts.
 
 ## Sprachen (ab v2.11)
 

@@ -45,7 +45,6 @@
     <string name="share">TEILEN</string>
     <string name="menu">MENUE</string>
     <!-- Werbung: nur sichtbar, wenn in res/values/ads.xml echte IDs stehen. -->
-    <string name="continue_ad">WEITERSPIELEN (SPOT)</string>
     <string name="remove_ads">WERBUNG ENTFERNEN</string>
 
     <!-- Spott-Texte (Auswahl deterministisch über score+best) -->
@@ -96,6 +95,9 @@
     <!-- Skins -->
     <string name="skin_selected">AUSGEWAEHLT</string>
     <string name="skin_tap_select">TIPPEN ZUM WAEHLEN</string>
+    <!-- Skin-Tagespass: nur sichtbar, wenn Werbung aktiv ist. -->
+    <string name="skin_pass_today">HEUTE FREI</string>
+    <string name="skin_pass_offer">HEUTE PER SPOT TESTEN</string>
     <string name="skin_klassik">KLASSIK</string>
     <string name="skin_minze">MINZE</string>
     <string name="skin_lava">LAVA</string>

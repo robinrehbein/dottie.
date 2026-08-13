@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- AdMob (Rewarded-Revive + Interstitials) und damit die gesamte
-     Monetarisierung, inklusive des "Werbung entfernen"-Kaufs.
+<!-- AdMob (Rewarded fuer den Skin-Tagespass + Interstitials) und damit
+     die gesamte Monetarisierung, inklusive des "Werbung entfernen"-Kaufs.
 
      Leer = Integration komplett deaktiviert: kein SDK-Init, keine
      Ad-Requests, kein Consent-Dialog, kein Billing — die App verhält

@@ -59,6 +59,32 @@ class ScoreStore(context: Context) {
             prefs.edit().putString(KEY_SKIN, value.name).apply()
         }
 
+    // ===== Skin-Tagespass (Rewarded) =====
+
+    /**
+     * Der per Spot geliehene Skin — aber nur, wenn der Pass zu [epochDay]
+     * gehört. Wie beim Tagesbest entscheidet allein der Vergleich mit dem
+     * gespeicherten Tag; abgelaufene Pässe werden nicht aufgeräumt,
+     * sondern beantworten die Frage einfach mit null.
+     */
+    fun skinPassFor(epochDay: Long): DotSkin? {
+        if (prefs.getLong(KEY_SKIN_PASS_DAY, Long.MIN_VALUE) != epochDay) return null
+        val name = prefs.getString(KEY_SKIN_PASS_SKIN, null) ?: return null
+        return DotSkin.entries.firstOrNull { it.name == name }
+    }
+
+    /**
+     * Gewährt den Tagespass. Es gibt immer nur EINEN: Ein neuer Spot für
+     * einen anderen Skin ersetzt den alten — der Pass ist zum Probieren
+     * da, gesammelt wird weiter über Medaillen.
+     */
+    fun grantSkinPass(epochDay: Long, skin: DotSkin) {
+        prefs.edit()
+            .putLong(KEY_SKIN_PASS_DAY, epochDay)
+            .putString(KEY_SKIN_PASS_SKIN, skin.name)
+            .apply()
+    }
+
     // ===== Daily Challenge =====
 
     /** Tagesbest-Score — gilt nur für den in [dailyDay] gespeicherten Tag. */
@@ -151,5 +177,7 @@ class ScoreStore(context: Context) {
         const val KEY_DAILY_BEST = "daily_best"
         const val KEY_DAILY_DAY = "daily_day"
         const val KEY_DAILY_STREAK = "daily_streak"
+        const val KEY_SKIN_PASS_SKIN = "skin_pass_skin"
+        const val KEY_SKIN_PASS_DAY = "skin_pass_day"
     }
 }

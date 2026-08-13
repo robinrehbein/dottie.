@@ -49,7 +49,6 @@ class TimingGame(private var random: Random = Random.Default) {
         data class TwistUnlocked(val twist: Twist) : GameEvent
         data object Died : GameEvent
         data object Settled : GameEvent
-        data object Revived : GameEvent
     }
 
     var phase: Phase = Phase.READY
@@ -107,10 +106,6 @@ class TimingGame(private var random: Random = Random.Default) {
 
     /** Wie viele Ketten-Zonen nach der aktuellen noch folgen. */
     var chainRemaining: Int = 0
-        private set
-
-    /** Wurde in diesem Lauf schon wiederbelebt? Revive gibt es nur einmal. */
-    var reviveUsed: Boolean = false
         private set
 
     /** Drift-Richtung relativ zur Laufrichtung: +1 = flieht, -1 = kommt entgegen. */
@@ -215,36 +210,6 @@ class TimingGame(private var random: Random = Random.Default) {
         random = if (seed != null) Random(seed) else Random.Default
     }
 
-    /**
-     * Rewarded-Revive: setzt den Lauf nach einem Tod fort. Score und
-     * Trefferzahl bleiben erhalten, nur die Perfekt-Serie beginnt von
-     * vorn. Es wird eine frische Zone erzeugt (wie beim normalen
-     * Zonenwechsel), und als Schonfrist startet der Punkt eine knappe
-     * halbe Runde vor der neuen Zone — mehr geht geometrisch nicht,
-     * denn ab einer halben Runde Abstand kippt [relativeToZone] das
-     * Vorzeichen und die Zone gälte als überfahren. So bleiben auf
-     * jeder Tempo-Stufe mindestens ~0,6 Sekunden Reaktionszeit, ein
-     * sofortiger Überfahren-Tod ist ausgeschlossen.
-     *
-     * Nur einmal pro Lauf: liefert false, wenn kein Tod vorliegt oder
-     * in diesem Lauf schon wiederbelebt wurde.
-     */
-    fun revive(): Boolean {
-        if (phase != Phase.DYING && phase != Phase.OVER) return false
-        if (reviveUsed) return false
-        reviveUsed = true
-        perfectStreak = 0
-        lastHitPoints = 0
-        lastHitPerfect = false
-        timeSinceHit = 99f
-        phase = Phase.RUNNING
-        elapsed = 0f
-        spawnZone()
-        angle = wrapTwoPi(zoneCenter - direction * REVIVE_GRACE_DISTANCE)
-        pendingEvents.add(GameEvent.Revived)
-        return true
-    }
-
     /** Setzt alles auf den READY-Zustand zurück (Rekord bleibt beim Store). */
     fun reset() {
         phase = Phase.READY
@@ -262,7 +227,6 @@ class TimingGame(private var random: Random = Random.Default) {
         activeTwists.clear()
         hasFakeZone = false
         chainRemaining = 0
-        reviveUsed = false
         announcedTwists.clear()
         pendingEvents.clear()
     }
@@ -467,14 +431,6 @@ class TimingGame(private var random: Random = Random.Default) {
         const val CHAIN_LENGTH = 1
         const val CHAIN_MIN_DISTANCE = 1.0f
         const val CHAIN_MAX_DISTANCE = 1.8f
-
-        /**
-         * Schonfrist nach einem Revive: Abstand des Punkts zur frisch
-         * platzierten Zone, knapp unter einer halben Runde (PI) — größer
-         * darf er nicht sein, sonst läse [relativeToZone] die Zone als
-         * bereits überfahren. Selbst bei [MAX_SPEED] bleiben ~0,58s.
-         */
-        const val REVIVE_GRACE_DISTANCE = 3.0f
 
         const val DEATH_FREEZE_SECONDS = 0.5f
 

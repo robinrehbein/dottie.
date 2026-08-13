@@ -21,8 +21,10 @@ android {
         targetSdk = 36
         // v2.16: AdMob + Play Billing feature-geflaggt vorbereitet
         // (inaktiv, bis in res/values/ads.xml echte IDs stehen).
-        versionCode = 27
-        versionName = "2.16"
+        // v2.17: Der Rewarded-Spot schaltet jetzt einen Skin-Tagespass
+        // frei statt Weiterspielen — der Tod bleibt endgueltig.
+        versionCode = 28
+        versionName = "2.17"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

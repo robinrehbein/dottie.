@@ -48,7 +48,6 @@
     <string name="share">SHARE</string>
     <string name="menu">MENU</string>
     <!-- Werbung: nur sichtbar, wenn in res/values/ads.xml echte IDs stehen. -->
-    <string name="continue_ad">CONTINUE (AD)</string>
     <string name="remove_ads">REMOVE ADS</string>
 
     <!-- Spott-Texte (Auswahl deterministisch über score+best) -->
@@ -99,6 +98,9 @@
     <!-- Skins -->
     <string name="skin_selected">SELECTED</string>
     <string name="skin_tap_select">TAP TO SELECT</string>
+    <!-- Skin-Tagespass: nur sichtbar, wenn Werbung aktiv ist. -->
+    <string name="skin_pass_today">FREE TODAY</string>
+    <string name="skin_pass_offer">TRY TODAY — WATCH AD</string>
     <string name="skin_klassik">CLASSIC</string>
     <string name="skin_minze">MINT</string>
     <string name="skin_lava">LAVA</string>

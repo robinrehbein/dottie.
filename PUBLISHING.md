@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.16.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.17.
 
 ## Checkliste
 
@@ -238,14 +238,18 @@ und die App bleibt komplett offline. So wird es scharf geschaltet:
 
 ## Werbung & Käufe aktivieren (AdMob + Play Billing)
 
-Ab v2.16 sind ein **Rewarded-Spot zum Weiterspielen**, gelegentliche
-**Interstitials** und der Kauf **„Werbung entfernen"** eingebaut — aber
-**hart deaktiviert**, solange in `app/src/main/res/values/ads.xml` die
-drei IDs leer sind. Ohne echte IDs wird das Ads-SDK nie initialisiert,
-es gibt keinen Consent-Dialog, keine Ad-Requests und keinen
-BillingClient; die UI sieht aus wie heute (kein WEITERSPIELEN-Knopf,
-keine „WERBUNG ENTFERNEN"-Zeile). Aktivieren ist also eine bewusste
-Entscheidung in genau zwei Dateien.
+Ab v2.17 sind ein **Rewarded-Spot für den Skin-Tagespass**,
+gelegentliche **Interstitials** und der Kauf **„Werbung entfernen"**
+eingebaut — aber **hart deaktiviert**, solange in
+`app/src/main/res/values/ads.xml` die drei IDs leer sind. Ohne echte IDs
+wird das Ads-SDK nie initialisiert, es gibt keinen Consent-Dialog, keine
+Ad-Requests und keinen BillingClient; die UI sieht aus wie heute (im
+Skin-Overlay keine Spot-Zeilen, keine „WERBUNG ENTFERNEN"-Zeile).
+Aktivieren ist also eine bewusste Entscheidung in genau zwei Dateien.
+
+Bewusst **nicht** eingebaut: Weiterspielen nach dem Tod. Das Versprechen
+des Spiels ist „Perfekt oder vorbei" — Werbung darf weder den Lauf noch
+den Rekord anfassen. Der Spot verkauft deshalb nur Kosmetik auf Zeit.
 
 ### 1. AdMob-Konto und App anlegen
 
@@ -254,7 +258,7 @@ Entscheidung in genau zwei Dateien.
 2. **Apps → App hinzufügen** → Android → „Ja, im Play Store" und DOTTIE.
    auswählen (Paket `de.robinrehbein.pointless`). Ergebnis ist die
    **App-ID** im Format `ca-app-pub-…~…` (Tilde!).
-3. **Anzeigenblöcke** anlegen: einen vom Typ **Rewarded** („Weiterspielen")
+3. **Anzeigenblöcke** anlegen: einen vom Typ **Rewarded** („Skin-Tagespass")
    und einen vom Typ **Interstitial** („Game-Over"). Beide liefern eine
    **Anzeigenblock-ID** im Format `ca-app-pub-…/…` (Schrägstrich!).
 4. Frisch angelegte Blöcke liefern erfahrungsgemäß erst nach einigen
@@ -307,7 +311,7 @@ erstellen**:
 | Produkt-ID | `remove_ads` (genau so, steht im Code) |
 | Typ | Einmaliger Kauf, **nicht** verbrauchbar |
 | Name | „Werbung entfernen" / „Remove ads" |
-| Beschreibung | Entfernt dauerhaft alle Anzeigen. Weiterspielen nach dem Tod bleibt möglich. |
+| Beschreibung | Entfernt dauerhaft alle Anzeigen. Skins werden weiter durch Spielen freigeschaltet. |
 | Preis | Vorschlag **2,99 €** (Play rechnet die anderen Währungen um) |
 
 Danach **aktivieren** — inaktive Produkte liefern im Kaufdialog nichts.
@@ -344,8 +348,9 @@ entschärfen:
 ```html
   <h2>Werbung</h2>
   <p>DOTTIE. zeigt Werbung über <strong>Google AdMob</strong>: einen
-  optionalen Video-Spot zum Weiterspielen nach einem Lauf sowie
-  gelegentliche Vollbild-Anzeigen zwischen Läufen. Dabei verarbeitet
+  freiwilligen Video-Spot, der einen gesperrten Punkt-Skin für den
+  laufenden Tag freischaltet, sowie gelegentliche Vollbild-Anzeigen
+  zwischen Läufen. Dabei verarbeitet
   Google die <strong>Werbe-ID (AAID)</strong> deines Geräts sowie
   technische Angaben (Gerätetyp, grobe Region, IP-Adresse), um
   Anzeigen auszuliefern und Betrug zu erkennen. Verantwortlich dafür
@@ -368,8 +373,9 @@ Englisch — für den Footer-Absatz („English summary"):
 
 ```html
     <p><em>English summary:</em> DOTTIE. shows ads via
-    <strong>Google AdMob</strong> (an optional rewarded video to continue
-    a run, plus occasional interstitials between runs). Google processes
+    <strong>Google AdMob</strong> (an optional rewarded video that unlocks
+    a locked dot skin for the rest of the day, plus occasional
+    interstitials between runs). Google processes
     your device's <strong>advertising ID (AAID)</strong> and technical
     data (device type, coarse region, IP address) to serve ads and
     prevent fraud. Before the first ad, the app asks for your consent via
@@ -383,16 +389,20 @@ Englisch — für den Footer-Absatz („English summary"):
 
 ### Wie sich das Spiel dann verhält
 
-- **Weiterspielen (Rewarded)**: erscheint nur im Klassik-Modus, nur wenn
-  ein Spot geladen ist und **einmal pro Lauf**. Score und Treffer
-  bleiben, die Perfekt-Serie beginnt neu, und der Punkt startet eine
-  knappe halbe Runde vor der frischen Zone — nach einem gesehenen Spot
-  darf niemand sofort wieder sterben. Die Daily Challenge bleibt
-  bewusst außen vor: gleicher Lauf für alle, keine gekauften Vorteile.
-- **Interstitials**: frühestens ab dem **4. Tod einer Sitzung** und
-  mindestens **90 Sekunden** nach dem letzten Spot (`InterstitialGate`,
-  per Unit-Test abgesichert) — und nie in dem Game-Over, in dem gerade
-  Weiterspielen angeboten wird.
+- **Skin-Tagespass (Rewarded)**: Im SKINS-Overlay werden gesperrte
+  Skins antippbar, sobald ein Spot geladen ist. Nach dem gesehenen Spot
+  ist genau **dieser eine** Skin bis Mitternacht spielbar und direkt
+  ausgewählt; ein Spot für einen anderen Skin ersetzt den Pass. Der Lauf
+  bleibt unberührt — der Tod ist endgültig, Rekorde entstehen weiter nur
+  durch Spielen. Auch die dauerhafte Freischaltung bleibt exklusiv an
+  den Medaillen-Zielen hängen: Ein Pass zählt nicht als „freigeschaltet"
+  und löst die Freischalt-Feier nicht aus. Beim Tageswechsel fällt eine
+  nur geliehene Auswahl automatisch auf KLASSIK zurück.
+- **Interstitials**: frühestens ab dem **6. Tod einer Sitzung** und
+  mindestens **180 Sekunden** nach dem letzten Spot (`InterstitialGate`,
+  per Unit-Test abgesichert) — nur im Klassik-Modus, die Daily Challenge
+  bleibt werbefrei. Die Werte sind absichtlich zurückhaltend: Das Spiel
+  lebt vom sofortigen nächsten Versuch.
 
 ## Wear-App im Play Store mitverteilen
 
@@ -423,8 +433,8 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 27` / `versionName
-"2.16"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 28` / `versionName
+"2.17"`. Vor jedem Store-Upload beides anheben und committen.
 
 Die Wear-App zählt in einem eigenen Bereich **ab 100001**
 (`wear/build.gradle.kts`), damit sich die beiden Zähler nie in die

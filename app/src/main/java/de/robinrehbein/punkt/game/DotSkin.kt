@@ -35,6 +35,11 @@ enum class DotSkin(
         val bestDailyStreak: Int
     )
 
+    /**
+     * Dauerhaft verdient? Diese Frage kennt bewusst KEINE Tagespässe:
+     * An ihr hängen die Freischalt-Feier im Game-Over und [unlockedCount],
+     * und ein geliehener Skin darf sich nicht als Leistung ausgeben.
+     */
     fun isUnlocked(stats: Stats): Boolean = when (this) {
         KLASSIK -> true
         MINZE -> stats.bestScore >= 10
@@ -44,6 +49,15 @@ enum class DotSkin(
         SCHATTEN -> stats.bestPerfectStreak >= 4
         PRISMA -> stats.bestDailyStreak >= 3
     }
+
+    /**
+     * Jetzt spielbar? Also dauerhaft verdient ODER der eine Skin, für den
+     * heute ein Tagespass läuft ([pass], null = keiner). Nur diese Frage
+     * darf über Auswahl und Darstellung entscheiden — verdient bleibt
+     * verdient, siehe [isUnlocked].
+     */
+    fun isAvailable(stats: Stats, pass: DotSkin?): Boolean =
+        isUnlocked(stats) || this == pass
 
     companion object {
         /** Skin zu einem gespeicherten Namen, KLASSIK als Fallback. */

@@ -19,7 +19,5 @@ tasks.withType<KotlinCompile>().configureEach {
     }
 }
 
-dependencies {
-    // Unit-Tests für die Kern-Spiellogik (z. B. TimingGame.revive).
-    testImplementation(libs.junit)
-}
+// Keine Abhängigkeiten — auch keine Test-Bibliothek: Die Spiellogik wird
+// aus :app getestet (TimingGameTest), wo der Test-Stack ohnehin steht.
