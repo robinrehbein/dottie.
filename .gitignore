@@ -25,3 +25,20 @@ local.properties
 # dem Rechner, auf dem sie entstanden ist.
 /.claude/*
 !/.claude/settings.json
+
+# iOS: Das Xcode-Projekt wird aus ios/project.yml generiert (XcodeGen) und
+# gehoert deshalb NICHT ins Repo — eine eingecheckte Kopie wuerde still
+# gegen die Definition auseinanderlaufen.
+/ios/*.xcodeproj
+/ios/*.xcworkspace
+/ios/build/
+/ios/DerivedData/
+xcuserdata/
+*.xcuserstate
+.swiftpm/
+
+# Web: Playwright & Co. fuer die Screenshot-Tests (die PWA selbst hat
+# bewusst kein Build-Tooling).
+node_modules/
+/web/node_modules/
+/web/package-lock.json

@@ -8,6 +8,10 @@ on:
       # Artefakt. Als Muster statt einzelner Namen, damit hier nichts
       # stehen bleibt, wenn ein Branch gemerged und geloescht ist.
       - 'claude/**'
+  # Bewusst kein pull_request-Trigger: Die Arbeits-Branches heissen alle
+  # claude/**, der Push-Trigger deckt sie also schon ab — ein zweiter
+  # Trigger wuerde jeden Lauf nur verdoppeln. Ein Branch mit anderem Namen
+  # laesst sich ueber "Run workflow" pruefen.
   workflow_dispatch:
 
 permissions:
@@ -24,8 +28,11 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # :core ist ein reines Java-Library-Modul und kennt kein
+      # testDebugUnitTest — ohne den expliziten :core:test liefen seine
+      # Tests (inkl. der Paritaets-Vektoren) in der CI nie mit.
       - name: Run unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: ./gradlew --no-daemon :core:test testDebugUnitTest
 
       # Auf dem Arbeits-Branch reicht ein Build-Check: Kompiliert alles?
       # Die Debug-APK landet als Workflow-Artefakt (Actions → Run →

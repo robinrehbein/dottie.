@@ -334,6 +334,39 @@ Der Workflow `deploy-pages.yml` veröffentlicht sie bei jedem Push auf
 **<https://dottie.robinrehbein.de/>** (Datenschutzerklärung unter
 `/datenschutz/`). Tests: `node web/tests/run-tests.js`.
 
+## iOS-Port
+
+Unter `ios/` liegt ein nativer Swift-Port (SpriteKit), gebaut über
+XcodeGen aus `ios/project.yml` — Details und Verteilweg in
+[ios/README.md](ios/README.md).
+
+## Vier Plattformen, eine Wahrheit
+
+Die Spiellogik gibt es dreifach: Kotlin in `:core`, Swift in `ios/`,
+JavaScript in `web/`. Damit die Ports nicht auseinanderlaufen, erzeugt
+`:core` eine Datei mit Soll-Werten — Konstanten, Medaillen-Schwellen,
+Skin-Farben, die Zahlenfolge von Kotlins Zufallsgenerator und zwei
+komplette Läufe Treffer für Treffer:
+
+```
+parity/golden-vectors.txt
+```
+
+Alle drei prüfen sich dagegen (`./gradlew :core:test`,
+`node web/tests/run-tests.js`, `xcodebuild test` in der iOS-CI). Ändert
+sich `:core` absichtlich, schreibt
+`./gradlew :core:test -Dparity.update=true` die Datei neu — der Diff
+zeigt dann, was in `ios/` und `web/` nachzuziehen ist. Alles Weitere in
+[parity/README.md](parity/README.md).
+
+`:wear` teilt sich den Kotlin-Code mit `:app` direkt: Spiellogik,
+Skin-Farbwerk (`SkinPaint`) und Medaillen (`MedalPaint`) liegen in
+`:core`, beide Apps halten nur noch ihre eigenen Texte dazu.
+
+Ob und wann sich die drei Ports mit Kotlin Multiplatform wirklich
+zusammenlegen lassen — mit Aufwand, Kosten und Gegenargumenten —, steht
+in [ARCHITEKTUR.md](ARCHITEKTUR.md).
+
 ## Wear-OS-Prototyp (experimentell)
 
 Im Modul `:wear` liegt ein eigenständiger Prototyp für runde Wear-OS-Uhren:
@@ -383,9 +416,18 @@ die Uhr installiert dann über ihren eigenen Play Store. Anleitung in
 CI (GitHub Actions) baut bei jedem Push auf `main` beide APKs sowie das
 App Bundle (`.aab`) für den Play Store, führt die Unit-Tests aus und
 veröffentlicht alles als Pre-Release (`apk-build-N`-Tags) unter
-Releases. Pushes auf den Arbeits-Branch laufen nur als Check (Tests +
-Debug-Build); die Debug-APK hängt dort als Workflow-Artefakt am Run,
-ein Release entsteht erst nach dem Merge auf `main`.
+Releases. Jeder Pull Request läuft als Check (Tests + Debug-Build); die
+Debug-APK hängt dort als Workflow-Artefakt am Run, ein Release entsteht
+erst nach dem Merge auf `main`.
+
+Welcher Workflow wann läuft:
+
+| Workflow | Läuft bei | Prüft |
+|---|---|---|
+| `build-apk.yml` | Push auf `main`, jedem PR | Kotlin-Tests (`:core` und `:app`), Debug-Build; auf `main` zusätzlich Release-Artefakte |
+| `web-tests.yml` | PR/Push mit Änderungen an `web/`, `core/`, `app/src/main/` | Logik-, Farb-, Text- und Paritäts-Tests der PWA |
+| `build-ios.yml` | manuell, PR mit Änderungen an `ios/`, `core/`, `parity/` | Paritäts-Tests im Simulator, Device- und Simulator-Build |
+| `deploy-pages.yml` | Push auf `main` mit Änderungen an `web/`, `docs/` | veröffentlicht die PWA auf GitHub Pages |
 
 ## Veröffentlichung
 
