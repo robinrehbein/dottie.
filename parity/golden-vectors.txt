@@ -1,14 +1,14 @@
-# Dottie. — Paritäts-Vektoren zwischen Kotlin, Swift und JavaScript.
+# Dottie. — Paritäts-Vektoren zwischen der Kotlin-Engine und dem Swift-Port.
 #
 # ERZEUGT — nicht von Hand bearbeiten. Neu schreiben mit:
 #   ./gradlew :core:test -Dparity.update=true
 #
 # Quelle der Wahrheit ist :core. Ändert sich hier eine Zahl, ist das
-# die Ansage an ios/ und web/, nachzuziehen — siehe parity/README.md.
+# die Ansage an ios/, nachzuziehen — siehe parity/README.md.
 
 version 3
 
-# --- Konstanten der Engine (TimingGame). Namen wie in Kotlin und JS.
+# --- Konstanten der Engine (TimingGame). Namen wie in Kotlin.
 const.MAX_DELTA 0.033333
 const.BASE_SPEED 2.400000
 const.SPEED_PER_HIT 0.070000
@@ -481,8 +481,8 @@ skin.probe.38 85 0 30 500 10000 0 0 0 0
 skin.unlocked.38 26 KLASSIK MINZE LAVA GOLD FROST PRISMA MELONE PILZ KOI GALAXIE EI TIGER PINGUIN FUSSBALL DONUT AURORA MAGMA CHROM WELLE KONFETTI DISCO HOLO CHAMAELEON TINTE THERMO MEDAILLE
 
 # --- Kulissen (ScenePaint) — die zweite Sammlung. Farben, Boden und
-# Requisiten sind dreifach als Datentabelle nachgebaut, die
-# Freischaltung dreifach als Regel.
+# Requisiten sind im Swift-Port als Datentabelle nachgebaut, die
+# Freischaltung als Regel.
 scene.order WIESE WUESTE MEER BERG STADT WELTRAUM
 scene.groundTop 0.880000
 scene.propSlots 4
@@ -580,9 +580,10 @@ scene.unlocked.37 2 WIESE STADT
 scene.unlocked.38 6 WIESE WUESTE MEER BERG STADT WELTRAUM
 
 # --- Ziele und Fortschrittsbalken (Progress). Die Schwellen stehen
-# damit zum vierten Mal im Repo — hier wird geprüft, dass alle
-# vier dasselbe sagen, inklusive Reihenfolge: Das erste Ziel
-# ist das, was Spieler:innen im Game-Over lesen.
+# damit dreifach im Repo (SkinPaint, ScenePaint, Progress) und
+# im Swift-Port noch einmal — hier wird geprüft, dass alle
+# dasselbe sagen, inklusive Reihenfolge: Das erste Ziel ist
+# das, was Spieler:innen im Game-Over lesen.
 progress.pageGoals 3
 progress.barBlocks 24
 progress.fractions 0.000000 -0.500000 0.041600 0.041667 0.200000 0.500000 0.999000 1.000000 1.500000

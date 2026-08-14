@@ -1,30 +1,35 @@
 # Paritäts-Vektoren
 
-`golden-vectors.txt` ist der gemeinsame Vertrag zwischen den drei
+`golden-vectors.txt` ist der gemeinsame Vertrag zwischen den zwei
 Fassungen der Spiellogik:
 
 | Fassung | Ort | Rolle |
 |---|---|---|
-| Kotlin | `core/src/main/kotlin/…` | **Quelle der Wahrheit**, erzeugt die Datei |
+| Kotlin | `core/src/main/kotlin/…` | **Quelle der Wahrheit**, erzeugt die Datei; nutzen `:app` und `:wear` |
 | Swift | `ios/Dottie/Sources/Engine/` | Handport, prüft sich dagegen |
-| JavaScript | `web/js/` | Handport, prüft sich dagegen |
 
-Die Engine existiert dreifach — rund 500 Zeilen je Sprache, von Hand
-portiert. Kotlin-Tests sagen über die anderen beiden nichts aus. Statt
-dieselben Fälle dreimal zu schreiben, schreibt Kotlin einmal auf, was
-herauskommen muss, und jeder Port prüft sich gegen dieselbe Datei.
+Die Engine existiert zweifach — rund 500 Zeilen je Sprache, von Hand
+portiert. Kotlin-Tests sagen über den Swift-Port nichts aus. Statt
+dieselben Fälle zweimal zu schreiben, schreibt Kotlin einmal auf, was
+herauskommen muss, und der Port prüft sich gegen dieselbe Datei.
+
+Bis v2.22 hat sich hier auch ein JavaScript-Port (`web/`) geprüft. Er ist
+mit der Konzentration auf die nativen Apps entfallen; sein letzter Stand
+liegt im Commit `b4ed73f`.
 
 ## Wer prüft was
 
-| Abschnitt | Inhalt | Kotlin | Swift | JS |
-|---|---|---|---|---|
-| `const.*`, `twist.*`, `daily.*` | Konstanten, Freischalt-Scores, Tages-Seeds | ✅ | ✅ | ✅ |
-| `medal.*`, `sky.*` | Medaillen-Schwellen und -Farben, Himmelsstufen | ✅ | ✅ | ✅ |
-| `skin.*`, `season.*` | Reihenfolge, Farben, Raster, Freischaltungen, Saison-Regeln | ✅ | ✅ | ✅ |
-| `scene.*` | Kulissen: Himmel, Wolken, Boden, Requisiten, Freischaltungen | ✅ | ✅ | ✅ |
-| `progress.*` | Ziele, ihre Reihenfolge und der Fortschrittsbalken | ✅ | ✅ | ✅ |
-| `rng.*` | Kotlins XorWow-Generator Zahl für Zahl | ✅ | ✅ | — |
-| `trace.*` | ganze Läufe, Treffer für Treffer | ✅ | ✅ | — |
+| Abschnitt | Inhalt |
+|---|---|
+| `const.*`, `twist.*`, `daily.*` | Konstanten, Freischalt-Scores, Tages-Seeds |
+| `medal.*`, `sky.*` | Medaillen-Schwellen und -Farben, Himmelsstufen |
+| `skin.*`, `season.*` | Reihenfolge, Farben, Raster, Freischaltungen, Saison-Regeln |
+| `scene.*` | Kulissen: Himmel, Wolken, Boden, Requisiten, Freischaltungen |
+| `progress.*` | Ziele, ihre Reihenfolge und der Fortschrittsbalken |
+| `rng.*` | Kotlins XorWow-Generator Zahl für Zahl |
+| `trace.*` | ganze Läufe, Treffer für Treffer |
+
+Beide Seiten prüfen jeden Abschnitt.
 
 Die Skin-Abschnitte im Einzelnen — sie sind der größte Teil der Datei,
 weil dort auch der größte Teil der Handarbeit steckt:
@@ -65,13 +70,7 @@ mit denselben Proben daran:
 - `progress.fractions` / `progress.filledBlocks` — die Rastung des
   Balkens an ihren Kanten, inklusive der Werte unter 0 und über 1.
 
-Der Web-Port lässt `rng` und `trace` aus, und zwar bewusst: Er baut
-Kotlins `XorWowRandom` nicht nach (siehe Kommentar in `web/js/game.js`),
-seine Daily Challenge hat deshalb eine eigene Zonen-Abfolge. Regeln,
-Farben und Konstanten müssen trotzdem überall identisch sein — genau die
-stehen in den anderen Abschnitten.
-
-Für iOS ist der `rng`-Abschnitt der wichtigste: `KotlinRandom.swift`
+Der wichtigste ist `rng`: `KotlinRandom.swift`
 baut Kotlins Generator bitgenau nach, damit iPhone und Android an
 demselben Tag dieselbe Daily Challenge spielen. Ohne diese Vektoren
 würde ein Fehler darin niemandem auffallen, bis jemand zwei Geräte
@@ -85,23 +84,21 @@ Funktionen füttert — und genau dort saß bei einer Durchsicht der Ports
 die einzige echte Abweichung:
 
 - Android rechnet einen Lauf dem Tag zu, an dem er **gestartet** ist
-  (`ScoreStore.submitRun(score, epochDay, month, year)`), iOS und die PWA
-  lesen die Uhr beim **Tod**. Ein Lauf über Mitternacht landet damit in
+  (`ScoreStore.submitRun(score, epochDay, month, year)`), iOS liest die
+  Uhr beim **Tod**. Ein Lauf über Mitternacht landet damit in
   unterschiedlichen Monaten — dieselbe `SkinPaint.isUnlocked`, andere
   Eingabe, anderes Ergebnis.
 - Dasselbe bei Uhrzeit und Monat der Skins: Android liest sie einmal je
-  Lauf, die Ports pro Frame. TAGESZEIT wechselt dort mitten im Lauf die
-  Farbe.
+  Lauf, iOS pro Frame. TAGESZEIT wechselt dort mitten im Lauf die Farbe.
 
-Solche Fälle brauchen Tests **in** den Ports (oder eine gemeinsame
-Schicht darüber, siehe ARCHITEKTUR.md) — die Vektoren allein finden sie
-nicht und behaupten das auch nicht.
+Solche Fälle brauchen Tests **im** Port (oder eine gemeinsame Schicht
+darüber, siehe ARCHITEKTUR.md) — die Vektoren allein finden sie nicht und
+behaupten das auch nicht.
 
 ## Ausführen
 
 ```sh
 ./gradlew :core:test          # Kotlin: Datei gegen die Engine prüfen
-node web/tests/run-tests.js   # JS-Port gegen die Datei prüfen
 ```
 
 Swift läuft nur auf einem Mac beziehungsweise in der CI:
@@ -123,10 +120,9 @@ Verhalten von `:core` absichtlich ändert:
 ./gradlew :core:test -Dparity.update=true
 ```
 
-Der Diff der Datei zeigt dann genau, was sich für die Ports ändert. Wer
-`:core` anfasst, sieht damit schwarz auf weiß, was in `ios/` und `web/`
-nachzuziehen ist — und die Tests dort schlagen so lange fehl, bis es
-passiert ist.
+Der Diff der Datei zeigt dann genau, was sich für den Port ändert. Wer
+`:core` anfasst, sieht damit schwarz auf weiß, was in `ios/` nachzuziehen
+ist — und die Tests dort schlagen so lange fehl, bis es passiert ist.
 
 ## Format
 
@@ -139,7 +135,7 @@ medal.BRONZE 10 0xFFCD7F32 0xFF9C5A1E
 trace.perfect.0 2 1 1 2 -1 - 0.369220 0.395000 1.629999 0 -
 ```
 
-Bewusst kein JSON: Drei Sprachen sollen es ohne Bibliothek lesen können.
+Bewusst kein JSON: Jede Sprache soll es ohne Bibliothek lesen können.
 
 ## Toleranzen — und warum es sie braucht
 
@@ -153,10 +149,10 @@ Gleichheit geprüft:
 | Farben | ±2 pro Kanal, ohne Alpha | Kotlin rechnet Skins in `Float`, der Swift-Port in `CGFloat` |
 
 Farben stehen als ARGB (`0xFFRRGGBB`) in der Datei, verglichen werden
-aber nur Rot, Grün und Blau: Die Ports stellen sie unterschiedlich dar —
-Kotlin als ARGB-Long (damit `:core` ohne Compose-Typen auskommt), Swift
-als 24-Bit-RGB mit Deckkraft erst an der `UIColor`, JavaScript als
-`#RRGGBB`. Alle Werte in `:core` sind vollflächig deckend, es geht also
+aber nur Rot, Grün und Blau: Die beiden Seiten stellen sie
+unterschiedlich dar — Kotlin als ARGB-Long (damit `:core` ohne
+Compose-Typen auskommt), Swift als 24-Bit-RGB mit Deckkraft erst an der
+`UIColor`. Alle Werte in `:core` sind vollflächig deckend, es geht also
 nichts verloren.
 
 Der interessante Fall ist die zweite Zeile. Kotlin läuft auf der JVM und

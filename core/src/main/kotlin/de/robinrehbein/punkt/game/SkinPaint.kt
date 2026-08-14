@@ -941,8 +941,8 @@ object SkinPaint {
      * Kaufmännisch gerundet, nicht abgeschnitten: Abschneiden zieht jeden
      * Kanal systematisch nach unten (im Mittel eine halbe Stufe), Runden
      * halbiert den Fehler und verteilt ihn symmetrisch. Der Web-Port
-     * (web/js/skins.js) und iOS rechnen genauso — sonst zeigten App und
-     * PWA dieselbe Farbe eine Stufe versetzt.
+     * iOS rechnet genauso — sonst zeigten App und iPhone dieselbe Farbe
+     * eine Stufe versetzt.
      */
     private fun byteOf(v: Float): Long = v.roundToInt().coerceIn(0, 255).toLong()
 

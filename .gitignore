@@ -36,9 +36,3 @@ local.properties
 xcuserdata/
 *.xcuserstate
 .swiftpm/
-
-# Web: Playwright & Co. fuer die Screenshot-Tests (die PWA selbst hat
-# bewusst kein Build-Tooling).
-node_modules/
-/web/node_modules/
-/web/package-lock.json
