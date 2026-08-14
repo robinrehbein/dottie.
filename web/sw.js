@@ -28,6 +28,7 @@ var ASSETS = [
   "./js/strings.js",
   "./js/skins.js",
   "./js/scenes.js",
+  "./js/sounds.js",
   "./js/progress.js",
   "./js/cardstyle.js",
   "./js/game.js",

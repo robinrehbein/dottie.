@@ -2,7 +2,8 @@ import AVFoundation
 import Foundation
 
 /// Chiptune-Soundeffekte für das Spiel — zur Laufzeit aus Rechteckwellen
-/// synthetisiert (ChipSynth), keine Audio-Assets. Statt Android-SoundPool:
+/// synthetisiert (ChipSynth nach der Tabelle in SoundBank), keine
+/// Audio-Assets. Statt Android-SoundPool:
 /// AVAudioEngine mit vorbereiteten AVAudioPCMBuffern, damit die Latenz
 /// für ein Timing-Spiel niedrig genug ist. Die Tonhöhen-Varianten (Treffer-
 /// Pentatonik, Perfekt-Serie) sind vorgerendert.
@@ -11,10 +12,17 @@ final class GameAudio {
     private let engine = AVAudioEngine()
     private var players: [AVAudioPlayerNode] = []
     private var nextPlayer: Int = 0
-    private var buffers: [String: AVAudioPCMBuffer] = [:]
+
+    /// Ton-Set → Klangname → Puffer. Es liegen ALLE Sets bereit: Drei
+    /// Sets sind zusammen kein Speicherproblem, und die Hörprobe in der
+    /// Auswahl muss sofort kommen.
+    private var buffers: [SoundSetId: [String: AVAudioPCMBuffer]] = [:]
 
     /// Stumm geschaltet? Die Scene hält das mit dem ScoreStore synchron.
     var muted: Bool = false
+
+    /// Das gewählte Ton-Set; die Scene hält es mit dem ScoreStore synchron.
+    var soundSet: SoundSetId = .klassik
 
     init() {
         let session = AVAudioSession.sharedInstance()
@@ -37,25 +45,28 @@ final class GameAudio {
             players.append(player)
         }
 
-        buffers["start"] = GameAudio.makeBuffer(ChipSynth.startSound(), format: format)
-        buffers["chain"] = GameAudio.makeBuffer(ChipSynth.chainSound(), format: format)
-        buffers["unlock"] = GameAudio.makeBuffer(ChipSynth.unlockSound(), format: format)
-        buffers["record"] = GameAudio.makeBuffer(ChipSynth.recordSound(), format: format)
-        buffers["death"] = GameAudio.makeBuffer(ChipSynth.deathSound(), format: format)
-        buffers["thud"] = GameAudio.makeBuffer(ChipSynth.thudSound(), format: format)
-        // Treffer-Blip: fünf Pentatonik-Stufen (score % 5).
-        for step in 0..<5 {
-            let rate = ChipSynth.hitRate(score: step)
-            buffers["hit\(step)"] = GameAudio.makeBuffer(
-                ChipSynth.hitSound(rate: rate), format: format
-            )
-        }
-        // Münz-Sound: fünf Serien-Stufen (streak 1...5, Deckel bei 5).
-        for streak in 1...5 {
-            let rate = ChipSynth.perfectRate(streak: streak)
-            buffers["perfect\(streak)"] = GameAudio.makeBuffer(
-                ChipSynth.perfectSound(rate: rate), format: format
-            )
+        for set in SoundSetId.allCases {
+            var proSet: [String: AVAudioPCMBuffer] = [:]
+            for event in SoundEvent.allCases where event != .hit && event != .perfect {
+                proSet[event.rawValue] = GameAudio.makeBuffer(
+                    ChipSynth.render(SoundBank.voice(set, event)), format: format
+                )
+            }
+            // Treffer-Blip: fünf Pentatonik-Stufen (score % 5).
+            for step in 0..<5 {
+                let rate = ChipSynth.hitRate(score: step)
+                proSet["hit\(step)"] = GameAudio.makeBuffer(
+                    ChipSynth.render(SoundBank.voice(set, .hit), rate: rate), format: format
+                )
+            }
+            // Münz-Sound: fünf Serien-Stufen (streak 1...5, Deckel bei 5).
+            for streak in 1...5 {
+                let rate = ChipSynth.perfectRate(streak: streak)
+                proSet["perfect\(streak)"] = GameAudio.makeBuffer(
+                    ChipSynth.render(SoundBank.voice(set, .perfect), rate: rate), format: format
+                )
+            }
+            buffers[set] = proSet
         }
 
         engine.prepare()
@@ -81,15 +92,20 @@ final class GameAudio {
     func thud() { play("thud") }
     func newRecord() { play("record") }
 
+    /// Hörprobe für die Auswahl: die Fanfare des angetippten Sets, auch
+    /// wenn es gerade nicht das gewählte ist. Ohne Probe wählt man einen
+    /// Klang nach seinem Namen.
+    func preview(_ set: SoundSetId) { play("unlock", set: set) }
+
     func release() {
         engine.stop()
     }
 
-    private func play(_ name: String) {
+    private func play(_ name: String, set: SoundSetId? = nil) {
         if muted {
             return
         }
-        guard let buffer = buffers[name] else {
+        guard let buffer = buffers[set ?? soundSet]?[name] else {
             return
         }
         if !engine.isRunning {

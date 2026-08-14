@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.Season
 import de.robinrehbein.punkt.game.SyncState
 
@@ -121,6 +122,20 @@ class ScoreStore(context: Context) {
             prefs.edit()
                 .putString(KEY_SCENE, value.name)
                 .putLong(KEY_SCENE_CHANGED, System.currentTimeMillis())
+                .apply()
+        }
+
+    /**
+     * Gewähltes Ton-Set, KLASSIK als Fallback. Dieselbe Bauart wie Skin
+     * und Kulisse — die dritte Entscheidung, bei der beim Abgleich die
+     * neuere gewinnt und nicht die "größere" (siehe SyncState).
+     */
+    var selectedSound: DotSound
+        get() = DotSound.fromName(prefs.getString(KEY_SOUND, null))
+        set(value) {
+            prefs.edit()
+                .putString(KEY_SOUND, value.name)
+                .putLong(KEY_SOUND_CHANGED, System.currentTimeMillis())
                 .apply()
         }
 
@@ -320,6 +335,7 @@ class ScoreStore(context: Context) {
         val chosen = selectedSkin
         val shareSkin = chosen.isUnlocked(stats())
         val sceneShared = selectedScene.isUnlocked(stats())
+        val soundShared = selectedSound.isUnlocked(stats())
         return SyncState(
             bestScore = bestScore,
             runCount = runCount,
@@ -343,7 +359,12 @@ class ScoreStore(context: Context) {
             // trotzdem stehen, damit ein wiederhergestelltes Backup keine
             // ungedeckte Wahl auf die Uhr trägt.
             scene = if (sceneShared) selectedScene.name else "",
-            sceneChangedAt = if (sceneShared) prefs.getLong(KEY_SCENE_CHANGED, 0L) else 0L
+            sceneChangedAt = if (sceneShared) prefs.getLong(KEY_SCENE_CHANGED, 0L) else 0L,
+            // Dieselbe Prüfung für das Ton-Set: Die Uhr leitet ihre
+            // Freischaltungen selbst aus den Ständen ab und würde ein
+            // ungedecktes Set ohnehin abweisen.
+            sound = if (soundShared) selectedSound.name else "",
+            soundChangedAt = if (soundShared) prefs.getLong(KEY_SOUND_CHANGED, 0L) else 0L
         )
     }
 
@@ -413,6 +434,14 @@ class ScoreStore(context: Context) {
                 editor.putString(KEY_SCENE, incoming.name)
             }
         }
+        // Und dieselbe für das Ton-Set.
+        if (state.soundChangedAt > prefs.getLong(KEY_SOUND_CHANGED, 0L)) {
+            editor.putLong(KEY_SOUND_CHANGED, state.soundChangedAt)
+            val incoming = DotSound.fromName(state.sound)
+            if (incoming.isUnlocked(mergedStats(state, before))) {
+                editor.putString(KEY_SOUND, incoming.name)
+            }
+        }
         editor.apply()
         return true
     }
@@ -448,6 +477,8 @@ class ScoreStore(context: Context) {
         const val KEY_SKIN = "selected_skin"
         const val KEY_SCENE = "selected_scene"
         const val KEY_SCENE_CHANGED = "scene_changed_at"
+        const val KEY_SOUND = "selected_sound"
+        const val KEY_SOUND_CHANGED = "sound_changed_at"
         const val KEY_ADS_REMOVED = "ads_removed"
         const val KEY_DAILY_BEST = "daily_best"
         const val KEY_DAILY_DAY = "daily_day"

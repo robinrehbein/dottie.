@@ -705,9 +705,32 @@
     rect(ctx, p.light, size * 0.58, horizon - size * 0.16, size * 0.18, size * 0.16);
   }
 
+  /**
+   * Vorschau eines Ton-Sets: drei Balken fuer Treffer, Perfekt und
+   * Rekord, deren Hoehe aus DotSound.chips kommt (Port von :core). Ein
+   * Ton-Set hat kein Bild — die Kachel zeigt die Lage des Sets: Die
+   * Glocke steht hoch, der Amboss bleibt am Boden. Dieselbe Sprache wie
+   * der Fortschrittsbalken: Sandbett, goldene Bloecke.
+   */
+  function drawSoundPreview(ctx, size, set) {
+    var border = size / 12;
+    var innen = size - border * 2;
+    ctx.clearRect(0, 0, size, size);
+    rect(ctx, OutlineColor, 0, 0, size, size);
+    rect(ctx, GroundSand, border, border, innen, innen);
+    var chips = global.DotSound.chips(set);
+    var breite = innen / (chips.length * 2 - 1);
+    chips.forEach(function (anteil, index) {
+      // Auch das tiefste Set bleibt sichtbar: ein Fuenftel Mindesthoehe.
+      var hoehe = innen * (0.2 + 0.75 * anteil);
+      rect(ctx, DotBody, border + index * breite * 2, border + innen - hoehe, breite, hoehe);
+    });
+  }
+
   var Renderer = {
     drawSkinPreview: drawSkinPreview,
     drawScenePreview: drawScenePreview,
+    drawSoundPreview: drawSoundPreview,
     drawWorld: drawWorld,
     drawMedal: drawMedal,
     CELEBRATE_SECONDS: CELEBRATE_SECONDS,

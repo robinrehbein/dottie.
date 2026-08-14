@@ -47,6 +47,7 @@ import de.robinrehbein.punkt.data.ScoreStore
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
 import de.robinrehbein.punkt.game.Goal
@@ -169,7 +170,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val haptics = remember { GameHaptics(context) }
     val store = remember { ScoreStore(context) }
-    val audio = remember { GameAudio(context).apply { muted = store.soundMuted } }
+    val audio = remember {
+        GameAudio(context).apply {
+            muted = store.soundMuted
+            soundSet = store.selectedSound.id
+        }
+    }
     val game = remember { TimingGame() }
     val fx = remember { FxState() }
     val bannerState = remember { BannerState() }
@@ -229,6 +235,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     // Die Kulisse ist die zweite Sammlung: kein Tagespass, kein
     // Verfallsdatum — deshalb reicht ein schlichter Zustand.
     var scene by remember { mutableStateOf(store.selectedScene) }
+    // Und das Ton-Set als dritte Sammlung — dieselbe Bauart, nur hört
+    // man sie, statt sie zu sehen.
+    var sound by remember { mutableStateOf(store.selectedSound) }
     // Der per Spot geliehene Skin des heutigen Tages (null = keiner).
     var skinPass by remember {
         mutableStateOf(store.skinPassFor(LocalDate.now().toEpochDay()))
@@ -694,6 +703,19 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 // Werbefreiheit ein zweites Mal, ohne es zu merken.
                 adsAlreadyRemoved = adsRemoved,
                 selected = skin,
+                selectedSound = sound,
+                onSelectSound = {
+                    sound = it
+                    store.selectedSound = it
+                    audio.soundSet = it.id
+                    // Die Hörprobe ist der ganze Sinn der Zeile: Ohne sie
+                    // waehlt man einen Klang nach seinem Namen.
+                    audio.preview(it.id)
+                    // Wie Skin- und Kulissen-Wahl eine Entscheidung: Sie
+                    // muss sofort raus, sonst ueberschreibt sie beim
+                    // naechsten Abgleich die juengere Wahl der Gegenseite.
+                    statsSync.publish()
+                },
                 selectedScene = scene,
                 onSelectScene = {
                     scene = it

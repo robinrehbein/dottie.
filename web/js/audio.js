@@ -13,7 +13,10 @@
   function GameAudio() {
     this.muted = false;
     this.ctx = null;
+    /** Set-Name → Ereignis → AudioBuffer; alle Sets liegen bereit. */
     this.buffers = null;
+    /** Das gewaehlte Ton-Set (Name wie in sounds.js). */
+    this.soundSet = "KLASSIK";
   }
 
   /** Beim ersten Tap rufen: erzeugt/entsperrt den AudioContext. */
@@ -29,23 +32,33 @@
     }
   };
 
+  /**
+   * Baut ALLE Ton-Sets, nicht nur das gewaehlte: Drei Sets sind zusammen
+   * kein Speicherproblem, und die Hoerprobe in der Auswahl muss sofort
+   * kommen — mit Nachbauen waere der Finger laengst weg.
+   */
   GameAudio.prototype._build = function () {
-    var effects = global.ChipSynth.effects();
+    var self = this;
     this.buffers = {};
-    for (var name in effects) {
-      if (!Object.prototype.hasOwnProperty.call(effects, name)) continue;
-      var samples = effects[name];
-      var buf = this.ctx.createBuffer(1, samples.length, global.ChipSynth.SAMPLE_RATE);
-      buf.getChannelData(0).set(samples);
-      this.buffers[name] = buf;
-    }
+    global.DotSound.SETS.forEach(function (set) {
+      var effects = global.ChipSynth.effects(set);
+      var proSet = {};
+      global.DotSound.EVENTS.forEach(function (name) {
+        var samples = effects[name];
+        var buf = self.ctx.createBuffer(1, samples.length, global.ChipSynth.SAMPLE_RATE);
+        buf.getChannelData(0).set(samples);
+        proSet[name] = buf;
+      });
+      self.buffers[set.name] = proSet;
+    });
   };
 
-  GameAudio.prototype._play = function (name, rate) {
-    if (this.muted || !this.ctx || !this.buffers || !this.buffers[name]) return;
+  GameAudio.prototype._play = function (name, rate, setName) {
+    var set = this.buffers && this.buffers[setName || this.soundSet];
+    if (this.muted || !this.ctx || !set || !set[name]) return;
     if (this.ctx.state !== "running") return;
     var src = this.ctx.createBufferSource();
-    src.buffer = this.buffers[name];
+    src.buffer = set[name];
     // Wie SoundPool: Rate hart auf [0.5, 2.0] begrenzt.
     src.playbackRate.value = Math.min(2, Math.max(0.5, rate || 1));
     src.connect(this.ctx.destination);
@@ -69,6 +82,16 @@
   GameAudio.prototype.death = function () { this._play("death"); };
   GameAudio.prototype.thud = function () { this._play("thud"); };
   GameAudio.prototype.newRecord = function () { this._play("record"); };
+
+  /**
+   * Hoerprobe fuer die Auswahl: die Fanfare des angetippten Sets, auch
+   * wenn es gerade nicht das gewaehlte ist. Ohne Probe waehlt man einen
+   * Klang nach seinem Namen — und die Fanfare zeigt am meisten: Lage,
+   * Laenge und Anschlag.
+   */
+  GameAudio.prototype.preview = function (setName) {
+    this._play("unlock", 1, setName);
+  };
 
   // ===== Haptik (GameHaptics.kt: Timings ohne Amplituden — Web kann
   // keine Amplitudensteuerung, nur An/Aus-Muster) =====

@@ -13,6 +13,7 @@ var DailyChallenge = require("../js/daily.js");
 var ChipSynth = require("../js/synth.js");
 var skins = require("../js/skins.js");
 var DotScene = require("../js/scenes.js");
+var DotSound = require("../js/sounds.js");
 var Strings = require("../js/strings.js");
 var ScoreStore = require("../js/store.js");
 var DotSkin = skins.DotSkin;
@@ -315,6 +316,29 @@ function driveToZoneAndTap(game) {
 (function () {
   var fx = ChipSynth.effects();
   var names = ["start", "hit", "perfect", "chain", "unlock", "record", "death", "thud"];
+  assertEq(DotSound.EVENTS.join(","), names.join(","), "sounds.js kennt dieselben Ereignisse");
+  // Jedes Ton-Set muss jedes Ereignis liefern — ein fehlender Schluessel
+  // waere im Spiel ein stummer Moment und faellt sonst nirgends auf.
+  DotSound.SETS.forEach(function (set) {
+    var setFx = ChipSynth.effects(set);
+    names.forEach(function (n) {
+      var samples = setFx[n];
+      assert(samples && samples.length > 0, set.name + ": Effekt " + n + " vorhanden");
+      if (!samples) return;
+      var heil = true;
+      for (var i = 0; i < samples.length; i++) {
+        if (!(samples[i] >= -1 && samples[i] <= 1)) { heil = false; break; }
+      }
+      assert(heil, set.name + ": Effekt " + n + " in [-1, 1]");
+      // Attack-Rampe und End-Fade: kein Knacksen an den Raendern.
+      assert(Math.abs(samples[0]) < 1e-4, set.name + ": " + n + " knackst am Anfang");
+      assert(Math.abs(samples[samples.length - 1]) < 0.02,
+        set.name + ": " + n + " knackst am Ende");
+    });
+  });
+  // Ohne Angabe bleibt es der Bestand.
+  assertEq(fx.hit.length, ChipSynth.effects(DotSound.SETS[0]).hit.length,
+    "effects() ohne Set ist das Standard-Set");
   names.forEach(function (n) {
     var s = fx[n];
     assert(s && s.length > 0, "Effekt " + n + " vorhanden");
@@ -571,7 +595,8 @@ function driveToZoneAndTap(game) {
   offen.forEach(function (g) {
     assert(g.current < g.target, "kein Ziel ist schon voll: " + (g.skin || g.scene));
     assert(g.fraction >= 0 && g.fraction <= 1, "Anteil in 0..1");
-    assert((g.skin === null) !== (g.scene === null), "genau eine Belohnung je Ziel");
+    assertEq([g.skin, g.scene, g.sound].filter(function (v) { return v; }).length, 1,
+      "genau eine Belohnung je Ziel");
   });
 
   // Jede Schwelle faellt genau dort, wo isUnlocked sie sieht — das ist
@@ -588,14 +613,18 @@ function driveToZoneAndTap(game) {
       var skin = DotSkin.fromName(g.skin);
       assert(!DotSkin.isUnlocked(skin, davor), g.skin + " ist bei target-1 noch zu");
       assert(DotSkin.isUnlocked(skin, genau), g.skin + " ist bei target offen");
-    } else {
+    } else if (g.scene) {
       var scene = DotScene.fromName(g.scene);
       assert(!DotScene.isUnlocked(scene, davor), g.scene + " ist bei target-1 noch zu");
       assert(DotScene.isUnlocked(scene, genau), g.scene + " ist bei target offen");
+    } else {
+      var set = DotSound.fromName(g.sound);
+      assert(!DotSound.isUnlocked(set, davor), g.sound + " ist bei target-1 noch zu");
+      assert(DotSound.isUnlocked(set, genau), g.sound + " ist bei target offen");
     }
     geprueft++;
   });
-  assertEq(geprueft, 37, "alle Zahlen-Ziele geprueft");
+  assertEq(geprueft, 39, "alle Zahlen-Ziele geprueft");
 
   // Goenner-Skins kauft man, also sind sie nie ein Ziel.
   for (var m = 0; m <= 12; m++) {
@@ -1599,9 +1628,9 @@ function driveToZoneAndTap(game) {
 
   // Alles gesperrt: Dann steht jede Schwelle der Tabelle in der Liste.
   var offen = {};
-  Progress.goals({}).forEach(function (g) { offen[g.skin || g.scene] = g; });
+  Progress.goals({}).forEach(function (g) { offen[g.skin || g.scene || g.sound] = g; });
 
-  var re = /Triple\((?:SkinId|SceneId)\.(\w+), GoalAxis\.(\w+), ([\d_]+)\)/g;
+  var re = /Triple\((?:SkinId|SceneId|SoundSetId)\.(\w+), GoalAxis\.(\w+), ([\d_]+)\)/g;
   var m;
   var verglichen = 0;
   while ((m = re.exec(kt)) !== null) {
@@ -1613,7 +1642,7 @@ function driveToZoneAndTap(game) {
     assertEq(ziel.target, parseInt(m[3].replace(/_/g, ""), 10), name + ": Schwelle");
     verglichen++;
   }
-  assertEq(verglichen, 37, "alle Schwellen aus Progress.kt verglichen");
+  assertEq(verglichen, 39, "alle Schwellen aus Progress.kt verglichen");
 
   ["PAGE_GOALS", "BAR_BLOCKS"].forEach(function (konstante) {
     var treffer = new RegExp("const val " + konstante + " = (\\d+)").exec(kt);
@@ -1777,6 +1806,176 @@ function driveToZoneAndTap(game) {
       assertEq(CardStyle.epithet(probe), erster, "Auswahl ist der erste passende Eintrag");
     }
   }
+})();
+
+// ===== Ton-Sets gegen SoundSet.kt =====
+// Die Klänge sind eine Zahlentabelle in :core, und der Web-Port ist eine
+// zweite Abschrift davon. Läuft eine Zahl auseinander, klingt die PWA
+// anders als die App — und zwar so leise anders, dass es niemand meldet.
+(function () {
+  var fs = require("fs");
+  var path = require("path");
+
+  var kt;
+  try {
+    kt = fs.readFileSync(
+      path.join(__dirname, "..", "..", "core", "src", "main", "kotlin",
+        "de", "robinrehbein", "punkt", "game", "SoundSet.kt"),
+      "utf8"
+    );
+  } catch (e) {
+    console.log("Hinweis: SoundSet.kt nicht gefunden — Ton-Paritaet uebersprungen.");
+    return;
+  }
+
+  /** Die Ereignisse in der Reihenfolge von SoundEvent. */
+  var kotlinEvents = (function () {
+    var block = kt.slice(kt.indexOf("enum class SoundEvent {"));
+    block = block.slice(0, block.indexOf("\n}"));
+    return (block.match(/^ {4}([A-Z][A-Z_]*),?$/gm) || []).map(function (zeile) {
+      return zeile.trim().replace(",", "");
+    });
+  })();
+  assertEq(kotlinEvents.length, 8, "acht Ereignisse in SoundEvent");
+  assertEq(
+    DotSound.EVENTS.join(","),
+    kotlinEvents.map(function (n) { return n.toLowerCase(); }).join(","),
+    "Ereignis-Reihenfolge wie SoundEvent"
+  );
+
+  /** Die Set-Reihenfolge in SoundSetId muss die der PWA sein. */
+  var kotlinSets = (function () {
+    var block = kt.slice(kt.indexOf("enum class SoundSetId {"));
+    block = block.slice(0, block.indexOf("}"));
+    return (block.match(/\b[A-Z][A-Z_]+\b/g) || []).filter(function (n) {
+      return n !== "SOUND" && n !== "SET" && n !== "ID" && n !== "SOUNDSETID";
+    });
+  })();
+  assertEq(
+    DotSound.SETS.map(function (st) { return st.name; }).join(","),
+    kotlinSets.join(","),
+    "Ton-Set-Reihenfolge wie SoundSetId"
+  );
+
+  /** Der Quelltext-Block genau eines Ton-Sets. */
+  function setBlock(name) {
+    var head = kt.indexOf("private val " + name + " = SoundSet(");
+    if (head < 0) return null;
+    var rest = kt.slice(head + 1);
+    var next = rest.indexOf("\n    private val ");
+    var stop = rest.indexOf("\n    /** Das komplette Set.");
+    if (next < 0 || (stop >= 0 && stop < next)) next = stop;
+    return next < 0 ? rest : rest.slice(0, next);
+  }
+
+  /** "110f, 0.05f, 0.3f, 30f, duty = 0.125f" -> [110, 0.05, 0.3, 30, 0.125] */
+  function zahlen(text) {
+    return text.split(",").map(function (roh) {
+      return parseFloat(roh.replace(/^\s*\w+\s*=\s*/, "").replace(/f\s*$/, ""));
+    });
+  }
+
+  var verglicheneToene = 0;
+  DotSound.SETS.forEach(function (set) {
+    var block = setBlock(set.name);
+    assert(block !== null, "Ton-Set " + set.name + " in SoundSet.kt gefunden");
+    if (!block) return;
+
+    // Jeder Abschnitt zwischen zwei "SoundEvent." gehört genau einem
+    // Ereignis — fehlt eines, faellt es hier auf und wird nicht still
+    // uebersprungen.
+    var chunks = {};
+    block.split("SoundEvent.").slice(1).forEach(function (chunk) {
+      var name = (chunk.match(/^(\w+)/) || [])[1];
+      if (name) chunks[name] = chunk;
+    });
+    assertEq(Object.keys(chunks).length, kotlinEvents.length,
+      set.name + ": alle Ereignisse in Kotlin beschrieben");
+
+    kotlinEvents.forEach(function (event) {
+      var chunk = chunks[event];
+      assert(chunk !== undefined, set.name + ": Kotlin beschreibt " + event);
+      var voice = DotSound.voice(set, event.toLowerCase());
+      assert(voice !== undefined, set.name + ": der Port kennt " + event);
+      if (!chunk || !voice) return;
+
+      var rufe = chunk.match(/\b(tone|glide)\(([^)]*)\)/g) || [];
+      assertEq(voice.tones.length, rufe.length, set.name + "/" + event + ": Zahl der Toene");
+      rufe.forEach(function (ruf, i) {
+        var art = ruf.slice(0, ruf.indexOf("("));
+        var werte = zahlen(ruf.slice(ruf.indexOf("(") + 1, -1));
+        var soll = art === "glide"
+          ? { fromHz: werte[0], toHz: werte[1], seconds: werte[2],
+            volume: werte[3], decay: werte[4], duty: 0.5 }
+          : { fromHz: werte[0], toHz: werte[0], seconds: werte[1],
+            volume: werte[2], decay: werte[3],
+            duty: werte.length > 4 ? werte[4] : 0.5 };
+        var ist = voice.tones[i];
+        if (!ist) return;
+        ["fromHz", "toHz", "seconds", "volume", "decay", "duty"].forEach(function (feld) {
+          assert(approx(ist[feld], soll[feld], 1e-6),
+            set.name + "/" + event + " Ton " + i + " " + feld +
+            " (erwartet " + soll[feld] + ", ist " + ist[feld] + ")");
+        });
+        verglicheneToene++;
+      });
+
+      var rauschen = chunk.match(/Noise\(([^)]*)\)/);
+      assertEq(!!voice.noise, !!rauschen, set.name + "/" + event + ": Rauschanteil vorhanden?");
+      if (rauschen && voice.noise) {
+        var rw = zahlen(rauschen[1]);
+        assert(approx(voice.noise.seconds, rw[0], 1e-6), set.name + "/" + event + ": Rausch-Dauer");
+        assert(approx(voice.noise.volume, rw[1], 1e-6), set.name + "/" + event + ": Rausch-Lautstaerke");
+        assert(approx(voice.noise.decay, rw[2], 1e-6), set.name + "/" + event + ": Rausch-Abklingen");
+      }
+    });
+  });
+  assert(verglicheneToene >= 44, "genug Toene verglichen (" + verglicheneToene + ")");
+
+  // Die Grenzen der Tabelle stehen in beiden Quellen — sie sind der
+  // Rahmen, in dem ein neues Set entstehen darf.
+  [
+    ["MIN_HZ", DotSound.MIN_HZ], ["MAX_HZ", DotSound.MAX_HZ],
+    ["MIN_SECONDS", DotSound.MIN_SECONDS], ["MAX_SECONDS", DotSound.MAX_SECONDS],
+    ["MIN_VOLUME", DotSound.MIN_VOLUME], ["MAX_VOLUME", DotSound.MAX_VOLUME],
+    ["MAX_DECAY", DotSound.MAX_DECAY], ["MIN_PITCH_RATIO", DotSound.MIN_PITCH_RATIO]
+  ].forEach(function (paar) {
+    var m = new RegExp("const val " + paar[0] + " = ([\\d.]+)f").exec(kt);
+    assert(m !== null, "SoundSet.kt nennt " + paar[0]);
+    if (!m) return;
+    assert(approx(paar[1], parseFloat(m[1]), 1e-6), "Grenze " + paar[0]);
+  });
+
+  // Freischalt-Schwellen: Die Zahl steht in Kotlin, die PWA muss an
+  // genau derselben Stelle umspringen.
+  var achsen = { GLOCKE: "bestPerfectStreak", AMBOSS: "totalScore" };
+  var geprueft = 0;
+  Object.keys(achsen).forEach(function (name) {
+    var m = new RegExp("SoundSetId\\." + name + " -> stats\\.(\\w+) >= ([\\d_]+)").exec(kt);
+    assert(m !== null, name + ": Schwelle in SoundSet.kt gefunden");
+    if (!m) return;
+    assertEq(m[1], achsen[name], name + ": haengt an derselben Achse");
+    var limit = parseInt(m[2].replace(/_/g, ""), 10);
+    var set = DotSound.fromName(name);
+    var genug = {}; genug[m[1]] = limit;
+    var knapp = {}; knapp[m[1]] = limit - 1;
+    assert(DotSound.isUnlocked(set, genug), name + ": ab " + limit + " offen");
+    assert(!DotSound.isUnlocked(set, knapp), name + ": bei " + (limit - 1) + " zu");
+    geprueft++;
+  });
+  assertEq(geprueft, DotSound.SETS.length - 1, "jedes Set ausser KLASSIK hat eine Schwelle");
+  assert(DotSound.isUnlocked(DotSound.fromName("KLASSIK"), {}), "KLASSIK ist immer offen");
+
+  // Namen und Hinweise: jedes Set traegt beide Texte in beiden Sprachen.
+  DotSound.SETS.forEach(function (set) {
+    ["de", "en"].forEach(function (lang) {
+      assert(!!Strings.STRINGS[lang][set.titleKey], lang + ": Name fuer " + set.name);
+      if (set.hintKey) {
+        assert(!!Strings.STRINGS[lang][set.hintKey], lang + ": Hinweis fuer " + set.name);
+      }
+    });
+    assert(set.name === "KLASSIK" || !!set.hintKey, "nur KLASSIK kommt ohne Hinweis aus");
+  });
 })();
 
 // ===== Paritäts-Vektoren aus :core (parity/golden-vectors.txt) =====
@@ -1978,6 +2177,7 @@ function driveToZoneAndTap(game) {
 
   // --- Kulissen: Farben, Requisiten, Freischaltung
   var DotScene = require("../js/scenes.js");
+var DotSound = require("../js/sounds.js");
   var Progress = require("../js/progress.js");
 
   assertEq(DotScene.SCENES.map(function (s) { return s.name; }).join(","),
@@ -2062,6 +2262,61 @@ function driveToZoneAndTap(game) {
       "WIESE: Himmel bei Score " + (i * 5));
   });
 
+  // --- Ton-Sets: Reihenfolge, Toene, Kacheln, Freischaltung
+  var DotSoundV = require("../js/sounds.js");
+
+  assertEq(DotSoundV.SETS.map(function (st) { return st.name; }).join(","),
+    V["sound.order"].join(","), "Reihenfolge der Ton-Sets");
+  assertEq(DotSoundV.EVENTS.join(","),
+    V["sound.events"].map(function (n) { return n.toLowerCase(); }).join(","),
+    "Reihenfolge der Ereignisse");
+  assert(approx(DotSoundV.MIN_HZ, num("sound.minHz"), 1e-5), "unterer Tonumfang");
+  assert(approx(DotSoundV.MAX_HZ, num("sound.maxHz"), 1e-5), "oberer Tonumfang");
+  assert(approx(DotSoundV.MIN_PITCH_RATIO, num("sound.minPitchRatio"), 1e-5),
+    "Mindestabstand zweier Sets");
+
+  var toneChecks = 0;
+  DotSoundV.SETS.forEach(function (set) {
+    DotSoundV.EVENTS.forEach(function (event) {
+      var key = "sound.voice." + set.name + "." + event.toUpperCase();
+      var row = V[key];
+      assert(row !== undefined, "Vektoren kennen " + key);
+      if (!row) return;
+      var voice = DotSoundV.voice(set, event);
+      assert(voice !== undefined, "der Port kennt " + key);
+      if (!voice) return;
+      // Das letzte Wort ist das Rauschen ("-" heisst keins) — ein Port,
+      // der es ueberliest, faellt an der Feldzahl auf.
+      var rausch = row[row.length - 1];
+      var toene = row.slice(0, row.length - 1);
+      assertEq(voice.tones.length, toene.length, key + ": Zahl der Toene");
+      toene.forEach(function (wort, i) {
+        var werte = wort.split(":").map(parseFloat);
+        var ist = voice.tones[i];
+        if (!ist) return;
+        ["fromHz", "toHz", "seconds", "volume", "decay", "duty"].forEach(function (feld, k) {
+          assert(approx(ist[feld], werte[k], 1e-5), key + " Ton " + i + " " + feld);
+        });
+        toneChecks++;
+      });
+      if (rausch === "-") {
+        assert(!voice.noise, key + ": kein Rauschen");
+      } else {
+        var rw = rausch.split(":");
+        assert(voice.noise !== null, key + ": Rauschen erwartet");
+        if (!voice.noise) return;
+        assert(approx(voice.noise.seconds, parseFloat(rw[1]), 1e-5), key + ": Rausch-Dauer");
+        assert(approx(voice.noise.volume, parseFloat(rw[2]), 1e-5), key + ": Rausch-Lautstaerke");
+        assert(approx(voice.noise.decay, parseFloat(rw[3]), 1e-5), key + ": Rausch-Abklingen");
+      }
+    });
+    V["sound.chips." + set.name].forEach(function (token, i) {
+      assert(approx(DotSoundV.chips(set)[i], parseFloat(token), 1e-4),
+        set.name + ": Kachelbalken " + i);
+    });
+  });
+  assert(toneChecks >= 44, "genug Toene gegen die Vektoren geprueft (" + toneChecks + ")");
+
   // --- Freischaltungen: je Probe die neun Bestleistungen, dann der
   //     Sammlungsstand und die Liste der offenen Skins.
   var probe = 0;
@@ -2085,6 +2340,19 @@ function driveToZoneAndTap(game) {
     assertEq(DotSkin.unlockedCount(stats), parseInt(V[key][0], 10),
       "Sammlungsstand bei " + key);
     assertEq(open.join(","), V[key].slice(1).join(","), "offene Skins bei " + key);
+
+    // Dieselbe Probe für die Ton-Sets — dritte Sammlung, dieselben Achsen.
+    var soundKey = "sound.unlocked." + probe;
+    assert(V[soundKey] !== undefined, "Vektoren kennen " + soundKey);
+    if (V[soundKey]) {
+      var openSounds = DotSoundV.SETS.filter(function (set) {
+        return DotSoundV.isUnlocked(set, stats);
+      }).map(function (set) { return set.name; });
+      assertEq(DotSoundV.unlockedCount(stats), parseInt(V[soundKey][0], 10),
+        "Zahl offener Ton-Sets bei " + soundKey);
+      assertEq(openSounds.join(","), V[soundKey].slice(1).join(","),
+        "offene Ton-Sets bei " + soundKey);
+    }
 
     // Dieselbe Probe für die Kulissen — sie hängen an denselben Achsen.
     var sceneKey = "scene.unlocked." + probe;
@@ -2112,7 +2380,9 @@ function driveToZoneAndTap(game) {
 
   /** Ein Ziel als dasselbe Wort wie in ParityVectors.kt. */
   function goalToken(goal) {
-    var subject = goal.skin ? "SKIN:" + goal.skin : "SCENE:" + goal.scene;
+    var subject = goal.skin ? "SKIN:" + goal.skin
+      : goal.scene ? "SCENE:" + goal.scene
+        : "SOUND:" + goal.sound;
     return subject + "|" + goal.axis + "|" + goal.current + "|" + goal.target;
   }
 

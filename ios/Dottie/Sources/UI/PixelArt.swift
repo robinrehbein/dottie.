@@ -503,6 +503,31 @@ enum PixelArt {
         }
     }
 
+    /// Vorschau eines Ton-Sets: drei Balken für Treffer, Perfekt und
+    /// Rekord, deren Höhe aus `SoundBank.chips` kommt. Ein Ton-Set hat
+    /// kein Bild — die Kachel zeigt die Lage des Sets: Die Glocke steht
+    /// hoch, der Amboss bleibt am Boden. Dieselbe Sprache wie der
+    /// Fortschrittsbalken: Sandbett, goldene Blöcke.
+    static func soundPreviewTexture(sound: SoundSetId, size: CGFloat) -> SKTexture {
+        let d = max(size, 8)
+        let chips = SoundBank.chips(sound)
+        return texture(size: CGSize(width: d, height: d)) { ctx in
+            let border = d / 12
+            let innen = d - border * 2
+            fill(ctx, Palette.outline, 0, 0, d, d)
+            fill(ctx, Palette.panelSand, border, border, innen, innen)
+            let breite = innen / CGFloat(chips.count * 2 - 1)
+            for (index, anteil) in chips.enumerated() {
+                // Auch das tiefste Set bleibt sichtbar: ein Fünftel
+                // Mindesthöhe.
+                let hoehe = innen * (0.2 + 0.75 * CGFloat(anteil))
+                fill(ctx, Palette.dotBody,
+                     border + CGFloat(index) * breite * 2, border + innen - hoehe,
+                     breite, hoehe)
+            }
+        }
+    }
+
     /// Medaille (MedalBadge): rotes Band im V, Münze mit geprägtem Stern
     /// und Glanzpunkt; Platin funkelt. tier == nil ergibt die Sand-Silhouette.
     static func medalTexture(tier: MedalTier?, size: CGFloat) -> SKTexture {

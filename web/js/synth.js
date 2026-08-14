@@ -1,9 +1,11 @@
 /*
  * Port von core/.../ChipSynth.kt: Chiptune-Soundeffekte im NES-Stil,
  * Rechteckwellen und Rauschen, zur Laufzeit erzeugt — keine Audio-Assets.
- * Alle Hüllkurven, Frequenzen und Dauern sind aus der Kotlin-Quelle
- * übernommen. Liefert Float32Array-Mono-Samples in [-1, 1] bei 22050 Hz;
- * die Abspiel-Schicht (audio.js) packt sie in WebAudio-AudioBuffer.
+ * Alle Hüllkurven sind aus der Kotlin-Quelle übernommen; Frequenzen und
+ * Dauern der einzelnen Klänge stehen seit den Ton-Sets in sounds.js
+ * (Port von SoundSet.kt). Liefert Float32Array-Mono-Samples in [-1, 1]
+ * bei 22050 Hz; die Abspiel-Schicht (audio.js) packt sie in
+ * WebAudio-AudioBuffer.
  */
 (function (global) {
   "use strict";
@@ -121,45 +123,35 @@
     return Math.pow(2, (s * 2) / 12);
   }
 
-  /** Alle Spiel-Sounds, benannt — identisch zu ChipSynth.effects(). */
-  function effects() {
-    return {
-      // Lauf-Start: dezenter, weicher Blip.
-      start: square(440, 0.06, 0.22, 20),
-      // Treffer: kurzer satter Blip; die Tonhöhe steuert hitRate().
-      hit: square(660, 0.07, 0.38, 18),
-      // Perfekt: der klassische Münz-Sound — zwei Töne schnell aufwärts.
-      perfect: concat(
-        square(988, 0.06, 0.32, 12),
-        square(1319, 0.16, 0.38, 9)
-      ),
-      // Ketten-Zone: zwei flinke hohe Blips.
-      chain: concat(
-        square(880, 0.05, 0.3, 20),
-        square(1175, 0.07, 0.3, 18)
-      ),
-      // Twist/Stufe freigeschaltet: kleine Fanfare aufwärts.
-      unlock: concat(
-        square(523, 0.07, 0.3, 14),
-        square(659, 0.07, 0.3, 14),
-        square(784, 0.07, 0.3, 14),
-        square(1046, 0.2, 0.34, 8)
-      ),
-      // Neuer Rekord: längerer Jingle mit ausklingendem Schlusston.
-      record: concat(
-        square(784, 0.09, 0.32, 10),
-        square(1046, 0.09, 0.32, 10),
-        square(1319, 0.09, 0.32, 10),
-        square(1568, 0.3, 0.36, 6)
-      ),
-      // Tod: fallender Sweep plus Rausch-Burst — der Rage-Moment.
-      death: mix(
-        sweep(700, 90, 0.35, 0.42, 4),
-        noise(0.12, 0.32, 22)
-      ),
-      // Dumpfer Aufschlag, wenn das Ergebnis feststeht.
-      thud: square(100, 0.09, 0.5, 14)
-    };
+  /**
+   * Ein Ereignis-Klang aus der Tabelle (sounds.js): Töne hintereinander,
+   * Rauschen darüber. Die einzige Stelle, an der aus einer Voice Samples
+   * werden — Kotlin und Swift tun exakt dasselbe, damit ein neues Ton-Set
+   * nirgends nachgebaut werden muss.
+   */
+  function renderVoice(voice) {
+    var parts = voice.tones.map(function (t) {
+      return t.fromHz === t.toHz
+        ? square(t.fromHz, t.seconds, t.volume, t.decay, t.duty)
+        : sweep(t.fromHz, t.toHz, t.seconds, t.volume, t.decay);
+    });
+    var tones = concat.apply(null, parts);
+    if (!voice.noise) return tones;
+    return mix(tones, noise(voice.noise.seconds, voice.noise.volume, voice.noise.decay));
+  }
+
+  /**
+   * Alle Spiel-Sounds eines Ton-Sets, benannt — identisch zu
+   * ChipSynth.effects(set) in Kotlin. Ohne Angabe das Standard-Set, also
+   * der Bestand.
+   */
+  function effects(set) {
+    var gewaehlt = set || global.DotSound.SETS[0];
+    var out = {};
+    global.DotSound.EVENTS.forEach(function (event) {
+      out[event] = renderVoice(global.DotSound.voice(gewaehlt, event));
+    });
+    return out;
   }
 
   var ChipSynth = {
@@ -171,6 +163,7 @@
     mix: mix,
     hitRate: hitRate,
     perfectRate: perfectRate,
+    renderVoice: renderVoice,
     effects: effects
   };
 

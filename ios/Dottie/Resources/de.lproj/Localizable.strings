@@ -195,6 +195,16 @@
 "scene_hint_stadt" = "REKORD 85";
 "scene_hint_weltraum" = "ALLE ANDEREN KULISSEN SAMMELN";
 
+/* Ton-Sets: die dritte Sammlung. Sie entscheidet nie ueber einen
+   Treffer — jedes Set meldet jedes Ereignis, nur eben anders. */
+"sounds" = "TOENE";
+"sound_klassik" = "KLASSIK";
+"sound_glocke" = "GLOCKE";
+"sound_amboss" = "AMBOSS";
+"sound_hint_glocke" = "PERFEKT-SERIE: 20";
+"sound_hint_amboss" = "25.000 PUNKTE INSGESAMT";
+"sound_tap_hear" = "ANTIPPEN ZUM HOEREN";
+
 /* Statistik-Seite: Die vier Ausdauer-Achsen liefen seit v2.20 unsichtbar
    mit — hier stehen sie samt naechster Ziele. */
 "stats" = "STATISTIK";
