@@ -386,6 +386,66 @@ Die Zeile nennt außerdem Versionsname und -code, damit beim Test nie
 unklar ist, welcher Build gerade läuft. Normale Spieler finden sie nicht:
 Niemand drückt lange auf eine Überschrift.
 
+### 4c. In-App-Produkt „patron_pack" anlegen (Gönner-Paket, ab v2.20)
+
+Dasselbe Formular wie bei `remove_ads`, zweites Produkt:
+
+| Feld | Wert |
+|---|---|
+| Produkt-ID | `patron_pack` (genau so, steht im Code) |
+| Typ | Einmaliger Kauf, **nicht** verbrauchbar |
+| Name | „Gönner-Paket" / „Patron pack" |
+| Beschreibung | Drei exklusive Punkt-Skins (Diamant, Phönix, Onyx) und dauerhaft keine Werbung. Alle anderen Skins bleiben durch Spielen freischaltbar. |
+| Preis | **4,99 €** |
+
+Danach **aktivieren** — sonst liefert die Abfrage nichts, und die Zeile
+im SKINS-Overlay erscheint gar nicht erst.
+
+**Warum 4,99 €:** Das Paket ist kein Nutzen-Kauf, sondern ein
+Zuneigungs-Kauf — man bekommt drei Skins, die niemand erspielen kann,
+und nimmt die Werbung gleich mit. Es muss deutlich über `remove_ads`
+(1,99 €) liegen, sonst frisst es das kleinere Produkt; und es darf nicht
+so weit nach oben, dass es nach Abzocke aussieht. 4,99 € ist die
+klassische Unterstützer-Stufe: Nach Steuer und Googles 15 % bleiben rund
+3,56 €.
+
+**Der eine unangenehme Fall — bitte bewusst entscheiden:** Wer schon
+`remove_ads` gekauft hat und danach das Gönner-Paket kauft, bezahlt die
+Werbefreiheit ein zweites Mit. Google kennt für Einmalprodukte keinen
+Upgrade-Pfad, das lässt sich im Store nicht lösen. Drei Wege:
+
+1. **So lassen** und in der Beschreibung klar sagen, dass Werbefreiheit
+   enthalten ist. Wer sie schon hat, zahlt effektiv 4,99 € für drei
+   Skins. Ehrlich, aber ärgerlich für die treuesten Käufer.
+2. **Werbefreiheit aus dem Paket nehmen** und es als reines Skin-Paket
+   für 3,99 € verkaufen. Sauber trennbar, aber ein „Gönner-Paket", das
+   die Werbung stehen lässt, wirkt geizig.
+3. **Empfehlung:** Paket so lassen, aber in der App die Zeile für
+   Besitzer von `remove_ads` anders beschriften („GOENNER-PAKET — DREI
+   SKINS" statt „… UND WERBEFREI"), damit niemand doppelt für dasselbe
+   Versprechen zahlt, ohne es zu merken. Das ist eine App-Änderung, kein
+   Store-Eintrag — sie steht auf der Liste in `docs/TODO.md`.
+
+**Voraussetzung, die leicht übersehen wird:** Der BillingClient wird
+insgesamt erst gestartet, wenn in `res/values/ads.xml` echte AdMob-IDs
+stehen (`AdsManager.configured`). Ohne diese IDs gibt es also auch kein
+Gönner-Paket — die drei Skins bleiben unerreichbar, ohne dass eine
+Fehlermeldung erscheint. Wer das Paket unabhängig von Werbung verkaufen
+will, muss die Kopplung auftrennen; auch das steht auf der Liste.
+
+Getestet wird wie bei `remove_ads` über **Einstellungen → Lizenztests**
+(Kaufpreis 0) und eine über einen Play-Track installierte App. Die
+versteckte Diagnose-Zeile (Abschnitt 4b) nennt beide Produkte getrennt.
+
+**Andere Geräte, andere Plattformen:** Der Kauf hängt am Google-Konto,
+nicht am Gerät. Auf einem Tablet mit demselben Konto stellt ihn dieselbe
+App beim Start selbst wieder her; auf der Uhr gilt dasselbe, sobald die
+Wear-App Play Billing selbst abfragt. **Nicht** übertragbar ist er auf
+iOS: Apple und Google führen getrennte Kassen, ein Kauf im Play Store
+schaltet in der iOS-App nichts frei. Wer beides will, kauft zweimal —
+das ist keine Entscheidung dieses Projekts, sondern die Bauart der
+beiden Stores.
+
 ### 5. Data-Safety und Anzeigen-Label in der Play Console
 
 Die Datenschutzerklärung (`docs/index.html`) und die Store-Texte oben
