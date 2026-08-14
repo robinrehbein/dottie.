@@ -95,6 +95,37 @@ class ScenePaintTest {
     }
 
     @Test
+    fun `kein Himmel verschluckt die Signale der Bahn`() {
+        // Zone, Perfekt-Kern, Falle und Fallen-Kern sind die einzigen
+        // Flaechen im Bild, an denen eine Entscheidung haengt. Ein Himmel,
+        // der eine davon schluckt, nimmt dem Lauf seine Grundlage — und
+        // mit sechs Kulissen mal sieben Stufen gibt es jetzt 42
+        // Hintergruende, vor denen das passieren kann.
+        //
+        // Die Schwelle ist der Bestand selbst (siehe MIN_SKY_SIGNAL_DISTANCE):
+        // Das knappste ausgelieferte Paar ist der Fallen-Kern vor dem
+        // Stadt-Himmel der zweiten Stufe. Der Test sagt damit nicht "das
+        // ist gut", sondern "nichts Neues darf schlechter werden".
+        val signale = mapOf(
+            "Zone hell" to 0xFF9DE85AL,
+            "Zone dunkel" to 0xFF74BF2EL,
+            "Falle" to 0xFFB44FD8L,
+            "Fallen-Kern" to 0xFF8A2FB0L
+        )
+        SceneId.entries.forEach { id ->
+            ScenePaint.sky(id).forEachIndexed { stufe, himmel ->
+                signale.forEach { (name, signal) ->
+                    assertTrue(
+                        "$id Stufe $stufe (${hex(himmel)}) liegt nur " +
+                            "${abstand(himmel, signal)} vom Signal \"$name\" entfernt",
+                        abstand(himmel, signal) >= ScenePaint.MIN_SKY_SIGNAL_DISTANCE
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
     fun `die sieben Himmelsstufen einer Kulisse bleiben unterscheidbar`() {
         // Der Himmel ist Fortschrittsanzeige, kein Dekor: Wer eine Stufe
         // erreicht, muss den Wechsel sehen. Zwei Stufen, die sich nur um

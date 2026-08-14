@@ -157,6 +157,25 @@ object ScenePaint {
     const val MIN_SKY_STEP = 40f
 
     /**
+     * Mindestabstand eines Himmels zu den Signalfarben der Bahn (Zone,
+     * Perfekt-Kern, Falle und Fallen-Kern).
+     *
+     * Der Wert ist bewusst der Bestand selbst: Das knappste ausgelieferte
+     * Paar ist der Fallen-Kern vor dem Stadt-Himmel der zweiten Stufe mit
+     * 64,4. Damit sagt die Zusicherung nicht "das ist gut", sondern "keine
+     * neue Kulisse darf schlechter sein als das Schlechteste, was wir
+     * heute zeigen" — und genau dafuer taugt sie.
+     *
+     * Der Bestand ist an dieser Stelle wirklich knapp: Die Falle vor dem
+     * lila Himmel (Score 10-14 und wieder 50-54) hebt sich kaum ab. Das
+     * ist bewusst so belassen — die Falle bleibt, wie sie ist. Die Folge
+     * ist aber keine Unfairness, sondern das Gegenteil: Eine Falle, die
+     * man kaum sieht, taeuscht auch niemanden. Der FALLE-Twist wirkt in
+     * diesen zehn Punkten also schwaecher als sonst.
+     */
+    const val MIN_SKY_SIGNAL_DISTANCE = 64f
+
+    /**
      * Die Greens, die die WIESE seit jeher trägt: Buschfarbe, ihr
      * Schatten und die beiden Töne der Grasnarbe. Sie sind praktisch die
      * Zielzonenfarbe — die Narbe ist sogar exakt sie.
