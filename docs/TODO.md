@@ -8,7 +8,7 @@ die steht in der letzten Spalte.
 | Punkt | Was genau | Wann |
 |---|---|---|
 | `versionCode` erhöhen | `app/build.gradle.kts` 31 → 32, `wear/build.gradle.kts` 100006 → 100007. Play lehnt einen Upload mit bereits benutztem Code ab. | beim Release |
-| iOS bauen | Der Port der 42 Skins wurde maschinell gegen die Kotlin-Quelle geprüft, aber nie kompiliert — auf Linux gibt es keine Swift-Toolchain. Einmal in Xcode bauen und einen Lauf spielen. | vor dem iOS-Release |
+| iOS einmal spielen | Kompiliert wird der Swift-Port **automatisch**: `build-ios.yml` läuft auf einem macOS-Runner bei jedem Push auf `main` und bei jedem PR, der `ios/**` anfasst — der Port der 42 Skins ist dort grün durchgelaufen. Was fehlt, ist kein Build, sondern ein Blick: einmal auf einem Gerät spielen und die neuen Skins, das Menü und die Kulissen ansehen. | vor dem iOS-Release |
 | `patron_pack` in der Play Console | Produkt anlegen und aktivieren, siehe PUBLISHING.md Abschnitt 4c. Ohne das sind Diamant, Phönix und Onyx unerreichbar. | beim Release |
 
 ## Entscheidungen, die noch offen sind

@@ -42,7 +42,10 @@ final class GameScene: SKScene {
     private var skin: DotSkin = .klassik
     /// Die gewählte Kulisse. Sie hat keinen Tagespass und kein
     /// Verfallsdatum — ein schlichter Zustand reicht.
-    private var scene: SceneId = .wiese
+    // Nicht "scene" nennen: SKNode fuehrt bereits eine Eigenschaft
+    // dieses Namens (die Szene, in der der Knoten haengt), und Swift
+    // liest die Deklaration dann als Ueberschreibung mit falschem Typ.
+    private var selectedScene: SceneId = .wiese
 
     private var lastUpdateTime: TimeInterval = 0
     private var lastPhase: TimingGame.Phase = .over // erzwingt READY-Setup im 1. Frame
@@ -109,8 +112,8 @@ final class GameScene: SKScene {
     // MARK: - Aufbau
 
     override func didMove(to view: SKView) {
-        scene = store.selectedScene
-        backgroundColor = UIColor(rgb: ScenePaint.of(scene).sky[0])
+        selectedScene = store.selectedScene
+        backgroundColor = UIColor(rgb: ScenePaint.of(selectedScene).sky[0])
         skin = store.selectedSkin
         audio.muted = store.soundMuted
         bestScore = store.bestScore
@@ -142,7 +145,7 @@ final class GameScene: SKScene {
         let h = size.height
 
         skyNode = SKSpriteNode(
-            color: UIColor(rgb: ScenePaint.of(scene).sky[0]),
+            color: UIColor(rgb: ScenePaint.of(selectedScene).sky[0]),
             size: CGSize(width: w + 80, height: h + 80)
         )
         skyNode.position = CGPoint(x: w / 2, y: h / 2)
@@ -287,7 +290,7 @@ final class GameScene: SKScene {
     private func rebuildScenery() {
         let w = size.width
         let h = size.height
-        let paint = ScenePaint.of(scene)
+        let paint = ScenePaint.of(selectedScene)
 
         let cloudTexture = paint.cloud.map { PixelArt.cloudTexture(cell: cell, color: UIColor(rgb: $0)) }
         for cloud in cloudNodes {
@@ -558,7 +561,7 @@ final class GameScene: SKScene {
 
         // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht —
         // welche sieben Töne das sind, sagt die Kulisse.
-        skyNode.color = UIColor(rgb: ScenePaint.skyFor(scene, score: game.score))
+        skyNode.color = UIColor(rgb: ScenePaint.skyFor(selectedScene, score: game.score))
 
         // Wolken driften nach links.
         let cloudDrift = elapsed * h * 0.01
@@ -811,7 +814,7 @@ final class GameScene: SKScene {
             rebuildBirdTextures()
             skins.isHidden = true
         case .selectScene(let selected):
-            scene = selected
+            selectedScene = selected
             store.selectedScene = selected
             rebuildScenery()
             skins.isHidden = true
@@ -835,7 +838,7 @@ final class GameScene: SKScene {
             prepareRun()
             game.tap()
         case "btn.skins":
-            skinOverlay?.refresh(stats: store.stats(), selected: skin, selectedScene: scene)
+            skinOverlay?.refresh(stats: store.stats(), selected: skin, selectedScene: selectedScene)
             skinOverlay?.isHidden = false
         case "btn.menu":
             dailyMode = false
