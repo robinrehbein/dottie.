@@ -648,7 +648,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                         skin = skin,
                         scene = scene,
                         daily = dailyMode,
-                        dailyStreak = dailyStreak
+                        dailyStreak = dailyStreak,
+                        // Rahmen und Beiname hängen am Gesamtstand, nicht
+                        // am Lauf — der Stand wird erst beim Tippen auf
+                        // TEILEN geholt, damit er den eben gezählten Lauf
+                        // sicher enthält.
+                        stats = store.stats().toSkinStats()
                     )
                 },
                 onMenu = {
