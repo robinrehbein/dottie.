@@ -49,8 +49,10 @@ import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
+import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.game.Ground
 import de.robinrehbein.punkt.game.MedalTier
+import de.robinrehbein.punkt.game.Progress
 import de.robinrehbein.punkt.game.Prop
 import de.robinrehbein.punkt.game.PropShape
 import de.robinrehbein.punkt.game.ScenePaint
@@ -225,6 +227,16 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         mutableStateOf(store.skinPassFor(LocalDate.now().toEpochDay()))
     }
     var showSkins by remember { mutableStateOf(false) }
+    // Statistik-Seite: Zahlen und Ziele werden beim Öffnen einmal
+    // gerechnet und festgehalten. Pro Frame nachzurechnen wäre für eine
+    // Seite, die stillsteht, solange sie offen ist, reine Verschwendung.
+    var showStats by remember { mutableStateOf(false) }
+    var statsSnapshot by remember { mutableStateOf(store.stats()) }
+    var statsGoals by remember { mutableStateOf(emptyList<Goal>()) }
+    // Das nächstliegende Ziel für die Zeile im Game-Over — gefüllt in dem
+    // Moment, in dem der Lauf gezählt ist, damit der Balken den gerade
+    // beendeten Lauf schon enthält.
+    var nextGoal by remember { mutableStateOf<Goal?>(null) }
     // Versteckte Diagnose-Zeile (langer Druck auf den Titel).
     var showDiagnostics by remember { mutableStateOf(false) }
     var skinUnlockedThisRun by remember { mutableStateOf(false) }
@@ -415,6 +427,13 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             leaderboards.submitBest(game.score)
                             skinUnlockedThisRun =
                                 DotSkin.earnedCount(store.stats()) > earnedBefore
+                            // Erst zählen, dann zielen: Der Balken im
+                            // Game-Over zeigt den Stand NACH diesem Lauf.
+                            nextGoal = Progress.nextGoal(
+                                stats = store.stats().toSkinStats(),
+                                month = runState.month,
+                                seasonDays = store.seasonDaysFor(runState.month, runState.year)
+                            )
                             taunt = pickTaunt(context, game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
                             runNumber = store.runCount
@@ -542,6 +561,19 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     refreshSkinPass(LocalDate.now().toEpochDay())
                     showSkins = true
                 },
+                onStats = {
+                    // Kalender frisch ablesen: Der Startscreen kann seit
+                    // dem letzten Lauf einen Monatswechsel gesehen haben,
+                    // und daran hängt, ob ein Saison-Ziel gilt.
+                    val now = LocalDateTime.now()
+                    statsSnapshot = store.stats()
+                    statsGoals = Progress.nextGoals(
+                        stats = statsSnapshot.toSkinStats(),
+                        month = now.monthValue,
+                        seasonDays = store.seasonDaysFor(now.monthValue, now.year)
+                    )
+                    showStats = true
+                },
                 leaderboardAvailable = leaderboards.available,
                 onLeaderboard = { leaderboards.show() },
                 onHelp = { showHelp = true },
@@ -599,6 +631,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 dailyStreak = dailyStreak,
                 skinUnlocked = skinUnlockedThisRun,
                 newMedal = newMedalThisRun,
+                goal = nextGoal,
                 onShare = {
                     ScoreCard.share(
                         context = context,
@@ -629,6 +662,14 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
 
         if (showHelp) {
             HelpOverlay(onClose = { showHelp = false })
+        }
+
+        if (showStats) {
+            StatsOverlay(
+                stats = statsSnapshot,
+                goals = statsGoals,
+                onClose = { showStats = false }
+            )
         }
 
         if (showSkins) {

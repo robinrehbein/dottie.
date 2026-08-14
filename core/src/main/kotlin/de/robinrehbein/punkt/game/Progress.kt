@@ -1,5 +1,6 @@
 package de.robinrehbein.punkt.game
 
+import kotlin.math.floor
 import kotlin.math.min
 
 /**
@@ -80,6 +81,19 @@ object Progress {
      * ein zweites Mal — dafür gibt es das Skin-Menü.
      */
     const val PAGE_GOALS = 3
+
+    /**
+     * Aus wie vielen Blöcken der Fortschrittsbalken besteht. Er rastet
+     * auf ganze Blöcke ein — ein weicher Balken wäre der einzige
+     * stufenlose Verlauf im ganzen Spiel. Die Zahl steht hier und nicht
+     * in den drei Renderern, damit derselbe Stand überall gleich weit
+     * gefüllt aussieht.
+     */
+    const val BAR_BLOCKS = 24
+
+    /** Wie viele Blöcke bei diesem Anteil leuchten. */
+    fun filledBlocks(fraction: Float): Int =
+        floor(fraction.coerceIn(0f, 1f) * BAR_BLOCKS).toInt()
 
     /**
      * Die Schwellen, gespiegelt aus [SkinPaint.isUnlocked] — in derselben

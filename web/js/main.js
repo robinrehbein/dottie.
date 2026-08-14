@@ -95,12 +95,18 @@
     goDailyLine: $("go-daily-line"),
     goNewMedal: $("go-new-medal"),
     goNewSkin: $("go-new-skin"),
+    goGoal: $("go-goal"),
+    goGoalLabel: $("go-goal-label"),
+    goGoalFill: $("go-goal-fill"),
     goRetry: $("go-retry"),
     btnMenu: $("btn-menu"),
     help: $("overlay-help"),
     helpContent: $("help-content"),
     skins: $("overlay-skins"),
-    skinList: $("skin-list")
+    skinList: $("skin-list"),
+    btnStats: $("btn-stats"),
+    stats: $("overlay-stats"),
+    statsList: $("stats-list")
   };
 
   // ===== Statische Texte =====
@@ -109,6 +115,7 @@
   el.hint.textContent = t("ready_hint");
   el.btnDaily.textContent = t("daily");
   el.btnSkins.textContent = t("skins");
+  el.btnStats.textContent = t("stats");
   el.hudDaily.textContent = t("daily");
   el.goScoreLabel.textContent = t("points_label");
   el.goRetry.textContent = t("tap_retry");
@@ -117,6 +124,8 @@
   $("go-title").textContent = t("game_over");
   $("skins-title").textContent = t("skins");
   $("skins-close").textContent = t("tap_to_close");
+  $("stats-title").textContent = t("stats");
+  $("stats-close").textContent = t("tap_to_close");
 
   // ===== Pixel-Knöpfe (Farben wie in GameOverlays.kt) =====
   var C = Renderer.Colors;
@@ -132,6 +141,7 @@
     [el.btnHelpOver, C.PanelSand],
     [el.btnDaily, C.DotBody],
     [el.btnSkins, C.PanelSand],
+    [el.btnStats, C.PanelSand],
     [el.btnShare, C.DotBody],
     [el.btnMenu, C.PanelSand]
   ];
@@ -335,6 +345,59 @@
     });
   }
 
+  // ===== Statistik-Seite =====
+
+  /**
+   * Der Anlass: Seit v2.20 laufen vier Ausdauer-Achsen mit, und sichtbar
+   * war davon nichts. Wer bei Rekord 25 haengenbleibt, sah nur eine Zahl —
+   * dass der naechste Skin in 30 Laeufen faellt, stand nirgends. Deshalb
+   * erst die Zaehler, dann die naechsten Ziele mit Balken.
+   */
+  function statRow(label, value) {
+    return '<div class="stat-row"><span class="stat-label">' + label +
+      '</span><span class="stat-value">' + value + "</span></div>";
+  }
+
+  /** Ein Ziel: "FUSSBALL 218/300" und darunter der Balken. */
+  function goalRow(entry) {
+    var label = t("goal_progress", t(Progress.titleKey(entry)), entry.current, entry.target);
+    var percent = Progress.filledBlocks(entry.fraction) / Progress.BAR_BLOCKS * 100;
+    return '<div class="goal-row"><div class="goal-label">' + label +
+      '</div><span class="goal-bar"><span class="goal-fill" style="width:' +
+      percent.toFixed(2) + '%"></span></span></div>';
+  }
+
+  function buildStatsPage() {
+    var stats = ScoreStore.stats();
+    var clock = clockNow();
+    var goals = Progress.nextGoals(
+      stats, clock.month, ScoreStore.seasonDaysFor(clock.year, clock.month)
+    );
+
+    var html = "";
+    html += statRow(t("record_label"), stats.bestScore);
+    html += statRow(t("stats_runs"), stats.runCount);
+    html += statRow(t("stats_total_score"), stats.totalScore);
+    html += statRow(t("stats_days"), stats.daysPlayed);
+    html += statRow(t("stats_months"), stats.monthsPlayed);
+    html += statRow(t("stats_perfect"), stats.bestPerfectStreak);
+    html += statRow(t("stats_daily_streak"), stats.bestDailyStreak);
+    // Beide Sammlungen als Stand "12/35": Die Zahl allein sagt nichts,
+    // erst das Verhaeltnis zeigt, wie weit es noch ist.
+    html += statRow(
+      t("skins"), DotSkin.unlockedCount(stats) + "/" + DotSkin.collectableCount()
+    );
+    html += statRow(
+      t("scenes"), DotScene.unlockedCount(stats) + "/" + DotScene.SCENES.length
+    );
+
+    if (goals.length > 0) {
+      html += '<div class="skin-family">' + t("stats_goals") + "</div>";
+      goals.forEach(function (entry) { html += goalRow(entry); });
+    }
+    el.statsList.innerHTML = html;
+  }
+
   // ===== Sichtbarkeits-Helfer =====
   function show(node) { node.classList.remove("hidden"); }
   function hide(node) { node.classList.add("hidden"); }
@@ -424,6 +487,20 @@
     el.goNewMedal.textContent = t("new_medal");
     setVisible(el.goNewSkin, skinUnlockedThisRun);
     el.goNewSkin.textContent = t("new_skin_unlocked");
+
+    // Das naechste Ziel steht hier NACH dem gerade beendeten Lauf: Der
+    // Lauf ist beim Tod schon gezaehlt, der Balken zeigt ihn also mit.
+    var clock = clockNow();
+    var goal = Progress.nextGoal(
+      ScoreStore.stats(), clock.month, ScoreStore.seasonDaysFor(clock.year, clock.month)
+    );
+    setVisible(el.goGoal, !!goal);
+    if (goal) {
+      el.goGoalLabel.textContent =
+        t("goal_progress", t(Progress.titleKey(goal)), goal.current, goal.target);
+      el.goGoalFill.style.width =
+        (Progress.filledBlocks(goal.fraction) / Progress.BAR_BLOCKS * 100).toFixed(2) + "%";
+    }
   }
 
   // ===== Banner mit Priorität =====
@@ -699,6 +776,13 @@
     show(el.skins);
   });
 
+  button(el.btnStats, function () {
+    // Beim Oeffnen einmal rechnen: Die Seite steht still, solange sie
+    // offen ist — pro Frame nachzurechnen waere Verschwendung.
+    buildStatsPage();
+    show(el.stats);
+  });
+
   // Teilen: Die App baut dafür eine gerenderte Score-Card als PNG
   // (ScoreCard.kt) und öffnet den System-Dialog. Im Browser gibt es dafür
   // keinen verlässlichen Weg (Web Share mit Dateien fehlt auf iOS-Safari
@@ -728,7 +812,7 @@
 
   // Overlays: Tap irgendwo schließt — und wird konsumiert, damit er
   // nicht gleichzeitig als Spiel-Tap (Sofort-Neustart!) durchschlägt.
-  [el.help, el.skins].forEach(function (overlay) {
+  [el.help, el.skins, el.stats].forEach(function (overlay) {
     overlay.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
     overlay.addEventListener("click", function (e) {
       e.stopPropagation();

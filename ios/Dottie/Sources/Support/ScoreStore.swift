@@ -205,6 +205,17 @@ final class ScoreStore {
         return false
     }
 
+    /// Tage mit Lauf im laufenden Saison-Fenster — 0, sobald der Kalender
+    /// weitergezogen ist. Der Wert gehört nicht in `stats()`: Er verfällt
+    /// mit dem Monat und taugt für keine Freischaltung, nur für die
+    /// Anzeige des Saison-Ziels (siehe `Progress`).
+    func seasonDaysFor(year: Int, month: Int) -> Int {
+        guard defaults.integer(forKey: ScoreStore.keySeasonWindow) == year * 100 + month else {
+            return 0
+        }
+        return defaults.integer(forKey: ScoreStore.keySeasonDays)
+    }
+
     /// Alles, woraus sich Freischaltungen speisen — Bestleistungen und
     /// Ausdauer gebündelt.
     func stats() -> DotSkin.Stats {

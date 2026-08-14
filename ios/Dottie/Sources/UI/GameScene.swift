@@ -108,6 +108,7 @@ final class GameScene: SKScene {
     private var overOverlay: GameOverOverlay?
     private var helpOverlay: HelpOverlay?
     private var skinOverlay: SkinOverlay?
+    private var statsOverlay: StatsOverlay?
 
     // MARK: - Aufbau
 
@@ -282,6 +283,28 @@ final class GameScene: SKScene {
         skins.isHidden = true
         addChild(skins)
         self.skinOverlay = skins
+
+        let stats = StatsOverlay(sceneSize: size)
+        stats.zPosition = 300
+        stats.isHidden = true
+        addChild(stats)
+        self.statsOverlay = stats
+    }
+
+    /// Kalender für die Ziel-Rechnung: Der Monat entscheidet, ob ein
+    /// Saison-Ziel überhaupt gilt, das Jahr gehört zum Saison-Fenster.
+    /// Bewusst frisch abgelesen — eine App kann über Mitternacht und über
+    /// einen Monatswechsel hinweg offen bleiben.
+    private func goals(limit: Int) -> [Goal] {
+        let parts = Calendar.current.dateComponents([.year, .month], from: Date())
+        let month = parts.month ?? 0
+        let year = parts.year ?? 0
+        return Progress.nextGoals(
+            store.stats(),
+            month: month,
+            seasonDays: store.seasonDaysFor(year: year, month: month),
+            limit: limit
+        )
     }
 
     /// Texturen der Kulisse neu erzeugen: Himmel, Wolken, Requisiten und
@@ -520,7 +543,10 @@ final class GameScene: SKScene {
                 dailyBest: store.dailyBestFor(epochDay: runEpochDay),
                 dailyStreak: store.dailyStreak,
                 skinUnlocked: skinUnlockedThisRun,
-                newMedal: newMedalThisRun
+                newMedal: newMedalThisRun,
+                // Der Lauf ist beim Tod schon gezählt: Der Balken zeigt
+                // also den Stand NACH diesem Lauf.
+                goal: goals(limit: 1).first
             )
             overOverlay?.isHidden = false
         }
@@ -765,6 +791,12 @@ final class GameScene: SKScene {
             help.isHidden = true
             return
         }
+        // Die Statistik-Seite scrollt nicht: Ein Tap irgendwo schließt sie,
+        // wie die Hilfe.
+        if let stats = statsOverlay, !stats.isHidden {
+            stats.isHidden = true
+            return
+        }
         // Der Skin-Picker scrollt: Er entscheidet erst beim Loslassen, ob
         // die Berührung ein Tipp oder ein Zug war.
         if let skins = skinOverlay, !skins.isHidden {
@@ -839,6 +871,11 @@ final class GameScene: SKScene {
         case "btn.skins":
             skinOverlay?.refresh(stats: store.stats(), selected: skin, selectedScene: selectedScene)
             skinOverlay?.isHidden = false
+        case "btn.stats":
+            // Beim Öffnen einmal rechnen: Die Seite steht still, solange
+            // sie offen ist.
+            statsOverlay?.refresh(stats: store.stats(), goals: goals(limit: Progress.pageGoals))
+            statsOverlay?.isHidden = false
         case "btn.menu":
             dailyMode = false
             game.reset()

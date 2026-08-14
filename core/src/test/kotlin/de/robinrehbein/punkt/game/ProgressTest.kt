@@ -175,23 +175,25 @@ class ProgressTest {
 
     @Test
     fun `die Ausdauer-Achse traegt auch den ewigen Rekord 25`() {
-        // Genau der Fall aus dem README: Rekord 25, aber fleißig — die
-        // Liste darf nicht leer wirken, nur weil das Können stagniert.
-        val stats = leer.copy(bestScore = 25, runCount = 218, totalScore = 3_400)
+        // Genau der Fall aus dem README: Rekord 25, aber fleißig — wer am
+        // Können hängenbleibt, kommt über die Menge trotzdem voran, und
+        // die Ausdauer-Achse darf dann auch vorne stehen.
+        val stats = leer.copy(bestScore = 25, runCount = 280, totalScore = 3_400)
         val naechstes = Progress.nextGoal(stats)
         assertNotNull(naechstes)
         assertEquals(SkinId.FUSSBALL, naechstes!!.skin)
         assertEquals(GoalAxis.RUN_COUNT, naechstes.axis)
-        assertEquals(218, naechstes.current)
+        assertEquals(280, naechstes.current)
         assertEquals(300, naechstes.target)
-        assertEquals(82, naechstes.remaining)
+        assertEquals(20, naechstes.remaining)
     }
 
     @Test
     fun `Sammlungs-Ziele zaehlen sich selbst nicht mit`() {
-        // Alles außer REGENBOGEN und WELTRAUM verdient: Beide müssen als
-        // letztes Ziel mit vollem Rest von genau einem Schritt dastehen.
-        val fast = maxStats.copy(bestScore = 84, patronOwned = false, seasonEarned = 0)
+        // Fast alles verdient: REGENBOGEN und WELTRAUM stehen dann als
+        // Abschluss der beiden Sammlungen da — und zählen sich dabei
+        // selbst nicht mit, sonst wäre die Bedingung zirkulär.
+        val fast = maxStats.copy(bestScore = 79, patronOwned = false, seasonEarned = 0)
         val regenbogen = Progress.goals(fast).first { it.skin == SkinId.REGENBOGEN }
         assertEquals(GoalAxis.SKIN_COLLECTION, regenbogen.axis)
         assertEquals(SkinPaint.collectableCount() - 1, regenbogen.target)

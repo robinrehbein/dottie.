@@ -277,6 +277,19 @@ class ScoreStore(context: Context) {
         return false
     }
 
+    /**
+     * Tage mit Lauf im laufenden Saison-Fenster — 0, sobald der Kalender
+     * weitergezogen ist. Der Wert steht bewusst nicht in [stats]: Er
+     * verfällt mit dem Monat und taugt deshalb für keine Freischaltung,
+     * nur für die Anzeige des Saison-Ziels (siehe Progress in :core).
+     */
+    fun seasonDaysFor(month: Int, year: Int): Int =
+        if (prefs.getInt(KEY_SEASON_WINDOW, 0) == year * 100 + month) {
+            prefs.getInt(KEY_SEASON_DAYS, 0)
+        } else {
+            0
+        }
+
     /** Aktueller Stand gebündelt, für Skin-Freischaltungen. */
     fun stats(): DotSkin.Stats = DotSkin.Stats(
         bestScore = bestScore,

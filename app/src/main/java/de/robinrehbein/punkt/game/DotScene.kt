@@ -43,24 +43,14 @@ enum class DotScene(
         fun fromName(name: String?): DotScene =
             entries.firstOrNull { it.name == name } ?: WIESE
 
+        /**
+         * Der Eintrag zu einer [SceneId] aus :core — der Weg von einem
+         * Ziel ([Goal.scene]) zu seiner Beschriftung.
+         */
+        fun of(id: SceneId): DotScene = entries.first { it.id == id }
+
         /** Wie viele Kulissen offen sind — reine Leistungsanzeige. */
         fun unlockedCount(stats: DotSkin.Stats): Int =
             ScenePaint.unlockedCount(stats.toSkinStats())
-
-        /**
-         * Dieselbe Übersetzung wie in [DotSkin]: Kulissen hängen an
-         * denselben Zahlen, nur an anderen Achsen.
-         */
-        internal fun DotSkin.Stats.toSkinStats() = SkinStats(
-            bestScore = bestScore,
-            bestPerfectStreak = bestPerfectStreak,
-            bestDailyStreak = bestDailyStreak,
-            runCount = runCount,
-            totalScore = totalScore,
-            daysPlayed = daysPlayed,
-            monthsPlayed = monthsPlayed,
-            seasonEarned = seasonEarned,
-            patronOwned = patronOwned
-        )
     }
 }

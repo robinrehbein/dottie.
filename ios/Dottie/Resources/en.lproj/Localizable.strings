@@ -195,3 +195,16 @@
 "scene_hint_berg" = "DAILY STREAK: 30 DAYS";
 "scene_hint_stadt" = "BEST 85";
 "scene_hint_weltraum" = "COLLECT EVERY OTHER SCENE";
+
+/* Statistik-Seite: Die vier Ausdauer-Achsen liefen seit v2.20 unsichtbar
+   mit — hier stehen sie samt naechster Ziele. */
+"stats" = "STATS";
+"stats_runs" = "RUNS";
+"stats_total_score" = "TOTAL POINTS";
+"stats_days" = "DAYS PLAYED";
+"stats_months" = "MONTHS PLAYED";
+"stats_perfect" = "BEST PERFECT STREAK";
+"stats_daily_streak" = "DAILY STREAK";
+"stats_goals" = "NEXT GOALS";
+/* "FOOTBALL 218/300" — Name der Belohnung plus Stand auf der Achse. */
+"goal_progress" = "%1$@ %2$d/%3$d";

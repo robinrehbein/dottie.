@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.game.MedalTier
 import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.ui.components.PixelButton
@@ -184,6 +185,7 @@ internal fun ReadyOverlay(
     dailyStreak: Int,
     onDaily: () -> Unit,
     onSkins: () -> Unit,
+    onStats: () -> Unit,
     leaderboardAvailable: Boolean,
     onLeaderboard: () -> Unit,
     onHelp: () -> Unit,
@@ -331,6 +333,11 @@ internal fun ReadyOverlay(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
+            // Drei Knöpfe statt zwei: Die Statistik gehört auf den
+            // Startscreen, nicht in ein Untermenü — sie ist der Grund,
+            // den nächsten Lauf zu starten. Dafür sind alle drei etwas
+            // schmaler (108 statt 116 dp bei 10 dp Abstand), damit die
+            // Reihe auch auf 360-dp-Displays mit Rand steht.
             Row {
                 PixelButton(
                     text = stringResource(R.string.daily),
@@ -338,18 +345,29 @@ internal fun ReadyOverlay(
                     backgroundColor = DotBody,
                     borderColor = TextDark,
                     textColor = TextDark,
-                    width = 116.dp,
+                    width = 108.dp,
                     height = 52.dp,
                     borderWidth = 3.dp
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
                 PixelButton(
                     text = stringResource(R.string.skins),
                     onClick = onSkins,
                     backgroundColor = PanelSand,
                     borderColor = TextDark,
                     textColor = TextDark,
-                    width = 116.dp,
+                    width = 108.dp,
+                    height = 52.dp,
+                    borderWidth = 3.dp
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                PixelButton(
+                    text = stringResource(R.string.stats),
+                    onClick = onStats,
+                    backgroundColor = PanelSand,
+                    borderColor = TextDark,
+                    textColor = TextDark,
+                    width = 108.dp,
                     height = 52.dp,
                     borderWidth = 3.dp
                 )
@@ -419,6 +437,8 @@ internal fun GameOverOverlay(
     dailyStreak: Int,
     skinUnlocked: Boolean,
     newMedal: Boolean,
+    // Das nächstliegende offene Ziel — null, wenn alles gesammelt ist.
+    goal: Goal?,
     onShare: () -> Unit,
     onMenu: () -> Unit,
     onHelp: () -> Unit
@@ -570,6 +590,21 @@ internal fun GameOverOverlay(
                     fontSize = 18.sp,
                     color = Color(0xFFFFE95E)
                 )
+            }
+
+            // Das nächste Ziel: eine Zeile, ein Balken, mehr nicht. Hier
+            // stirbt gerade jemand und will neu starten — der Fortschritt
+            // soll ihn dabei anschieben, nicht aufhalten.
+            if (goal != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = goalLabel(goal),
+                    style = ScoreShadowStyle,
+                    fontSize = 16.sp,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(5.dp))
+                GoalBar(fraction = goal.fraction, modifier = Modifier.width(220.dp))
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -1127,9 +1162,13 @@ private fun DrawScope.drawScenePreview(scene: DotScene, alpha: Float) {
     )
 }
 
-/** Überschrift einer Skin-Familie — schmal, damit die Liste ruhig bleibt. */
+/**
+ * Überschrift einer Skin-Familie — schmal, damit die Liste ruhig bleibt.
+ * Die Statistik-Seite benutzt dieselbe Überschrift für ihre Ziel-Liste:
+ * Beide Seiten sind gegliederte Listen im selben Scrim.
+ */
 @Composable
-private fun SkinFamilyHeading(text: String) {
+internal fun SkinFamilyHeading(text: String) {
     Spacer(modifier = Modifier.height(10.dp))
     Text(
         text = text,

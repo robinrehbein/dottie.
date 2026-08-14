@@ -206,6 +206,37 @@ Bedingung. Die Wahl wird wie die Skin-Wahl gespeichert und steht auf der
 Score-Card — sonst sähe sie niemand außer der Besitzerin. Die Uhr wählt
 keine Kulisse; sie zieht die Himmelsfarben nur lesend aus `ScenePaint`.
 
+## Statistik-Seite (ab v2.21)
+
+Seit v2.20 laufen vier Ausdauer-Achsen mit — und sichtbar war davon
+**nichts**. Wer bei Rekord 25 hängenblieb, sah eine einzige Zahl auf dem
+Startscreen und hatte keine Ahnung, dass der nächste Skin in 30 Läufen
+fällt. Die Zähler waren da, die Freischaltungen auch; nur der Weg dorthin
+war unsichtbar.
+
+Der STATISTIK-Knopf auf dem Startscreen öffnet deshalb eine Seite im
+Stil der übrigen Overlays: erst alle Zähler (Rekord, Läufe, Punkte
+insgesamt, Tage, Monate, beste Perfekt-Serie, Daily-Serie, Sammlungsstand
+„12/35" für Skins und Kulissen), darunter die nächsten zwei bis drei
+Freischaltungen mit Fortschrittsbalken. Im Game-Over steht **eine** Zeile
+mit dem nächstliegenden Ziel („FUSSBALL 218/300") plus Balken — mehr
+nicht: Wer stirbt, will neu starten, und ein Balken bei 72 % ist dafür
+das stärkste Argument, das dieses Spiel besitzt.
+
+Gerechnet wird in `Progress` (`:core`, mit Unit-Tests): Zu einem
+Zahlenstand liefert es die noch gesperrten Ziele, sortiert nach **Nähe
+zum Ziel** — der Anteil entscheidet, nicht der Restweg, denn „5 von 7
+Tagen" ist näher dran als „4.800 von 5.000 Punkten". Zwei Regeln stecken
+schon in der Auswahl: **Gönner-Skins tauchen nie auf** (die kauft man,
+die erreicht man nicht — ein Fortschrittsbalken zu einem Kauf wäre eine
+Werbefläche), und **Saison-Skins nur in ihrem Monat**, weil „noch 5 Tage
+im Oktober" im März schlicht gelogen wäre. Dass die Schwellen dort ein
+zweites Mal stehen, sichert ein Test ab: Jedes Ziel muss bei seinem
+Zielwert fallen und einen Schritt davor noch stehen.
+
+Auf der Uhr gibt es die Seite nicht — dort ist der Bildschirm zu klein
+für neun Zeilen und drei Balken.
+
 ## Abgleich zwischen Telefon und Uhr (ab v2.19)
 
 Rekord, Lauf-Zahl, beste Perfekt-Serie, Daily-Stand sowie Skin- und

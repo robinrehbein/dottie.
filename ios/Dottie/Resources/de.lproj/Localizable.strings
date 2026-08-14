@@ -194,3 +194,16 @@
 "scene_hint_berg" = "DAILY-SERIE: 30 TAGE";
 "scene_hint_stadt" = "REKORD 85";
 "scene_hint_weltraum" = "ALLE ANDEREN KULISSEN SAMMELN";
+
+/* Statistik-Seite: Die vier Ausdauer-Achsen liefen seit v2.20 unsichtbar
+   mit — hier stehen sie samt naechster Ziele. */
+"stats" = "STATISTIK";
+"stats_runs" = "LAEUFE";
+"stats_total_score" = "PUNKTE INSGESAMT";
+"stats_days" = "TAGE GESPIELT";
+"stats_months" = "MONATE GESPIELT";
+"stats_perfect" = "BESTE PERFEKT-SERIE";
+"stats_daily_streak" = "DAILY-SERIE";
+"stats_goals" = "NAECHSTE ZIELE";
+/* "FUSSBALL 218/300" — Name der Belohnung plus Stand auf der Achse. */
+"goal_progress" = "%1$@ %2$d/%3$d";

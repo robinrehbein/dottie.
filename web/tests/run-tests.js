@@ -545,6 +545,118 @@ function driveToZoneAndTap(game) {
   assert(MedalTier.isUpgrade(20, 15), "20 nach 15 ist Upgrade");
 })();
 
+// ===== Progress: die naechsten Ziele =====
+(function () {
+  var Progress = require("../js/progress.js");
+  var leer = {};
+
+  /** Nur die eine Achse hochsetzen — der Rest bleibt bei null. */
+  function statsWith(axis, value) {
+    var s = {};
+    var feld = {
+      BEST_SCORE: "bestScore",
+      PERFECT_STREAK: "bestPerfectStreak",
+      DAILY_STREAK: "bestDailyStreak",
+      RUN_COUNT: "runCount",
+      TOTAL_SCORE: "totalScore",
+      DAYS_PLAYED: "daysPlayed",
+      MONTHS_PLAYED: "monthsPlayed"
+    }[axis];
+    if (feld) s[feld] = value;
+    return s;
+  }
+
+  var offen = Progress.goals(leer);
+  assert(offen.length > 10, "ohne Fortschritt gibt es etwas zu holen");
+  offen.forEach(function (g) {
+    assert(g.current < g.target, "kein Ziel ist schon voll: " + (g.skin || g.scene));
+    assert(g.fraction >= 0 && g.fraction <= 1, "Anteil in 0..1");
+    assert((g.skin === null) !== (g.scene === null), "genau eine Belohnung je Ziel");
+  });
+
+  // Jede Schwelle faellt genau dort, wo isUnlocked sie sieht — das ist
+  // der Preis dafuer, dass die Zahlen hier ein zweites Mal stehen.
+  var geprueft = 0;
+  offen.forEach(function (g) {
+    if (g.axis === "SKIN_COLLECTION" || g.axis === "SCENE_COLLECTION" ||
+        g.axis === "SEASON_DAYS") {
+      return;
+    }
+    var davor = statsWith(g.axis, g.target - 1);
+    var genau = statsWith(g.axis, g.target);
+    if (g.skin) {
+      var skin = DotSkin.fromName(g.skin);
+      assert(!DotSkin.isUnlocked(skin, davor), g.skin + " ist bei target-1 noch zu");
+      assert(DotSkin.isUnlocked(skin, genau), g.skin + " ist bei target offen");
+    } else {
+      var scene = DotScene.fromName(g.scene);
+      assert(!DotScene.isUnlocked(scene, davor), g.scene + " ist bei target-1 noch zu");
+      assert(DotScene.isUnlocked(scene, genau), g.scene + " ist bei target offen");
+    }
+    geprueft++;
+  });
+  assertEq(geprueft, 37, "alle Zahlen-Ziele geprueft");
+
+  // Goenner-Skins kauft man, also sind sie nie ein Ziel.
+  for (var m = 0; m <= 12; m++) {
+    Progress.goals(leer, m, 3).forEach(function (g) {
+      assert(!(g.skin && DotSkin.isPatron(DotSkin.fromName(g.skin))),
+        "kein Goenner-Skin als Ziel: " + g.skin);
+    });
+  }
+
+  // Saison-Ziele nur im eigenen Monat — "noch 5 Tage im Oktober" waere
+  // im Maerz gelogen.
+  var oktober = Progress.goals(leer, 10, 2).filter(function (g) {
+    return g.skin === "KUERBIS";
+  });
+  assertEq(oktober.length, 1, "KUERBIS ist im Oktober ein Ziel");
+  assertEq(oktober[0].axis, "SEASON_DAYS", "Saison haengt an Tagen im Monat");
+  assertEq(oktober[0].current, 2, "zwei Tage im Fenster gezaehlt");
+  assertEq(oktober[0].target, 5, "fuenf Tage noetig");
+  assertEq(
+    Progress.goals(leer, 3, 4).filter(function (g) { return g.axis === "SEASON_DAYS"; }).length,
+    0, "im Maerz gibt es kein Saison-Ziel"
+  );
+  assertEq(
+    Progress.goals({ seasonEarned: 1 }, 10, 5)
+      .filter(function (g) { return g.skin === "KUERBIS"; }).length,
+    0, "verdienter KUERBIS ist kein Ziel mehr"
+  );
+
+  // Naehe zum Ziel zuerst.
+  var sortiert = Progress.goals({ bestScore: 24, runCount: 30, totalScore: 400 });
+  assertEq(sortiert[0].skin, "MELONE", "24 von 25 steht ganz oben");
+  for (var i = 1; i < sortiert.length; i++) {
+    assert(sortiert[i - 1].fraction >= sortiert[i].fraction, "absteigend nach Anteil");
+  }
+
+  // Der Fall aus dem README: Rekord 25, aber fleissig.
+  var ausdauer = Progress.nextGoal({ bestScore: 25, runCount: 280, totalScore: 3400 });
+  assertEq(ausdauer.skin, "FUSSBALL", "die Ausdauer-Achse fuehrt");
+  assertEq(ausdauer.current, 280, "Stand aus den Laeufen");
+  assertEq(ausdauer.target, 300, "Ziel aus der Tabelle");
+  assertEq(ausdauer.remaining, 20, "noch 20 Laeufe");
+  assertEq(Progress.titleKey(ausdauer), "skin_fussball", "Beschriftung der Belohnung");
+
+  assertEq(Progress.nextGoals(leer).length, Progress.PAGE_GOALS, "Seite zeigt drei Ziele");
+  assertEq(Progress.nextGoals(leer, 0, 0, 1).length, 1, "Game-Over zeigt eines");
+
+  // Alles verdient: keine Ziele, keine Zeile.
+  var alles = {
+    bestScore: 999, bestPerfectStreak: 99, bestDailyStreak: 99, runCount: 9999,
+    totalScore: 999999, daysPlayed: 365, monthsPlayed: 12, seasonEarned: 15
+  };
+  assertEq(Progress.goals(alles, 10, 5).length, 0, "nichts mehr offen");
+  assertEq(Progress.nextGoal(alles, 10, 5), null, "kein naechstes Ziel");
+
+  // Der Balken rastet auf ganze Bloecke ein.
+  assertEq(Progress.filledBlocks(0), 0, "leerer Balken");
+  assertEq(Progress.filledBlocks(1), Progress.BAR_BLOCKS, "voller Balken");
+  assertEq(Progress.filledBlocks(0.5), Progress.BAR_BLOCKS / 2, "halber Balken");
+  assertEq(Progress.filledBlocks(1 / Progress.BAR_BLOCKS / 2), 0, "halber Block bleibt dunkel");
+})();
+
 // ===== Strings / Taunts =====
 (function () {
   Strings.setLang("de");
@@ -1471,6 +1583,51 @@ function driveToZoneAndTap(game) {
         assert(iosDe.indexOf('"' + key + '"') >= 0, "iOS kennt " + key);
       });
   }
+})();
+
+// ===== Ziel-Tabelle gegen Progress.kt =====
+// Die Schwellen stehen in :core und in progress.js — laufen sie
+// auseinander, zeigt die PWA einen Balken, der nichts freischaltet.
+(function () {
+  var fs = require("fs");
+  var path = require("path");
+  var Progress = require("../js/progress.js");
+
+  var kt;
+  try {
+    kt = fs.readFileSync(
+      path.join(__dirname, "..", "..", "core", "src", "main", "kotlin",
+        "de", "robinrehbein", "punkt", "game", "Progress.kt"),
+      "utf8"
+    );
+  } catch (e) {
+    console.log("Hinweis: Progress.kt nicht gefunden — Ziel-Paritaet uebersprungen.");
+    return;
+  }
+
+  // Alles gesperrt: Dann steht jede Schwelle der Tabelle in der Liste.
+  var offen = {};
+  Progress.goals({}).forEach(function (g) { offen[g.skin || g.scene] = g; });
+
+  var re = /Triple\((?:SkinId|SceneId)\.(\w+), GoalAxis\.(\w+), ([\d_]+)\)/g;
+  var m;
+  var verglichen = 0;
+  while ((m = re.exec(kt)) !== null) {
+    var name = m[1];
+    var ziel = offen[name];
+    assert(!!ziel, "PWA kennt das Ziel " + name);
+    if (!ziel) continue;
+    assertEq(ziel.axis, m[2], name + ": Achse");
+    assertEq(ziel.target, parseInt(m[3].replace(/_/g, ""), 10), name + ": Schwelle");
+    verglichen++;
+  }
+  assertEq(verglichen, 37, "alle Schwellen aus Progress.kt verglichen");
+
+  ["PAGE_GOALS", "BAR_BLOCKS"].forEach(function (konstante) {
+    var treffer = new RegExp("const val " + konstante + " = (\\d+)").exec(kt);
+    assert(!!treffer, "Progress.kt nennt " + konstante);
+    assertEq(Progress[konstante], parseInt(treffer[1], 10), konstante);
+  });
 })();
 
 console.log(checks + " Checks, " + failures + " Fehler");

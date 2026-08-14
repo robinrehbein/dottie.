@@ -213,6 +213,19 @@
     <string name="scene_hint_stadt">BEST 85</string>
     <string name="scene_hint_weltraum">COLLECT EVERY OTHER SCENE</string>
 
+    <!-- Statistik-Seite (ab v2.22): Die vier Ausdauer-Achsen liefen seit
+         v2.20 unsichtbar mit — hier stehen sie samt naechster Ziele. -->
+    <string name="stats">STATS</string>
+    <string name="stats_runs">RUNS</string>
+    <string name="stats_total_score">TOTAL POINTS</string>
+    <string name="stats_days">DAYS PLAYED</string>
+    <string name="stats_months">MONTHS PLAYED</string>
+    <string name="stats_perfect">BEST PERFECT STREAK</string>
+    <string name="stats_daily_streak">DAILY STREAK</string>
+    <string name="stats_goals">NEXT GOALS</string>
+    <!-- "FOOTBALL 218/300" — Name der Belohnung plus Stand auf der Achse. -->
+    <string name="goal_progress">%1$s %2$d/%3$d</string>
+
     <!-- Score-Card / Teilen -->
     <string name="share_text">%1$d points in DOTTIE. — can you beat that?</string>
     <string name="share_text_daily">Daily Challenge in DOTTIE.: %1$d points — can you beat that?</string>

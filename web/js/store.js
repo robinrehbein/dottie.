@@ -206,6 +206,16 @@
       return false;
     },
 
+    /**
+     * Tage mit Lauf im laufenden Saison-Fenster — 0, sobald der Kalender
+     * weitergezogen ist. Der Wert gehört nicht in stats(): Er verfällt mit
+     * dem Monat und taugt für keine Freischaltung, nur für die Anzeige des
+     * Saison-Ziels (siehe progress.js).
+     */
+    seasonDaysFor: function (year, month) {
+      return getInt("season_window") === year * 100 + month ? getInt("season_days") : 0;
+    },
+
     /** Bestleistungen und Ausdauer gebündelt, für Skin-Freischaltungen. */
     stats: function () {
       return {
