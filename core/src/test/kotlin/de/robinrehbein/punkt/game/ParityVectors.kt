@@ -362,7 +362,10 @@ object ParityVectors {
         line("scene.propSlots", ScenePaint.PROP_SLOTS.toString())
         line("scene.minZoneDistance", f(ScenePaint.MIN_ZONE_DISTANCE))
         line("scene.minSkyStep", f(ScenePaint.MIN_SKY_STEP))
-        line("scene.minSkySignalDistance", f(ScenePaint.MIN_SKY_SIGNAL_DISTANCE))
+        // MIN_SKY_SIGNAL_DISTANCE steht bewusst NICHT hier: Die Schwelle
+        // ist eine Zusicherung über die Farbtabellen (ScenePaintTest prüft
+        // sie in :core), kein Wert, den ein Port nachbaut. Eine Zeile, die
+        // niemand gegenprüft, sähe nach Abdeckung aus, wo keine ist.
 
         SceneId.entries.forEach { id ->
             val scene = ScenePaint.of(id)

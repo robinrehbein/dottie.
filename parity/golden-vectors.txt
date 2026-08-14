@@ -488,7 +488,6 @@ scene.groundTop 0.880000
 scene.propSlots 4
 scene.minZoneDistance 60.000000
 scene.minSkyStep 40.000000
-scene.minSkySignalDistance 64.000000
 scene.sky.WIESE 0xFF4EC0CA 0xFF5B9BD5 0xFF7B6FD0 0xFFC0616F 0xFFD98A3D 0xFF3D4A8C 0xFF2A2640
 scene.cloud.WIESE 0xFFE9FCFD
 scene.ground.WIESE 0xFFDED895 0xFFD3C87E 0xFF74BF2E 0xFF9DE85A

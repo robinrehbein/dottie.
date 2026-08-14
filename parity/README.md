@@ -77,6 +77,26 @@ demselben Tag dieselbe Daily Challenge spielen. Ohne diese Vektoren
 würde ein Fehler darin niemandem auffallen, bis jemand zwei Geräte
 nebeneinanderlegt.
 
+## Was der Vertrag nicht sieht
+
+Die Vektoren tasten **reine Funktionen** ab: gleiche Eingabe, gleiche
+Ausgabe. Was sie nicht prüfen können, ist, **womit** eine Plattform diese
+Funktionen füttert — und genau dort saß bei einer Durchsicht der Ports
+die einzige echte Abweichung:
+
+- Android rechnet einen Lauf dem Tag zu, an dem er **gestartet** ist
+  (`ScoreStore.submitRun(score, epochDay, month, year)`), iOS und die PWA
+  lesen die Uhr beim **Tod**. Ein Lauf über Mitternacht landet damit in
+  unterschiedlichen Monaten — dieselbe `SkinPaint.isUnlocked`, andere
+  Eingabe, anderes Ergebnis.
+- Dasselbe bei Uhrzeit und Monat der Skins: Android liest sie einmal je
+  Lauf, die Ports pro Frame. TAGESZEIT wechselt dort mitten im Lauf die
+  Farbe.
+
+Solche Fälle brauchen Tests **in** den Ports (oder eine gemeinsame
+Schicht darüber, siehe ARCHITEKTUR.md) — die Vektoren allein finden sie
+nicht und behaupten das auch nicht.
+
 ## Ausführen
 
 ```sh
