@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.R
+import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.MedalTier
 import de.robinrehbein.punkt.game.SkinState
@@ -878,6 +879,8 @@ internal fun SkinOverlay(
     stats: DotSkin.Stats,
     selected: DotSkin,
     onSelect: (DotSkin) -> Unit,
+    selectedScene: DotScene,
+    onSelectScene: (DotScene) -> Unit,
     onClose: () -> Unit,
     skinPass: DotSkin? = null,
     adOfferReady: Boolean = false,
@@ -914,9 +917,51 @@ internal fun SkinOverlay(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
+            // Die Kulissen stehen ganz oben und vor allen Skin-Familien:
+            // Es sind nur sechs, sie wirken auf das ganze Bild, und wer
+            // das Menü öffnet, soll sie nicht erst suchen müssen.
+            SkinFamilyHeading(stringResource(R.string.scenes))
+            DotScene.entries.forEach { scene ->
+                val open = scene.isUnlocked(stats)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = open) { onSelectScene(scene) }
+                        .padding(horizontal = 48.dp, vertical = 10.dp)
+                ) {
+                    Canvas(modifier = Modifier.size(36.dp)) {
+                        drawScenePreview(scene, alpha = if (open) 1f else 0.3f)
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = stringResource(scene.titleRes),
+                            fontFamily = Bytesized,
+                            fontSize = 20.sp,
+                            color = if (open) Color.White else Color.White.copy(alpha = 0.45f)
+                        )
+                        Text(
+                            text = when {
+                                scene == selectedScene -> stringResource(R.string.skin_selected)
+                                open -> stringResource(R.string.skin_tap_select)
+                                else -> scene.unlockHintRes?.let { stringResource(it) } ?: ""
+                            },
+                            fontFamily = Bytesized,
+                            fontSize = 14.sp,
+                            color = when {
+                                scene == selectedScene -> DotBody
+                                open -> Color.White.copy(alpha = 0.7f)
+                                else -> Color.White.copy(alpha = 0.45f)
+                            }
+                        )
+                    }
+                }
+            }
+
             // Bei 42 Skins ist die reine Liste nicht mehr lesbar: Die
             // Familien-Überschrift sagt, wonach die nächsten Zeilen
-            // funktionieren — Muster, Zeit, Spielstand, Kalender, Kauf.
+            // funktionieren — Muster, Zeit, Spielstand, Kauf.
             var lastFamily: DotSkin.Family? = null
 
             DotSkin.entries.forEach { skin ->
@@ -1025,6 +1070,63 @@ internal fun SkinOverlay(
     }
 }
 
+/**
+ * Vorschau einer Kulisse auf 36 dp: Tageshimmel, Bodenkante mit Narbe
+ * und eine Requisite als Silhouette. Mehr passt nicht hinein — und
+ * weniger wäre nicht auseinanderzuhalten.
+ */
+private fun DrawScope.drawScenePreview(scene: DotScene, alpha: Float) {
+    val d = size.minDimension
+    val paint = scene.scene
+    val border = d / 12f
+    val horizon = d * 0.62f
+
+    drawRect(color = OutlineColor, size = Size(d, d), alpha = alpha)
+    drawRect(
+        color = Color(paint.sky[0]),
+        topLeft = Offset(border, border),
+        size = Size(d - border * 2f, horizon - border),
+        alpha = alpha
+    )
+    // Ohne Boden (WELTRAUM) läuft der Himmel bis unten durch und zeigt
+    // dort seine Nachtstufe — die Kachel bleibt so trotzdem lesbar.
+    val ground = paint.ground
+    drawRect(
+        color = Color(ground?.sand ?: paint.sky[6]),
+        topLeft = Offset(border, horizon),
+        size = Size(d - border * 2f, d - horizon - border),
+        alpha = alpha
+    )
+    if (ground != null) {
+        drawRect(
+            color = Color(ground.turfLight),
+            topLeft = Offset(border, horizon),
+            size = Size(d - border * 2f, d * 0.07f),
+            alpha = alpha
+        )
+    }
+    // Requisite: die größte Form der Kulisse als zwei Blöcke.
+    val prop = paint.props.first()
+    drawRect(
+        color = Color(prop.dark),
+        topLeft = Offset(d * 0.22f, horizon - d * 0.22f),
+        size = Size(d * 0.26f, d * 0.22f),
+        alpha = alpha
+    )
+    drawRect(
+        color = Color(prop.body),
+        topLeft = Offset(d * 0.28f, horizon - d * 0.34f),
+        size = Size(d * 0.16f, d * 0.14f),
+        alpha = alpha
+    )
+    drawRect(
+        color = Color(prop.light),
+        topLeft = Offset(d * 0.58f, horizon - d * 0.16f),
+        size = Size(d * 0.18f, d * 0.16f),
+        alpha = alpha
+    )
+}
+
 /** Überschrift einer Skin-Familie — schmal, damit die Liste ruhig bleibt. */
 @Composable
 private fun SkinFamilyHeading(text: String) {
@@ -1115,10 +1217,14 @@ internal fun DrawScope.drawPixelCircle(
     }
 }
 
-/** Blockige Retro-Wolke aus drei gestapelten Rechtecken. */
-internal fun DrawScope.drawCloud(x: Float, y: Float, cell: Float) {
+/**
+ * Blockige Retro-Wolke aus drei gestapelten Rechtecken. Die Farbe kommt
+ * seit den Kulissen von außen (ScenePaint) — der Standard ist die Wolke
+ * der WIESE, damit Aufrufer ohne Kulisse unverändert bleiben.
+ */
+internal fun DrawScope.drawCloud(x: Float, y: Float, cell: Float, color: Color = CloudColor) {
     val u = cell * 2f
-    drawRect(color = CloudColor, topLeft = Offset(x, y + u * 2), size = Size(u * 14, u * 3))
-    drawRect(color = CloudColor, topLeft = Offset(x + u * 2, y), size = Size(u * 7, u * 2))
-    drawRect(color = CloudColor, topLeft = Offset(x + u * 4, y - u * 1.5f), size = Size(u * 4, u * 1.5f))
+    drawRect(color = color, topLeft = Offset(x, y + u * 2), size = Size(u * 14, u * 3))
+    drawRect(color = color, topLeft = Offset(x + u * 2, y), size = Size(u * 7, u * 2))
+    drawRect(color = color, topLeft = Offset(x + u * 4, y - u * 1.5f), size = Size(u * 4, u * 1.5f))
 }

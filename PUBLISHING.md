@@ -9,9 +9,11 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.20.
 - [ ] Play-API-Service-Konto anlegen → Secret `PLAY_SERVICE_ACCOUNT_JSON` (Anleitung unten)
 - [ ] GitHub Pages aktivieren → Datenschutz-URL (Anleitung unten)
 - [ ] Store-Eintrag anlegen (Texte unten in Deutsch UND Englisch, Icons liegen im Repo)
-- [x] Feature-Grafik 1024×500 px (`store/feature-graphic.png`, Generator daneben)
-- [x] Screenshots 1080×1920: je 4 in DE und EN unter `store/screenshots/`
-      (Generator: `python3 store/generate_screenshots.py`)
+- [x] Feature-Grafik 1024×500 px je Sprache (`store/feature-graphic.png`,
+      `store/feature-graphic-en.png`, Generator daneben)
+- [x] Screenshots 1080×1920: je 6 in DE und EN unter `store/screenshots/`
+      (Generator: `python3 store/generate_screenshots.py`, Skin-Prüfung:
+      `python3 store/check_skin_paint.py`)
 - [ ] Optional: Play Games Services einrichten → Bestenlisten (Anleitung unten)
 - [x] AdMob-IDs eingetragen — **Werbung ist aktiv** (Abschnitt unten)
 - [ ] In-App-Kauf „remove_ads" in der Play Console anlegen (Abschnitt unten)
@@ -202,13 +204,45 @@ wird öffentlich sichtbar.
 
 **Assets:**
 
-- Feature-Grafik 1024×500: liegt fertig unter `store/feature-graphic.png`
+- Feature-Grafik 1024×500, je Sprache eine: `store/feature-graphic.png`
+  (deutsch) und `store/feature-graphic-en.png` (englisch). Beide zeigen
+  seit v2.20 unter der Tagline eine Reihe echter Skins.
   (Generator: `python3 store/generate_feature_graphic.py`)
-- Screenshots 1080×1920 (9:16): je 4 Motive in Deutsch und Englisch
+- Screenshots 1080×1920 (9:16): je 6 Motive in Deutsch und Englisch
   unter `store/screenshots/de/` und `store/screenshots/en/`
-  (Generator: `python3 store/generate_screenshots.py`) — Gameplay,
-  Twists, Daily Challenge, Skins. Gern zusätzlich echte Geräte-
-  Screenshots ergänzen.
+  (Generator: `python3 store/generate_screenshots.py`):
+
+  | Datei | Motiv |
+  |---|---|
+  | `01-gameplay` | Kernmechanik, Punktzahl in der Bahn |
+  | `02-twists` | Fallen-Zone am Lila-Himmel |
+  | `03-daily` | Daily Challenge samt Tages-Serie |
+  | `04-skins` | Skin-Menü, seit v2.20 nach Familien gegliedert |
+  | `05-gallery` | **alle 42 Skins** in ihren sechs Familien |
+  | `06-collect` | Ausdauer-Achsen (Läufe, Punkte, Tage, Monate) und die vier Saison-Skins |
+
+  Gern zusätzlich echte Geräte-Screenshots ergänzen.
+- Die Skins auf diesen Bildern sind keine Nachmalerei: `store/skin_paint.py`
+  ist eine Portierung von `SkinPaint.kt` und liefert jedem der 13×13
+  Rasterfelder dieselbe Farbe wie das Spiel; `store/pixel_dot.py`
+  zeichnet daraus den Vogel wie `drawTimingDot`. Auch die Beschriftungen
+  im Skin-Menü kommen aus den echten String-Ressourcen der App.
+  `python3 store/check_skin_paint.py` übersetzt `SkinPaint.kt` mit dem
+  Kotlin-Compiler aus dem Gradle-Cache und vergleicht alle 42 Skins Feld
+  für Feld gegen die Portierung — vor jeder Neuauslieferung einmal laufen
+  lassen, sonst behaupten die Bilder etwas, das die App nicht zeigt.
+- Werbe-Zeilen auf den Bildern bleiben ohne **M**: Der Bytesized-Font
+  rendert es wie ein N („SAMMELN" liest sich als „SANNELN"). In den
+  Zeilen, die das Spiel selbst zeigt (Skin-Hinweise), steht dagegen der
+  echte Text — genau so sieht ihn auch, wer die App öffnet.
+
+**Was Play verlangt** (von den Generatoren eingehalten): Screenshots
+zwischen 320 px und 3840 px Kantenlänge, Seitenverhältnis höchstens 2:1
+(hier 9:16), Feature-Grafik exakt 1024×500 — alles PNG (oder JPEG) ohne
+Alphakanal, ohne Geräterahmen und ohne Store-Abzeichen. Play zeigt
+mindestens 2, höchstens 8 Screenshots je Sprache; die sechs Motive
+passen also in einen Eintrag, und ihre Reihenfolge ist die Reihenfolge
+im Listing.
 
 ## Automatischer Upload in den internen Test-Track (CI)
 

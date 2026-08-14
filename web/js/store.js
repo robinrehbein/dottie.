@@ -87,6 +87,15 @@
     get selectedSkinName() { return backend.getItem(PREFIX + "selected_skin"); },
     set selectedSkinName(name) { backend.setItem(PREFIX + "selected_skin", name); },
 
+    /**
+     * Gewählte Kulisse (Name), WIESE als Fallback via DotScene.fromName.
+     * Wie die Skin-Wahl eine Entscheidung, keine Bestleistung — im Web
+     * gibt es keinen Abgleich mit der Uhr, deshalb reicht der Name ohne
+     * Zeitstempel.
+     */
+    get selectedSceneName() { return backend.getItem(PREFIX + "selected_scene"); },
+    set selectedSceneName(name) { backend.setItem(PREFIX + "selected_scene", name); },
+
     // ===== Daily Challenge =====
 
     /** Tagesbest-Score — gilt nur für den in dailyDay gespeicherten Tag. */

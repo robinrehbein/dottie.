@@ -707,6 +707,7 @@ final class SkinOverlay: SKNode {
     enum TouchResult {
         case scrolled
         case select(DotSkin)
+        case selectScene(SceneId)
         case close
     }
 
@@ -718,7 +719,19 @@ final class SkinOverlay: SKNode {
         let statusLabel: PixelLabel
     }
 
+    /// Dieselbe Zeile, nur fuer eine Kulisse. Zwei Typen statt eines
+    /// generischen: Die beiden Sammlungen haben nichts gemeinsam ausser
+    /// dem Aussehen ihrer Zeile.
+    private struct SceneRow {
+        let scene: SceneId
+        let centerY: CGFloat
+        let swatch: SKSpriteNode
+        let titleLabel: PixelLabel
+        let statusLabel: PixelLabel
+    }
+
     private var rows: [Row] = []
+    private var sceneRows: [SceneRow] = []
     private let rowHeight: CGFloat = 58
     private let headerHeight: CGFloat = 36
 
@@ -766,6 +779,50 @@ final class SkinOverlay: SKNode {
         addChild(crop)
 
         var y = listTop - 24
+
+        // Die Kulissen stehen ganz oben und vor allen Skin-Familien: Es
+        // sind nur sechs, sie wirken auf das ganze Bild, und wer das Menue
+        // oeffnet, soll sie nicht erst suchen muessen.
+        let scenesHeader = PixelLabel(
+            text: L10n.text("scenes"), fontSize: 15,
+            color: Palette.dotBody, shadow: false
+        )
+        scenesHeader.position = CGPoint(x: 40, y: y)
+        alignLeft(scenesHeader)
+        contentNode.addChild(scenesHeader)
+        y -= headerHeight
+
+        for scene in SceneId.allCases {
+            let swatch = SKSpriteNode(texture: PixelArt.scenePreviewTexture(scene: scene, size: 36))
+            swatch.size = CGSize(width: 36, height: 36)
+            swatch.position = CGPoint(x: 64, y: y)
+            contentNode.addChild(swatch)
+
+            let titleLabel = PixelLabel(
+                text: L10n.text(scene.titleKey), fontSize: 20, color: .white, shadow: false
+            )
+            titleLabel.position = CGPoint(x: 96, y: y + 10)
+            alignLeft(titleLabel)
+            contentNode.addChild(titleLabel)
+
+            let statusLabel = PixelLabel(
+                text: "", fontSize: 14, color: UIColor(white: 1, alpha: 0.7), shadow: false
+            )
+            statusLabel.position = CGPoint(x: 96, y: y - 12)
+            alignLeft(statusLabel)
+            contentNode.addChild(statusLabel)
+
+            sceneRows.append(SceneRow(
+                scene: scene,
+                centerY: y,
+                swatch: swatch,
+                titleLabel: titleLabel,
+                statusLabel: statusLabel
+            ))
+            y -= rowHeight
+        }
+        y -= 8
+
         for family in DotSkin.Family.allCases {
             let header = PixelLabel(
                 text: L10n.text(family.titleKey), fontSize: 15,
@@ -887,6 +944,11 @@ final class SkinOverlay: SKNode {
             return .close
         }
         let contentY = point.y - scrollOffset
+        for row in sceneRows where abs(contentY - row.centerY) <= rowHeight / 2 {
+            // Auf eine gesperrte Zeile getippt: Der Picker schliesst wie
+            // bei jedem Tipp daneben.
+            return row.scene.isUnlocked(stats) ? .selectScene(row.scene) : .close
+        }
         for row in rows where abs(contentY - row.centerY) <= rowHeight / 2 {
             // Auf eine gesperrte Zeile getippt: Der Picker schließt wie
             // bei jedem Tipp daneben — der Hinweis unten verspricht genau das.
@@ -895,7 +957,22 @@ final class SkinOverlay: SKNode {
         return .close
     }
 
-    func refresh(stats: DotSkin.Stats, selected: DotSkin) {
+    func refresh(stats: DotSkin.Stats, selected: DotSkin, selectedScene: SceneId) {
+        for row in sceneRows {
+            let unlocked = row.scene.isUnlocked(stats)
+            row.swatch.alpha = unlocked ? 1.0 : 0.3
+            row.titleLabel.color = unlocked ? .white : UIColor(white: 1, alpha: 0.45)
+            if row.scene == selectedScene {
+                row.statusLabel.text = L10n.text("skin_selected")
+                row.statusLabel.color = Palette.dotBody
+            } else if unlocked {
+                row.statusLabel.text = L10n.text("skin_tap_select")
+                row.statusLabel.color = UIColor(white: 1, alpha: 0.7)
+            } else {
+                row.statusLabel.text = row.scene.unlockHintKey.map { L10n.text($0) } ?? ""
+                row.statusLabel.color = UIColor(white: 1, alpha: 0.45)
+            }
+        }
         for row in rows {
             let unlocked = row.skin.isUnlocked(stats)
             row.swatch.alpha = unlocked ? 1.0 : 0.3

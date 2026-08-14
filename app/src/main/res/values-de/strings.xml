@@ -96,13 +96,17 @@
     <!-- Skins -->
     <string name="skin_selected">AUSGEWAEHLT</string>
     <string name="skin_tap_select">TIPPEN ZUM WAEHLEN</string>
-    <!-- Familien-Ueberschriften im Skin-Menue (42 Skins brauchen Gliederung). -->
-    <string name="skin_family_solid">EINFARBIG</string>
-    <string name="skin_family_pattern">GEMUSTERT</string>
-    <string name="skin_family_moving">BEWEGT</string>
-    <string name="skin_family_reactive">REAGIEREND</string>
-    <string name="skin_family_season">SAISON</string>
-    <string name="skin_family_patron">GOENNER</string>
+    <!-- Familien-Ueberschriften im Skin-Menue (42 Skins brauchen Gliederung).
+         Die Keys tragen die deutschen Familiennamen, weil Android, iOS und
+         die PWA dieselben Kennungen fuehren muessen und die Familien in
+         SkinId (:core) genauso heissen — der Paritaetstest im Web
+         vergleicht sie Wort fuer Wort. -->
+    <string name="skin_family_einfarbig">EINFARBIG</string>
+    <string name="skin_family_gemustert">GEMUSTERT</string>
+    <string name="skin_family_bewegt">BEWEGT</string>
+    <string name="skin_family_reagierend">REAGIEREND</string>
+    <string name="skin_family_saison">SAISON</string>
+    <string name="skin_family_goenner">GOENNER</string>
     <!-- Goenner-Paket: nur sichtbar, wenn Google einen Preis liefert. -->
     <string name="patron_pack">GOENNER-PAKET — %1$s</string>
     <string name="patron_owned">DANKE!</string>
@@ -191,12 +195,28 @@
     <string name="skin_hint_osterei">IM APRIL AN 5 TAGEN SPIELEN</string>
     <string name="skin_hint_goenner">GOENNER-PAKET</string>
 
+    <!-- Kulissen: die zweite Sammlung. Sie entscheidet nie ueber einen
+         Treffer — deshalb darf sie verkauft werden und die Bahn nicht. -->
+    <string name="scenes">KULISSEN</string>
+    <string name="scene_wiese">WIESE</string>
+    <string name="scene_wueste">WUESTE</string>
+    <string name="scene_meer">MEER</string>
+    <string name="scene_berg">BERG</string>
+    <string name="scene_stadt">STADT</string>
+    <string name="scene_weltraum">WELTRAUM</string>
+    <string name="scene_hint_wueste">500 LAEUFE</string>
+    <string name="scene_hint_meer">10.000 PUNKTE INSGESAMT</string>
+    <string name="scene_hint_berg">DAILY-SERIE: 30 TAGE</string>
+    <string name="scene_hint_stadt">REKORD 85</string>
+    <string name="scene_hint_weltraum">ALLE ANDEREN KULISSEN SAMMELN</string>
+
     <!-- Score-Card / Teilen -->
     <string name="share_text">%1$d Punkte in DOTTIE. — schaffst du mehr?</string>
     <string name="share_text_daily">Daily Challenge in DOTTIE.: %1$d Punkte — schaffst du mehr?</string>
     <string name="share_chooser">Score teilen</string>
     <string name="card_daily">DAILY-CHALLENGE</string>
     <string name="card_points">PUNKTE</string>
+    <string name="card_scene">KULISSE: %1$s</string>
     <string name="card_daily_streak">DAILY-SERIE: %1$d TAGE</string>
     <string name="card_record">REKORD: %1$d</string>
     <string name="card_challenge">SCHAFFST DU MEHR?</string>

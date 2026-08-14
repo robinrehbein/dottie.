@@ -138,10 +138,78 @@ Der Tagespass ist eine reine Android-Sache: Er hängt am Rewarded-Spot,
 und PWA (`web/`) sowie iOS (`ios/`) haben keine Werbung — dort ändert
 sich nichts.
 
+## Kulissen (ab v2.21)
+
+Die zweite Sammlung neben den Skins: **sechs Kulissen** — Wiese, Wüste,
+Meer, Berg, Stadt, Weltraum. Eine Kulisse ist alles, was **nicht** über
+Treffer entscheidet: der Himmel in seinen sieben Stufen, die Wolken, die
+Requisiten am Boden (Baum, Blume, Strauch, Kaktus, Welle, Nadelbaum,
+Hochhaus, Fels) und der Bodenstreifen.
+
+**Warum die Kulisse verkäuflich ist und die Bahn nicht.** Bahn, Zielzone,
+Perfekt-Kern und Falle sehen in jeder Kulisse exakt gleich aus. Damit ist
+die Kulisse reine Aussicht: Sie kann kein Vorteil sein und — noch
+wichtiger — kein Nachteil. Eine gekaufte Bahn wäre beides. „Perfekt oder
+vorbei" ist das Versprechen des Spiels; alles, was am Treffer mitredet,
+bleibt deshalb außerhalb des Angebots. Die Kulisse ist die größte Fläche
+im Bild und trotzdem folgenlos — genau darum ist sie die richtige.
+
+Farben, Requisiten und Schwellen liegen in `ScenePaint` (`:core`), analog
+zu `SkinPaint`. Eine Requisite ist dort **Daten, kein Zeichencode**:
+Form, Größe (Anteil der Bildhöhe), Windanteil und Farben. Alle vier
+Renderer — Compose, Canvas, SpriteKit, Wear — laufen dieselbe Liste
+zyklisch ab; ohne diese Trennung müsste jede neue Kulisse in vier
+Sprachen nachgezeichnet werden und liefe in vieren auseinander.
+
+Freigeschaltet wird über je eine eigene Achse, mit bewusst hohen
+Schwellen — eine Kulisse ist der seltene große Wechsel, kein Stufenziel:
+
+| Kulisse | Bedingung |
+|---|---|
+| WIESE | von Anfang an |
+| WÜSTE | 500 Läufe |
+| MEER | 10.000 Punkte insgesamt |
+| BERG | Daily-Serie 30 Tage |
+| STADT | Rekord 85 |
+| WELTRAUM | alle anderen Kulissen gesammelt |
+
+Drei Regeln nagelt `:core` per Test fest (`ScenePaintTest`):
+
+- **Keine Kulissenfarbe kommt der Zielzone (`#74BF2E`/`#9DE85A`) oder der
+  Falle (`#B44FD8`) näher als 60 Schritte im RGB-Raum.** Sonst verkauft
+  die Kulisse Verwirrung. Mit **einer benannten Ausnahme**: Die Wiese
+  reißt diese Grenze seit jeher selbst — ihr Buschgrün `#71C837` liegt 13
+  Schritte neben der Zonenfarbe, ihre Grasnarbe trägt sie exakt. Diese
+  Flächen liegen am unteren Bildrand, nie im Ringband (die Bahn endet bei
+  72 % Höhe, die Baumkronen beginnen bei 74 %). Der Test bildet den
+  Bestand deshalb als Ausnahme ab, statt ihn stillschweigend umzufärben —
+  und lässt nur die Wiese sie benutzen.
+- **Die sieben Himmelsstufen eines Sets bleiben untereinander
+  unterscheidbar** (mindestens 40 Schritte zwischen zwei
+  aufeinanderfolgenden). Der Himmel ist Fortschrittsanzeige, kein Dekor:
+  Wer eine Stufe erreicht, muss den Wechsel sehen. Die Grenze liegt knapp
+  unter dem engsten Schritt des Bestands (Tag → Blau, 41).
+- **Die Bodenkante bleibt bei 88 % Höhe.** Sie ist Layout-Anker: Dort
+  stehen die Requisiten, dort beginnt der Bodenstreifen, dort setzt die
+  Tod-Animation auf. Alle Renderer fragen `ScenePaint.groundY` statt
+  selbst mit 0.88 zu rechnen. Der Weltraum zeichnet gar keinen Boden —
+  die Linie gilt trotzdem, und der Test prüft, dass der Sturz dort auf
+  derselben Höhe endet wie überall sonst.
+
+Die Wiese ist dabei **Pixel für Pixel der Bestand**: Jeder Farbwert und
+jede Requisiten-Größe stammt unverändert aus `GameOverlays.kt` /
+`TimingGameScreen.kt`. Wer die Umstellung sieht, hat sie falsch gemacht.
+
+Gewählt wird im SKINS-Overlay, wo die Kulissen als eigener Abschnitt über
+den Skin-Familien stehen (Android, PWA, iOS); gesperrte zeigen ihre
+Bedingung. Die Wahl wird wie die Skin-Wahl gespeichert und steht auf der
+Score-Card — sonst sähe sie niemand außer der Besitzerin. Die Uhr wählt
+keine Kulisse; sie zieht die Himmelsfarben nur lesend aus `ScenePaint`.
+
 ## Abgleich zwischen Telefon und Uhr (ab v2.19)
 
-Rekord, Lauf-Zahl, beste Perfekt-Serie, Daily-Stand und die Skin-Wahl
-gleichen sich über den **Wearable Data Layer** ab (Modul `:sync`). Es
+Rekord, Lauf-Zahl, beste Perfekt-Serie, Daily-Stand sowie Skin- und
+Kulissen-Wahl gleichen sich über den **Wearable Data Layer** ab (Modul `:sync`). Es
 gibt dabei bewusst **keine Haupt- und keine Nebenrolle**: Jedes Gerät
 legt seinen Stand ab, liest den der Gegenseite und führt beide mit
 `SyncState.mergedWith` (`:core`) zusammen. Weil das Zusammenführen
@@ -154,8 +222,8 @@ Die Regeln:
 
 - **Bestleistungen**: der höhere Wert gewinnt. Ein Rekord, der einmal
   existiert hat, darf durch den Abgleich nie verschwinden.
-- **Skin-Wahl**: die *neuere* gewinnt, nicht die „größere" — eine
-  Auswahl ist eine Entscheidung, kein Rekord. Ein nur geliehener
+- **Skin- und Kulissen-Wahl**: die *neuere* gewinnt, nicht die
+  „größere" — eine Auswahl ist eine Entscheidung, kein Rekord. Ein nur geliehener
   Tagespass-Skin wird gar nicht erst mitgeteilt: geliehen ist nicht
   verdient, und die Uhr leitet ihre Freischaltungen ohnehin selbst aus
   den Bestleistungen ab.

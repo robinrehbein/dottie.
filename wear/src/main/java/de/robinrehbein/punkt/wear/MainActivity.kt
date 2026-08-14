@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var controller: WearGameController
     private lateinit var statsSync: StatsSync
+    private lateinit var patron: WearPatron
 
     /** Aufsummierte Rotary-Einheiten seit dem letzten ausgelösten Tap. */
     private var rotaryAccumulated = 0f
@@ -47,6 +48,14 @@ class MainActivity : ComponentActivity() {
             write = { controller.applySync(it) }
         )
         controller.onStateChanged = { statsSync.publish() }
+        // Gönner-Kauf: Die Uhr fragt Play selbst, statt sich ein Flag vom
+        // Telefon schicken zu lassen — der Kauf hängt am Google-Konto.
+        patron = WearPatron(applicationContext) {
+            // Neu erfahren: Jetzt darf auch ein vom Telefon gewählter
+            // Gönner-Skin durchgehen, deshalb gleich noch einmal
+            // abgleichen (siehe WearGameController.applySync).
+            if (controller.onPatronResolved(true)) statsSync.pullAndPublish()
+        }
         setContent {
             WearGameScreen(controller)
         }
@@ -55,6 +64,9 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         statsSync.start()
+        // Bei jedem Sichtbarwerden neu fragen: Der Kauf kann eben erst am
+        // Telefon passiert sein. Ohne Play bleibt der Aufruf folgenlos.
+        patron.connect()
     }
 
     override fun onStop() {
@@ -70,6 +82,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         // SoundPool freigeben (WearAudio) — Ein-Activity-App, Destroy = Ende.
         if (::controller.isInitialized) controller.release()
+        if (::patron.isInitialized) patron.release()
         super.onDestroy()
     }
 

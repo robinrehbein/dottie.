@@ -12,6 +12,7 @@ var TimingGame = require("../js/game.js");
 var DailyChallenge = require("../js/daily.js");
 var ChipSynth = require("../js/synth.js");
 var skins = require("../js/skins.js");
+var DotScene = require("../js/scenes.js");
 var Strings = require("../js/strings.js");
 var ScoreStore = require("../js/store.js");
 var DotSkin = skins.DotSkin;
@@ -762,14 +763,151 @@ function driveToZoneAndTap(game) {
   assertEq(P.FakeZoneColor, zoneColors.FakeZoneColor, "Köder-Zone");
   assertEq(P.FakeZoneCoreColor, zoneColors.FakeZoneCoreColor, "Köder-Zone (Kern)");
 
-  var skyBlock = screen.slice(screen.indexOf("SkyStages = listOf"));
-  skyBlock = skyBlock.slice(0, skyBlock.indexOf("\n)"));
-  var sky = (skyBlock.match(/0x[Ff]{2}[0-9A-Fa-f]{6}/g) || [])
-    .map(function (h) { return "#" + h.slice(4).toUpperCase(); });
-  assertEq(sky.length, 7, "sieben Himmels-Stufen in Kotlin");
-  sky.forEach(function (hex, i) {
-    assertEq(P.SkyStages[i], hex, "Himmel Stufe " + i);
-  });
+  // Kulissen: Himmel, Wolke, Boden und Requisiten stehen seit v2.21 in
+  // ScenePaint.kt (:core). Geprueft wird JEDE Kulisse, nicht nur die
+  // WIESE — sonst faellt eine neue Kulisse, deren PWA-Port danebenliegt,
+  // erst im Spiel auf.
+  var sceneKt = (function () {
+    try {
+      return fs.readFileSync(
+        path.join(__dirname, "..", "..", "core", "src", "main", "kotlin",
+          "de", "robinrehbein", "punkt", "game", "ScenePaint.kt"),
+        "utf8"
+      );
+    } catch (e) {
+      return null;
+    }
+  })();
+
+  if (!sceneKt) {
+    console.log("Hinweis: ScenePaint.kt nicht gefunden — Kulissen-Paritaet uebersprungen.");
+  } else {
+    /** Der Quelltext-Block genau einer Kulisse. */
+    function sceneBlock(name) {
+      var head = sceneKt.indexOf("private val " + name + " = Scene(");
+      if (head < 0) return null;
+      var rest = sceneKt.slice(head + 1);
+      var next = rest.indexOf("\n    private val ");
+      var stop = rest.indexOf("\n    /** Die komplette Beschreibung");
+      if (next < 0 || (stop >= 0 && stop < next)) next = stop;
+      return next < 0 ? rest : rest.slice(0, next);
+    }
+
+    // 0xAARRGGBB in Kotlin, #RRGGBB in der PWA — das Alpha ist immer FF.
+    function hex(raw) { return "#" + raw.slice(4).toUpperCase(); }
+
+    function argb(block, key) {
+      var m = new RegExp(key + " = (null|0x[0-9A-Fa-f]{8})").exec(block);
+      if (!m) return undefined;
+      return m[1] === "null" ? null : hex(m[1]);
+    }
+
+    /** Die Kulissen-Reihenfolge in SceneId muss die der PWA sein. */
+    var kotlinScenes = (function () {
+      var block = sceneKt.slice(sceneKt.indexOf("enum class SceneId {"));
+      block = block.slice(0, block.indexOf("}"));
+      return (block.match(/\b[A-Z][A-Z_]+\b/g) || []).filter(function (n) {
+        return n !== "SCENE" && n !== "ID";
+      });
+    })();
+    assertEq(
+      DotScene.SCENES.map(function (sc) { return sc.name; }).join(","),
+      kotlinScenes.join(","),
+      "Kulissen-Reihenfolge wie SceneId"
+    );
+
+    DotScene.SCENES.forEach(function (sc) {
+      var block = sceneBlock(sc.name);
+      assert(block !== null, "Kulisse " + sc.name + " in ScenePaint.kt gefunden");
+      if (!block) return;
+
+      var skyList = block.slice(block.indexOf("sky = longArrayOf("));
+      skyList = skyList.slice(0, skyList.indexOf("),"));
+      var sky = (skyList.match(/0x[0-9A-Fa-f]{8}/g) || []).map(hex);
+      assertEq(sky.length, 7, sc.name + ": sieben Himmels-Stufen in Kotlin");
+      sky.forEach(function (h, i) {
+        assertEq(sc.sky[i], h, sc.name + ": Himmel Stufe " + i);
+      });
+
+      assertEq(sc.cloud, argb(block, "cloud"), sc.name + ": Wolkenfarbe");
+
+      var groundNull = /ground = null/.test(block);
+      assertEq(sc.ground === null, groundNull, sc.name + ": Boden vorhanden?");
+      if (!groundNull) {
+        ["sand", "sandShade", "turfDark", "turfLight"].forEach(function (key) {
+          assertEq(sc.ground[key], argb(block, key), sc.name + ": Boden " + key);
+        });
+      }
+
+      var propsBlock = block.slice(block.indexOf("props = listOf("));
+      var chunks = propsBlock.split(/\bProp\(/).slice(1);
+      assertEq(chunks.length, sc.props.length, sc.name + ": Zahl der Requisiten");
+      chunks.forEach(function (chunk, i) {
+        var p = sc.props[i];
+        if (!p) return;
+        var head = /PropShape\.(\w+), (-?[\d.]+)f, (-?[\d.]+)f/.exec(chunk);
+        assert(head !== null, sc.name + ": Requisite " + i + " lesbar");
+        if (!head) return;
+        assertEq(p.shape, head[1], sc.name + ": Requisite " + i + " Form");
+        assert(Math.abs(p.size - parseFloat(head[2])) < 1e-6,
+          sc.name + ": Requisite " + i + " Groesse");
+        assert(Math.abs(p.sway - parseFloat(head[3])) < 1e-6,
+          sc.name + ": Requisite " + i + " Windanteil");
+        ["dark", "body", "light"].forEach(function (key) {
+          assertEq(p[key], argb(chunk, key), sc.name + ": Requisite " + i + " " + key);
+        });
+        // Stamm und Akzente sind optional — fehlen sie in Kotlin, gilt
+        // der Standard (Kontur bzw. keine Akzente).
+        assertEq(p.stem, argb(chunk, "stem") || "#543847",
+          sc.name + ": Requisite " + i + " Stamm");
+        var acc = /accents = listOf\(([^)]*)\)/.exec(chunk);
+        var accents = acc ? (acc[1].match(/0x[0-9A-Fa-f]{8}/g) || []).map(hex) : [];
+        assertEq(p.accents.join(","), accents.join(","),
+          sc.name + ": Requisite " + i + " Akzente");
+      });
+    });
+
+    // Freischalt-Schwellen: Die Zahl steht in Kotlin, die PWA muss an
+    // genau derselben Stelle umspringen.
+    var achsen = {
+      WUESTE: "runCount",
+      MEER: "totalScore",
+      BERG: "bestDailyStreak",
+      STADT: "bestScore"
+    };
+    Object.keys(achsen).forEach(function (name) {
+      var m = new RegExp("SceneId\\." + name + " -> stats\\.(\\w+) >= ([\\d_]+)").exec(sceneKt);
+      assert(m !== null, name + ": Schwelle in ScenePaint.kt gefunden");
+      if (!m) return;
+      assertEq(m[1], achsen[name], name + ": haengt an derselben Achse");
+      var limit = parseInt(m[2].replace(/_/g, ""), 10);
+      var scene = DotScene.fromName(name);
+      var genug = {}; genug[m[1]] = limit;
+      var knapp = {}; knapp[m[1]] = limit - 1;
+      assert(DotScene.isUnlocked(scene, genug), name + ": ab " + limit + " offen");
+      assert(!DotScene.isUnlocked(scene, knapp), name + ": bei " + (limit - 1) + " zu");
+    });
+
+    // Die Bodenkante ist Layout-Anker: In beiden Quellen dieselbe Zahl.
+    var kante = /const val GROUND_TOP = ([\d.]+)f/.exec(sceneKt);
+    assert(kante !== null, "GROUND_TOP in ScenePaint.kt gefunden");
+    if (kante) {
+      assert(Math.abs(DotScene.GROUND_TOP - parseFloat(kante[1])) < 1e-6, "Bodenkante");
+    }
+  }
+
+  // Der CHAMAELEON spiegelt die Himmelsstufen des Bestands — die PWA
+  // haelt sie zusaetzlich in DotSkin.SKY_STAGES.
+  assertEq(
+    P.SkyStages.join(","),
+    DotScene.fromName("WIESE").sky.join(","),
+    "Renderer-Himmel ist der Himmel der WIESE"
+  );
+  assertEq(
+    DotSkin.SKY_STAGES.join(","),
+    DotScene.fromName("WIESE").sky.join(","),
+    "Chamaeleon folgt dem Himmel der WIESE"
+  );
 
   // Skins: Reihenfolge, Kennungen, Stellvertreter-Farben und Schwellen
   // kommen aus SkinPaint.kt (:core) — die PWA muss sie 1:1 spiegeln, sonst
@@ -1092,6 +1230,29 @@ function driveToZoneAndTap(game) {
       "Muster " + pair[1] + " deckt sich mit " + pair[0]);
   });
 
+  // Rundung: Beide Seiten muessen den gerechneten Kanal gleich auf ein Byte
+  // bringen. Kotlin schnitt frueher ab (toInt()), das Web rundet
+  // (Math.round) — dieselbe Farbe kam dadurch in der App bis zu eine Stufe
+  // dunkler heraus als in der PWA. Geprueft wird die Quelle, weil sich die
+  // Rundung an den Farbwerten selbst nur an einzelnen Feldern zeigt.
+  function kotlinFunktion(kopf) {
+    var i = paintKt.indexOf(kopf);
+    assert(i >= 0, "Funktion '" + kopf + "' in SkinPaint.kt gefunden");
+    var block = paintKt.slice(i + kopf.length);
+    return block.slice(0, block.indexOf("\n    }"));
+  }
+  assert(/private fun byteOf\(v: Float\): Long = v\.roundToInt\(\)\.coerceIn\(0, 255\)/.test(paintKt),
+    "SkinPaint rundet den Kanal kaufmaennisch");
+  ["fun mix(a: Long, b: Long, k: Float): Long {", "fun hsl(h: Float, s: Float, l: Float): Long {"]
+    .forEach(function (kopf) {
+      var block = kotlinFunktion(kopf);
+      assert(block.indexOf("byteOf(") >= 0, kopf.split("(")[0] + " geht durch byteOf");
+      assert(block.indexOf(".toInt()") < 0, kopf.split("(")[0] + " schneidet keinen Kanal mehr ab");
+    });
+  var skinsQuelle = fs.readFileSync(path.join(__dirname, "..", "js", "skins.js"), "utf8");
+  assert(/Math\.max\(0, Math\.min\(255, Math\.round\(v\)\)\)/.test(skinsQuelle),
+    "der Web-Port rundet denselben Kanal genauso");
+
   // Farb-Literale je Skin: Der Zweig in SkinPaint.cell und die cell-Funktion
   // im Web muessen dieselben Farben nennen. Zweige ohne eigenes Literal
   // (die einfarbigen, die body/shade nachschlagen) sind schon oben geprueft.
@@ -1165,22 +1326,114 @@ function driveToZoneAndTap(game) {
     return out;
   }
 
+  var xmlEn = xmlStrings(stringsEn);
+
+  /**
+   * Keys, die es in strings.xml nicht unter demselben Namen gibt. Der Wert
+   * nennt den Key, gegen den stattdessen verglichen wird; null heisst: Der
+   * Text gehoert allein der PWA.
+   *
+   * Diese Liste ist der Grund, warum ein fehlender Key nicht mehr
+   * stillschweigend uebersprungen wird — genau so waren die
+   * Familien-Ueberschriften auseinandergelaufen (Android hiess sie
+   * skin_family_solid, das Web skin_family_einfarbig, und der Test hat
+   * beide nie verglichen). Wer kuenftig einen Key umbenennt, faellt hier
+   * durch, statt unbemerkt zwei Texte zu pflegen.
+   */
+  var ANDERSWO = {
+    // translatable="false" — steht nur in values/, values-de erbt ihn.
+    app_name: "app_name",
+    // Android buendelt die drei Goenner-Hinweise in einem Key, Web und
+    // iOS fuehren sie je Skin. Verglichen wird gegen den gebuendelten Text.
+    skin_hint_diamant: "skin_hint_goenner",
+    skin_hint_phoenix: "skin_hint_goenner",
+    skin_hint_onyx: "skin_hint_goenner",
+    // Nur die PWA: In der App ist das Goenner-Paket zu kaufen, im Web
+    // nicht — dort steht dieser Zusatz hinter dem Hinweis.
+    skin_patron_web_only: null
+  };
+
   [["en", stringsEn], ["de", stringsDe]].forEach(function (pair) {
     var lang = pair[0];
     var xml = xmlStrings(pair[1]);
     var web = Strings.STRINGS[lang];
     var compared = 0;
+    var nurWeb = 0;
     Object.keys(web).forEach(function (key) {
-      if (xml[key] === undefined) return; // app_name steht nur in values/
+      var erwartet = xml[key];
+      if (erwartet === undefined) {
+        if (!Object.prototype.hasOwnProperty.call(ANDERSWO, key)) {
+          assert(false, lang + ": " + key + " fehlt in strings.xml (Key auf beiden Seiten angleichen)");
+          return;
+        }
+        var ersatz = ANDERSWO[key];
+        if (ersatz === null) {
+          nurWeb++;
+          return;
+        }
+        // values-de fuehrt manche Keys nicht (translatable="false"); dann
+        // gilt der englische Text, so wie ihn auch Android nachschlaegt.
+        erwartet = xml[ersatz] !== undefined ? xml[ersatz] : xmlEn[ersatz];
+        assert(erwartet !== undefined,
+          lang + ": Ersatz-Key " + ersatz + " fuer " + key + " gibt es nicht");
+      }
       if (Array.isArray(web[key])) {
-        assertEq(web[key].join("|"), xml[key].join("|"), lang + ": " + key);
+        assertEq(web[key].join("|"), erwartet.join("|"), lang + ": " + key);
       } else {
-        assertEq(web[key], xml[key], lang + ": " + key);
+        assertEq(web[key], erwartet, lang + ": " + key);
       }
       compared++;
     });
     assert(compared > 50, lang + ": genug Texte verglichen (" + compared + ")");
+    assertEq(nurWeb, 1, lang + ": genau ein Text gehoert allein der PWA");
+
+    // Jeder Eintrag der Ausnahmeliste muss auch wirklich gebraucht werden,
+    // sonst waechst hier eine Liste toter Schluessel heran.
+    Object.keys(ANDERSWO).forEach(function (key) {
+      assert(web[key] !== undefined, lang + ": Ausnahme " + key + " kennt die PWA gar nicht");
+    });
+
+    // Die sechs Familien-Ueberschriften sind der Anlass dieser Haertung:
+    // Sie muessen unter demselben Key in beiden Quellen stehen.
+    ["einfarbig", "gemustert", "bewegt", "reagierend", "saison", "goenner"]
+      .forEach(function (familie) {
+        var key = "skin_family_" + familie;
+        assert(xml[key] !== undefined, lang + ": " + key + " steht in strings.xml");
+        assert(web[key] !== undefined, lang + ": " + key + " steht in strings.js");
+        assertEq(web[key], xml[key], lang + ": " + key);
+      });
+
+    // Die UI-Schrift kennt keine Umlaute — im Deutschen werden sie
+    // ausgeschrieben (GOENNER, WUESTE, AUSGEWAEHLT). Geprueft wird, was
+    // die PWA zeichnet; die Systemschrift der Benachrichtigungen (nur
+    // Android) faellt nicht darunter.
+    if (lang === "de") {
+      Object.keys(web).forEach(function (key) {
+        var text = Array.isArray(web[key]) ? web[key].join(" ") : web[key];
+        assert(!/[ÄÖÜäöüß]/.test(text),
+          "de: " + key + " schreibt Umlaute aus");
+      });
+    }
   });
+
+  // Familien-Ueberschriften und Skin-Namen sind auch auf iOS dieselben
+  // Keys — sonst zeigt die App eine leere Ueberschrift (Localizable.strings
+  // faellt auf den Key selbst zurueck, das faellt erst im Store auf).
+  var iosDe = (function () {
+    try {
+      return fs.readFileSync(path.join(__dirname, "..", "..", "ios", "Dottie",
+        "Resources", "de.lproj", "Localizable.strings"), "utf8");
+    } catch (e) {
+      return null;
+    }
+  })();
+  if (iosDe) {
+    ["einfarbig", "gemustert", "bewegt", "reagierend", "saison", "goenner"]
+      .forEach(function (familie) {
+        var key = "skin_family_" + familie;
+        assert(iosDe.indexOf('"' + key + '"') >= 0, "iOS kennt " + key);
+      });
+  }
 })();
 
 console.log(checks + " Checks, " + failures + " Fehler");

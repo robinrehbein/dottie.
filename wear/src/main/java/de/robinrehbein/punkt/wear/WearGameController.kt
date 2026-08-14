@@ -1,7 +1,6 @@
 package de.robinrehbein.punkt.wear
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.os.SystemClock
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -10,7 +9,6 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.robinrehbein.punkt.game.DailyChallenge
-import de.robinrehbein.punkt.game.Season
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SyncState
 import de.robinrehbein.punkt.game.TimingGame
@@ -65,6 +63,13 @@ private const val KEY_SEASON_EARNED = "season_earned"
 private const val KEY_SEASON_WINDOW = "season_window"
 private const val KEY_SEASON_DAYS = "season_days"
 private const val KEY_SEASON_LAST_DAY = "season_last_day"
+
+/**
+ * Lokaler Spiegel des Gönner-Kaufs. Die Wahrheit ist Play (siehe
+ * [WearPatron]) — gespiegelt wird sie, damit die Uhr beim Start ohne Netz
+ * sofort Bescheid weiß, genau wie adsRemoved im Phone-Store.
+ */
+private const val KEY_PATRON = "patron_owned"
 
 /**
  * Zustands-Holder außerhalb der Composition. MainActivity braucht ihn in
@@ -127,6 +132,14 @@ internal class WearGameController(context: Context) {
 
     /** Ist der Skin-Wähler offen? Nur aus dem READY-Overlay erreichbar. */
     var skinPickerOpen by mutableStateOf(false)
+        private set
+
+    /**
+     * Gönner-Paket gekauft. Play ist die Wahrheit ([WearPatron] fragt sie
+     * ab), dies ist nur der lokale Spiegel — damit die Gönner-Skins beim
+     * Start ohne Netz sofort dastehen.
+     */
+    var patronOwned by mutableStateOf(prefs.getBoolean(KEY_PATRON, false))
         private set
 
     /**
@@ -229,6 +242,22 @@ internal class WearGameController(context: Context) {
         refreshDailyDisplay()
     }
 
+    // ===== Gönner-Kauf =====
+
+    /**
+     * Meldung aus der Play-Abfrage ([WearPatron]). Nur der Zuwachs zählt:
+     * Eine ausbleibende Antwort — kein Play, kein Netz — darf einen
+     * bekannten Kauf nie zurücknehmen. Liefert true, wenn sich dadurch
+     * hier etwas geändert hat; dann lohnt ein frischer Abgleich, weil
+     * jetzt auch ein Gönner-Skin des Telefons durchgeht.
+     */
+    fun onPatronResolved(owned: Boolean): Boolean {
+        if (!owned || patronOwned) return false
+        patronOwned = true
+        prefs.edit().putBoolean(KEY_PATRON, true).apply()
+        return true
+    }
+
     // ===== Skin-Wahl =====
 
     /**
@@ -236,9 +265,9 @@ internal class WearGameController(context: Context) {
      * im Phone-Store. Für die Daily-Serie zählt der gespeicherte Stand,
      * nicht die Anzeige-Vorschau (die fällt nach einer Lücke auf 0).
      *
-     * patronOwned bleibt false: Auf der Uhr gibt es kein Billing, die
-     * Gönner-Skins bleiben hier gesperrt — auch dann, wenn das Telefon
-     * einen davon als gewählten Skin schickt (siehe applySync).
+     * patronOwned kommt aus dem lokalen Spiegel des Play-Kaufs: Wer das
+     * Gönner-Paket gekauft hat, sieht seine Skins auch auf der Uhr — der
+     * Kauf hängt am Konto, nicht am Gerät.
      */
     private fun skinStats(): WearDotSkin.Stats = WearDotSkin.Stats(
         bestScore = bestScore,
@@ -249,7 +278,8 @@ internal class WearGameController(context: Context) {
         daysPlayed = prefs.getInt(KEY_DAYS_PLAYED, 0),
         // SkinStats will die ANZAHL der Monate, nicht die Maske.
         monthsPlayed = Integer.bitCount(prefs.getInt(KEY_MONTHS_PLAYED, 0)),
-        seasonEarned = prefs.getInt(KEY_SEASON_EARNED, 0)
+        seasonEarned = prefs.getInt(KEY_SEASON_EARNED, 0),
+        patronOwned = patronOwned
     )
 
     /**
@@ -384,24 +414,22 @@ internal class WearGameController(context: Context) {
         val seasons = before.seasonEarned or state.seasonEarned
         if (seasons != before.seasonEarned) editor.putInt(KEY_SEASON_EARNED, seasons)
         if (state.skinChangedAt > before.skinChangedAt) {
-            editor.putLong(KEY_SKIN_CHANGED, state.skinChangedAt)
             // Freischaltungen leitet die Uhr aus den Ständen ab — mit den
-            // zusammengeführten Zahlen, nicht mit den alten. patronOwned
-            // bleibt auch hier false: Wählt das Telefon einen Gönner-Skin,
-            // behält die Uhr ihren eigenen, statt einen Kauf zu zeigen,
-            // von dem sie nichts weiß.
-            val merged = WearDotSkin.Stats(
-                bestScore = maxOf(state.bestScore, before.bestScore),
-                bestPerfectStreak = maxOf(state.bestPerfectStreak, before.bestPerfectStreak),
-                bestDailyStreak = maxOf(state.dailyStreak, before.dailyStreak),
-                runCount = maxOf(state.runCount, before.runCount),
-                totalScore = maxOf(state.totalScore, before.totalScore),
-                daysPlayed = maxOf(state.daysPlayed, before.daysPlayed),
-                monthsPlayed = Integer.bitCount(months),
-                seasonEarned = seasons
-            )
+            // zusammengeführten Zahlen, nicht mit den alten (siehe
+            // WearSyncMerge). Für die Gönner-Skins zählt der lokale
+            // Spiegel des Play-Kaufs.
+            val merged = WearSyncMerge.skinStats(before, state, patronOwned)
             val incoming = WearDotSkin.fromName(state.skin)
-            if (incoming.isUnlocked(merged)) editor.putString(KEY_SKIN, incoming.name)
+            if (incoming.isUnlocked(merged)) {
+                editor.putString(KEY_SKIN, incoming.name)
+                editor.putLong(KEY_SKIN_CHANGED, state.skinChangedAt)
+            }
+            // Sonst bleibt der Zeitstempel bewusst stehen: Ein Gönner-Skin,
+            // von dessen Kauf die Uhr noch nichts weiß, soll beim nächsten
+            // Abgleich erneut ankommen — sobald Play den Kauf bestätigt hat,
+            // geht die Wahl dann durch und beide Geräte zeigen wieder
+            // dasselbe. Mit fortgeschriebenem Zeitstempel bliebe die Uhr
+            // für immer auf ihrem alten Skin sitzen.
         }
         editor.apply()
 
@@ -536,44 +564,54 @@ internal class WearGameController(context: Context) {
      * "jetzt" — ein Lauf über Mitternacht darf nicht in zwei Töpfe fallen.
      */
     private fun recordRun(score: Int) {
-        val date = LocalDate.ofEpochDay(runEpochDay)
-        val editor = prefs.edit()
-        editor.putInt(KEY_RUNS, prefs.getInt(KEY_RUNS, 0) + 1)
-        editor.putInt(KEY_TOTAL_SCORE, prefs.getInt(KEY_TOTAL_SCORE, 0) + score)
-        // Der letzte Tag steht als Marke daneben, damit mehrere Läufe an
-        // einem Tag nur einen Tag zählen.
-        if (prefs.getLong(KEY_LAST_PLAYED_DAY, Long.MIN_VALUE) != runEpochDay) {
-            editor.putLong(KEY_LAST_PLAYED_DAY, runEpochDay)
-            editor.putInt(KEY_DAYS_PLAYED, prefs.getInt(KEY_DAYS_PLAYED, 0) + 1)
-        }
-        val monthBit = 1 shl (date.monthValue - 1)
-        editor.putInt(KEY_MONTHS_PLAYED, prefs.getInt(KEY_MONTHS_PLAYED, 0) or monthBit)
-        applySeasonProgress(editor, date)
-        editor.apply()
+        val before = readProgress()
+        // Gerechnet wird in WearProgress — ohne Prefs und damit prüfbar.
+        writeProgress(before, before.afterRun(score, LocalDate.ofEpochDay(runEpochDay)))
     }
 
-    /**
-     * Saison-Fortschritt: Tage mit mindestens einem Lauf im aktiven
-     * Saison-Monat. Ist die Marke erreicht, wandert das Bit in die
-     * dauerhafte Maske und bleibt dort — der Kalender allein würde den
-     * Kürbis im November wieder wegnehmen.
-     */
-    private fun applySeasonProgress(editor: SharedPreferences.Editor, date: LocalDate) {
-        val season = Season.forMonth(date.monthValue) ?: return
-        val earned = prefs.getInt(KEY_SEASON_EARNED, 0)
-        if (earned and season.bit != 0) return
-        // Fenster-Schlüssel: Derselbe Monat im nächsten Jahr fängt bei
-        // null an, sonst ließe sich der Skin über Jahre zusammenstückeln.
-        val window = date.year * 100 + date.monthValue
-        val freshWindow = prefs.getInt(KEY_SEASON_WINDOW, 0) != window
-        if (!freshWindow && prefs.getLong(KEY_SEASON_LAST_DAY, Long.MIN_VALUE) == runEpochDay) {
-            return
+    /** Der gespeicherte Ausdauer-Stand als reine Zahlen. */
+    private fun readProgress(): WearProgress = WearProgress(
+        runCount = prefs.getInt(KEY_RUNS, 0),
+        totalScore = prefs.getInt(KEY_TOTAL_SCORE, 0),
+        daysPlayed = prefs.getInt(KEY_DAYS_PLAYED, 0),
+        lastPlayedDay = prefs.getLong(KEY_LAST_PLAYED_DAY, Long.MIN_VALUE),
+        monthsPlayed = prefs.getInt(KEY_MONTHS_PLAYED, 0),
+        seasonEarned = prefs.getInt(KEY_SEASON_EARNED, 0),
+        seasonWindow = prefs.getInt(KEY_SEASON_WINDOW, 0),
+        seasonDays = prefs.getInt(KEY_SEASON_DAYS, 0),
+        seasonLastDay = prefs.getLong(KEY_SEASON_LAST_DAY, Long.MIN_VALUE)
+    )
+
+    /** Nur schreiben, was sich geändert hat — der Rest ist schon da. */
+    private fun writeProgress(before: WearProgress, after: WearProgress) {
+        if (after == before) return
+        val editor = prefs.edit()
+        if (after.runCount != before.runCount) editor.putInt(KEY_RUNS, after.runCount)
+        if (after.totalScore != before.totalScore) {
+            editor.putInt(KEY_TOTAL_SCORE, after.totalScore)
         }
-        val days = if (freshWindow) 1 else prefs.getInt(KEY_SEASON_DAYS, 0) + 1
-        editor.putInt(KEY_SEASON_WINDOW, window)
-            .putInt(KEY_SEASON_DAYS, days)
-            .putLong(KEY_SEASON_LAST_DAY, runEpochDay)
-        if (days >= season.requiredDays) editor.putInt(KEY_SEASON_EARNED, earned or season.bit)
+        if (after.daysPlayed != before.daysPlayed) {
+            editor.putInt(KEY_DAYS_PLAYED, after.daysPlayed)
+        }
+        if (after.lastPlayedDay != before.lastPlayedDay) {
+            editor.putLong(KEY_LAST_PLAYED_DAY, after.lastPlayedDay)
+        }
+        if (after.monthsPlayed != before.monthsPlayed) {
+            editor.putInt(KEY_MONTHS_PLAYED, after.monthsPlayed)
+        }
+        if (after.seasonEarned != before.seasonEarned) {
+            editor.putInt(KEY_SEASON_EARNED, after.seasonEarned)
+        }
+        if (after.seasonWindow != before.seasonWindow) {
+            editor.putInt(KEY_SEASON_WINDOW, after.seasonWindow)
+        }
+        if (after.seasonDays != before.seasonDays) {
+            editor.putInt(KEY_SEASON_DAYS, after.seasonDays)
+        }
+        if (after.seasonLastDay != before.seasonLastDay) {
+            editor.putLong(KEY_SEASON_LAST_DAY, after.seasonLastDay)
+        }
+        editor.apply()
     }
 
     /**

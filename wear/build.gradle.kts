@@ -93,4 +93,13 @@ dependencies {
     // libs.versions.toml) — nicht Teil der androidx.compose-BOM.
     implementation(libs.androidx.wear.compose.material)
     implementation(libs.androidx.wear.compose.foundation)
+
+    // Play Billing, hier ausschliesslich LESEND (WearPatron): Der
+    // Goenner-Kauf haengt am Google-Konto, nicht am Geraet, und Wear- und
+    // Phone-APK teilen sich die Paket-ID — die Uhr fragt ihn deshalb
+    // selbst ab, statt sich ein faelschbares Flag schicken zu lassen.
+    // Gleiche Version wie in :app (libs.versions.toml).
+    implementation(libs.billing.ktx)
+
+    testImplementation(libs.junit)
 }

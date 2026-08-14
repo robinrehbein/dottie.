@@ -4,6 +4,7 @@ import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -131,8 +132,13 @@ object SkinPaint {
     private const val RR = GRID / 2f - 0.25f
 
     /**
-     * Himmelsstufen. Spiegelt SkyStages aus der UI (TimingGameScreen.kt);
-     * der Gleichstand ist per Test abgesichert.
+     * Himmelsstufen des Bestands — dieselben sieben Töne wie die Kulisse
+     * WIESE (ScenePaint), der Gleichstand ist per Test abgesichert.
+     *
+     * Der CHAMAELEON spiegelt bewusst DIESE Tabelle und nicht die der
+     * gewählten Kulisse: Skins und Kulissen sind zwei Sammlungen, und ein
+     * Skin, dessen Farbe an einer anderen Sammlung hinge, wäre nicht mehr
+     * für sich allein beschreibbar.
      */
     val SKY_STAGES = longArrayOf(
         0xFF4EC0CA, // 0+  Tag
@@ -929,6 +935,17 @@ object SkinPaint {
     private fun shaded(col: Int, row: Int, body: Long, shade: Long): Long =
         if (col + row > GRID * 1.15f) shade else body
 
+    /**
+     * Kanalwert einer gerechneten Farbe auf ein Byte bringen.
+     *
+     * Kaufmännisch gerundet, nicht abgeschnitten: Abschneiden zieht jeden
+     * Kanal systematisch nach unten (im Mittel eine halbe Stufe), Runden
+     * halbiert den Fehler und verteilt ihn symmetrisch. Der Web-Port
+     * (web/js/skins.js) und iOS rechnen genauso — sonst zeigten App und
+     * PWA dieselbe Farbe eine Stufe versetzt.
+     */
+    private fun byteOf(v: Float): Long = v.roundToInt().coerceIn(0, 255).toLong()
+
     /** Lineare Mischung zweier ARGB-Farben; k = 0 ergibt [a], k = 1 ergibt [b]. */
     fun mix(a: Long, b: Long, k: Float): Long {
         val f = k.coerceIn(0f, 1f)
@@ -936,8 +953,7 @@ object SkinPaint {
         for (shift in intArrayOf(16, 8, 0)) {
             val ca = (a shr shift) and 0xFF
             val cb = (b shr shift) and 0xFF
-            val v = (ca + (cb - ca) * f).toInt().coerceIn(0, 255).toLong()
-            out = out or (v shl shift)
+            out = out or (byteOf(ca + (cb - ca) * f) shl shift)
         }
         return out
     }
@@ -956,7 +972,7 @@ object SkinPaint {
             hue < 300f -> Triple(x, 0f, c)
             else -> Triple(c, 0f, x)
         }
-        fun byte(v: Float): Long = ((v + m) * 255f).toInt().coerceIn(0, 255).toLong()
+        fun byte(v: Float): Long = byteOf((v + m) * 255f)
         return 0xFF000000L or (byte(r1) shl 16) or (byte(g1) shl 8) or byte(b1)
     }
 }

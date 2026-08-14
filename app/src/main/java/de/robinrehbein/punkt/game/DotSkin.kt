@@ -123,12 +123,12 @@ enum class DotSkin(
 
     /** Überschriften des Skin-Menüs. */
     enum class Family(@StringRes val titleRes: Int) {
-        EINFARBIG(R.string.skin_family_solid),
-        GEMUSTERT(R.string.skin_family_pattern),
-        BEWEGT(R.string.skin_family_moving),
-        REAGIEREND(R.string.skin_family_reactive),
-        SAISON(R.string.skin_family_season),
-        GOENNER(R.string.skin_family_patron)
+        EINFARBIG(R.string.skin_family_einfarbig),
+        GEMUSTERT(R.string.skin_family_gemustert),
+        BEWEGT(R.string.skin_family_bewegt),
+        REAGIEREND(R.string.skin_family_reagierend),
+        SAISON(R.string.skin_family_saison),
+        GOENNER(R.string.skin_family_goenner)
     }
 
     /**

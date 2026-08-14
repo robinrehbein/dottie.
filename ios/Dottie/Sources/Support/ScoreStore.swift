@@ -71,6 +71,14 @@ final class ScoreStore {
         set { defaults.set(newValue.rawValue, forKey: ScoreStore.keySkin) }
     }
 
+    /// Gewählte Kulisse, WIESE als Fallback. Wie die Skin-Wahl eine
+    /// Entscheidung, keine Bestleistung — und ohne Tagespass: Die Kulisse
+    /// ist der seltene große Wechsel, nicht das Probierstück.
+    var selectedScene: SceneId {
+        get { return SceneId.fromName(defaults.string(forKey: ScoreStore.keyScene)) }
+        set { defaults.set(newValue.rawValue, forKey: ScoreStore.keyScene) }
+    }
+
     // MARK: - Daily Challenge
 
     /// Tagesbest-Score — gilt nur für den in `dailyDay` gespeicherten Tag.
@@ -225,6 +233,7 @@ final class ScoreStore {
     private static let keyReminder = "daily_reminder"
     private static let keyBestPerfect = "best_perfect_streak"
     private static let keySkin = "selected_skin"
+    private static let keyScene = "selected_scene"
     private static let keyDailyBest = "daily_best"
     private static let keyDailyDay = "daily_day"
     private static let keyDailyStreak = "daily_streak"

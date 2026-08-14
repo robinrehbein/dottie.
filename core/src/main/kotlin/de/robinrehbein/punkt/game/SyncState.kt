@@ -51,7 +51,15 @@ data class SyncState(
      * 1970). Der einzige Wert, bei dem "neuer gewinnt" gilt statt "größer
      * gewinnt" — eine Skin-Wahl ist eine Entscheidung, kein Rekord.
      */
-    val skinChangedAt: Long = 0L
+    val skinChangedAt: Long = 0L,
+    /** Name der gewählten Kulisse; leer = nie bewusst gewählt. */
+    val scene: String = "",
+    /**
+     * Wann die Kulisse zuletzt bewusst gewechselt wurde. Wie
+     * [skinChangedAt] eine Entscheidung und kein Rekord — auch hier
+     * gewinnt die neuere Wahl, nicht die "größere".
+     */
+    val sceneChangedAt: Long = 0L
 ) {
 
     /**
@@ -75,6 +83,13 @@ data class SyncState(
             other.skinChangedAt < skinChangedAt -> false
             else -> other.skin < skin
         }
+        // Dieselbe Regel für die Kulisse — sie ist die zweite Sammlung
+        // und damit die zweite Entscheidung, nicht die zweite Bestleistung.
+        val sceneFromOther = when {
+            other.sceneChangedAt > sceneChangedAt -> true
+            other.sceneChangedAt < sceneChangedAt -> false
+            else -> other.scene < scene
+        }
         return SyncState(
             bestScore = maxOf(bestScore, other.bestScore),
             runCount = maxOf(runCount, other.runCount),
@@ -91,7 +106,9 @@ data class SyncState(
             monthsPlayed = monthsPlayed or other.monthsPlayed,
             seasonEarned = seasonEarned or other.seasonEarned,
             skin = if (skinFromOther) other.skin else skin,
-            skinChangedAt = maxOf(skinChangedAt, other.skinChangedAt)
+            skinChangedAt = maxOf(skinChangedAt, other.skinChangedAt),
+            scene = if (sceneFromOther) other.scene else scene,
+            sceneChangedAt = maxOf(sceneChangedAt, other.sceneChangedAt)
         )
     }
 
