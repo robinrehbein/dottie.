@@ -109,6 +109,7 @@
     <string name="skin_family_goenner">GOENNER</string>
     <!-- Goenner-Paket: nur sichtbar, wenn Google einen Preis liefert. -->
     <string name="patron_pack">GOENNER-PAKET — %1$s</string>
+    <string name="patron_pack_skins_only">GOENNER-PAKET: DREI SKINS — %1$s</string>
     <string name="patron_owned">DANKE!</string>
     <!-- Skin-Tagespass: nur sichtbar, wenn Werbung aktiv ist. -->
     <string name="skin_pass_today">HEUTE FREI</string>

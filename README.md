@@ -117,8 +117,12 @@ Rewarded-Spot für den **Skin-Tagespass**, seltene Interstitials
 einmalige Kauf „Werbung entfernen" über Play Billing. Die AdMob-IDs
 stehen in `res/values/ads.xml`; leert man eine der beiden
 Anzeigenblock-IDs, fällt alles wieder in den werbefreien Zustand zurück —
-kein SDK-Init, keine Requests, kein Consent-Dialog, kein BillingClient,
-und die UI sieht aus wie ohne die Abhängigkeiten. Vor der ersten Anzeige
+kein SDK-Init, keine Requests, kein Consent-Dialog — und die UI sieht
+aus wie ohne die Werbe-Abhängigkeit. **Der Kauf hängt seit v2.22 nicht
+mehr daran**: Das Gönner-Paket ist auch in einem werbefreien Build
+verkäuflich, denn drei Skins haben mit Anzeigen nichts zu tun. Ohne
+Play-Dienste oder ohne angelegtes Produkt bleibt die Kauf-Zeile
+weiterhin unsichtbar — das regelt der BillingClient von selbst. Vor der ersten Anzeige
 fragt Googles UMP nach der Einwilligung; wo das Pflicht ist, führt eine
 Zeile auf dem Startscreen dauerhaft zurück in dieses Formular.
 Datenschutzerklärung: `docs/index.html`, restliche Schritte in
