@@ -107,6 +107,64 @@ class SyncStateTest {
     }
 
     @Test
+    fun `die juengere Ton-Set-Wahl gewinnt, unabhaengig von Skin und Kulisse`() {
+        // Drei Sammlungen, drei Entscheidungen: Wer am Telefon das
+        // Ton-Set und auf der Uhr den Skin gewechselt hat, behält beides.
+        val a = phone.copy(
+            scene = "MEER", sceneChangedAt = 3_000L,
+            sound = "GLOCKE", soundChangedAt = 4_000L
+        )
+        val b = watch.copy(
+            scene = "WIESE", sceneChangedAt = 1_500L,
+            sound = "AMBOSS", soundChangedAt = 2_500L
+        )
+        assertEquals("GLOCKE", a.mergedWith(b).sound)
+        assertEquals("GLOCKE", b.mergedWith(a).sound)
+        assertEquals("MEER", a.mergedWith(b).scene)
+        assertEquals("FROST", a.mergedWith(b).skin)
+        assertEquals(4_000L, a.mergedWith(b).soundChangedAt)
+
+        // Ein Gerät, das noch nie gewählt hat, übernimmt die Wahl des
+        // anderen — und nicht umgekehrt, sonst wäre jede Wahl nach dem
+        // ersten Abgleich wieder weg.
+        val frisch = SyncState()
+        assertEquals("GLOCKE", frisch.mergedWith(a).sound)
+        assertEquals("GLOCKE", a.mergedWith(frisch).sound)
+    }
+
+    @Test
+    fun `bei gleichem Zeitstempel entscheiden beide Geraete auch beim Ton-Set gleich`() {
+        val c = phone.copy(sound = "AMBOSS", soundChangedAt = 500L)
+        val d = phone.copy(sound = "GLOCKE", soundChangedAt = 500L)
+        assertEquals(c.mergedWith(d).sound, d.mergedWith(c).sound)
+        // Und die Regel ist dieselbe wie bei Skin und Kulisse: Der
+        // alphabetisch kleinere Name gewinnt.
+        assertEquals("AMBOSS", c.mergedWith(d).sound)
+    }
+
+    @Test
+    fun `die drei Wahlen bleiben zusammen kommutativ und idempotent`() {
+        // Der Grund, warum das hier noch einmal steht: Ein neues Feld
+        // fällt bei den allgemeinen Tests unten nur auf, wenn es dort
+        // auch gesetzt ist.
+        val a = phone.copy(
+            skin = "GOLD", skinChangedAt = 1_000L,
+            scene = "BERG", sceneChangedAt = 2_000L,
+            sound = "GLOCKE", soundChangedAt = 3_000L
+        )
+        val b = watch.copy(
+            skin = "FROST", skinChangedAt = 2_000L,
+            scene = "STADT", sceneChangedAt = 1_000L,
+            sound = "AMBOSS", soundChangedAt = 3_000L
+        )
+        val merged = a.mergedWith(b)
+        assertEquals(merged, b.mergedWith(a))
+        assertEquals(merged, merged.mergedWith(merged))
+        assertEquals(merged, merged.mergedWith(a))
+        assertEquals(merged, merged.mergedWith(b))
+    }
+
+    @Test
     fun `am selben Tag zaehlt der bessere Tageslauf`() {
         assertEquals(8, phone.mergedWith(watch).dailyBest)
     }

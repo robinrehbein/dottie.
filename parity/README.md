@@ -22,6 +22,7 @@ herauskommen muss, und jeder Port prüft sich gegen dieselbe Datei.
 | `medal.*`, `sky.*` | Medaillen-Schwellen und -Farben, Himmelsstufen | ✅ | ✅ | ✅ |
 | `skin.*`, `season.*` | Reihenfolge, Farben, Raster, Freischaltungen, Saison-Regeln | ✅ | ✅ | ✅ |
 | `scene.*` | Kulissen: Himmel, Wolken, Boden, Requisiten, Freischaltungen | ✅ | ✅ | ✅ |
+| `sound.*` | Ton-Sets: Töne, Rauschen, Kacheln, Freischaltungen | ✅ | ✅ | ✅ |
 | `progress.*` | Ziele, ihre Reihenfolge und der Fortschrittsbalken | ✅ | ✅ | ✅ |
 | `rng.*` | Kotlins XorWow-Generator Zahl für Zahl | ✅ | ✅ | — |
 | `trace.*` | ganze Läufe, Treffer für Treffer | ✅ | ✅ | — |
@@ -46,8 +47,8 @@ weil dort auch der größte Teil der Handarbeit steckt:
   Saison-Skin wird nur in seinem Monat verdient, gilt danach aber für
   immer; entschieden wird deshalb über die Maske, nie über den Kalender.
 
-Die Kulissen (zweite Sammlung) und die Ziele der Statistik-Seite hängen
-mit denselben Proben daran:
+Die Kulissen (zweite Sammlung), die Ton-Sets (dritte) und die Ziele der
+Statistik-Seite hängen mit denselben Proben daran:
 
 - `scene.order`, `scene.sky.<ID>`, `scene.cloud.<ID>`, `scene.ground.<ID>`,
   `scene.chips.<ID>`, `scene.prop.<ID>.<k>` — die komplette Datentabelle
@@ -57,6 +58,13 @@ mit denselben Proben daran:
 - `scene.unlocked.N` — dieselben Proben wie bei den Skins, plus eigene
   für die höheren Kulissen-Schwellen (je einmal knapp darunter und genau
   auf der Kante).
+- `sound.order`, `sound.events`, `sound.voice.<ID>.<EREIGNIS>`,
+  `sound.chips.<ID>`, `sound.unlocked.N` — die komplette Klangtabelle.
+  Ein Ton steht als ein Wort `fromHz:toHz:Sekunden:Lautstärke:
+  Abklingrate:Pulsbreite`, das letzte Wort einer Zeile ist das Rauschen
+  (`-` heißt keins). Ein Port, der das Rauschen überliest, fällt an der
+  Feldzahl auf — und ein falscher Wert fällt sonst nirgends auf: Klang
+  hat kein Bild, das man vergleichen könnte.
 - `progress.probe.N`, `progress.goals.N`, `progress.next.N` — die offenen
   Ziele **in ihrer Reihenfolge**. Das erste Ziel ist das, was im
   Game-Over steht; eine andere Sortierung wäre auf jeder Plattform ein

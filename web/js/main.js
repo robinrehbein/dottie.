@@ -13,6 +13,7 @@
   var game = new TimingGame();
   var audio = new GameAudio();
   audio.muted = ScoreStore.soundMuted;
+  audio.soundSet = DotSound.fromName(ScoreStore.selectedSoundName).name;
 
   var fx = { flashAlpha: 0, shakeTime: 0, celebrateTime: 0, deathTime: -1 };
 
@@ -56,6 +57,7 @@
   // Die Kulisse ist die zweite Sammlung: kein Tagespass, kein
   // Verfallsdatum — ein schlichter Zustand reicht.
   var scene = DotScene.fromName(ScoreStore.selectedSceneName);
+  var sound = DotSound.fromName(ScoreStore.selectedSoundName);
   var skinUnlockedThisRun = false;
   var newMedalThisRun = false;
   var uiBestScore = ScoreStore.bestScore;
@@ -276,6 +278,37 @@
       ));
     });
 
+    // Die Ton-Sets stehen direkt hinter den Kulissen und vor den Skins:
+    // Es sind drei, sie wirken wie die Kulisse auf den ganzen Lauf, und
+    // die Hoerprobe beim Antippen soll nicht hinter 42 Vogel-Zeilen
+    // liegen — wer sie hoert, will sofort die naechste hoeren.
+    el.skinList.appendChild(heading(t("sounds")));
+    DotSound.SETS.forEach(function (st) {
+      var offen = DotSound.isUnlocked(st, stats);
+      var unterzeile = st.name === sound.name
+        ? { text: t("skin_selected"), selected: true }
+        : {
+          text: offen ? t("sound_tap_hear") : (st.hintKey ? t(st.hintKey) : ""),
+          selected: false
+        };
+      el.skinList.appendChild(pickerRow(
+        offen,
+        function (chipCtx, size) { Renderer.drawSoundPreview(chipCtx, size, st); },
+        t(st.titleKey),
+        unterzeile,
+        function () {
+          sound = st;
+          ScoreStore.selectedSoundName = st.name;
+          audio.soundSet = st.name;
+          // Die Hoerprobe ist der ganze Sinn der Zeile: Ohne sie waehlt
+          // man einen Klang nach seinem Namen. Das Menue bleibt dabei
+          // offen — wer eines hoert, will das naechste hoeren.
+          audio.preview(st.name);
+          buildSkinList();
+        }
+      ));
+    });
+
     DotSkin.SKINS.forEach(function (s) {
       // 42 Skins am Stück sind eine Wand — die Familien-Überschriften
       // teilen die Liste in Abschnitte, durch die man scrollen kann.
@@ -389,6 +422,9 @@
     );
     html += statRow(
       t("scenes"), DotScene.unlockedCount(stats) + "/" + DotScene.SCENES.length
+    );
+    html += statRow(
+      t("sounds"), DotSound.unlockedCount(stats) + "/" + DotSound.SETS.length
     );
 
     if (goals.length > 0) {

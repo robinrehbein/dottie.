@@ -96,6 +96,13 @@
     get selectedSceneName() { return backend.getItem(PREFIX + "selected_scene"); },
     set selectedSceneName(name) { backend.setItem(PREFIX + "selected_scene", name); },
 
+    /**
+     * Gewaehltes Ton-Set (Name), KLASSIK als Fallback via
+     * DotSound.fromName — die dritte Wahl nach demselben Muster.
+     */
+    get selectedSoundName() { return backend.getItem(PREFIX + "selected_sound"); },
+    set selectedSoundName(name) { backend.setItem(PREFIX + "selected_sound", name); },
+
     // ===== Daily Challenge =====
 
     /** Tagesbest-Score — gilt nur für den in dailyDay gespeicherten Tag. */

@@ -185,6 +185,15 @@
       scene_hint_stadt: "BEST 85",
       scene_hint_weltraum: "COLLECT EVERY OTHER SCENE",
 
+      // Ton-Sets: die dritte Sammlung.
+      sounds: "SOUNDS",
+      sound_klassik: "CLASSIC",
+      sound_glocke: "BELL",
+      sound_amboss: "ANVIL",
+      sound_hint_glocke: "PERFECT STREAK: 20",
+      sound_hint_amboss: "25,000 POINTS TOTAL",
+      sound_tap_hear: "TAP TO HEAR",
+
       // Statistik-Seite: Die vier Ausdauer-Achsen liefen seit v2.20
       // unsichtbar mit — hier stehen sie samt naechster Ziele.
       stats: "STATS",
@@ -375,6 +384,15 @@
       scene_hint_berg: "DAILY-SERIE: 30 TAGE",
       scene_hint_stadt: "REKORD 85",
       scene_hint_weltraum: "ALLE ANDEREN KULISSEN SAMMELN",
+
+      // Ton-Sets: die dritte Sammlung.
+      sounds: "TOENE",
+      sound_klassik: "KLASSIK",
+      sound_glocke: "GLOCKE",
+      sound_amboss: "AMBOSS",
+      sound_hint_glocke: "PERFEKT-SERIE: 20",
+      sound_hint_amboss: "25.000 PUNKTE INSGESAMT",
+      sound_tap_hear: "ANTIPPEN ZUM HOEREN",
 
       // Statistik-Seite: Die vier Ausdauer-Achsen liefen seit v2.20
       // unsichtbar mit — hier stehen sie samt naechster Ziele.

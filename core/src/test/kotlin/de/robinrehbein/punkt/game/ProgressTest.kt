@@ -119,6 +119,7 @@ class ProgressTest {
             val genau = statsWith(goal.axis, goal.target)
             val skin = goal.skin
             val scene = goal.scene
+            val sound = goal.sound
             if (skin != null) {
                 assertFalse("$skin darf bei ${goal.target - 1} noch zu sein",
                     SkinPaint.isUnlocked(skin, davor))
@@ -129,14 +130,19 @@ class ProgressTest {
                     ScenePaint.isUnlocked(scene, davor))
                 assertTrue("$scene muss bei ${goal.target} offen sein",
                     ScenePaint.isUnlocked(scene, genau))
+            } else if (sound != null) {
+                assertFalse("$sound darf bei ${goal.target - 1} noch zu sein",
+                    SoundBank.isUnlocked(sound, davor))
+                assertTrue("$sound muss bei ${goal.target} offen sein",
+                    SoundBank.isUnlocked(sound, genau))
             }
             geprueft++
         }
-        assertEquals("alle Zahlen-Ziele geprüft", 37, geprueft)
+        assertEquals("alle Zahlen-Ziele geprüft", 39, geprueft)
     }
 
     @Test
-    fun `kein Skin und keine Kulisse faellt aus der Tabelle`() {
+    fun `kein Skin, keine Kulisse und kein Ton-Set faellt aus der Tabelle`() {
         val offen = Progress.goals(leer, month = 10, seasonDays = 0)
         SkinId.entries.forEach { id ->
             val erwartet = !SkinPaint.isPatron(id) &&
@@ -154,6 +160,40 @@ class ProgressTest {
                 "$id gehört in die Ziel-Liste",
                 !ScenePaint.isUnlocked(id, leer),
                 offen.any { it.scene == id }
+            )
+        }
+        SoundSetId.entries.forEach { id ->
+            assertEquals(
+                "$id gehört in die Ziel-Liste",
+                !SoundBank.isUnlocked(id, leer),
+                offen.any { it.sound == id }
+            )
+        }
+    }
+
+    @Test
+    fun `ein Ton-Set faellt an seiner Schwelle und keinen Punkt frueher`() {
+        // Das Muster aller Ziele, hier für die neue Sammlung: bei
+        // target - 1 steht es noch, bei target ist es offen — und die
+        // Ziel-Liste sagt genau das auch.
+        listOf(
+            Triple(SoundSetId.GLOCKE, GoalAxis.PERFECT_STREAK, 20),
+            Triple(SoundSetId.AMBOSS, GoalAxis.TOTAL_SCORE, 25_000)
+        ).forEach { (id, axis, target) ->
+            val ziel = Progress.goals(leer).first { it.sound == id }
+            assertEquals(axis, ziel.axis)
+            assertEquals(target, ziel.target)
+            assertEquals(0, ziel.current)
+
+            assertFalse(SoundBank.isUnlocked(id, statsWith(axis, target - 1)))
+            assertTrue(SoundBank.isUnlocked(id, statsWith(axis, target)))
+            assertTrue(
+                "$id bleibt bei ${target - 1} ein Ziel",
+                Progress.goals(statsWith(axis, target - 1)).any { it.sound == id }
+            )
+            assertTrue(
+                "$id ist bei $target kein Ziel mehr",
+                Progress.goals(statsWith(axis, target)).none { it.sound == id }
             )
         }
     }

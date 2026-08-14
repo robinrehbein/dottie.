@@ -25,6 +25,10 @@ parallel zur Android-App in `app/` und der Wear-App in `wear/`.
   Szenerie (Bäume/Blumen/Sträucher mit Parallaxe), Wolken, „DOTTIE."-Titel,
   Mario-Tod (Freeze → Hüpfer → Kopfüber-Fall), Medaillen (10/20/30/40),
   Spott-Texte, REKORD-Banner, Freischalt-Zelebration, Flash + Shake.
+- Ton-Sets: drei Klangwelten (Klassik, Glocke, Amboss) aus `SoundBank` —
+  Frequenzen, Hüllkurven und Rauschanteile als Daten, `ChipSynth.render`
+  macht daraus Samples. Auswahl im SKINS-Overlay hinter den Kulissen, mit
+  Hörprobe beim Antippen.
 - Kulissen: sechs Sets (Wiese, Wüste, Meer, Berg, Stadt, Weltraum) aus
   `ScenePaint` — Himmel, Wolken, Requisiten und Boden als Daten, die
   Texturen entstehen daraus in `PixelArt.propTexture`. Auswahl im

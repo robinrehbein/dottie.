@@ -2,6 +2,9 @@ import Foundation
 
 /// Port von core/.../ChipSynth.kt: Chiptune-Soundeffekte im NES-Stil,
 /// Rechteckwellen und Rauschen, zur Laufzeit erzeugt — keine Audio-Assets.
+/// Welche Frequenzen und Hüllkurven ein Klang hat, steht seit den
+/// Ton-Sets in `SoundBank` (Port von SoundSet.kt) — hier steht nur noch,
+/// wie daraus Samples werden.
 ///
 /// Alle Funktionen liefern Mono-Samples im Bereich [-1, 1] bei
 /// `sampleRate` Hz. Anders als auf Android (SoundPool mit Abspielrate)
@@ -97,64 +100,55 @@ enum ChipSynth {
 
     // MARK: - Fertige Effekte
 
-    /// Lauf-Start: dezenter, weicher Blip.
-    static func startSound() -> [Float] {
-        return square(freqHz: 440, seconds: 0.06, volume: 0.22, decay: 20)
-    }
-
-    /// Treffer: kurzer satter Blip — `rate` verschiebt die Tonhöhe wie die
-    /// SoundPool-Abspielrate auf Android.
-    static func hitSound(rate: Float) -> [Float] {
-        return square(freqHz: 660 * rate, seconds: 0.07 / rate, volume: 0.38, decay: 18 * rate)
-    }
-
-    /// Perfekt: der klassische Münz-Sound — zwei Töne schnell aufwärts.
-    static func perfectSound(rate: Float) -> [Float] {
-        return concat(
-            square(freqHz: 988 * rate, seconds: 0.06 / rate, volume: 0.32, decay: 12 * rate),
-            square(freqHz: 1319 * rate, seconds: 0.16 / rate, volume: 0.38, decay: 9 * rate)
-        )
-    }
-
-    /// Ketten-Zone: zwei flinke hohe Blips.
-    static func chainSound() -> [Float] {
-        return concat(
-            square(freqHz: 880, seconds: 0.05, volume: 0.3, decay: 20),
-            square(freqHz: 1175, seconds: 0.07, volume: 0.3, decay: 18)
-        )
-    }
-
-    /// Twist/Stufe freigeschaltet: kleine Fanfare aufwärts.
-    static func unlockSound() -> [Float] {
-        return concat(
-            square(freqHz: 523, seconds: 0.07, volume: 0.3, decay: 14),
-            square(freqHz: 659, seconds: 0.07, volume: 0.3, decay: 14),
-            square(freqHz: 784, seconds: 0.07, volume: 0.3, decay: 14),
-            square(freqHz: 1046, seconds: 0.2, volume: 0.34, decay: 8)
-        )
-    }
-
-    /// Neuer Rekord: längerer Jingle mit ausklingendem Schlusston.
-    static func recordSound() -> [Float] {
-        return concat(
-            square(freqHz: 784, seconds: 0.09, volume: 0.32, decay: 10),
-            square(freqHz: 1046, seconds: 0.09, volume: 0.32, decay: 10),
-            square(freqHz: 1319, seconds: 0.09, volume: 0.32, decay: 10),
-            square(freqHz: 1568, seconds: 0.3, volume: 0.36, decay: 6)
-        )
-    }
-
-    /// Tod: fallender Sweep plus Rausch-Burst — der Rage-Moment.
-    static func deathSound() -> [Float] {
+    /// Ein Ereignis-Klang aus der Tabelle (`SoundBank`): Töne
+    /// hintereinander, Rauschen darüber. Die einzige Stelle, an der aus
+    /// einer `Voice` Samples werden — Kotlin und JavaScript tun exakt
+    /// dasselbe, damit ein neues Ton-Set nirgends nachgebaut werden muss.
+    ///
+    /// `rate` ersetzt die SoundPool-Abspielrate von Android: Frequenz mal
+    /// r, Dauer durch r, Abklingrate mal r — das klingt gleich, braucht
+    /// aber kein Varispeed-Setup. Das Rauschen bleibt davon unberührt:
+    /// Ein Aufprall hat keine Tonhöhe.
+    static func render(_ voice: SoundBank.Voice, rate: Float = 1) -> [Float] {
+        var tones: [Float] = []
+        for tone in voice.tones {
+            let part: [Float]
+            if tone.fromHz == tone.toHz {
+                part = square(
+                    freqHz: tone.fromHz * rate,
+                    seconds: tone.seconds / rate,
+                    volume: tone.volume,
+                    decay: tone.decay * rate,
+                    duty: tone.duty
+                )
+            } else {
+                part = sweep(
+                    fromHz: tone.fromHz * rate,
+                    toHz: tone.toHz * rate,
+                    seconds: tone.seconds / rate,
+                    volume: tone.volume,
+                    decay: tone.decay * rate
+                )
+            }
+            tones.append(contentsOf: part)
+        }
+        guard let rausch = voice.noise else {
+            return tones
+        }
         return mix(
-            sweep(fromHz: 700, toHz: 90, seconds: 0.35, volume: 0.42, decay: 4),
-            noise(seconds: 0.12, volume: 0.32, decay: 22)
+            tones,
+            noise(seconds: rausch.seconds, volume: rausch.volume, decay: rausch.decay)
         )
     }
 
-    /// Dumpfer Aufschlag, wenn das Ergebnis feststeht.
-    static func thudSound() -> [Float] {
-        return square(freqHz: 100, seconds: 0.09, volume: 0.5, decay: 14)
+    /// Alle Klänge eines Ton-Sets, benannt wie `SoundEvent` — die Quelle
+    /// für GameAudio.
+    static func effects(_ set: SoundSetId) -> [String: [Float]] {
+        var out: [String: [Float]] = [:]
+        for event in SoundEvent.allCases {
+            out[event.rawValue] = render(SoundBank.voice(set, event))
+        }
+        return out
     }
 
     // MARK: - Rendering

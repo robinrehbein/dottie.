@@ -394,6 +394,93 @@ final class ParityTests: XCTestCase {
         }
     }
 
+    // MARK: - Ton-Sets
+
+    /// Die dritte Sammlung: Jeder Ton steht als Zahlenreihe in der
+    /// Vektor-Datei, damit kein Port seine eigene Synthese erfindet.
+    func testSoundSets() throws {
+        XCTAssertEqual(try vectors.strings("sound.order"),
+                       SoundSetId.allCases.map { $0.rawValue },
+                       "Reihenfolge der Ton-Sets")
+        XCTAssertEqual(try vectors.strings("sound.events").map { $0.lowercased() },
+                       SoundEvent.allCases.map { $0.rawValue },
+                       "Reihenfolge der Ereignisse")
+        XCTAssertEqual(try vectors.float("sound.minHz"), SoundBank.minHz,
+                       accuracy: eps, "unterer Tonumfang")
+        XCTAssertEqual(try vectors.float("sound.maxHz"), SoundBank.maxHz,
+                       accuracy: eps, "oberer Tonumfang")
+        XCTAssertEqual(try vectors.float("sound.minPitchRatio"), SoundBank.minPitchRatio,
+                       accuracy: eps, "Mindestabstand zweier Sets")
+
+        for id in SoundSetId.allCases {
+            for event in SoundEvent.allCases {
+                let key = "sound.voice.\(id.rawValue).\(event.rawValue.uppercased())"
+                let row = try vectors.strings(key)
+                let voice = SoundBank.voice(id, event)
+                // Das letzte Wort ist das Rauschen ("-" heisst keins).
+                let toene = Array(row.dropLast())
+                XCTAssertEqual(voice.tones.count, toene.count, "\(key): Zahl der Toene")
+                for (index, wort) in toene.enumerated() where index < voice.tones.count {
+                    let werte = wort.split(separator: ":").map { Float($0) ?? -1 }
+                    XCTAssertEqual(werte.count, 6, "\(key) Ton \(index): sechs Felder")
+                    let tone = voice.tones[index]
+                    XCTAssertEqual(tone.fromHz, werte[0], accuracy: eps, "\(key) Ton \(index) fromHz")
+                    XCTAssertEqual(tone.toHz, werte[1], accuracy: eps, "\(key) Ton \(index) toHz")
+                    XCTAssertEqual(tone.seconds, werte[2], accuracy: eps, "\(key) Ton \(index) Dauer")
+                    XCTAssertEqual(tone.volume, werte[3], accuracy: eps, "\(key) Ton \(index) Lautstaerke")
+                    XCTAssertEqual(tone.decay, werte[4], accuracy: eps, "\(key) Ton \(index) Abklingen")
+                    XCTAssertEqual(tone.duty, werte[5], accuracy: eps, "\(key) Ton \(index) Pulsbreite")
+                }
+                let rausch = row[row.count - 1]
+                if rausch == "-" {
+                    XCTAssertNil(voice.noise, "\(key): kein Rauschen")
+                } else if let noise = voice.noise {
+                    let werte = rausch.split(separator: ":").map(String.init)
+                    XCTAssertEqual(noise.seconds, Float(werte[1]) ?? -1, accuracy: eps,
+                                   "\(key): Rausch-Dauer")
+                    XCTAssertEqual(noise.volume, Float(werte[2]) ?? -1, accuracy: eps,
+                                   "\(key): Rausch-Lautstaerke")
+                    XCTAssertEqual(noise.decay, Float(werte[3]) ?? -1, accuracy: eps,
+                                   "\(key): Rausch-Abklingen")
+                } else {
+                    XCTFail("\(key): Rauschen erwartet")
+                }
+            }
+            let chips = try vectors.strings("sound.chips.\(id.rawValue)")
+            let actual = SoundBank.chips(id)
+            XCTAssertEqual(chips.count, actual.count, "\(id.rawValue): Zahl der Kachelbalken")
+            for (index, token) in chips.enumerated() where index < actual.count {
+                XCTAssertEqual(actual[index], Float(token) ?? -1, accuracy: 1e-4,
+                               "\(id.rawValue): Kachelbalken \(index)")
+            }
+        }
+
+        // Freischaltung: dieselben Proben wie bei Skins und Kulissen.
+        var probe = 0
+        while vectors.has("skin.probe.\(probe)") {
+            let p = try vectors.strings("skin.probe.\(probe)")
+            let stats = DotSkin.Stats(
+                bestScore: Int(p[0]) ?? 0,
+                bestPerfectStreak: Int(p[1]) ?? 0,
+                bestDailyStreak: Int(p[2]) ?? 0,
+                runCount: Int(p[3]) ?? 0,
+                totalScore: Int(p[4]) ?? 0,
+                daysPlayed: Int(p[5]) ?? 0,
+                monthsPlayed: Int(p[6]) ?? 0,
+                seasonEarned: Int(p[7]) ?? 0,
+                patronOwned: p[8] == "1"
+            )
+            let row = try vectors.strings("sound.unlocked.\(probe)")
+            XCTAssertEqual(SoundBank.unlockedCount(stats), Int(row[0]) ?? -1,
+                           "Zahl offener Ton-Sets bei Probe \(probe)")
+            let open = SoundSetId.allCases.filter { SoundBank.isUnlocked($0, stats) }
+            XCTAssertEqual(open.map { $0.rawValue }, Array(row.dropFirst()),
+                           "offene Ton-Sets bei Probe \(probe)")
+            probe += 1
+        }
+        XCTAssertGreaterThan(probe, 0, "keine Freischalt-Proben in der Datei")
+    }
+
     // MARK: - Ziele
 
     /// Die Ziele der Statistik-Seite. Reihenfolge inklusive: Das erste
@@ -634,8 +721,14 @@ final class ParityTests: XCTestCase {
 
     /// Ein Ziel als dasselbe Wort wie in ParityVectors.kt.
     private static func token(_ goal: Goal) -> String {
-        let subject = goal.skin.map { "SKIN:\($0.rawValue)" }
-            ?? "SCENE:\(goal.scene?.rawValue ?? "?")"
+        let subject: String
+        if let skin = goal.skin {
+            subject = "SKIN:\(skin.rawValue)"
+        } else if let scene = goal.scene {
+            subject = "SCENE:\(scene.rawValue)"
+        } else {
+            subject = "SOUND:\(goal.sound?.rawValue ?? "?")"
+        }
         return "\(subject)|\(name(goal.axis))|\(goal.current)|\(goal.target)"
     }
 
