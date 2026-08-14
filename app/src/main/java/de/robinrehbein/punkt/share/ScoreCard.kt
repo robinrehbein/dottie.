@@ -138,17 +138,22 @@ object ScoreCard {
         }
 
         val cx = W / 2f
-        // Titel und die Zeilen darunter sind seit dem Rahmen ein Stück
-        // nach innen gerutscht: Die Prachtstufe ist 90 Pixel breit, und
-        // ein Titel, der im Rahmen klemmt, sieht nach Fehler aus.
-        drawShadowed("DOTTIE.", cx, H * 0.155f, 120f, Color.WHITE)
+        // Wo die Zeilen sitzen, hängt am Rahmen: Die breiten Stufen
+        // schieben den Inhalt nach innen, SCHLICHT nicht. Siehe
+        // CardStyle.layout — dort steht auch, warum.
+        val frame = CardStyle.frame(stats)
+        val layout = CardStyle.layout(frame)
+        drawShadowed("DOTTIE.", cx, H * layout.title, layout.titleSize, Color.WHITE)
 
         // Unter dem Titel wird gestapelt, nicht gesetzt: Daily-Hinweis und
         // Beiname können einzeln oder zusammen auftreten, und zwei feste
         // Zeilen ständen im Leerfall schief.
-        var subline = H * 0.205f
+        var subline = H * layout.subline
         if (daily) {
-            drawShadowed(context.getString(R.string.card_daily), cx, subline, 52f, RECORD_YELLOW)
+            drawShadowed(
+                context.getString(R.string.card_daily), cx, subline,
+                layout.sublineSize, RECORD_YELLOW
+            )
             subline += H * 0.04f
         }
         CardStyle.epithet(stats)?.let { titel ->
@@ -171,7 +176,7 @@ object ScoreCard {
         // Karte das Kleid des Moments, in dem geteilt wird.
         val now = LocalDateTime.now()
         drawPixelDot(
-            canvas, paint, cx, H * 0.345f, 105f, skin,
+            canvas, paint, cx, H * layout.dot, layout.dotRadius, skin,
             SkinState(hour = now.hour, month = now.monthValue)
         )
 
@@ -206,13 +211,13 @@ object ScoreCard {
             drawMedal(canvas, paint, cx, H * 0.79f, 62f, medal.first, medal.second)
         }
 
-        // Die Aufforderung rückt vom Blattrand weg: Sie stand bei 94,5 %,
-        // und dort läge sie jetzt unter der breitesten Rahmenstufe.
-        drawShadowed(context.getString(R.string.card_challenge), cx, H * 0.92f, 72f, ACCENT)
+        // Die Aufforderung sitzt bei den breiten Rahmen weiter innen —
+        // bei 94,5 % läge sie unter der Prachtstufe.
+        drawShadowed(context.getString(R.string.card_challenge), cx, H * layout.challenge, 72f, ACCENT)
 
         // Der Rahmen kommt zuletzt: Er liegt über Kulisse UND Schrift,
         // damit an der Kante nichts durchscheint.
-        drawFrame(canvas, paint, CardStyle.frame(stats))
+        drawFrame(canvas, paint, frame)
         return bmp
     }
 
@@ -239,7 +244,10 @@ object ScoreCard {
     private fun drawFrame(canvas: Canvas, paint: Paint, frame: CardFrame) {
         when (frame) {
             // Die Kante, mit der jeder anfängt: eine Linie, sonst nichts.
-            CardFrame.SCHLICHT -> band(canvas, paint, 0, 2, OUTLINE)
+            // SCHLICHT zeichnet nichts. Der Bestand hatte keinen Rahmen,
+            // und die erste Stufe soll etwas sein, das man verdient hat —
+            // nicht etwas, das allen still dazukommt.
+            CardFrame.SCHLICHT -> Unit
 
             CardFrame.DOPPELLINIE -> {
                 band(canvas, paint, 0, 2, OUTLINE)

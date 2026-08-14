@@ -256,4 +256,39 @@ class CardStyleTest {
             }
         }
     }
+
+    @Test
+    fun `SCHLICHT ist Pixel fuer Pixel der Bestand`() {
+        // Dieselbe Regel wie bei der WIESE unter den Kulissen: Eine
+        // Sammlung faengt bei dem an, was schon da war. Sonst aendert sich
+        // die geteilte Karte fuer alle, die nichts gesammelt haben — und
+        // niemand kann sagen, ob das Absicht war oder ein Versehen.
+        //
+        // Die Zahlen stammen aus der Karte vor den Rahmen (ScoreCard.kt
+        // in f1afb57). Wer sie hier aendert, aendert fremde Karten.
+        val schlicht = CardStyle.layout(CardFrame.SCHLICHT)
+        assertEquals(0.14f, schlicht.title, 0f)
+        assertEquals(130f, schlicht.titleSize, 0f)
+        assertEquals(0.20f, schlicht.subline, 0f)
+        assertEquals(56f, schlicht.sublineSize, 0f)
+        assertEquals(0.32f, schlicht.dot, 0f)
+        assertEquals(110f, schlicht.dotRadius, 0f)
+        assertEquals(0.945f, schlicht.challenge, 0f)
+    }
+
+    @Test
+    fun `nur SCHLICHT traegt die Masse des Bestands`() {
+        // Die Gegenprobe: Wuerden alle Stufen dasselbe Layout benutzen,
+        // ginge der Test oben durch, ohne irgendetwas zu sichern.
+        CardFrame.entries.filter { it != CardFrame.SCHLICHT }.forEach {
+            val andere = CardStyle.layout(it)
+            assertNotEquals(
+                "$it darf nicht die Masse des Bestands tragen — sein Rahmen ist breiter",
+                CardStyle.layout(CardFrame.SCHLICHT),
+                andere
+            )
+            assertTrue("$it muss den Inhalt nach innen ruecken", andere.title > CardStyle.PLAIN_TITLE)
+            assertTrue("$it muss die Aufforderung hochziehen", andere.challenge < CardStyle.PLAIN_CHALLENGE)
+        }
+    }
 }

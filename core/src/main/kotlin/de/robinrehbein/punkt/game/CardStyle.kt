@@ -67,6 +67,26 @@ enum class Epithet(val de: String, val en: String) {
     EINGESPIELT("EINGESPIELT", "SEASONED")
 }
 
+/**
+ * Wo die Zeilen der Karte sitzen, als Anteil der Kartenhöhe, plus die
+ * Schriftgrade von Titel und Punkt.
+ *
+ * Dass das vom Rahmen abhängt, hat einen Grund: Die Prachtstufe ist
+ * 90 Pixel breit. Ein Titel, der darin klemmt, sieht nach Fehler aus,
+ * also rückt der Inhalt bei den breiten Rahmen nach innen. Bei
+ * [CardFrame.SCHLICHT] darf er das aber gerade NICHT — siehe
+ * [CardStyle.layout].
+ */
+data class CardLayout(
+    val title: Float,
+    val titleSize: Float,
+    val subline: Float,
+    val sublineSize: Float,
+    val dot: Float,
+    val dotRadius: Float,
+    val challenge: Float
+)
+
 object CardStyle {
 
     /**
@@ -86,6 +106,54 @@ object CardStyle {
 
     /** Rahmenstufe zu einem Spielstand — der Weg, den der Zeichencode nimmt. */
     fun frame(stats: SkinStats): CardFrame = frame(SkinPaint.unlockedCount(stats))
+
+    /**
+     * Die Maße des Bestands: die Karte, wie sie vor den Rahmen aussah.
+     * Sie stehen einzeln hier, damit ein Test sie festnageln kann — wer
+     * sie ändert, ändert die Karte von Leuten, die nichts dafür getan
+     * haben.
+     */
+    const val PLAIN_TITLE = 0.14f
+    const val PLAIN_TITLE_SIZE = 130f
+    const val PLAIN_SUBLINE = 0.20f
+    const val PLAIN_SUBLINE_SIZE = 56f
+    const val PLAIN_DOT = 0.32f
+    const val PLAIN_DOT_RADIUS = 110f
+    const val PLAIN_CHALLENGE = 0.945f
+
+    /**
+     * Wo der Inhalt sitzt — abhängig vom Rahmen, aber mit einer harten
+     * Ausnahme: [CardFrame.SCHLICHT] ist Pixel für Pixel der Bestand.
+     *
+     * Der Grund ist derselbe wie bei der WIESE unter den Kulissen. Eine
+     * Sammlung fängt bei dem an, was schon da war; sonst ändert sich für
+     * alle etwas, die nichts gesammelt haben, und niemand kann sagen, ob
+     * das Absicht war. Erst die zweite Stufe darf anders aussehen — dann
+     * hat sie jemand verdient.
+     *
+     * Die übrigen drei rücken den Inhalt nach innen, weil ihre Rahmen
+     * bis zu 90 Pixel breit sind.
+     */
+    fun layout(frame: CardFrame): CardLayout = when (frame) {
+        CardFrame.SCHLICHT -> CardLayout(
+            title = PLAIN_TITLE,
+            titleSize = PLAIN_TITLE_SIZE,
+            subline = PLAIN_SUBLINE,
+            sublineSize = PLAIN_SUBLINE_SIZE,
+            dot = PLAIN_DOT,
+            dotRadius = PLAIN_DOT_RADIUS,
+            challenge = PLAIN_CHALLENGE
+        )
+        else -> CardLayout(
+            title = 0.155f,
+            titleSize = 120f,
+            subline = 0.205f,
+            sublineSize = 52f,
+            dot = 0.345f,
+            dotRadius = 105f,
+            challenge = 0.92f
+        )
+    }
 
     /**
      * Trägt dieser Beiname bei diesem Spielstand? Die Bedingungen sind
