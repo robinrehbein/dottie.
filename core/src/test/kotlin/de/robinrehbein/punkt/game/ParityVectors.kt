@@ -35,7 +35,7 @@ import kotlin.random.Random
 object ParityVectors {
 
     /** Bei jeder Formatänderung hochzählen; die Ports prüfen sie. */
-    const val VERSION = 2
+    const val VERSION = 3
 
     /** Seed der Vektoren — irgendein fester Tag, nichts Magisches. */
     private const val SEED = 20240813L
@@ -105,6 +105,23 @@ object ParityVectors {
             bestScore = 80, bestPerfectStreak = 15, bestDailyStreak = 21,
             runCount = 300, totalScore = 5_000, daysPlayed = 7, monthsPlayed = 3,
             seasonEarned = 0b1111, patronOwned = true
+        ),
+        // Die Kulissen (ScenePaint) hängen an denselben Achsen, aber an
+        // deutlich höheren Schwellen als die Skins — ohne eigene Proben
+        // wäre von ihnen nur "alles zu" geprüft. Je Kulisse einmal knapp
+        // darunter, einmal genau auf der Kante.
+        SkinStats(0, 0, 0, runCount = 499),
+        SkinStats(0, 0, 0, runCount = 500),
+        SkinStats(0, 0, 0, totalScore = 9_999),
+        SkinStats(0, 0, 0, totalScore = 10_000),
+        SkinStats(0, 0, 29),
+        SkinStats(0, 0, 30),
+        SkinStats(84, 0, 0),
+        SkinStats(85, 0, 0),
+        // Alle vier zusammen: erst hier fällt auch der WELTRAUM.
+        SkinStats(
+            bestScore = 85, bestPerfectStreak = 0, bestDailyStreak = 30,
+            runCount = 500, totalScore = 10_000
         )
     )
 
@@ -115,6 +132,8 @@ object ParityVectors {
         out.medals()
         out.sky()
         out.skins()
+        out.scenes()
+        out.progress()
         out.rng()
         out.traces()
         return out.toString()
@@ -146,6 +165,11 @@ object ParityVectors {
         line("const.ZONE_SHRINK_PER_HIT", f(TimingGame.ZONE_SHRINK_PER_HIT))
         line("const.MIN_ZONE_HALF", f(TimingGame.MIN_ZONE_HALF))
         line("const.PERFECT_SHARE", f(TimingGame.PERFECT_SHARE))
+        // Die Bahn-Blöcke sind Spielregel, seit der PERFEKT-Kern nie
+        // schmaler wird als ein halber Block — dreifach nachgebaut und
+        // bis hierher im Vertrag nicht vorgekommen.
+        line("const.TRACK_SEGMENTS", TimingGame.TRACK_SEGMENTS.toString())
+        line("const.SEGMENT_HALF", f(TimingGame.SEGMENT_HALF))
         line("const.MIN_ZONE_DISTANCE", f(TimingGame.MIN_ZONE_DISTANCE))
         line("const.MAX_ZONE_DISTANCE", f(TimingGame.MAX_ZONE_DISTANCE))
         line("const.MIN_REACTION_SECONDS", f(TimingGame.MIN_REACTION_SECONDS))
@@ -325,6 +349,130 @@ object ParityVectors {
             )
         }
         appendLine()
+    }
+
+    private fun StringBuilder.scenes() {
+        section(
+            "Kulissen (ScenePaint) — die zweite Sammlung. Farben, Boden und\n" +
+                "# Requisiten sind dreifach als Datentabelle nachgebaut, die\n" +
+                "# Freischaltung dreifach als Regel."
+        )
+        line("scene.order", *SceneId.entries.map { it.name }.toTypedArray())
+        line("scene.groundTop", f(ScenePaint.GROUND_TOP))
+        line("scene.propSlots", ScenePaint.PROP_SLOTS.toString())
+        line("scene.minZoneDistance", f(ScenePaint.MIN_ZONE_DISTANCE))
+        line("scene.minSkyStep", f(ScenePaint.MIN_SKY_STEP))
+        line("scene.minSkySignalDistance", f(ScenePaint.MIN_SKY_SIGNAL_DISTANCE))
+
+        SceneId.entries.forEach { id ->
+            val scene = ScenePaint.of(id)
+            line("scene.sky.${id.name}", *scene.sky.map { argb(it) }.toTypedArray())
+            line("scene.cloud.${id.name}", scene.cloud?.let { argb(it) } ?: "-")
+            line(
+                "scene.ground.${id.name}",
+                *scene.ground?.let {
+                    arrayOf(argb(it.sand), argb(it.sandShade), argb(it.turfDark), argb(it.turfLight))
+                } ?: arrayOf("-")
+            )
+            line("scene.chips.${id.name}", *ScenePaint.chips(id).map { argb(it) }.toTypedArray())
+            // Requisiten: Form, Größe, Schwingen und die drei Farbstufen.
+            // Der Stiel und die Akzente hängen daran, dass ein Renderer sie
+            // überhaupt kennt — deshalb stehen sie mit in der Zeile.
+            scene.props.forEachIndexed { index, prop ->
+                line(
+                    "scene.prop.${id.name}.$index",
+                    prop.shape.name,
+                    f(prop.size),
+                    f(prop.sway),
+                    argb(prop.dark),
+                    argb(prop.body),
+                    argb(prop.light),
+                    argb(prop.stem),
+                    argb(prop.stemShade),
+                    if (prop.accents.isEmpty()) "-" else prop.accents.joinToString(",") { argb(it) }
+                )
+            }
+        }
+        line(
+            "scene.skyForScore.WIESE",
+            *(0..70 step 5).map { argb(ScenePaint.skyFor(SceneId.WIESE, it)) }.toTypedArray()
+        )
+        appendLine()
+
+        section("Freischaltung der Kulissen — dieselben Proben wie bei den Skins.")
+        UNLOCK_PROBES.forEachIndexed { index, stats ->
+            val open = SceneId.entries.filter { ScenePaint.isUnlocked(it, stats) }
+            line(
+                "scene.unlocked.$index",
+                ScenePaint.unlockedCount(stats).toString(),
+                *open.map { it.name }.toTypedArray()
+            )
+        }
+        appendLine()
+    }
+
+    private fun StringBuilder.progress() {
+        section(
+            "Ziele und Fortschrittsbalken (Progress). Die Schwellen stehen\n" +
+                "# damit zum vierten Mal im Repo — hier wird geprüft, dass alle\n" +
+                "# vier dasselbe sagen, inklusive Reihenfolge: Das erste Ziel\n" +
+                "# ist das, was Spieler:innen im Game-Over lesen."
+        )
+        line("progress.pageGoals", Progress.PAGE_GOALS.toString())
+        line("progress.barBlocks", Progress.BAR_BLOCKS.toString())
+        // Die Kanten des Balkens: knapp unter und genau auf einem Block.
+        val fractions = listOf(
+            0f, -0.5f, 0.0416f, 1f / 24f, 0.2f, 0.5f, 0.999f, 1f, 1.5f
+        )
+        line("progress.fractions", *fractions.map { f(it) }.toTypedArray())
+        line(
+            "progress.filledBlocks",
+            *fractions.map { Progress.filledBlocks(it).toString() }.toTypedArray()
+        )
+
+        // Zusätzlich zu den Skin-Proben zwei mit offenem Saison-Fenster:
+        // Ein Saison-Ziel darf nur im eigenen Monat auftauchen.
+        val probes = UNLOCK_PROBES.map { Triple(it, 0, 0) } + listOf(
+            Triple(SkinStats(0, 0, 0), 10, 2),
+            Triple(SkinStats(0, 0, 0), 10, 5),
+            Triple(SkinStats(0, 0, 0), 3, 4)
+        )
+        probes.forEachIndexed { index, (stats, month, seasonDays) ->
+            line(
+                "progress.probe.$index",
+                stats.bestScore.toString(),
+                stats.bestPerfectStreak.toString(),
+                stats.bestDailyStreak.toString(),
+                stats.runCount.toString(),
+                stats.totalScore.toString(),
+                stats.daysPlayed.toString(),
+                stats.monthsPlayed.toString(),
+                stats.seasonEarned.toString(),
+                if (stats.patronOwned) "1" else "0",
+                month.toString(),
+                seasonDays.toString()
+            )
+            val goals = Progress.goals(stats, month, seasonDays)
+            line(
+                "progress.goals.$index",
+                goals.size.toString(),
+                *goals.map { goalToken(it) }.toTypedArray()
+            )
+            val next = Progress.nextGoal(stats, month, seasonDays)
+            line(
+                "progress.next.$index",
+                next?.let { goalToken(it) } ?: "-",
+                next?.remaining?.toString() ?: "-",
+                next?.let { f(it.fraction) } ?: "-"
+            )
+        }
+        appendLine()
+    }
+
+    /** Ein Ziel als ein Wort: WAS:NAME|ACHSE|stand|ziel. */
+    private fun goalToken(goal: Goal): String {
+        val subject = goal.skin?.let { "SKIN:${it.name}" } ?: "SCENE:${goal.scene!!.name}"
+        return "$subject|${goal.axis.name}|${goal.current}|${goal.target}"
     }
 
     private fun StringBuilder.rng() {

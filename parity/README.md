@@ -21,6 +21,8 @@ herauskommen muss, und jeder Port prüft sich gegen dieselbe Datei.
 | `const.*`, `twist.*`, `daily.*` | Konstanten, Freischalt-Scores, Tages-Seeds | ✅ | ✅ | ✅ |
 | `medal.*`, `sky.*` | Medaillen-Schwellen und -Farben, Himmelsstufen | ✅ | ✅ | ✅ |
 | `skin.*`, `season.*` | Reihenfolge, Farben, Raster, Freischaltungen, Saison-Regeln | ✅ | ✅ | ✅ |
+| `scene.*` | Kulissen: Himmel, Wolken, Boden, Requisiten, Freischaltungen | ✅ | ✅ | ✅ |
+| `progress.*` | Ziele, ihre Reihenfolge und der Fortschrittsbalken | ✅ | ✅ | ✅ |
 | `rng.*` | Kotlins XorWow-Generator Zahl für Zahl | ✅ | ✅ | — |
 | `trace.*` | ganze Läufe, Treffer für Treffer | ✅ | ✅ | — |
 
@@ -43,6 +45,25 @@ weil dort auch der größte Teil der Handarbeit steckt:
 - `season.<ID>` — Monat, Bit in `seasonEarned` und geforderte Tage. Ein
   Saison-Skin wird nur in seinem Monat verdient, gilt danach aber für
   immer; entschieden wird deshalb über die Maske, nie über den Kalender.
+
+Die Kulissen (zweite Sammlung) und die Ziele der Statistik-Seite hängen
+mit denselben Proben daran:
+
+- `scene.order`, `scene.sky.<ID>`, `scene.cloud.<ID>`, `scene.ground.<ID>`,
+  `scene.chips.<ID>`, `scene.prop.<ID>.<k>` — die komplette Datentabelle
+  einer Kulisse. Sie fällt beim Ansehen *nicht* auf: Die WÜSTE öffnet
+  erst nach 500 Läufen, der WELTRAUM ganz zuletzt. Ein falscher Wert im
+  Port könnte dort monatelang unbemerkt liegen.
+- `scene.unlocked.N` — dieselben Proben wie bei den Skins, plus eigene
+  für die höheren Kulissen-Schwellen (je einmal knapp darunter und genau
+  auf der Kante).
+- `progress.probe.N`, `progress.goals.N`, `progress.next.N` — die offenen
+  Ziele **in ihrer Reihenfolge**. Das erste Ziel ist das, was im
+  Game-Over steht; eine andere Sortierung wäre auf jeder Plattform ein
+  anderer Satz. Die Proben tragen zusätzlich Monat und Saison-Tage, weil
+  ein Saison-Ziel nur in seinem eigenen Monat auftauchen darf.
+- `progress.fractions` / `progress.filledBlocks` — die Rastung des
+  Balkens an ihren Kanten, inklusive der Werte unter 0 und über 1.
 
 Der Web-Port lässt `rng` und `trace` aus, und zwar bewusst: Er baut
 Kotlins `XorWowRandom` nicht nach (siehe Kommentar in `web/js/game.js`),

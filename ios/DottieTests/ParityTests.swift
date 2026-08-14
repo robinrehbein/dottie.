@@ -36,7 +36,7 @@ final class ParityTests: XCTestCase {
     // MARK: - Format
 
     func testVectorVersion() throws {
-        XCTAssertEqual(try vectors.int("version"), 2,
+        XCTAssertEqual(try vectors.int("version"), 3,
                        "Format der Vektor-Datei hat sich geändert")
     }
 
@@ -69,7 +69,9 @@ final class ParityTests: XCTestCase {
             "CHAIN_MAX_DISTANCE": TimingGame.chainMaxDistance,
             "DEATH_FREEZE_SECONDS": TimingGame.deathFreezeSeconds,
             "DEATH_FALL_SECONDS": TimingGame.deathFallSeconds,
-            "RESTART_LOCK_SECONDS": TimingGame.restartLockSeconds
+            "RESTART_LOCK_SECONDS": TimingGame.restartLockSeconds,
+            // Untergrenze des PERFEKT-Kerns: ein halber Bahn-Block.
+            "SEGMENT_HALF": TimingGame.segmentHalf
         ]
         for (name, value) in expected {
             XCTAssertEqual(try vectors.float("const.\(name)"), value, accuracy: eps,
@@ -80,7 +82,8 @@ final class ParityTests: XCTestCase {
             "PERFECT_BASE_SCORE": TimingGame.perfectBaseScore,
             "PERFECT_MAX_SCORE": TimingGame.perfectMaxScore,
             "MAX_ACTIVE_TWISTS": TimingGame.maxActiveTwists,
-            "CHAIN_LENGTH": TimingGame.chainLength
+            "CHAIN_LENGTH": TimingGame.chainLength,
+            "TRACK_SEGMENTS": TimingGame.trackSegments
         ]
         for (name, value) in ints {
             XCTAssertEqual(try vectors.int("const.\(name)"), value, "Konstante \(name)")
@@ -293,6 +296,165 @@ final class ParityTests: XCTestCase {
         XCTAssertGreaterThan(probe, 0, "keine Freischalt-Proben in der Datei")
     }
 
+    // MARK: - Kulissen
+
+    /// Die zweite Sammlung: Farben, Requisiten und Freischaltung.
+    func testScenes() throws {
+        XCTAssertEqual(try vectors.strings("scene.order"),
+                       SceneId.allCases.map { $0.rawValue },
+                       "Reihenfolge der Kulissen (auch sie ist der gespeicherte Wert)")
+        XCTAssertEqual(Float(ScenePaint.groundTop), try vectors.float("scene.groundTop"),
+                       accuracy: eps, "Bodenkante")
+        XCTAssertEqual(try vectors.int("scene.propSlots"), ScenePaint.propSlots,
+                       "Requisiten-Plätze")
+        XCTAssertEqual(Float(ScenePaint.minZoneDistance),
+                       try vectors.float("scene.minZoneDistance"),
+                       accuracy: eps, "Mindestabstand zur Zone")
+        XCTAssertEqual(Float(ScenePaint.minSkyStep), try vectors.float("scene.minSkyStep"),
+                       accuracy: eps, "Himmels-Schrittweite")
+
+        for id in SceneId.allCases {
+            let scene = ScenePaint.of(id)
+            let name = id.rawValue
+
+            let sky = try vectors.strings("scene.sky.\(name)")
+            XCTAssertEqual(sky.count, scene.sky.count, "\(name): Zahl der Himmelsstufen")
+            for (index, token) in sky.enumerated() where index < scene.sky.count {
+                assertColor(ParityVectors.color(token), scene.sky[index],
+                            "\(name) Himmelsstufe \(index)")
+            }
+
+            let cloud = try vectors.string("scene.cloud.\(name)")
+            if cloud == "-" {
+                XCTAssertNil(scene.cloud, "\(name): keine Wolken")
+            } else if let actual = scene.cloud {
+                assertColor(ParityVectors.color(cloud), actual, "\(name) Wolkenfarbe")
+            } else {
+                XCTFail("\(name): Wolkenfarbe erwartet")
+            }
+
+            let ground = try vectors.strings("scene.ground.\(name)")
+            if ground[0] == "-" {
+                XCTAssertNil(scene.ground, "\(name): kein Boden")
+            } else if let actual = scene.ground {
+                assertColor(ParityVectors.color(ground[0]), actual.sand, "\(name) Sand")
+                assertColor(ParityVectors.color(ground[1]), actual.sandShade,
+                            "\(name) Sandschatten")
+                assertColor(ParityVectors.color(ground[2]), actual.turfDark,
+                            "\(name) Grasnarbe dunkel")
+                assertColor(ParityVectors.color(ground[3]), actual.turfLight,
+                            "\(name) Grasnarbe hell")
+            } else {
+                XCTFail("\(name): Boden erwartet")
+            }
+
+            let chips = try vectors.strings("scene.chips.\(name)")
+            let actualChips = ScenePaint.chips(id)
+            XCTAssertEqual(chips.count, actualChips.count, "\(name): Zahl der Kachelfarben")
+            for (index, token) in chips.enumerated() where index < actualChips.count {
+                assertColor(ParityVectors.color(token), actualChips[index],
+                            "\(name) Kachelfarbe \(index)")
+            }
+
+            // Zahl der Requisiten: Ohne diese Zeile wuerde die Schleife
+            // ueber die Swift-Seite laufen und ein fehlendes Stueck
+            // stillschweigend uebergehen.
+            XCTAssertFalse(vectors.has("scene.prop.\(name).\(scene.props.count)"),
+                           "\(name): der Port hat weniger Requisiten als :core")
+            for (index, prop) in scene.props.enumerated() {
+                let row = try vectors.strings("scene.prop.\(name).\(index)")
+                XCTAssertEqual(row.count, 9, "scene.prop.\(name).\(index)")
+                XCTAssertEqual(row[0], ParityTests.name(prop.shape),
+                               "\(name).\(index) Form")
+                XCTAssertEqual(Float(prop.size), Float(row[1]) ?? -1, accuracy: eps,
+                               "\(name).\(index) Größe")
+                XCTAssertEqual(Float(prop.sway), Float(row[2]) ?? -1, accuracy: eps,
+                               "\(name).\(index) Schwingen")
+                assertColor(ParityVectors.color(row[3]), prop.dark, "\(name).\(index) dunkel")
+                assertColor(ParityVectors.color(row[4]), prop.body, "\(name).\(index) Körper")
+                assertColor(ParityVectors.color(row[5]), prop.light, "\(name).\(index) hell")
+                assertColor(ParityVectors.color(row[6]), prop.stem, "\(name).\(index) Stiel")
+                assertColor(ParityVectors.color(row[7]), prop.stemShade,
+                            "\(name).\(index) Stielschatten")
+                let accents = row[8] == "-" ? [] : row[8].split(separator: ",").map(String.init)
+                XCTAssertEqual(accents.count, prop.accents.count,
+                               "\(name).\(index) Zahl der Akzente")
+                for (k, token) in accents.enumerated() where k < prop.accents.count {
+                    assertColor(ParityVectors.color(token), prop.accents[k],
+                                "\(name).\(index) Akzent \(k)")
+                }
+            }
+        }
+
+        let skyForScore = try vectors.strings("scene.skyForScore.WIESE")
+        for (index, token) in skyForScore.enumerated() {
+            assertColor(ParityVectors.color(token),
+                        ScenePaint.skyFor(.wiese, score: index * 5),
+                        "WIESE Himmel bei Score \(index * 5)")
+        }
+    }
+
+    // MARK: - Ziele
+
+    /// Die Ziele der Statistik-Seite. Reihenfolge inklusive: Das erste
+    /// Ziel ist das, was im Game-Over steht.
+    func testProgress() throws {
+        XCTAssertEqual(try vectors.int("progress.pageGoals"), Progress.pageGoals)
+        XCTAssertEqual(try vectors.int("progress.barBlocks"), Progress.barBlocks)
+
+        let fractions = try vectors.strings("progress.fractions")
+        let blocks = try vectors.strings("progress.filledBlocks")
+        for (index, token) in fractions.enumerated() where index < blocks.count {
+            XCTAssertEqual(Progress.filledBlocks(CGFloat(Float(token) ?? 0)),
+                           Int(blocks[index]) ?? -1,
+                           "gefüllte Blöcke bei Anteil \(token)")
+        }
+
+        var probe = 0
+        while vectors.has("progress.probe.\(probe)") {
+            let p = try vectors.strings("progress.probe.\(probe)")
+            XCTAssertEqual(p.count, 11, "progress.probe.\(probe): elf Felder erwartet")
+            let stats = DotSkin.Stats(
+                bestScore: Int(p[0]) ?? 0,
+                bestPerfectStreak: Int(p[1]) ?? 0,
+                bestDailyStreak: Int(p[2]) ?? 0,
+                runCount: Int(p[3]) ?? 0,
+                totalScore: Int(p[4]) ?? 0,
+                daysPlayed: Int(p[5]) ?? 0,
+                monthsPlayed: Int(p[6]) ?? 0,
+                seasonEarned: Int(p[7]) ?? 0,
+                patronOwned: p[8] == "1"
+            )
+            let month = Int(p[9]) ?? 0
+            let seasonDays = Int(p[10]) ?? 0
+
+            let goals = Progress.goals(stats, month: month, seasonDays: seasonDays)
+            let expected = try vectors.strings("progress.goals.\(probe)")
+            XCTAssertEqual(goals.count, Int(expected[0]) ?? -1,
+                           "Zahl der Ziele bei Probe \(probe)")
+            XCTAssertEqual(goals.map { ParityTests.token($0) },
+                           Array(expected.dropFirst()),
+                           "Ziele bei Probe \(probe)")
+
+            let next = Progress.nextGoal(stats, month: month, seasonDays: seasonDays)
+            let expectedNext = try vectors.strings("progress.next.\(probe)")
+            if expectedNext[0] == "-" {
+                XCTAssertNil(next, "kein nächstes Ziel bei Probe \(probe)")
+            } else if let next = next {
+                XCTAssertEqual(ParityTests.token(next), expectedNext[0],
+                               "nächstes Ziel bei Probe \(probe)")
+                XCTAssertEqual(next.remaining, Int(expectedNext[1]) ?? -1,
+                               "Rest bis zum Ziel bei Probe \(probe)")
+                XCTAssertEqual(Float(next.fraction), Float(expectedNext[2]) ?? -1,
+                               accuracy: eps, "Anteil bei Probe \(probe)")
+            } else {
+                XCTFail("nächstes Ziel erwartet bei Probe \(probe)")
+            }
+            probe += 1
+        }
+        XCTAssertGreaterThan(probe, 0, "keine Ziel-Proben in der Datei")
+    }
+
     // MARK: - Zufallsgenerator
 
     /// Der wichtigste Test des Ports: Weicht KotlinRandom auch nur in
@@ -467,6 +629,41 @@ final class ParityTests: XCTestCase {
         case .ghost: return "GHOST"
         case .fake: return "FAKE"
         case .chain: return "CHAIN"
+        }
+    }
+
+    /// Ein Ziel als dasselbe Wort wie in ParityVectors.kt.
+    private static func token(_ goal: Goal) -> String {
+        let subject = goal.skin.map { "SKIN:\($0.rawValue)" }
+            ?? "SCENE:\(goal.scene?.rawValue ?? "?")"
+        return "\(subject)|\(name(goal.axis))|\(goal.current)|\(goal.target)"
+    }
+
+    private static func name(_ axis: GoalAxis) -> String {
+        switch axis {
+        case .bestScore: return "BEST_SCORE"
+        case .perfectStreak: return "PERFECT_STREAK"
+        case .dailyStreak: return "DAILY_STREAK"
+        case .runCount: return "RUN_COUNT"
+        case .totalScore: return "TOTAL_SCORE"
+        case .daysPlayed: return "DAYS_PLAYED"
+        case .monthsPlayed: return "MONTHS_PLAYED"
+        case .seasonDays: return "SEASON_DAYS"
+        case .skinCollection: return "SKIN_COLLECTION"
+        case .sceneCollection: return "SCENE_COLLECTION"
+        }
+    }
+
+    private static func name(_ shape: PropShape) -> String {
+        switch shape {
+        case .baum: return "BAUM"
+        case .blume: return "BLUME"
+        case .strauch: return "STRAUCH"
+        case .kaktus: return "KAKTUS"
+        case .welle: return "WELLE"
+        case .nadelbaum: return "NADELBAUM"
+        case .hochhaus: return "HOCHHAUS"
+        case .fels: return "FELS"
         }
     }
 

@@ -442,8 +442,15 @@ class TimingGame(private var random: Random = Random.Default) {
          */
         const val TRACK_SEGMENTS = 60
 
-        /** Halbe Winkelbreite eines Bahn-Blocks. */
-        const val SEGMENT_HALF = (Math.PI / TRACK_SEGMENTS).toFloat()
+        /**
+         * Halbe Winkelbreite eines Bahn-Blocks.
+         *
+         * `kotlin.math.PI` statt `Math.PI`: Letzteres ist `java.lang.Math`
+         * und stünde in einem Multiplattform-Modul nicht zur Verfügung.
+         * Der Rest der Datei rechnet ohnehin schon mit der Stdlib-Konstante
+         * (siehe TWO_PI weiter unten) — derselbe Wert, nur ohne JVM darunter.
+         */
+        const val SEGMENT_HALF = (PI / TRACK_SEGMENTS).toFloat()
         const val MIN_ZONE_DISTANCE = 1.1f
         const val MAX_ZONE_DISTANCE = 2.8f
 
