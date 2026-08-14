@@ -9,20 +9,22 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
+# Auch die Build-Ordner der Module — ohne diese Zeile ist nur der
+# Wurzelordner geschuetzt, und Kompilat wandert unbemerkt in den Index
+# (genau so ist sync/build/ hineingeraten).
+build/
 /captures
 .externalNativeBuild
 .cxx
 local.properties
-# Build-Ordner jedes Moduls. Bisher stand hier nur "/build" fuer die
-# Wurzel, den Rest erledigten die .gitignore-Dateien der Module — ein
-# neues Modul ohne eigene Datei hat seinen kompletten build/-Ordner
-# eingecheckt. Das Muster hier greift auf jeder Ebene.
-build/
 # Sitzungs- und Fehlerdateien des Kotlin-Compiler-Daemons
 /.kotlin
 
-# Claude-Code-Arbeitsdaten (Agent-Worktrees etc.)
-/.claude/
+# Claude-Code-Arbeitsdaten (Agent-Worktrees etc.) — die geteilte
+# Projekt-Konfiguration bleibt aber im Repo, sonst kennt sie niemand ausser
+# dem Rechner, auf dem sie entstanden ist.
+/.claude/*
+!/.claude/settings.json
 
 # iOS: Das Xcode-Projekt wird aus ios/project.yml generiert (XcodeGen) und
 # gehoert deshalb NICHT ins Repo — eine eingecheckte Kopie wuerde still

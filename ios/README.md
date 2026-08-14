@@ -25,6 +25,10 @@ parallel zur Android-App in `app/` und der Wear-App in `wear/`.
   Szenerie (Bäume/Blumen/Sträucher mit Parallaxe), Wolken, „DOTTIE."-Titel,
   Mario-Tod (Freeze → Hüpfer → Kopfüber-Fall), Medaillen (10/20/30/40),
   Spott-Texte, REKORD-Banner, Freischalt-Zelebration, Flash + Shake.
+- Kulissen: sechs Sets (Wiese, Wüste, Meer, Berg, Stadt, Weltraum) aus
+  `ScenePaint` — Himmel, Wolken, Requisiten und Boden als Daten, die
+  Texturen entstehen daraus in `PixelArt.propTexture`. Auswahl im
+  SKINS-Overlay über den Skin-Familien, gespeichert wie die Skin-Wahl.
 - Features: Classic + Daily, 42 Skins (gleiche Farben, Muster und
   Freischalt-Bedingungen wie `:core`; das Menü ist nach Familien
   gegliedert und scrollt), Sound an/aus (persistiert), Haptik

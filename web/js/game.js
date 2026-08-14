@@ -92,6 +92,11 @@
     ZONE_SHRINK_PER_HIT: 0.005,
     MIN_ZONE_HALF: 0.15,
     PERFECT_SHARE: 0.35,
+    // Aus wie vielen Bloecken die Bahn besteht, und die halbe Winkelbreite
+    // eines Blocks. Stand bisher nur im Renderer; seit der PERFEKT-Kern
+    // auch gewertet wird, ist die Zahl Spielregel.
+    TRACK_SEGMENTS: 60,
+    SEGMENT_HALF: Math.PI / 60,
     MIN_ZONE_DISTANCE: 1.1,
     MAX_ZONE_DISTANCE: 2.8,
 
@@ -188,6 +193,29 @@
     return Math.abs(this.relativeToZone()) <= this.effectiveZoneHalf();
   };
 
+  /**
+   * Halbe Breite des PERFEKT-Fensters — genau die, die der Renderer als
+   * hellen Kern zeichnet. Die Aufrundung auf ein halbes Segment stammt aus
+   * der Zeichnung: Die Bahn besteht aus TRACK_SEGMENTS Bloecken, ein
+   * schmalerer Kern liesse sich nicht darstellen. Frueher rundete nur das
+   * Bild auf, gewertet wurde ohne — unter PULS war der leuchtende Kern
+   * dadurch bis zu 61 % breiter als das Fenster, das er versprach. Jetzt
+   * gilt die Aufrundung fuer beide.
+   */
+  TimingGame.prototype.perfectHalf = function () {
+    var half = this.effectiveZoneHalf();
+    return Math.min(half, Math.max(half * C.PERFECT_SHARE, C.SEGMENT_HALF));
+  };
+
+  /**
+   * Halbe Breite der Fallen-Zone — dieselbe wie die der echten Zone,
+   * Pulsieren eingeschlossen. Vorher stand die Falle still, waehrend die
+   * Zone atmete, und war dadurch fast immer die breitere von beiden.
+   */
+  TimingGame.prototype.fakeZoneHalf = function () {
+    return this.effectiveZoneHalf();
+  };
+
   /** Ist der Punkt gerade sichtbar? Blinkt nur im GHOST-Twist. */
   TimingGame.prototype.isDotVisible = function () {
     return this.phase !== Phase.RUNNING || !this.activeTwists.has("GHOST") ||
@@ -217,7 +245,7 @@
         var rel = this.relativeToZone();
         var half = this.effectiveZoneHalf();
         if (Math.abs(rel) <= half) {
-          var perfect = Math.abs(rel) <= half * C.PERFECT_SHARE;
+          var perfect = Math.abs(rel) <= this.perfectHalf();
           this._registerHit(perfect);
           event = perfect ? "PerfectHit" : "Hit";
         } else if (rel > half &&

@@ -121,6 +121,28 @@ final class TimingGame {
         return abs(relativeToZone()) <= effectiveZoneHalf()
     }
 
+    /// Halbe Breite des PERFEKT-Fensters — genau die, die der Renderer als
+    /// hellen Kern zeichnet.
+    ///
+    /// Die Aufrundung auf ein halbes Segment stammt aus der Zeichnung: Die
+    /// Bahn besteht aus `trackSegments` Bloecken, ein schmalerer Kern liesse
+    /// sich nicht darstellen. Frueher rundete nur das Bild auf, gewertet
+    /// wurde ohne — unter PULS war der leuchtende Kern dadurch bis zu 61 %
+    /// breiter als das Fenster, das er versprach. Jetzt gilt die Aufrundung
+    /// fuer beide: Das Trefferfenster waechst auf das Bild, nicht umgekehrt.
+    func perfectHalf() -> Float {
+        let half = effectiveZoneHalf()
+        return min(half, max(half * TimingGame.perfectShare, TimingGame.segmentHalf))
+    }
+
+    /// Halbe Breite der Fallen-Zone — dieselbe wie die der echten Zone,
+    /// Pulsieren eingeschlossen. Vorher stand die Falle still, waehrend die
+    /// Zone atmete; sie war dadurch fast immer die breitere von beiden und
+    /// verriet sich selbst.
+    func fakeZoneHalf() -> Float {
+        return effectiveZoneHalf()
+    }
+
     /// Ist der Punkt gerade sichtbar? Blinkt nur im GHOST-Twist.
     var isDotVisible: Bool {
         if phase != .running || !activeTwists.contains(.ghost) {
@@ -154,7 +176,7 @@ final class TimingGame {
             let rel = relativeToZone()
             let half = effectiveZoneHalf()
             if abs(rel) <= half {
-                let perfect = abs(rel) <= half * TimingGame.perfectShare
+                let perfect = abs(rel) <= perfectHalf()
                 registerHit(perfect: perfect)
                 event = perfect ? .perfectHit : .hit
             } else if rel > half &&
@@ -406,6 +428,14 @@ final class TimingGame {
     static let zoneShrinkPerHit: Float = 0.005
     static let minZoneHalf: Float = 0.15
     static let perfectShare: Float = 0.35
+
+    /// Aus wie vielen Bloecken die Bahn besteht. Stand bisher nur im
+    /// Renderer; seit der PERFEKT-Kern auch gewertet wird, ist die Zahl
+    /// Spielregel und gehoert hierher.
+    static let trackSegments = 60
+
+    /// Halbe Winkelbreite eines Bahn-Blocks.
+    static let segmentHalf = Float.pi / Float(trackSegments)
     static let minZoneDistance: Float = 1.1
     static let maxZoneDistance: Float = 2.8
 

@@ -9,17 +9,21 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.20.
 - [ ] Play-API-Service-Konto anlegen → Secret `PLAY_SERVICE_ACCOUNT_JSON` (Anleitung unten)
 - [ ] GitHub Pages aktivieren → Datenschutz-URL (Anleitung unten)
 - [ ] Store-Eintrag anlegen (Texte unten in Deutsch UND Englisch, Icons liegen im Repo)
-- [x] Feature-Grafik 1024×500 px (`store/feature-graphic.png`, Generator daneben)
-- [x] Screenshots 1080×1920: je 4 in DE und EN unter `store/screenshots/`
-      (Generator: `python3 store/generate_screenshots.py`)
+- [x] Feature-Grafik 1024×500 px je Sprache (`store/feature-graphic.png`,
+      `store/feature-graphic-en.png`, Generator daneben)
+- [x] Screenshots 1080×1920: je 6 in DE und EN unter `store/screenshots/`
+      (Generator: `python3 store/generate_screenshots.py`, Skin-Prüfung:
+      `python3 store/check_skin_paint.py`)
 - [ ] Optional: Play Games Services einrichten → Bestenlisten (Anleitung unten)
 - [x] AdMob-IDs eingetragen — **Werbung ist aktiv** (Abschnitt unten)
-- [ ] In-App-Kauf „remove_ads" in der Play Console anlegen (Abschnitt unten)
+- [x] In-App-Kauf „remove_ads" in der Play Console anlegen (Abschnitt unten)
+- [x] In-App-Kauf „patron_pack" (Gönner-Paket) anlegen und aktivieren (Abschnitt 4c)
 - [ ] Data-Safety-Formular **mit** Werbung ausfüllen (Abschnitt unten) —
       „keine Daten erhoben" wäre jetzt falsch
 - [ ] IARC-Fragebogen (Content-Rating) ausfüllen
-- [ ] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
-      oder per CI-Job `play-internal`, siehe unten)
+- [x] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
+      oder per CI-Job `play-internal`, siehe unten) — interner und
+      geschlossener Test laufen bereits
 - [ ] Optional: Wear-App mitverteilen — Formfaktor Wear OS aktivieren und
       `wear-release.aab` mit hochladen (Anleitung unten)
 - [ ] 12 Tester einladen, 14 Tage testen lassen (Pflicht bei neuen Privat-Konten)
@@ -202,13 +206,45 @@ wird öffentlich sichtbar.
 
 **Assets:**
 
-- Feature-Grafik 1024×500: liegt fertig unter `store/feature-graphic.png`
+- Feature-Grafik 1024×500, je Sprache eine: `store/feature-graphic.png`
+  (deutsch) und `store/feature-graphic-en.png` (englisch). Beide zeigen
+  seit v2.20 unter der Tagline eine Reihe echter Skins.
   (Generator: `python3 store/generate_feature_graphic.py`)
-- Screenshots 1080×1920 (9:16): je 4 Motive in Deutsch und Englisch
+- Screenshots 1080×1920 (9:16): je 6 Motive in Deutsch und Englisch
   unter `store/screenshots/de/` und `store/screenshots/en/`
-  (Generator: `python3 store/generate_screenshots.py`) — Gameplay,
-  Twists, Daily Challenge, Skins. Gern zusätzlich echte Geräte-
-  Screenshots ergänzen.
+  (Generator: `python3 store/generate_screenshots.py`):
+
+  | Datei | Motiv |
+  |---|---|
+  | `01-gameplay` | Kernmechanik, Punktzahl in der Bahn |
+  | `02-twists` | Fallen-Zone am Lila-Himmel |
+  | `03-daily` | Daily Challenge samt Tages-Serie |
+  | `04-skins` | Skin-Menü, seit v2.20 nach Familien gegliedert |
+  | `05-gallery` | **alle 42 Skins** in ihren sechs Familien |
+  | `06-collect` | Ausdauer-Achsen (Läufe, Punkte, Tage, Monate) und die vier Saison-Skins |
+
+  Gern zusätzlich echte Geräte-Screenshots ergänzen.
+- Die Skins auf diesen Bildern sind keine Nachmalerei: `store/skin_paint.py`
+  ist eine Portierung von `SkinPaint.kt` und liefert jedem der 13×13
+  Rasterfelder dieselbe Farbe wie das Spiel; `store/pixel_dot.py`
+  zeichnet daraus den Vogel wie `drawTimingDot`. Auch die Beschriftungen
+  im Skin-Menü kommen aus den echten String-Ressourcen der App.
+  `python3 store/check_skin_paint.py` übersetzt `SkinPaint.kt` mit dem
+  Kotlin-Compiler aus dem Gradle-Cache und vergleicht alle 42 Skins Feld
+  für Feld gegen die Portierung — vor jeder Neuauslieferung einmal laufen
+  lassen, sonst behaupten die Bilder etwas, das die App nicht zeigt.
+- Werbe-Zeilen auf den Bildern bleiben ohne **M**: Der Bytesized-Font
+  rendert es wie ein N („SAMMELN" liest sich als „SANNELN"). In den
+  Zeilen, die das Spiel selbst zeigt (Skin-Hinweise), steht dagegen der
+  echte Text — genau so sieht ihn auch, wer die App öffnet.
+
+**Was Play verlangt** (von den Generatoren eingehalten): Screenshots
+zwischen 320 px und 3840 px Kantenlänge, Seitenverhältnis höchstens 2:1
+(hier 9:16), Feature-Grafik exakt 1024×500 — alles PNG (oder JPEG) ohne
+Alphakanal, ohne Geräterahmen und ohne Store-Abzeichen. Play zeigt
+mindestens 2, höchstens 8 Screenshots je Sprache; die sechs Motive
+passen also in einen Eintrag, und ihre Reihenfolge ist die Reihenfolge
+im Listing.
 
 ## Automatischer Upload in den internen Test-Track (CI)
 
@@ -385,6 +421,66 @@ aussehen — nämlich nach gar nichts:
 Die Zeile nennt außerdem Versionsname und -code, damit beim Test nie
 unklar ist, welcher Build gerade läuft. Normale Spieler finden sie nicht:
 Niemand drückt lange auf eine Überschrift.
+
+### 4c. In-App-Produkt „patron_pack" anlegen (Gönner-Paket, ab v2.20)
+
+Dasselbe Formular wie bei `remove_ads`, zweites Produkt:
+
+| Feld | Wert |
+|---|---|
+| Produkt-ID | `patron_pack` (genau so, steht im Code) |
+| Typ | Einmaliger Kauf, **nicht** verbrauchbar |
+| Name | „Gönner-Paket" / „Patron pack" |
+| Beschreibung | Drei exklusive Punkt-Skins (Diamant, Phönix, Onyx) und dauerhaft keine Werbung. Alle anderen Skins bleiben durch Spielen freischaltbar. |
+| Preis | **4,99 €** |
+
+Danach **aktivieren** — sonst liefert die Abfrage nichts, und die Zeile
+im SKINS-Overlay erscheint gar nicht erst.
+
+**Warum 4,99 €:** Das Paket ist kein Nutzen-Kauf, sondern ein
+Zuneigungs-Kauf — man bekommt drei Skins, die niemand erspielen kann,
+und nimmt die Werbung gleich mit. Es muss deutlich über `remove_ads`
+(1,99 €) liegen, sonst frisst es das kleinere Produkt; und es darf nicht
+so weit nach oben, dass es nach Abzocke aussieht. 4,99 € ist die
+klassische Unterstützer-Stufe: Nach Steuer und Googles 15 % bleiben rund
+3,56 €.
+
+**Der eine unangenehme Fall — bitte bewusst entscheiden:** Wer schon
+`remove_ads` gekauft hat und danach das Gönner-Paket kauft, bezahlt die
+Werbefreiheit ein zweites Mit. Google kennt für Einmalprodukte keinen
+Upgrade-Pfad, das lässt sich im Store nicht lösen. Drei Wege:
+
+1. **So lassen** und in der Beschreibung klar sagen, dass Werbefreiheit
+   enthalten ist. Wer sie schon hat, zahlt effektiv 4,99 € für drei
+   Skins. Ehrlich, aber ärgerlich für die treuesten Käufer.
+2. **Werbefreiheit aus dem Paket nehmen** und es als reines Skin-Paket
+   für 3,99 € verkaufen. Sauber trennbar, aber ein „Gönner-Paket", das
+   die Werbung stehen lässt, wirkt geizig.
+3. **Empfehlung:** Paket so lassen, aber in der App die Zeile für
+   Besitzer von `remove_ads` anders beschriften („GOENNER-PAKET — DREI
+   SKINS" statt „… UND WERBEFREI"), damit niemand doppelt für dasselbe
+   Versprechen zahlt, ohne es zu merken. Das ist eine App-Änderung, kein
+   Store-Eintrag — sie steht auf der Liste in `docs/TODO.md`.
+
+**Voraussetzung, die leicht übersehen wird:** Der BillingClient wird
+insgesamt erst gestartet, wenn in `res/values/ads.xml` echte AdMob-IDs
+stehen (`AdsManager.configured`). Ohne diese IDs gibt es also auch kein
+Gönner-Paket — die drei Skins bleiben unerreichbar, ohne dass eine
+Fehlermeldung erscheint. Wer das Paket unabhängig von Werbung verkaufen
+will, muss die Kopplung auftrennen; auch das steht auf der Liste.
+
+Getestet wird wie bei `remove_ads` über **Einstellungen → Lizenztests**
+(Kaufpreis 0) und eine über einen Play-Track installierte App. Die
+versteckte Diagnose-Zeile (Abschnitt 4b) nennt beide Produkte getrennt.
+
+**Andere Geräte, andere Plattformen:** Der Kauf hängt am Google-Konto,
+nicht am Gerät. Auf einem Tablet mit demselben Konto stellt ihn dieselbe
+App beim Start selbst wieder her; auf der Uhr gilt dasselbe, sobald die
+Wear-App Play Billing selbst abfragt. **Nicht** übertragbar ist er auf
+iOS: Apple und Google führen getrennte Kassen, ein Kauf im Play Store
+schaltet in der iOS-App nichts frei. Wer beides will, kauft zweimal —
+das ist keine Entscheidung dieses Projekts, sondern die Bauart der
+beiden Stores.
 
 ### 5. Data-Safety und Anzeigen-Label in der Play Console
 

@@ -61,9 +61,14 @@
         <div id="hint" class="shadow-text blink"></div>
 
         <div class="ready-bottom">
+          <!-- Drei Knöpfe statt zwei: Die Statistik gehört auf den
+               Startscreen, nicht in ein Untermenü. Dafür sind alle drei
+               etwas schmaler (108 statt 116 dp), damit die Reihe auch auf
+               360-dp-Displays mit Rand steht. -->
           <div class="btn-row">
             <button id="btn-daily" class="pixel-btn btn-tall" type="button"></button>
             <button id="btn-skins" class="pixel-btn btn-tall" type="button"></button>
+            <button id="btn-stats" class="pixel-btn btn-tall" type="button"></button>
           </div>
           <div id="daily-line" class="shadow-text hidden"></div>
           <div id="run-line" class="shadow-text hidden"></div>
@@ -99,6 +104,12 @@
           <div id="go-daily-line" class="shadow-text hidden"></div>
           <div id="go-new-medal" class="shadow-text gold hidden"></div>
           <div id="go-new-skin" class="shadow-text gold hidden"></div>
+          <!-- Nächstes Ziel: eine Zeile, ein Balken, mehr nicht. Hier
+               stirbt gerade jemand und will neu starten. -->
+          <div id="go-goal" class="hidden">
+            <div id="go-goal-label" class="shadow-text"></div>
+            <div class="goal-bar"><span id="go-goal-fill" class="goal-fill"></span></div>
+          </div>
           <div id="go-retry" class="shadow-text blink-over"></div>
           <div class="btn-row">
             <button id="btn-share" class="pixel-btn" type="button"></button>
@@ -121,10 +132,21 @@
         <div id="skins-close" class="skins-close"></div>
       </div>
     </div>
+
+    <!-- Statistik: alle Zähler, darunter die nächsten Freischaltungen -->
+    <div id="overlay-stats" class="overlay scrim hidden">
+      <div class="scroll-content">
+        <div id="stats-title" class="shadow-text scrim-title">STATS</div>
+        <div id="stats-list"></div>
+        <div id="stats-close" class="skins-close"></div>
+      </div>
+    </div>
   </div>
 
   <script src="js/strings.js"></script>
   <script src="js/skins.js"></script>
+  <script src="js/scenes.js"></script>
+  <script src="js/progress.js"></script>
   <script src="js/game.js"></script>
   <script src="js/daily.js"></script>
   <script src="js/synth.js"></script>

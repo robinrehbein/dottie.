@@ -2,6 +2,8 @@ package de.robinrehbein.punkt
 
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.SkinId
+import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -232,22 +234,15 @@ class DotSkinTest {
     }
 
     @Test
-    fun `Chamaeleon nutzt dieselben Himmelsstufen wie das Spiel`() {
-        // SkyStages in TimingGameScreen.kt faerbt den Hintergrund, SkinPaint
-        // faerbt den Vogel danach — laufen sie auseinander, passt der Skin
-        // nicht mehr zur Stufe, die er spiegeln soll.
-        assertEquals(skyStagesFromUi(), SkinPaint.SKY_STAGES.toList())
-    }
-
-    private fun skyStagesFromUi(): List<Long> {
-        val source = java.io.File("src/main/java/de/robinrehbein/punkt/ui/screens/TimingGameScreen.kt")
-            .readText()
-        // Bis zur schliessenden Klammer am Zeilenanfang — die Kommentare in
-        // der Liste tragen selbst Klammern ("(tuerkis)").
-        val block = source.substringAfter("private val SkyStages = listOf(").substringBefore("\n)")
-        return Regex("0x([0-9A-Fa-f]{8})").findAll(block)
-            .map { it.groupValues[1].toLong(16) }
-            .toList()
+    fun `Chamaeleon nutzt dieselben Himmelsstufen wie die Wiese`() {
+        // Der Himmel kommt seit den Kulissen aus ScenePaint, der Vogel
+        // weiterhin aus SkinPaint. Der CHAMAELEON spiegelt die Stufe des
+        // Bestands — laufen die beiden Tabellen auseinander, traegt er im
+        // Startbild eine Farbe, die am Himmel gar nicht vorkommt.
+        assertEquals(
+            ScenePaint.sky(SceneId.WIESE).toList(),
+            SkinPaint.SKY_STAGES.toList()
+        )
     }
 
     @Test

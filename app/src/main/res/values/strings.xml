@@ -99,13 +99,17 @@
     <!-- Skins -->
     <string name="skin_selected">SELECTED</string>
     <string name="skin_tap_select">TAP TO SELECT</string>
-    <!-- Familien-Ueberschriften im Skin-Menue (42 Skins brauchen Gliederung). -->
-    <string name="skin_family_solid">SOLID</string>
-    <string name="skin_family_pattern">PATTERNED</string>
-    <string name="skin_family_moving">ANIMATED</string>
-    <string name="skin_family_reactive">REACTIVE</string>
-    <string name="skin_family_season">SEASONAL</string>
-    <string name="skin_family_patron">PATRON</string>
+    <!-- Familien-Ueberschriften im Skin-Menue (42 Skins brauchen Gliederung).
+         Die Keys tragen die deutschen Familiennamen, weil Android, iOS und
+         die PWA dieselben Kennungen fuehren muessen und die Familien in
+         SkinId (:core) genauso heissen — der Paritaetstest im Web
+         vergleicht sie Wort fuer Wort. -->
+    <string name="skin_family_einfarbig">SOLID</string>
+    <string name="skin_family_gemustert">PATTERNED</string>
+    <string name="skin_family_bewegt">ANIMATED</string>
+    <string name="skin_family_reagierend">REACTIVE</string>
+    <string name="skin_family_saison">SEASONAL</string>
+    <string name="skin_family_goenner">PATRON</string>
     <!-- Goenner-Paket: nur sichtbar, wenn Google einen Preis liefert. -->
     <string name="patron_pack">PATRON PACK — %1$s</string>
     <string name="patron_owned">THANK YOU!</string>
@@ -194,12 +198,41 @@
     <string name="skin_hint_osterei">APRIL: PLAY ON 5 DAYS</string>
     <string name="skin_hint_goenner">PATRON PACK</string>
 
+    <!-- Kulissen: die zweite Sammlung. Sie entscheidet nie ueber einen
+         Treffer — deshalb darf sie verkauft werden und die Bahn nicht. -->
+    <string name="scenes">SCENES</string>
+    <string name="scene_wiese">MEADOW</string>
+    <string name="scene_wueste">DESERT</string>
+    <string name="scene_meer">SEA</string>
+    <string name="scene_berg">MOUNTAIN</string>
+    <string name="scene_stadt">CITY</string>
+    <string name="scene_weltraum">SPACE</string>
+    <string name="scene_hint_wueste">500 RUNS</string>
+    <string name="scene_hint_meer">10,000 POINTS TOTAL</string>
+    <string name="scene_hint_berg">DAILY STREAK: 30 DAYS</string>
+    <string name="scene_hint_stadt">BEST 85</string>
+    <string name="scene_hint_weltraum">COLLECT EVERY OTHER SCENE</string>
+
+    <!-- Statistik-Seite (ab v2.22): Die vier Ausdauer-Achsen liefen seit
+         v2.20 unsichtbar mit — hier stehen sie samt naechster Ziele. -->
+    <string name="stats">STATS</string>
+    <string name="stats_runs">RUNS</string>
+    <string name="stats_total_score">TOTAL POINTS</string>
+    <string name="stats_days">DAYS PLAYED</string>
+    <string name="stats_months">MONTHS PLAYED</string>
+    <string name="stats_perfect">BEST PERFECT STREAK</string>
+    <string name="stats_daily_streak">DAILY STREAK</string>
+    <string name="stats_goals">NEXT GOALS</string>
+    <!-- "FOOTBALL 218/300" — Name der Belohnung plus Stand auf der Achse. -->
+    <string name="goal_progress">%1$s %2$d/%3$d</string>
+
     <!-- Score-Card / Teilen -->
     <string name="share_text">%1$d points in DOTTIE. — can you beat that?</string>
     <string name="share_text_daily">Daily Challenge in DOTTIE.: %1$d points — can you beat that?</string>
     <string name="share_chooser">Share score</string>
     <string name="card_daily">DAILY CHALLENGE</string>
     <string name="card_points">POINTS</string>
+    <string name="card_scene">SCENE: %1$s</string>
     <string name="card_daily_streak">DAILY STREAK: %1$d DAYS</string>
     <string name="card_record">BEST: %1$d</string>
     <string name="card_challenge">CAN YOU BEAT IT?</string>

@@ -21,7 +21,10 @@ enum SkinPaint {
     private static let mid = CGFloat(grid - 1) / 2
     private static let rr = CGFloat(grid) / 2 - 0.25
 
-    /// Himmelsstufen — Spiegel von Palette.skyStages.
+    /// Himmelsstufen des Bestands — Spiegel von ScenePaint.of(.wiese).sky.
+    /// Der CHAMAELEON spiegelt die Stufe der WIESE, nicht die der
+    /// gewählten Kulisse: Ein Skin ist die andere Sammlung und darf sich
+    /// nicht davon abhängig machen, was gerade im Hintergrund liegt.
     static let skyStages: [UInt32] = [
         0x4EC0CA, 0x5B9BD5, 0x7B6FD0, 0xC0616F, 0xD98A3D, 0x3D4A8C, 0x2A2640
     ]
@@ -95,14 +98,24 @@ enum SkinPaint {
 
     // MARK: - Farb-Werkzeug
 
+    /// Kanalwert einer gerechneten Farbe auf ein Byte bringen.
+    ///
+    /// Kaufmännisch gerundet, nicht abgeschnitten: Abschneiden zieht jeden
+    /// Kanal systematisch nach unten (im Mittel eine halbe Stufe), Runden
+    /// halbiert den Fehler und verteilt ihn symmetrisch. `SkinPaint.kt` in
+    /// :core und der Web-Port rechnen genauso — sonst zeigten App und PWA
+    /// dieselbe Farbe eine Stufe versetzt.
+    private static func byteOf(_ v: CGFloat) -> UInt32 {
+        return UInt32(min(max(v.rounded(), 0), 255))
+    }
+
     static func mix(_ a: UInt32, _ b: UInt32, _ k: CGFloat) -> UInt32 {
         let f = min(max(k, 0), 1)
         var out: UInt32 = 0
         for shift in [16, 8, 0] {
             let ca = CGFloat((a >> UInt32(shift)) & 0xFF)
             let cb = CGFloat((b >> UInt32(shift)) & 0xFF)
-            let v = UInt32(min(max(ca + (cb - ca) * f, 0), 255))
-            out |= v << UInt32(shift)
+            out |= byteOf(ca + (cb - ca) * f) << UInt32(shift)
         }
         return out
     }
@@ -123,7 +136,7 @@ enum SkinPaint {
         case ..<300: rgb = (x, 0, c)
         default: rgb = (c, 0, x)
         }
-        func byte(_ v: CGFloat) -> UInt32 { UInt32(min(max((v + m) * 255, 0), 255)) }
+        func byte(_ v: CGFloat) -> UInt32 { byteOf((v + m) * 255) }
         return (byte(rgb.0) << 16) | (byte(rgb.1) << 8) | byte(rgb.2)
     }
 

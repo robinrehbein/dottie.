@@ -87,6 +87,15 @@
     get selectedSkinName() { return backend.getItem(PREFIX + "selected_skin"); },
     set selectedSkinName(name) { backend.setItem(PREFIX + "selected_skin", name); },
 
+    /**
+     * Gewählte Kulisse (Name), WIESE als Fallback via DotScene.fromName.
+     * Wie die Skin-Wahl eine Entscheidung, keine Bestleistung — im Web
+     * gibt es keinen Abgleich mit der Uhr, deshalb reicht der Name ohne
+     * Zeitstempel.
+     */
+    get selectedSceneName() { return backend.getItem(PREFIX + "selected_scene"); },
+    set selectedSceneName(name) { backend.setItem(PREFIX + "selected_scene", name); },
+
     // ===== Daily Challenge =====
 
     /** Tagesbest-Score — gilt nur für den in dailyDay gespeicherten Tag. */
@@ -195,6 +204,16 @@
         return true;
       }
       return false;
+    },
+
+    /**
+     * Tage mit Lauf im laufenden Saison-Fenster — 0, sobald der Kalender
+     * weitergezogen ist. Der Wert gehört nicht in stats(): Er verfällt mit
+     * dem Monat und taugt für keine Freischaltung, nur für die Anzeige des
+     * Saison-Ziels (siehe progress.js).
+     */
+    seasonDaysFor: function (year, month) {
+      return getInt("season_window") === year * 100 + month ? getInt("season_days") : 0;
     },
 
     /** Bestleistungen und Ausdauer gebündelt, für Skin-Freischaltungen. */

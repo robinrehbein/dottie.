@@ -1,0 +1,4 @@
+# Kompilat der Store-Generatoren: entsteht beim Ausfuehren, gehoert nicht
+# in den Index (siehe Commit "Kompilat aus dem Index").
+__pycache__/
+*.pyc

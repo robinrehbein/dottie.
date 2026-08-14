@@ -140,6 +140,39 @@ class TimingGame(private var random: Random = Random.Default) {
     /** Steht der Punkt gerade in der (effektiven) Zielzone? */
     val isInZone: Boolean get() = abs(relativeToZone()) <= effectiveZoneHalf()
 
+    /**
+     * Halbe Breite des PERFEKT-Fensters — und zwar genau die, die die
+     * Renderer als hellen Kern zeichnen.
+     *
+     * Die Aufrundung auf ein halbes Segment stammt aus der Zeichnung: Die
+     * Bahn besteht aus [TRACK_SEGMENTS] Blöcken, ein Kern schmaler als ein
+     * Block ließe sich nicht darstellen. Früher rundete nur das Bild auf,
+     * gewertet wurde ohne — unter PULS war der leuchtende Kern dadurch bis
+     * zu 61 % breiter als das Fenster, das er versprach. Wer sichtbar
+     * mittig tippte, bekam trotzdem nur einen normalen Treffer.
+     *
+     * Jetzt gilt die Aufrundung für beide, und die Richtung ist Absicht:
+     * Das Trefferfenster wächst auf das Bild, nicht das Bild schrumpft auf
+     * das Fenster. Niemand wird dafür bestraft, dass er trifft, was er
+     * sieht. Die Zone bleibt die Obergrenze — sonst wäre bei sehr schmaler
+     * Zone plötzlich jeder Treffer perfekt.
+     */
+    fun perfectHalf(): Float {
+        val half = effectiveZoneHalf()
+        return minOf(half, maxOf(half * PERFECT_SHARE, SEGMENT_HALF))
+    }
+
+    /**
+     * Halbe Breite der Fallen-Zone — dieselbe wie die der echten Zone,
+     * Pulsieren eingeschlossen.
+     *
+     * Vorher zeichneten die Renderer die Falle mit der Grundbreite,
+     * während die Zone atmete. Damit war die Falle während PULS fast immer
+     * die breitere von beiden; wer das einmal bemerkte, musste FALLE +
+     * PULS nie wieder raten. Eine Falle, die sich selbst verrät, ist keine.
+     */
+    fun fakeZoneHalf(): Float = effectiveZoneHalf()
+
     /** Ist der Punkt gerade sichtbar? Blinkt nur im GHOST-Twist. */
     val isDotVisible: Boolean
         get() = phase != Phase.RUNNING || Twist.GHOST !in activeTwists ||
@@ -165,7 +198,7 @@ class TimingGame(private var random: Random = Random.Default) {
                 val rel = relativeToZone()
                 val half = effectiveZoneHalf()
                 if (abs(rel) <= half) {
-                    val perfect = abs(rel) <= half * PERFECT_SHARE
+                    val perfect = abs(rel) <= perfectHalf()
                     registerHit(perfect)
                     if (perfect) GameEvent.PerfectHit else GameEvent.Hit
                 } else if (rel > half && rel <= half + currentSpeed() * LATE_TAP_FORGIVENESS_SECONDS) {
@@ -401,6 +434,16 @@ class TimingGame(private var random: Random = Random.Default) {
         const val ZONE_SHRINK_PER_HIT = 0.005f
         const val MIN_ZONE_HALF = 0.15f
         const val PERFECT_SHARE = 0.35f
+
+        /**
+         * Aus wie vielen Blöcken die Bahn besteht. Stand bisher in jedem
+         * Renderer einzeln; seit der PERFEKT-Kern auch gewertet wird, ist
+         * die Zahl Spielregel und gehört hierher.
+         */
+        const val TRACK_SEGMENTS = 60
+
+        /** Halbe Winkelbreite eines Bahn-Blocks. */
+        const val SEGMENT_HALF = (Math.PI / TRACK_SEGMENTS).toFloat()
         const val MIN_ZONE_DISTANCE = 1.1f
         const val MAX_ZONE_DISTANCE = 2.8f
 

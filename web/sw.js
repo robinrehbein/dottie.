@@ -13,7 +13,7 @@
  * Die ASSETS-Liste muss alle ausgelieferten Dateien enthalten; ein Test
  * in tests/run-tests.js vergleicht sie mit dem Inhalt von web/.
  */
-var CACHE_VERSION = "dottie-v13";
+var CACHE_VERSION = "dottie-v15";
 
 var ASSETS = [
   "./",
@@ -27,6 +27,8 @@ var ASSETS = [
   "./icon-maskable-512.png",
   "./js/strings.js",
   "./js/skins.js",
+  "./js/scenes.js",
+  "./js/progress.js",
   "./js/game.js",
   "./js/daily.js",
   "./js/synth.js",

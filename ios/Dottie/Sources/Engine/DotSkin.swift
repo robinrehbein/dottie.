@@ -79,15 +79,18 @@ enum DotSkin: String, CaseIterable {
         case saison
         case goenner
 
-        /// Localizable.strings-Key der Überschrift.
+        /// Localizable.strings-Key der Überschrift. Die Keys tragen die
+        /// deutschen Familiennamen — Android, iOS und die PWA führen
+        /// dieselben Kennungen, damit dieselbe Überschrift überall gleich
+        /// heißt (der Paritätstest im Web vergleicht sie Wort für Wort).
         var titleKey: String {
             switch self {
-            case .einfarbig: return "skin_family_solid"
-            case .gemustert: return "skin_family_pattern"
-            case .bewegt: return "skin_family_animated"
-            case .reagierend: return "skin_family_reactive"
-            case .saison: return "skin_family_season"
-            case .goenner: return "skin_family_patron"
+            case .einfarbig: return "skin_family_einfarbig"
+            case .gemustert: return "skin_family_gemustert"
+            case .bewegt: return "skin_family_bewegt"
+            case .reagierend: return "skin_family_reagierend"
+            case .saison: return "skin_family_saison"
+            case .goenner: return "skin_family_goenner"
             }
         }
     }

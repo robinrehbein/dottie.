@@ -7,6 +7,9 @@
   "use strict";
 
   // ===== Retro-Farbpalette (GameOverlays.kt) =====
+  // Kulissen-Farben (Himmel, Wolke, Requisiten, Boden) stehen seit den
+  // Kulissen in scenes.js. Hier bleibt, was die Kulisse NICHT anfassen
+  // darf: die Bahn, die Kontur und die Akzente der Oberflaeche.
   var CloudColor = "#E9FCFD";
   var BushColor = "#71C837";
   var BushShadeColor = "#5AA82C";
@@ -25,16 +28,12 @@
   var FakeZoneColor = "#B44FD8";
   var FakeZoneCoreColor = "#8A2FB0";
 
-  /** Himmelsfarbe pro 5er-Stufe: von Tag über Abendrot bis Nacht. */
-  var SkyStages = [
-    "#4EC0CA", // 0+  Tag (türkis)
-    "#5B9BD5", // 5+  Blau
-    "#7B6FD0", // 10+ Lila
-    "#C0616F", // 15+ Altrosa
-    "#D98A3D", // 20+ Sonnenuntergang
-    "#3D4A8C", // 25+ Dämmerung
-    "#2A2640"  // 30+ Nacht
-  ];
+  /**
+   * Himmelsfarbe pro 5er-Stufe: von Tag über Abendrot bis Nacht — welche
+   * sieben Töne das sind, sagt die Kulisse (scenes.js). Die WIESE trägt
+   * unverändert die Farben des Bestands.
+   */
+  function skyStages() { return global.DotScene.fromName("WIESE").sky; }
 
   /** Dauer der Freischalt-Zelebration (goldener Ring + Schimmer). */
   var CELEBRATE_SECONDS = 1.1;
@@ -88,27 +87,45 @@
     });
   }
 
-  /** Blockige Retro-Wolke aus drei gestapelten Rechtecken. */
-  function drawCloud(ctx, x, y, cell) {
+  /**
+   * Blockige Retro-Wolke aus drei gestapelten Rechtecken. Die Farbe kommt
+   * seit den Kulissen von aussen — ohne Wolkenfarbe (Weltraum) wird gar
+   * nicht erst gezeichnet.
+   */
+  function drawCloud(ctx, x, y, cell, color) {
     var u = cell * 2;
-    rect(ctx, CloudColor, x, y + u * 2, u * 14, u * 3);
-    rect(ctx, CloudColor, x + u * 2, y, u * 7, u * 2);
-    rect(ctx, CloudColor, x + u * 4, y - u * 1.5, u * 4, u * 1.5);
+    rect(ctx, color, x, y + u * 2, u * 14, u * 3);
+    rect(ctx, color, x + u * 2, y, u * 7, u * 2);
+    rect(ctx, color, x + u * 4, y - u * 1.5, u * 4, u * 1.5);
+  }
+
+  /**
+   * Formen mit sich ueberlappenden Teilen (Kaktus, Hochhaus) brauchen zwei
+   * Durchgaenge: erst alle Konturen, dann alle Fuellungen. Sonst legt die
+   * Kontur des einen Blocks einen Balken ueber die Fuellung des anderen.
+   */
+  function outlinedBlocks(ctx, cell, blocks) {
+    blocks.forEach(function (b) {
+      rect(ctx, OutlineColor, b[0] - cell, b[1] - cell, b[2] + cell * 2, b[3] + cell * 2);
+    });
+    blocks.forEach(function (b) {
+      rect(ctx, b[4], b[0], b[1], b[2], b[3]);
+    });
   }
 
   /** Pixel-Baum: Stamm mit Schattenseite, dreistufige Krone im Wind. */
-  function drawPixelTree(ctx, cx, groundY, s, sway, cell) {
+  function drawPixelTree(ctx, cx, groundY, s, sway, cell, p) {
     var trunkW = s * 0.30;
     var trunkH = s * 0.60;
     rect(ctx, OutlineColor, cx - trunkW / 2 - cell, groundY - trunkH - cell,
       trunkW + cell * 2, trunkH + cell);
-    rect(ctx, TrunkColor, cx - trunkW / 2, groundY - trunkH, trunkW, trunkH);
-    rect(ctx, TrunkShade, cx, groundY - trunkH, trunkW / 2, trunkH);
+    rect(ctx, p.stem, cx - trunkW / 2, groundY - trunkH, trunkW, trunkH);
+    rect(ctx, p.stemShade, cx, groundY - trunkH, trunkW / 2, trunkH);
 
     var layers = [
-      [s * 1.6, s * 0.45, BushShadeColor],
-      [s * 1.2, s * 0.40, BushColor],
-      [s * 0.7, s * 0.35, GrassLight]
+      [s * 1.6, s * 0.45, p.dark],
+      [s * 1.2, s * 0.40, p.body],
+      [s * 0.7, s * 0.35, p.light]
     ];
     var layerTop = groundY - trunkH;
     for (var i = 0; i < layers.length; i++) {
@@ -122,11 +139,11 @@
   }
 
   /** Pixel-Strauch: runde Beeren-Silhouette mit Licht-Tupfern. */
-  function drawPixelBush(ctx, cx, groundY, s, sway, cell) {
+  function drawPixelBush(ctx, cx, groundY, s, sway, cell, p) {
     var layers = [
-      [s * 2.1, s * 0.55, BushShadeColor], // Sockel
-      [s * 2.7, s * 0.70, BushColor],      // Bauch — am breitesten
-      [s * 1.5, s * 0.55, GrassLight]      // Kuppe
+      [s * 2.1, s * 0.55, p.dark],  // Sockel
+      [s * 2.7, s * 0.70, p.body],  // Bauch — am breitesten
+      [s * 1.5, s * 0.55, p.light]  // Kuppe
     ];
     var layerTop = groundY;
     for (var i = 0; i < layers.length; i++) {
@@ -139,24 +156,24 @@
     }
 
     var u = cell * 1.5;
-    rect(ctx, GrassLight, cx - s * 1.0 + sway * 0.4, groundY - s * 1.05, u * 2, u);
-    rect(ctx, GrassLight, cx + s * 0.35 + sway * 0.4, groundY - s * 0.8, u, u);
+    rect(ctx, p.light, cx - s * 1.0 + sway * 0.4, groundY - s * 1.05, u * 2, u);
+    rect(ctx, p.light, cx + s * 0.35 + sway * 0.4, groundY - s * 0.8, u, u);
   }
 
   /** Pixel-Blume: Stiel mit Blättern und Blüte, die im Wind wiegt. */
-  function drawPixelFlower(ctx, cx, groundY, s, sway, cell, petal) {
+  function drawPixelFlower(ctx, cx, groundY, s, sway, cell, p, petal) {
     var stemH = s * 1.15;
     var bx = cx + sway;
     var by = groundY - stemH;
 
     rect(ctx, OutlineColor, cx - cell * 1.5, by, cell * 3, stemH);
-    rect(ctx, BushShadeColor, cx - cell * 0.75, by, cell * 1.5, stemH);
+    rect(ctx, p.dark, cx - cell * 0.75, by, cell * 1.5, stemH);
 
     var leafY = groundY - stemH * 0.45;
     rect(ctx, OutlineColor, cx - s * 0.6 - cell, leafY - cell, s * 0.6 + cell * 2, cell * 3);
-    rect(ctx, BushColor, cx - s * 0.6, leafY, s * 0.6, cell * 1.5);
+    rect(ctx, p.body, cx - s * 0.6, leafY, s * 0.6, cell * 1.5);
     rect(ctx, OutlineColor, cx - cell, leafY + cell * 3, s * 0.55 + cell * 2, cell * 3);
-    rect(ctx, BushColor, cx, leafY + cell * 4, s * 0.55, cell * 1.5);
+    rect(ctx, p.body, cx, leafY + cell * 4, s * 0.55, cell * 1.5);
 
     var u = s * 0.38;
     function block(x, y, color) {
@@ -167,47 +184,194 @@
     block(bx - u * 1.5, by - u / 2, petal);   // links
     block(bx + u / 2, by - u / 2, petal);     // rechts
     block(bx - u / 2, by + u / 2, petal);     // unten
-    block(bx - u / 2, by - u / 2, DotBody);   // Mitte
+    block(bx - u / 2, by - u / 2, p.light);   // Mitte
   }
 
-  /** Bäume/Sträucher mit Parallaxe-Drift und Wind (drawScenery). */
-  function drawScenery(ctx, w, h, game, cell) {
-    var groundY = h * 0.88 + cell * 2;
+  /**
+   * Kaktus: Saeule mit zwei versetzten Armen und einer Bluete obendrauf.
+   * Die Arme sitzen auf verschiedenen Hoehen — zwei gleich hohe Arme
+   * saehen aus wie ein Zeichen, nicht wie eine Pflanze.
+   */
+  function drawPixelCactus(ctx, cx, groundY, s, sway, cell, p, bloom) {
+    var stemW = s * 0.34;
+    var stemH = s * 1.5;
+    var armW = s * 0.20;
+    var leftY = groundY - stemH * 0.55;
+    var rightY = groundY - stemH * 0.78;
+    var lean = sway * 0.4;
+
+    outlinedBlocks(ctx, cell, [
+      [cx - stemW / 2, groundY - stemH, stemW, stemH, p.body],
+      [cx - s * 0.75 + lean, leftY, s * 0.75, armW, p.body],
+      [cx - s * 0.75 + lean, leftY - s * 0.45, armW, s * 0.45 + armW, p.body],
+      [cx + lean, rightY, s * 0.75, armW, p.body],
+      [cx + s * 0.75 - armW + lean, rightY - s * 0.38, armW, s * 0.38 + armW, p.body]
+    ]);
+
+    rect(ctx, p.dark, cx + stemW * 0.12, groundY - stemH, stemW * 0.38, stemH);
+    rect(ctx, p.light, cx - stemW / 2, groundY - stemH, stemW * 0.26, stemH * 0.92);
+
+    var fw = s * 0.26;
+    rect(ctx, OutlineColor, cx - fw / 2 - cell, groundY - stemH - fw - cell,
+      fw + cell * 2, fw + cell * 2);
+    rect(ctx, bloom, cx - fw / 2, groundY - stemH - fw, fw, fw);
+  }
+
+  /**
+   * Welle: flacher, breiter Stapel mit Schaumtupfern. Bewusst breiter als
+   * hoch — eine Welle, die wie ein Busch stuende, laese sich als Pflanze.
+   */
+  function drawPixelWave(ctx, cx, groundY, s, sway, cell, p, foam) {
+    var layers = [
+      [s * 3.0, s * 0.30, p.dark],
+      [s * 2.2, s * 0.26, p.body],
+      [s * 1.2, s * 0.22, p.light]
+    ];
+    var layerTop = groundY;
+    var lx = cx;
+    for (var i = 0; i < layers.length; i++) {
+      var lw = layers[i][0], lh = layers[i][1], color = layers[i][2];
+      layerTop -= lh;
+      lx = cx + sway * (0.3 + 0.4 * i);
+      rect(ctx, OutlineColor, lx - lw / 2 - cell, layerTop - cell,
+        lw + cell * 2, lh + cell * 2);
+      rect(ctx, color, lx - lw / 2, layerTop, lw, lh);
+    }
+    var u = cell * 1.5;
+    rect(ctx, foam, lx - s * 0.5, layerTop, u * 2, u);
+    rect(ctx, foam, lx + s * 0.2, layerTop + u, u, u);
+  }
+
+  /** Nadelbaum: schmaler Stamm, drei spitze Lagen, helle Spitze obendrauf. */
+  function drawPixelFir(ctx, cx, groundY, s, sway, cell, p) {
+    var trunkW = s * 0.22;
+    var trunkH = s * 0.30;
+    rect(ctx, OutlineColor, cx - trunkW / 2 - cell, groundY - trunkH - cell,
+      trunkW + cell * 2, trunkH + cell);
+    rect(ctx, p.stem, cx - trunkW / 2, groundY - trunkH, trunkW, trunkH);
+    rect(ctx, p.stemShade, cx, groundY - trunkH, trunkW / 2, trunkH);
+
+    var layers = [
+      [s * 1.50, s * 0.42, p.dark],
+      [s * 1.05, s * 0.38, p.body],
+      [s * 0.60, s * 0.34, p.body]
+    ];
+    var layerTop = groundY - trunkH;
+    var lx = cx;
+    for (var i = 0; i < layers.length; i++) {
+      var lw = layers[i][0], lh = layers[i][1], color = layers[i][2];
+      layerTop -= lh;
+      lx = cx + sway * (0.3 + 0.3 * i);
+      rect(ctx, OutlineColor, lx - lw / 2 - cell, layerTop - cell,
+        lw + cell * 2, lh + cell * 2);
+      rect(ctx, color, lx - lw / 2, layerTop, lw, lh);
+    }
+
+    var tw = s * 0.24;
+    var th = s * 0.26;
+    lx = cx + sway * 1.2;
+    rect(ctx, OutlineColor, lx - tw / 2 - cell, layerTop - th - cell,
+      tw + cell * 2, th + cell * 2);
+    rect(ctx, p.light, lx - tw / 2, layerTop - th, tw, th);
+  }
+
+  /**
+   * Hochhaus: ein Block mit Schattenseite, heller Dachkante und einem
+   * Fensterraster. Ohne Wind — ein wankendes Haus waere ein Witz, den das
+   * Spiel an dieser Stelle nicht macht.
+   */
+  function drawPixelTower(ctx, cx, groundY, s, cell, p, window) {
+    var w = s * 0.9;
+    var hgt = s * 2.4;
+    rect(ctx, OutlineColor, cx - w / 2 - cell, groundY - hgt - cell, w + cell * 2, hgt + cell);
+    rect(ctx, p.body, cx - w / 2, groundY - hgt, w, hgt);
+    rect(ctx, p.dark, cx, groundY - hgt, w / 2, hgt);
+    rect(ctx, p.light, cx - w / 2, groundY - hgt, w, s * 0.16);
+
+    // Jedes dritte Fenster bleibt dunkel, sonst saehe die Fassade aus wie
+    // ein Schachbrett aus Licht.
+    var uw = w * 0.22;
+    var uh = s * 0.16;
+    for (var r = 0; r < 5; r++) {
+      var fy = groundY - hgt + s * 0.34 + r * s * 0.36;
+      if (fy + uh > groundY - s * 0.1) break;
+      for (var c = 0; c < 2; c++) {
+        var fx = cx - w * 0.30 + c * w * 0.34;
+        rect(ctx, (r + c) % 3 === 0 ? p.dark : window, fx, fy, uw, uh);
+      }
+    }
+  }
+
+  /** Fels: pyramidenfoermiger Stapel, unten am breitesten. */
+  function drawPixelRock(ctx, cx, groundY, s, sway, cell, p) {
+    var layers = [
+      [s * 2.2, s * 0.50, p.dark],
+      [s * 1.6, s * 0.45, p.body],
+      [s * 0.8, s * 0.35, p.light]
+    ];
+    var layerTop = groundY;
+    for (var i = 0; i < layers.length; i++) {
+      var lw = layers[i][0], lh = layers[i][1], color = layers[i][2];
+      layerTop -= lh;
+      var lx = cx + sway * (0.15 + 0.25 * i);
+      rect(ctx, OutlineColor, lx - lw / 2 - cell, layerTop - cell,
+        lw + cell * 2, lh + cell * 2);
+      rect(ctx, color, lx - lw / 2, layerTop, lw, lh);
+    }
+  }
+
+  /** Verteilt eine Requisite auf die Zeichnung ihrer Form. */
+  function drawProp(ctx, p, cx, groundY, s, sway, cell, accent) {
+    switch (p.shape) {
+      case "BAUM": drawPixelTree(ctx, cx, groundY, s, sway, cell, p); break;
+      case "BLUME": drawPixelFlower(ctx, cx, groundY, s, sway, cell, p, accent); break;
+      case "STRAUCH": drawPixelBush(ctx, cx, groundY, s, sway, cell, p); break;
+      case "KAKTUS": drawPixelCactus(ctx, cx, groundY, s, sway, cell, p, accent); break;
+      case "WELLE": drawPixelWave(ctx, cx, groundY, s, sway, cell, p, accent); break;
+      case "NADELBAUM": drawPixelFir(ctx, cx, groundY, s, sway, cell, p); break;
+      case "HOCHHAUS": drawPixelTower(ctx, cx, groundY, s, cell, p, accent); break;
+      case "FELS": drawPixelRock(ctx, cx, groundY, s, sway, cell, p); break;
+    }
+  }
+
+  /**
+   * Requisiten mit Parallaxe-Drift und Wind (drawScenery). Welche
+   * Requisite an welchem Platz steht, sagt die Kulisse: Die Liste wird
+   * zyklisch abgelaufen, genau wie der Bestand bisher k % 4 benutzt hat.
+   * Der Akzent wechselt eine Ebene langsamer, also erst mit der naechsten
+   * Wiederholung.
+   */
+  function drawScenery(ctx, w, h, game, cell, props) {
+    var groundY = global.DotScene.groundY(h) + cell * 2;
     var drift = game.elapsed * h * 0.016;
     var spacing = w * 0.26;
     var count = Math.floor(w / spacing) + 3;
     var total = spacing * count;
     for (var k = 0; k < count; k++) {
       var x = ((k * spacing - drift) % total + total) % total - spacing;
-      var sway = Math.sin(game.elapsed * 1.4 + k * 1.7) * cell * 0.6;
-      switch (k % 4) {
-        case 0:
-          drawPixelTree(ctx, x, groundY, h * 0.075, sway, cell);
-          break;
-        case 1:
-          drawPixelFlower(ctx, x, groundY, h * 0.032, sway * 0.8, cell,
-            (Math.floor(k / 4) % 2 === 0) ? RecordRed : CloudColor);
-          break;
-        case 2:
-          drawPixelTree(ctx, x, groundY, h * 0.058, -sway, cell);
-          break;
-        default:
-          drawPixelBush(ctx, x, groundY, h * 0.026, sway * 0.4, cell);
-      }
+      var wind = Math.sin(game.elapsed * 1.4 + k * 1.7) * cell * 0.6;
+      var p = props[k % props.length];
+      var accent = p.accents.length === 0
+        ? OutlineColor
+        : p.accents[Math.floor(k / props.length) % p.accents.length];
+      drawProp(ctx, p, x, groundY, h * p.size, wind * p.sway, cell, accent);
     }
   }
 
-  /** Sand-Streifen mit Grasnarbe — der statische Boden unter allem. */
-  function drawGroundStrip(ctx, w, h, cell) {
-    var groundTop = h * 0.88;
+  /**
+   * Bodenstreifen mit Narbe — der statische Boden unter allem. Welche
+   * Farben, sagt die Kulisse; wo er beginnt, sagt DotScene.groundY.
+   */
+  function drawGroundStrip(ctx, w, h, cell, ground) {
+    var groundTop = global.DotScene.groundY(h);
 
-    rect(ctx, GroundSand, 0, groundTop, w, h - groundTop);
-    rect(ctx, GroundSandShade, 0, groundTop + cell * 8, w, cell * 2);
+    rect(ctx, ground.sand, 0, groundTop, w, h - groundTop);
+    rect(ctx, ground.sandShade, 0, groundTop + cell * 8, w, cell * 2);
     var toothW = cell * 5;
-    rect(ctx, GrassDark, 0, groundTop, w, cell * 5);
+    rect(ctx, ground.turfDark, 0, groundTop, w, cell * 5);
     var x = 0;
     while (x < w) {
-      rect(ctx, GrassLight, x, groundTop, toothW, cell * 4);
+      rect(ctx, ground.turfLight, x, groundTop, toothW, cell * 4);
       x += toothW * 2;
     }
     rect(ctx, OutlineColor, 0, groundTop - cell, w, cell);
@@ -228,15 +392,17 @@
 
       var relativeZone = TG.wrapToPi(a - game.zoneCenter);
       var inZone = Math.abs(relativeZone) <= zoneHalf;
-      // Kern fürs Zeichnen auf mindestens einen Rasterschritt aufrunden.
-      var coreHalf = Math.max(zoneHalf * TG.C.PERFECT_SHARE, Math.PI / segments);
+      // Kern und Fallenbreite kommen aus der Engine, nicht aus dem
+      // Renderer: Was hier leuchtet, ist exakt das Fenster, das der Tap
+      // auch wertet — und die Falle misst sich wie die echte Zone.
+      var coreHalf = game.perfectHalf();
       var inPerfectCore = Math.abs(relativeZone) <= coreHalf;
 
+      var fakeHalf = game.fakeZoneHalf();
       var inFake = game.hasFakeZone &&
-        Math.abs(TG.wrapToPi(a - game.fakeZoneCenter)) <= game.zoneHalfWidth;
+        Math.abs(TG.wrapToPi(a - game.fakeZoneCenter)) <= fakeHalf;
       var inFakeCore = game.hasFakeZone &&
-        Math.abs(TG.wrapToPi(a - game.fakeZoneCenter)) <=
-          game.zoneHalfWidth * TG.C.PERFECT_SHARE;
+        Math.abs(TG.wrapToPi(a - game.fakeZoneCenter)) <= coreHalf;
 
       var highlighted = inZone || inFake;
       var outer = highlighted ? cell * 5 : cell * 3;
@@ -377,7 +543,7 @@
   }
 
   /** Port von drawTimingWorld: ein kompletter Frame. */
-  function drawWorld(ctx, w, h, game, fx, skin, clock) {
+  function drawWorld(ctx, w, h, game, fx, skin, clock, scene) {
     var cell = Math.max(2, Math.floor(h / 220));
 
     // Screen-Shake beim Tod
@@ -391,19 +557,25 @@
     ctx.save();
     ctx.translate(shakeX, shakeY);
 
-    // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht.
-    var sky = SkyStages[global.DotSkin.skyStage(game.score)];
-    rect(ctx, sky, -40, -40, w + 80, h + 80);
+    // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht —
+    // welche sieben Töne das sind, sagt die Kulisse.
+    var kulisse = scene || global.DotScene.fromName("WIESE");
+    rect(ctx, global.DotScene.skyFor(kulisse, game.score), -40, -40, w + 80, h + 80);
 
-    // Langsam driftende Wolken
-    var drift = game.elapsed * h * 0.01;
-    drawCloud(ctx, w * 0.1 - drift % (w * 1.4), h * 0.16, cell);
-    drawCloud(ctx, w * 0.75 - drift % (w * 1.4), h * 0.24, cell);
+    // Langsam driftende Wolken. Im Vakuum gibt es keine — dann bleibt der
+    // Himmel leer, statt graue Attrappen zu zeigen.
+    if (kulisse.cloud) {
+      var drift = game.elapsed * h * 0.01;
+      drawCloud(ctx, w * 0.1 - drift % (w * 1.4), h * 0.16, cell, kulisse.cloud);
+      drawCloud(ctx, w * 0.75 - drift % (w * 1.4), h * 0.24, cell, kulisse.cloud);
+    }
 
-    drawScenery(ctx, w, h, game, cell);
-    drawGroundStrip(ctx, w, h, cell);
+    drawScenery(ctx, w, h, game, cell, kulisse.props);
+    if (kulisse.ground) drawGroundStrip(ctx, w, h, cell, kulisse.ground);
 
-    // Kreisbahn mit Zielzone, ggf. Fallen-Zone und Punkt
+    // Kreisbahn mit Zielzone, ggf. Fallen-Zone und Punkt. Sie zieht ihre
+    // Farben bewusst NICHT aus der Kulisse: Worauf getippt wird, sieht
+    // überall gleich aus — sonst wäre die Kulisse ein Vorteil.
     var cx = w / 2;
     var cy = h * 0.44;
     var radius = Math.min(w * 0.36, h * 0.28);
@@ -502,8 +674,33 @@
     });
   }
 
+  /**
+   * Vorschau einer Kulisse: Tageshimmel, Bodenkante mit Narbe und eine
+   * Requisite als Silhouette. Mehr passt auf 36 px nicht hinein — und
+   * weniger waere nicht auseinanderzuhalten.
+   */
+  function drawScenePreview(ctx, size, scene) {
+    var border = size / 12;
+    var horizon = size * 0.62;
+    ctx.clearRect(0, 0, size, size);
+    rect(ctx, OutlineColor, 0, 0, size, size);
+    rect(ctx, scene.sky[0], border, border, size - border * 2, horizon - border);
+    // Ohne Boden (WELTRAUM) laeuft der Himmel bis unten durch und zeigt
+    // dort seine Nachtstufe — die Kachel bleibt so trotzdem lesbar.
+    rect(ctx, scene.ground ? scene.ground.sand : scene.sky[6],
+      border, horizon, size - border * 2, size - horizon - border);
+    if (scene.ground) {
+      rect(ctx, scene.ground.turfLight, border, horizon, size - border * 2, size * 0.07);
+    }
+    var p = scene.props[0];
+    rect(ctx, p.dark, size * 0.22, horizon - size * 0.22, size * 0.26, size * 0.22);
+    rect(ctx, p.body, size * 0.28, horizon - size * 0.34, size * 0.16, size * 0.14);
+    rect(ctx, p.light, size * 0.58, horizon - size * 0.16, size * 0.18, size * 0.16);
+  }
+
   var Renderer = {
     drawSkinPreview: drawSkinPreview,
+    drawScenePreview: drawScenePreview,
     drawWorld: drawWorld,
     drawMedal: drawMedal,
     CELEBRATE_SECONDS: CELEBRATE_SECONDS,
@@ -534,7 +731,8 @@
       RecordRed: RecordRed,
       FakeZoneColor: FakeZoneColor,
       FakeZoneCoreColor: FakeZoneCoreColor,
-      SkyStages: SkyStages
+      // Lazy: scenes.js kann in Node nach render.js geladen werden.
+      get SkyStages() { return skyStages(); }
     }
   };
 

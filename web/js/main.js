@@ -53,6 +53,9 @@
   var perfectPoints = 2;
   var bannerText = "";
   var skin = DotSkin.fromName(ScoreStore.selectedSkinName);
+  // Die Kulisse ist die zweite Sammlung: kein Tagespass, kein
+  // Verfallsdatum — ein schlichter Zustand reicht.
+  var scene = DotScene.fromName(ScoreStore.selectedSceneName);
   var skinUnlockedThisRun = false;
   var newMedalThisRun = false;
   var uiBestScore = ScoreStore.bestScore;
@@ -92,12 +95,18 @@
     goDailyLine: $("go-daily-line"),
     goNewMedal: $("go-new-medal"),
     goNewSkin: $("go-new-skin"),
+    goGoal: $("go-goal"),
+    goGoalLabel: $("go-goal-label"),
+    goGoalFill: $("go-goal-fill"),
     goRetry: $("go-retry"),
     btnMenu: $("btn-menu"),
     help: $("overlay-help"),
     helpContent: $("help-content"),
     skins: $("overlay-skins"),
-    skinList: $("skin-list")
+    skinList: $("skin-list"),
+    btnStats: $("btn-stats"),
+    stats: $("overlay-stats"),
+    statsList: $("stats-list")
   };
 
   // ===== Statische Texte =====
@@ -106,6 +115,7 @@
   el.hint.textContent = t("ready_hint");
   el.btnDaily.textContent = t("daily");
   el.btnSkins.textContent = t("skins");
+  el.btnStats.textContent = t("stats");
   el.hudDaily.textContent = t("daily");
   el.goScoreLabel.textContent = t("points_label");
   el.goRetry.textContent = t("tap_retry");
@@ -114,6 +124,8 @@
   $("go-title").textContent = t("game_over");
   $("skins-title").textContent = t("skins");
   $("skins-close").textContent = t("tap_to_close");
+  $("stats-title").textContent = t("stats");
+  $("stats-close").textContent = t("tap_to_close");
 
   // ===== Pixel-Knöpfe (Farben wie in GameOverlays.kt) =====
   var C = Renderer.Colors;
@@ -129,6 +141,7 @@
     [el.btnHelpOver, C.PanelSand],
     [el.btnDaily, C.DotBody],
     [el.btnSkins, C.PanelSand],
+    [el.btnStats, C.PanelSand],
     [el.btnShare, C.DotBody],
     [el.btnMenu, C.PanelSand]
   ];
@@ -185,10 +198,84 @@
 
   // ===== Skin-Overlay =====
 
+  /** Eine Zeile der Auswahl — Vorschau-Kachel links, zwei Texte rechts. */
+  function pickerRow(unlocked, paintChip, title, sub, onPick) {
+    var row = document.createElement("div");
+    row.className = "skin-row" + (unlocked ? "" : " locked");
+
+    var chip = document.createElement("canvas");
+    chip.className = "skin-chip";
+    var chipSize = 36;
+    var chipDpr = Math.min(window.devicePixelRatio || 1, 3);
+    chip.width = chipSize * chipDpr;
+    chip.height = chipSize * chipDpr;
+    var chipCtx = chip.getContext("2d");
+    chipCtx.scale(chipDpr, chipDpr);
+    chipCtx.globalAlpha = unlocked ? 1 : 0.3;
+    paintChip(chipCtx, chipSize);
+    chipCtx.globalAlpha = 1;
+    row.appendChild(chip);
+
+    var texts = document.createElement("span");
+    texts.className = "skin-texts";
+    var titleEl = document.createElement("span");
+    titleEl.className = "skin-title";
+    titleEl.textContent = title;
+    var subEl = document.createElement("span");
+    subEl.className = "skin-sub";
+    subEl.textContent = sub.text;
+    if (sub.selected) subEl.classList.add("selected");
+    texts.appendChild(titleEl);
+    texts.appendChild(subEl);
+    row.appendChild(texts);
+
+    if (unlocked && onPick) {
+      row.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+      row.addEventListener("click", function (e) {
+        e.stopPropagation();
+        onPick();
+      });
+    }
+    return row;
+  }
+
+  function heading(text) {
+    var node = document.createElement("div");
+    node.className = "skin-family";
+    node.textContent = text;
+    return node;
+  }
+
   function buildSkinList() {
     var stats = ScoreStore.stats();
     var clock = clockNow();
     el.skinList.innerHTML = "";
+
+    // Die Kulissen stehen ganz oben und vor allen Skin-Familien: Es sind
+    // nur sechs, sie wirken auf das ganze Bild, und wer das Menü öffnet,
+    // soll sie nicht erst suchen müssen.
+    el.skinList.appendChild(heading(t("scenes")));
+    DotScene.SCENES.forEach(function (sc) {
+      var open = DotScene.isUnlocked(sc, stats);
+      var sub = sc.name === scene.name
+        ? { text: t("skin_selected"), selected: true }
+        : {
+          text: open ? t("skin_tap_select") : (sc.hintKey ? t(sc.hintKey) : ""),
+          selected: false
+        };
+      el.skinList.appendChild(pickerRow(
+        open,
+        function (chipCtx, size) { Renderer.drawScenePreview(chipCtx, size, sc); },
+        t(sc.titleKey),
+        sub,
+        function () {
+          scene = sc;
+          ScoreStore.selectedSceneName = sc.name;
+          hide(el.skins);
+        }
+      ));
+    });
+
     DotSkin.SKINS.forEach(function (s) {
       // 42 Skins am Stück sind eine Wand — die Familien-Überschriften
       // teilen die Liste in Abschnitte, durch die man scrollen kann.
@@ -256,6 +343,59 @@
       }
       el.skinList.appendChild(row);
     });
+  }
+
+  // ===== Statistik-Seite =====
+
+  /**
+   * Der Anlass: Seit v2.20 laufen vier Ausdauer-Achsen mit, und sichtbar
+   * war davon nichts. Wer bei Rekord 25 haengenbleibt, sah nur eine Zahl —
+   * dass der naechste Skin in 30 Laeufen faellt, stand nirgends. Deshalb
+   * erst die Zaehler, dann die naechsten Ziele mit Balken.
+   */
+  function statRow(label, value) {
+    return '<div class="stat-row"><span class="stat-label">' + label +
+      '</span><span class="stat-value">' + value + "</span></div>";
+  }
+
+  /** Ein Ziel: "FUSSBALL 218/300" und darunter der Balken. */
+  function goalRow(entry) {
+    var label = t("goal_progress", t(Progress.titleKey(entry)), entry.current, entry.target);
+    var percent = Progress.filledBlocks(entry.fraction) / Progress.BAR_BLOCKS * 100;
+    return '<div class="goal-row"><div class="goal-label">' + label +
+      '</div><span class="goal-bar"><span class="goal-fill" style="width:' +
+      percent.toFixed(2) + '%"></span></span></div>';
+  }
+
+  function buildStatsPage() {
+    var stats = ScoreStore.stats();
+    var clock = clockNow();
+    var goals = Progress.nextGoals(
+      stats, clock.month, ScoreStore.seasonDaysFor(clock.year, clock.month)
+    );
+
+    var html = "";
+    html += statRow(t("record_label"), stats.bestScore);
+    html += statRow(t("stats_runs"), stats.runCount);
+    html += statRow(t("stats_total_score"), stats.totalScore);
+    html += statRow(t("stats_days"), stats.daysPlayed);
+    html += statRow(t("stats_months"), stats.monthsPlayed);
+    html += statRow(t("stats_perfect"), stats.bestPerfectStreak);
+    html += statRow(t("stats_daily_streak"), stats.bestDailyStreak);
+    // Beide Sammlungen als Stand "12/35": Die Zahl allein sagt nichts,
+    // erst das Verhaeltnis zeigt, wie weit es noch ist.
+    html += statRow(
+      t("skins"), DotSkin.unlockedCount(stats) + "/" + DotSkin.collectableCount()
+    );
+    html += statRow(
+      t("scenes"), DotScene.unlockedCount(stats) + "/" + DotScene.SCENES.length
+    );
+
+    if (goals.length > 0) {
+      html += '<div class="skin-family">' + t("stats_goals") + "</div>";
+      goals.forEach(function (entry) { html += goalRow(entry); });
+    }
+    el.statsList.innerHTML = html;
   }
 
   // ===== Sichtbarkeits-Helfer =====
@@ -347,6 +487,20 @@
     el.goNewMedal.textContent = t("new_medal");
     setVisible(el.goNewSkin, skinUnlockedThisRun);
     el.goNewSkin.textContent = t("new_skin_unlocked");
+
+    // Das naechste Ziel steht hier NACH dem gerade beendeten Lauf: Der
+    // Lauf ist beim Tod schon gezaehlt, der Balken zeigt ihn also mit.
+    var clock = clockNow();
+    var goal = Progress.nextGoal(
+      ScoreStore.stats(), clock.month, ScoreStore.seasonDaysFor(clock.year, clock.month)
+    );
+    setVisible(el.goGoal, !!goal);
+    if (goal) {
+      el.goGoalLabel.textContent =
+        t("goal_progress", t(Progress.titleKey(goal)), goal.current, goal.target);
+      el.goGoalFill.style.width =
+        (Progress.filledBlocks(goal.fraction) / Progress.BAR_BLOCKS * 100).toFixed(2) + "%";
+    }
   }
 
   // ===== Banner mit Priorität =====
@@ -573,7 +727,7 @@
     }
 
     syncUI();
-    Renderer.drawWorld(ctx, canvas.width, canvas.height, game, fx, skin, clockNow());
+    Renderer.drawWorld(ctx, canvas.width, canvas.height, game, fx, skin, clockNow(), scene);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -622,6 +776,13 @@
     show(el.skins);
   });
 
+  button(el.btnStats, function () {
+    // Beim Oeffnen einmal rechnen: Die Seite steht still, solange sie
+    // offen ist — pro Frame nachzurechnen waere Verschwendung.
+    buildStatsPage();
+    show(el.stats);
+  });
+
   // Teilen: Die App baut dafür eine gerenderte Score-Card als PNG
   // (ScoreCard.kt) und öffnet den System-Dialog. Im Browser gibt es dafür
   // keinen verlässlichen Weg (Web Share mit Dateien fehlt auf iOS-Safari
@@ -651,7 +812,7 @@
 
   // Overlays: Tap irgendwo schließt — und wird konsumiert, damit er
   // nicht gleichzeitig als Spiel-Tap (Sofort-Neustart!) durchschlägt.
-  [el.help, el.skins].forEach(function (overlay) {
+  [el.help, el.skins, el.stats].forEach(function (overlay) {
     overlay.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
     overlay.addEventListener("click", function (e) {
       e.stopPropagation();

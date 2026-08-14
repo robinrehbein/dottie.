@@ -250,6 +250,61 @@ final class PixelButton: SKNode {
     }
 }
 
+/// Der Fortschrittsbalken im Pixel-Look: dunkler Rahmen, Sandbett, gold
+/// gefüllte Blöcke. Der Füllstand rastet auf ganze Blöcke ein
+/// (`Progress.barBlocks`) — ein weicher Balken wäre der einzige
+/// stufenlose Verlauf im ganzen Spiel.
+final class GoalBar: SKNode {
+
+    private let bed: SKSpriteNode
+    private let fill: SKSpriteNode
+    private let innerWidth: CGFloat
+
+    init(width: CGFloat, height: CGFloat = 12) {
+        let border: CGFloat = 2
+        // Über eine lokale Größe statt über die Eigenschaft: Vor
+        // super.init() darf ein Initialisierer eigene Werte setzen, aber
+        // keine lesen.
+        let inner = width - border * 2
+        innerWidth = inner
+        bed = SKSpriteNode(
+            color: Palette.groundSandShade,
+            size: CGSize(width: inner, height: height - border * 2)
+        )
+        fill = SKSpriteNode(
+            color: Palette.dotBody,
+            size: CGSize(width: inner, height: height - border * 2)
+        )
+        super.init()
+
+        addChild(SKSpriteNode(color: Palette.outline, size: CGSize(width: width, height: height)))
+        addChild(bed)
+        // Links verankert: Der Balken wächst nach rechts, nicht aus der Mitte.
+        fill.anchorPoint = CGPoint(x: 0, y: 0.5)
+        fill.position = CGPoint(x: -innerWidth / 2, y: 0)
+        // Leer starten: `didSet` läuft bei der Zuweisung im Initialisierer
+        // nicht, ein voller Balken wäre sonst der Ausgangszustand.
+        fill.size = CGSize(width: 0, height: height - border * 2)
+        fill.isHidden = true
+        addChild(fill)
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        return nil
+    }
+
+    var fraction: CGFloat = 0 {
+        didSet {
+            let blocks = Progress.filledBlocks(fraction)
+            fill.size = CGSize(
+                width: innerWidth * CGFloat(blocks) / CGFloat(Progress.barBlocks),
+                height: fill.size.height
+            )
+            fill.isHidden = blocks <= 0
+        }
+    }
+}
+
 /// HUD während des Laufs: Score, DAILY-Tag, Twist-Banner, PERFEKT-Text.
 final class HudOverlay: SKNode {
 
@@ -364,31 +419,47 @@ final class ReadyOverlay: SKNode {
         helpButton.position = CGPoint(x: w - 16 - 24, y: h - safeTop - 40)
         addChild(helpButton)
 
+        // Drei Knöpfe statt zwei: Die Statistik gehört auf den
+        // Startscreen, nicht in ein Untermenü — sie ist der Grund, den
+        // nächsten Lauf zu starten. Dafür sind alle drei etwas schmaler
+        // (108 statt 116 bei 10 Abstand), damit die Reihe auch auf
+        // schmalen Geräten mit Rand steht.
         let buttonY = safeBottom + 110
+        let buttonSize = CGSize(width: 108, height: 52)
+        let buttonStep: CGFloat = 118
         let dailyButton = PixelButton(
             name: "btn.daily",
             text: L10n.text("daily"),
-            size: CGSize(width: 116, height: 52),
+            size: buttonSize,
             background: Palette.dotBody
         )
-        dailyButton.position = CGPoint(x: w / 2 - 64, y: buttonY)
+        dailyButton.position = CGPoint(x: w / 2 - buttonStep, y: buttonY)
         addChild(dailyButton)
 
         let skinsButton = PixelButton(
             name: "btn.skins",
             text: L10n.text("skins"),
-            size: CGSize(width: 116, height: 52),
+            size: buttonSize,
             background: Palette.panelSand
         )
-        skinsButton.position = CGPoint(x: w / 2 + 64, y: buttonY)
+        skinsButton.position = CGPoint(x: w / 2, y: buttonY)
         addChild(skinsButton)
+
+        let statsButton = PixelButton(
+            name: "btn.stats",
+            text: L10n.text("stats"),
+            size: buttonSize,
+            background: Palette.panelSand
+        )
+        statsButton.position = CGPoint(x: w / 2 + buttonStep, y: buttonY)
+        addChild(statsButton)
 
         statsLabel.position = CGPoint(x: w / 2, y: safeBottom + 66)
         addChild(statsLabel)
         runLabel.position = CGPoint(x: w / 2, y: safeBottom + 42)
         addChild(runLabel)
 
-        buttons = [soundButton, reminderButton, helpButton, dailyButton, skinsButton]
+        buttons = [soundButton, reminderButton, helpButton, dailyButton, skinsButton, statsButton]
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -446,6 +517,8 @@ final class GameOverOverlay: SKNode {
     private let dailyLabel: PixelLabel
     private let newMedalLabel: PixelLabel
     private let newSkinLabel: PixelLabel
+    private let goalLabel: PixelLabel
+    private let goalBar: GoalBar
     private var buttons: [PixelButton] = []
 
     init(sceneSize: CGSize, safeTop: CGFloat) {
@@ -467,6 +540,8 @@ final class GameOverOverlay: SKNode {
         dailyLabel = PixelLabel(text: "", fontSize: 16, color: Palette.dotBody, maxWidth: w - 48)
         newMedalLabel = PixelLabel(text: L10n.text("new_medal"), fontSize: 18, color: Palette.perfectYellow)
         newSkinLabel = PixelLabel(text: L10n.text("new_skin_unlocked"), fontSize: 18, color: Palette.perfectYellow)
+        goalLabel = PixelLabel(text: "", fontSize: 16, color: .white)
+        goalBar = GoalBar(width: 220)
         super.init()
 
         let gameOver = PixelLabel(text: L10n.text("game_over"), fontSize: 48, color: Palette.bannerOrange)
@@ -527,10 +602,18 @@ final class GameOverOverlay: SKNode {
         newSkinLabel.position = CGPoint(x: centerX, y: centerY - 110)
         addChild(newSkinLabel)
 
+        // Das nächste Ziel: eine Zeile, ein Balken, mehr nicht. Hier
+        // stirbt gerade jemand und will neu starten — der Fortschritt
+        // soll ihn anschieben, nicht aufhalten.
+        goalLabel.position = CGPoint(x: centerX, y: centerY - 132)
+        addChild(goalLabel)
+        goalBar.position = CGPoint(x: centerX, y: centerY - 148)
+        addChild(goalBar)
+
         // Kein NOCHMAL-Button: Tap irgendwo startet sofort neu — der
         // blinkende Hinweis ist die einzige Restart-Affordanz.
         let retry = PixelLabel(text: L10n.text("tap_retry"), fontSize: 26, color: .white)
-        retry.position = CGPoint(x: centerX, y: centerY - 155)
+        retry.position = CGPoint(x: centerX, y: centerY - 175)
         retry.run(SKAction.repeatForever(SKAction.sequence([
             SKAction.fadeAlpha(to: 0.3, duration: 0.5),
             SKAction.fadeAlpha(to: 1.0, duration: 0.5)
@@ -543,7 +626,7 @@ final class GameOverOverlay: SKNode {
             size: CGSize(width: 116, height: 48),
             background: Palette.panelSand
         )
-        menuButton.position = CGPoint(x: centerX, y: centerY - 210)
+        menuButton.position = CGPoint(x: centerX, y: centerY - 225)
         addChild(menuButton)
         buttons = [menuButton, helpButton]
     }
@@ -561,7 +644,9 @@ final class GameOverOverlay: SKNode {
         dailyBest: Int,
         dailyStreak: Int,
         skinUnlocked: Bool,
-        newMedal: Bool
+        newMedal: Bool,
+        // Das nächstliegende offene Ziel — nil, wenn alles gesammelt ist.
+        goal: Goal?
     ) {
         let tier = MedalTier.forScore(score)
         medalSprite.texture = PixelArt.medalTexture(tier: tier, size: 72)
@@ -606,6 +691,15 @@ final class GameOverOverlay: SKNode {
         }
         newMedalLabel.isHidden = !newMedal
         newSkinLabel.isHidden = !skinUnlocked
+
+        if let goal = goal {
+            goalLabel.text = L10n.format(
+                "goal_progress", L10n.text(goal.titleKey), goal.current, goal.target
+            )
+            goalBar.fraction = goal.fraction
+        }
+        goalLabel.isHidden = goal == nil
+        goalBar.isHidden = goal == nil
     }
 
     func buttonHit(at point: CGPoint) -> String? {
@@ -692,6 +786,165 @@ final class HelpOverlay: SKNode {
     }
 }
 
+/// Die Statistik-Seite: alle Zähler auf einen Blick und darunter die
+/// nächsten Freischaltungen mit Balken. Vollflächig über dunklem Scrim,
+/// im Stil der Hilfe; ein Tap irgendwo schließt.
+///
+/// Der Anlass: Seit v2.20 laufen vier Ausdauer-Achsen mit, und sichtbar
+/// war davon nichts. Wer bei Rekord 25 hängenbleibt, sah nur eine Zahl —
+/// dass der nächste Skin in 30 Läufen fällt, stand nirgends.
+///
+/// Anders als der Skin-Picker scrollt hier nichts: Neun Zeilen und drei
+/// Ziele passen auf jedes iPhone, und ein Scroll-Fenster für eine Seite,
+/// die ohnehin ganz sichtbar ist, wäre nur Mechanik ohne Zweck.
+final class StatsOverlay: SKNode {
+
+    private let sceneSize: CGSize
+    private var valueLabels: [PixelLabel] = []
+    private var goalNodes: [SKNode] = []
+    private let goalsHeader: PixelLabel
+    private let firstGoalY: CGFloat
+
+    /// Wie viele Ziele auf DIESES Gerät passen. Auf einem 4,7-Zoll-Display
+    /// bleibt unter neun Zeilen weniger Platz als auf einem 6,7-Zoll —
+    /// lieber ein Ziel weniger als eines hinter dem Schließen-Hinweis.
+    private let maxGoals: Int
+
+    private static let rowStep: CGFloat = 26
+    private static let goalStep: CGFloat = 46
+
+    /// Die Zähler in der Reihenfolge, in der sie stehen — die Werte
+    /// füllt `refresh` nach.
+    private static let rowKeys = [
+        "record_label", "stats_runs", "stats_total_score", "stats_days",
+        "stats_months", "stats_perfect", "stats_daily_streak", "skins", "scenes"
+    ]
+
+    init(sceneSize: CGSize) {
+        self.sceneSize = sceneSize
+        let w = sceneSize.width
+        let h = sceneSize.height
+        goalsHeader = PixelLabel(
+            text: L10n.text("stats_goals"), fontSize: 18,
+            color: Palette.bannerOrange, shadow: true
+        )
+        // Über lokale Größen statt über die Eigenschaften: Vor super.init()
+        // darf ein Initialisierer eigene Werte setzen, aber keine lesen.
+        let rowsHeight = CGFloat(StatsOverlay.rowKeys.count) * StatsOverlay.rowStep
+        let goalTop = h - 175 - rowsHeight - 34
+        firstGoalY = goalTop
+        // Bis 78 Punkt über dem unteren Rand: Darunter steht der
+        // Schließen-Hinweis.
+        maxGoals = max(0, min(Progress.pageGoals, Int((goalTop - 78) / StatsOverlay.goalStep)))
+        super.init()
+
+        let scrim = SKSpriteNode(
+            color: Palette.outline.withAlphaComponent(0.92),
+            size: CGSize(width: w + 80, height: h + 80)
+        )
+        scrim.position = CGPoint(x: w / 2, y: h / 2)
+        addChild(scrim)
+
+        let title = PixelLabel(text: L10n.text("stats"), fontSize: 32, color: .white)
+        title.position = CGPoint(x: w / 2, y: h - 120)
+        addChild(title)
+
+        // Eine Zeile "LAEUFE ........ 218": Beschriftung links am Rand,
+        // Zahl rechts am Rand — dieselben 40 Punkt wie im Skin-Picker.
+        var y = h - 175
+        for key in StatsOverlay.rowKeys {
+            let label = PixelLabel(
+                text: L10n.text(key), fontSize: 16,
+                color: UIColor(white: 1, alpha: 0.8), shadow: false
+            )
+            label.position = CGPoint(x: 40, y: y)
+            align(label, mode: .left)
+            addChild(label)
+
+            let value = PixelLabel(text: "", fontSize: 18, color: Palette.dotBody, shadow: false)
+            value.position = CGPoint(x: w - 40, y: y)
+            align(value, mode: .right)
+            addChild(value)
+            valueLabels.append(value)
+
+            y -= StatsOverlay.rowStep
+        }
+
+        goalsHeader.position = CGPoint(x: 40, y: y - 14)
+        align(goalsHeader, mode: .left)
+        addChild(goalsHeader)
+
+        let closeHint = PixelLabel(
+            text: L10n.text("tap_to_close"), fontSize: 14,
+            color: UIColor(white: 1, alpha: 0.6), shadow: false
+        )
+        closeHint.position = CGPoint(x: w / 2, y: 48)
+        addChild(closeHint)
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        return nil
+    }
+
+    private func align(_ node: SKNode, mode: SKLabelHorizontalAlignmentMode) {
+        for child in node.children {
+            if let label = child as? SKLabelNode {
+                label.horizontalAlignmentMode = mode
+            }
+        }
+    }
+
+    func refresh(stats: DotSkin.Stats, goals: [Goal]) {
+        let values = [
+            String(stats.bestScore),
+            String(stats.runCount),
+            String(stats.totalScore),
+            String(stats.daysPlayed),
+            String(stats.monthsPlayed),
+            String(stats.bestPerfectStreak),
+            String(stats.bestDailyStreak),
+            // Beide Sammlungen als Stand "12/35": Die Zahl allein sagt
+            // nichts, erst das Verhältnis zeigt, wie weit es noch ist.
+            "\(DotSkin.unlockedCount(stats))/\(DotSkin.collectableCount())",
+            "\(ScenePaint.unlockedCount(stats))/\(SceneId.allCases.count)"
+        ]
+        for (label, value) in zip(valueLabels, values) {
+            label.text = value
+        }
+
+        // Die Ziele wechseln mit jedem Lauf — deshalb neu aufgebaut statt
+        // vorgehalten; drei Zeilen kosten nichts.
+        goalNodes.forEach { $0.removeFromParent() }
+        goalNodes = []
+        let visible = Array(goals.prefix(maxGoals))
+        goalsHeader.isHidden = visible.isEmpty
+
+        var y = firstGoalY
+        for goal in visible {
+            let label = PixelLabel(
+                text: L10n.format(
+                    "goal_progress", L10n.text(goal.titleKey), goal.current, goal.target
+                ),
+                fontSize: 16,
+                color: .white,
+                shadow: false
+            )
+            label.position = CGPoint(x: 40, y: y)
+            align(label, mode: .left)
+            addChild(label)
+            goalNodes.append(label)
+
+            let bar = GoalBar(width: sceneSize.width - 80)
+            bar.fraction = goal.fraction
+            bar.position = CGPoint(x: sceneSize.width / 2, y: y - 18)
+            addChild(bar)
+            goalNodes.append(bar)
+
+            y -= StatsOverlay.goalStep
+        }
+    }
+}
+
 /// Vollflächiger Skin-Picker über dunklem Scrim, im Stil der Hilfe.
 ///
 /// 42 Skins passen auf kein Telefon. Die Liste ist deshalb nach Familien
@@ -707,6 +960,7 @@ final class SkinOverlay: SKNode {
     enum TouchResult {
         case scrolled
         case select(DotSkin)
+        case selectScene(SceneId)
         case close
     }
 
@@ -718,7 +972,19 @@ final class SkinOverlay: SKNode {
         let statusLabel: PixelLabel
     }
 
+    /// Dieselbe Zeile, nur fuer eine Kulisse. Zwei Typen statt eines
+    /// generischen: Die beiden Sammlungen haben nichts gemeinsam ausser
+    /// dem Aussehen ihrer Zeile.
+    private struct SceneRow {
+        let scene: SceneId
+        let centerY: CGFloat
+        let swatch: SKSpriteNode
+        let titleLabel: PixelLabel
+        let statusLabel: PixelLabel
+    }
+
     private var rows: [Row] = []
+    private var sceneRows: [SceneRow] = []
     private let rowHeight: CGFloat = 58
     private let headerHeight: CGFloat = 36
 
@@ -766,6 +1032,50 @@ final class SkinOverlay: SKNode {
         addChild(crop)
 
         var y = listTop - 24
+
+        // Die Kulissen stehen ganz oben und vor allen Skin-Familien: Es
+        // sind nur sechs, sie wirken auf das ganze Bild, und wer das Menue
+        // oeffnet, soll sie nicht erst suchen muessen.
+        let scenesHeader = PixelLabel(
+            text: L10n.text("scenes"), fontSize: 15,
+            color: Palette.dotBody, shadow: false
+        )
+        scenesHeader.position = CGPoint(x: 40, y: y)
+        alignLeft(scenesHeader)
+        contentNode.addChild(scenesHeader)
+        y -= headerHeight
+
+        for scene in SceneId.allCases {
+            let swatch = SKSpriteNode(texture: PixelArt.scenePreviewTexture(scene: scene, size: 36))
+            swatch.size = CGSize(width: 36, height: 36)
+            swatch.position = CGPoint(x: 64, y: y)
+            contentNode.addChild(swatch)
+
+            let titleLabel = PixelLabel(
+                text: L10n.text(scene.titleKey), fontSize: 20, color: .white, shadow: false
+            )
+            titleLabel.position = CGPoint(x: 96, y: y + 10)
+            alignLeft(titleLabel)
+            contentNode.addChild(titleLabel)
+
+            let statusLabel = PixelLabel(
+                text: "", fontSize: 14, color: UIColor(white: 1, alpha: 0.7), shadow: false
+            )
+            statusLabel.position = CGPoint(x: 96, y: y - 12)
+            alignLeft(statusLabel)
+            contentNode.addChild(statusLabel)
+
+            sceneRows.append(SceneRow(
+                scene: scene,
+                centerY: y,
+                swatch: swatch,
+                titleLabel: titleLabel,
+                statusLabel: statusLabel
+            ))
+            y -= rowHeight
+        }
+        y -= 8
+
         for family in DotSkin.Family.allCases {
             let header = PixelLabel(
                 text: L10n.text(family.titleKey), fontSize: 15,
@@ -887,6 +1197,11 @@ final class SkinOverlay: SKNode {
             return .close
         }
         let contentY = point.y - scrollOffset
+        for row in sceneRows where abs(contentY - row.centerY) <= rowHeight / 2 {
+            // Auf eine gesperrte Zeile getippt: Der Picker schliesst wie
+            // bei jedem Tipp daneben.
+            return row.scene.isUnlocked(stats) ? .selectScene(row.scene) : .close
+        }
         for row in rows where abs(contentY - row.centerY) <= rowHeight / 2 {
             // Auf eine gesperrte Zeile getippt: Der Picker schließt wie
             // bei jedem Tipp daneben — der Hinweis unten verspricht genau das.
@@ -895,7 +1210,22 @@ final class SkinOverlay: SKNode {
         return .close
     }
 
-    func refresh(stats: DotSkin.Stats, selected: DotSkin) {
+    func refresh(stats: DotSkin.Stats, selected: DotSkin, selectedScene: SceneId) {
+        for row in sceneRows {
+            let unlocked = row.scene.isUnlocked(stats)
+            row.swatch.alpha = unlocked ? 1.0 : 0.3
+            row.titleLabel.color = unlocked ? .white : UIColor(white: 1, alpha: 0.45)
+            if row.scene == selectedScene {
+                row.statusLabel.text = L10n.text("skin_selected")
+                row.statusLabel.color = Palette.dotBody
+            } else if unlocked {
+                row.statusLabel.text = L10n.text("skin_tap_select")
+                row.statusLabel.color = UIColor(white: 1, alpha: 0.7)
+            } else {
+                row.statusLabel.text = row.scene.unlockHintKey.map { L10n.text($0) } ?? ""
+                row.statusLabel.color = UIColor(white: 1, alpha: 0.45)
+            }
+        }
         for row in rows {
             let unlocked = row.skin.isUnlocked(stats)
             row.swatch.alpha = unlocked ? 1.0 : 0.3

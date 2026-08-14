@@ -45,10 +45,17 @@ import de.robinrehbein.punkt.ads.AdsManager
 import de.robinrehbein.punkt.billing.BillingManager
 import de.robinrehbein.punkt.data.ScoreStore
 import de.robinrehbein.punkt.game.DailyChallenge
+import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
+import de.robinrehbein.punkt.game.Goal
+import de.robinrehbein.punkt.game.Ground
 import de.robinrehbein.punkt.game.MedalTier
+import de.robinrehbein.punkt.game.Progress
+import de.robinrehbein.punkt.game.Prop
+import de.robinrehbein.punkt.game.PropShape
+import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.TimingGame
@@ -71,19 +78,11 @@ private val FakeZoneColor = Color(0xFFB44FD8)
 private val FakeZoneCoreColor = Color(0xFF8A2FB0)
 
 /**
- * Himmelsfarbe pro 5er-Stufe: von Tag über Abendrot bis Nacht. Welche
- * Stufe zu einem Score gehört, rechnet SkinPaint.skyStage — der Zähler
- * läuft im Umlauf, nach der Nacht geht es zurück Richtung Tag.
+ * Himmel, Wolken, Requisiten und Boden kommen aus ScenePaint (:core) —
+ * die Kulisse ist Daten, kein Zeichencode. Welche Himmelsstufe zu einem
+ * Score gehört, rechnet weiterhin SkinPaint.skyStage; der Zähler läuft im
+ * Umlauf, nach der Nacht geht es zurück Richtung Tag.
  */
-private val SkyStages = listOf(
-    Color(0xFF4EC0CA), // 0+  Tag (türkis)
-    Color(0xFF5B9BD5), // 5+  Blau
-    Color(0xFF7B6FD0), // 10+ Lila
-    Color(0xFFC0616F), // 15+ Altrosa
-    Color(0xFFD98A3D), // 20+ Sonnenuntergang
-    Color(0xFF3D4A8C), // 25+ Dämmerung
-    Color(0xFF2A2640)  // 30+ Nacht
-)
 
 private fun twistBannerText(context: Context, twist: TimingGame.Twist): String =
     context.getString(
@@ -220,11 +219,24 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     var soundOn by remember { mutableStateOf(!store.soundMuted) }
     var dailyMode by remember { mutableStateOf(false) }
     var skin by remember { mutableStateOf(store.selectedSkin) }
+    // Die Kulisse ist die zweite Sammlung: kein Tagespass, kein
+    // Verfallsdatum — deshalb reicht ein schlichter Zustand.
+    var scene by remember { mutableStateOf(store.selectedScene) }
     // Der per Spot geliehene Skin des heutigen Tages (null = keiner).
     var skinPass by remember {
         mutableStateOf(store.skinPassFor(LocalDate.now().toEpochDay()))
     }
     var showSkins by remember { mutableStateOf(false) }
+    // Statistik-Seite: Zahlen und Ziele werden beim Öffnen einmal
+    // gerechnet und festgehalten. Pro Frame nachzurechnen wäre für eine
+    // Seite, die stillsteht, solange sie offen ist, reine Verschwendung.
+    var showStats by remember { mutableStateOf(false) }
+    var statsSnapshot by remember { mutableStateOf(store.stats()) }
+    var statsGoals by remember { mutableStateOf(emptyList<Goal>()) }
+    // Das nächstliegende Ziel für die Zeile im Game-Over — gefüllt in dem
+    // Moment, in dem der Lauf gezählt ist, damit der Balken den gerade
+    // beendeten Lauf schon enthält.
+    var nextGoal by remember { mutableStateOf<Goal?>(null) }
     // Versteckte Diagnose-Zeile (langer Druck auf den Titel).
     var showDiagnostics by remember { mutableStateOf(false) }
     var skinUnlockedThisRun by remember { mutableStateOf(false) }
@@ -415,6 +427,13 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             leaderboards.submitBest(game.score)
                             skinUnlockedThisRun =
                                 DotSkin.earnedCount(store.stats()) > earnedBefore
+                            // Erst zählen, dann zielen: Der Balken im
+                            // Game-Over zeigt den Stand NACH diesem Lauf.
+                            nextGoal = Progress.nextGoal(
+                                stats = store.stats().toSkinStats(),
+                                month = runState.month,
+                                seasonDays = store.seasonDaysFor(runState.month, runState.year)
+                            )
                             taunt = pickTaunt(context, game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
                             runNumber = store.runCount
@@ -506,7 +525,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             frameTick // Frame-Abhängigkeit: erzwingt Neuzeichnen pro Tick.
             // Stunde und Monat kommen aus dem Lauf-Zustand, nicht frisch
             // von der Uhr — sie werden je Lauf einmal abgelesen.
-            drawTimingWorld(game, fx, skin, runState.hour, runState.month)
+            drawTimingWorld(game, fx, skin, scene, runState.hour, runState.month)
         }
 
         // Positionen relativ zur Bildhöhe: Die Bahn endet spätestens bei
@@ -541,6 +560,19 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     // dem letzten Lauf einen Tageswechsel gesehen haben.
                     refreshSkinPass(LocalDate.now().toEpochDay())
                     showSkins = true
+                },
+                onStats = {
+                    // Kalender frisch ablesen: Der Startscreen kann seit
+                    // dem letzten Lauf einen Monatswechsel gesehen haben,
+                    // und daran hängt, ob ein Saison-Ziel gilt.
+                    val now = LocalDateTime.now()
+                    statsSnapshot = store.stats()
+                    statsGoals = Progress.nextGoals(
+                        stats = statsSnapshot.toSkinStats(),
+                        month = now.monthValue,
+                        seasonDays = store.seasonDaysFor(now.monthValue, now.year)
+                    )
+                    showStats = true
                 },
                 leaderboardAvailable = leaderboards.available,
                 onLeaderboard = { leaderboards.show() },
@@ -599,6 +631,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 dailyStreak = dailyStreak,
                 skinUnlocked = skinUnlockedThisRun,
                 newMedal = newMedalThisRun,
+                goal = nextGoal,
                 onShare = {
                     ScoreCard.share(
                         context = context,
@@ -606,6 +639,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                         bestScore = bestScore,
                         isNewRecord = isNewRecord,
                         skin = skin,
+                        scene = scene,
                         daily = dailyMode,
                         dailyStreak = dailyStreak
                     )
@@ -630,12 +664,30 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             HelpOverlay(onClose = { showHelp = false })
         }
 
+        if (showStats) {
+            StatsOverlay(
+                stats = statsSnapshot,
+                goals = statsGoals,
+                onClose = { showStats = false }
+            )
+        }
+
         if (showSkins) {
             SkinOverlay(
                 // patronOwned wird hier bewusst noch einmal gelesen: Erst
                 // dieser Zugriff lässt die Liste nach dem Kauf neu zeichnen.
                 stats = store.stats().copy(patronOwned = patronOwned),
                 selected = skin,
+                selectedScene = scene,
+                onSelectScene = {
+                    scene = it
+                    store.selectedScene = it
+                    // Wie die Skin-Wahl eine Entscheidung: Sie muss sofort
+                    // raus, sonst ueberschreibt sie beim naechsten
+                    // Abgleich die juengere Wahl auf der Gegenseite.
+                    statsSync.publish()
+                    showSkins = false
+                },
                 onSelect = {
                     skin = it
                     store.selectedSkin = it
@@ -678,12 +730,14 @@ private fun DrawScope.drawTimingWorld(
     game: TimingGame,
     fx: FxState,
     skin: DotSkin,
+    scene: DotScene,
     hour: Int,
     month: Int
 ) {
     val h = size.height
     val w = size.width
     val cell = floor(h / 220f).coerceAtLeast(2f)
+    val kulisse = scene.scene
 
     // Screen-Shake beim Tod
     val shake = if (fx.shakeTime > 0f) {
@@ -697,19 +751,25 @@ private fun DrawScope.drawTimingWorld(
     }
 
     translate(shake.x, shake.y) {
-        // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht.
-        val sky = SkyStages[SkinPaint.skyStage(game.score)]
+        // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht —
+        // welche sieben Töne das sind, sagt die Kulisse.
+        val sky = Color(kulisse.sky[SkinPaint.skyStage(game.score)])
         drawRect(color = sky, topLeft = Offset(-40f, -40f), size = Size(w + 80f, h + 80f))
 
-        // Langsam driftende Wolken
-        val drift = game.elapsed * h * 0.01f
-        drawCloud(w * 0.1f - drift % (w * 1.4f), h * 0.16f, cell)
-        drawCloud(w * 0.75f - drift % (w * 1.4f), h * 0.24f, cell)
+        // Langsam driftende Wolken. Im Vakuum gibt es keine — dann bleibt
+        // der Himmel leer, statt graue Attrappen zu zeigen.
+        kulisse.cloud?.let { cloud ->
+            val drift = game.elapsed * h * 0.01f
+            drawCloud(w * 0.1f - drift % (w * 1.4f), h * 0.16f, cell, Color(cloud))
+            drawCloud(w * 0.75f - drift % (w * 1.4f), h * 0.24f, cell, Color(cloud))
+        }
 
-        drawScenery(game, cell)
-        drawGroundStrip(cell)
+        drawScenery(game, cell, kulisse.props)
+        kulisse.ground?.let { drawGroundStrip(cell, it) }
 
-        // Kreisbahn mit Zielzone, ggf. Fallen-Zone und Punkt
+        // Kreisbahn mit Zielzone, ggf. Fallen-Zone und Punkt. Sie zieht
+        // ihre Farben bewusst NICHT aus der Kulisse: Worauf getippt wird,
+        // sieht überall gleich aus — sonst wäre die Kulisse ein Vorteil.
         val cx = w / 2f
         val cy = h * 0.44f
         val radius = min(w * 0.36f, h * 0.28f)
@@ -729,17 +789,22 @@ private fun DrawScope.drawTimingWorld(
 }
 
 /**
- * Bäume und Sträucher vor dem Boden. Die Szenerie driftet wie die Wolken
- * nach links — nur schneller, weil sie näher am Betrachter ist
- * (Parallaxe) — und wickelt rechts wieder ein. Dazu wiegt ein leichter
- * Wind die Kronen, pro Pflanze phasenversetzt, oben stärker als unten.
+ * Requisiten vor dem Boden. Die Szenerie driftet wie die Wolken nach
+ * links — nur schneller, weil sie näher am Betrachter ist (Parallaxe) —
+ * und wickelt rechts wieder ein. Dazu wiegt ein leichter Wind sie, pro
+ * Requisite phasenversetzt.
+ *
+ * Welche Requisite an welchem Platz steht, sagt die Kulisse: Die Liste
+ * wird zyklisch abgelaufen, genau wie der Bestand bisher k % 4 benutzt
+ * hat. Der Akzent (Blütenfarbe, Fensterfarbe) wechselt eine Ebene
+ * langsamer, also erst mit der nächsten Wiederholung.
  */
-private fun DrawScope.drawScenery(game: TimingGame, cell: Float) {
+private fun DrawScope.drawScenery(game: TimingGame, cell: Float, props: List<Prop>) {
     val h = size.height
     val w = size.width
     // Basis knapp unter der Grasnarben-Oberkante — der Boden-Streifen
     // wird danach gezeichnet und verdeckt die Wurzeln sauber.
-    val groundY = h * 0.88f + cell * 2f
+    val groundY = ScenePaint.groundY(h) + cell * 2f
 
     val drift = game.elapsed * h * 0.016f
     val spacing = w * 0.26f
@@ -747,18 +812,65 @@ private fun DrawScope.drawScenery(game: TimingGame, cell: Float) {
     val total = spacing * count
     for (k in 0 until count) {
         val x = ((k * spacing - drift) % total + total) % total - spacing
-        val sway = sin(game.elapsed * 1.4f + k * 1.7f) * cell * 0.6f
-        when (k % 4) {
-            0 -> drawPixelTree(x, groundY, h * 0.075f, sway, cell)
-            1 -> drawPixelFlower(
-                x, groundY, h * 0.032f, sway * 0.8f, cell,
-                petal = if ((k / 4) % 2 == 0) RecordRed else CloudColor
-            )
-            2 -> drawPixelTree(x, groundY, h * 0.058f, -sway, cell)
-            else -> drawPixelBush(x, groundY, h * 0.026f, sway * 0.4f, cell)
+        val wind = sin(game.elapsed * 1.4f + k * 1.7f) * cell * 0.6f
+        val prop = props[k % props.size]
+        val accent = if (prop.accents.isEmpty()) {
+            Color.Transparent
+        } else {
+            Color(prop.accents[(k / props.size) % prop.accents.size])
         }
+        drawProp(prop, x, groundY, h * prop.size, wind * prop.sway, cell, accent)
     }
 }
+
+/** Verteilt eine Requisite auf die Zeichnung ihrer Form. */
+private fun DrawScope.drawProp(
+    prop: Prop,
+    cx: Float,
+    groundY: Float,
+    s: Float,
+    sway: Float,
+    cell: Float,
+    accent: Color
+) {
+    val dark = Color(prop.dark)
+    val body = Color(prop.body)
+    val light = Color(prop.light)
+    val stem = Color(prop.stem)
+    val stemShade = Color(prop.stemShade)
+    when (prop.shape) {
+        PropShape.BAUM -> drawPixelTree(cx, groundY, s, sway, cell, dark, body, light, stem, stemShade)
+        PropShape.BLUME -> drawPixelFlower(cx, groundY, s, sway, cell, dark, body, light, accent)
+        PropShape.STRAUCH -> drawPixelBush(cx, groundY, s, sway, cell, dark, body, light)
+        PropShape.KAKTUS -> drawPixelCactus(cx, groundY, s, sway, cell, dark, body, light, accent)
+        PropShape.WELLE -> drawPixelWave(cx, groundY, s, sway, cell, dark, body, light, accent)
+        PropShape.NADELBAUM ->
+            drawPixelFir(cx, groundY, s, sway, cell, dark, body, light, stem, stemShade)
+        PropShape.HOCHHAUS -> drawPixelTower(cx, groundY, s, cell, dark, body, light, accent)
+        PropShape.FELS -> drawPixelRock(cx, groundY, s, sway, cell, dark, body, light)
+    }
+}
+
+/**
+ * Formen mit sich überlappenden Teilen (Kaktus, Hochhaus) brauchen zwei
+ * Durchgänge: erst alle Konturen, dann alle Füllungen. Sonst legt die
+ * Kontur des einen Blocks einen Balken über die Füllung des anderen.
+ */
+private fun DrawScope.drawOutlinedBlocks(cell: Float, blocks: List<Pair<Rect, Color>>) {
+    blocks.forEach { (r, _) ->
+        drawRect(
+            color = OutlineColor,
+            topLeft = Offset(r.x - cell, r.y - cell),
+            size = Size(r.w + cell * 2f, r.h + cell * 2f)
+        )
+    }
+    blocks.forEach { (r, color) ->
+        drawRect(color = color, topLeft = Offset(r.x, r.y), size = Size(r.w, r.h))
+    }
+}
+
+/** Rechteck in Weltkoordinaten — nur als Bündel für [drawOutlinedBlocks]. */
+private data class Rect(val x: Float, val y: Float, val w: Float, val h: Float)
 
 /** Pixel-Baum: Stamm mit Schattenseite, dreistufige Krone im Wind. */
 private fun DrawScope.drawPixelTree(
@@ -766,7 +878,12 @@ private fun DrawScope.drawPixelTree(
     groundY: Float,
     s: Float,
     sway: Float,
-    cell: Float
+    cell: Float,
+    dark: Color,
+    body: Color,
+    light: Color,
+    stem: Color,
+    stemShade: Color
 ) {
     val trunkW = s * 0.30f
     val trunkH = s * 0.60f
@@ -776,12 +893,12 @@ private fun DrawScope.drawPixelTree(
         size = Size(trunkW + cell * 2f, trunkH + cell)
     )
     drawRect(
-        color = TrunkColor,
+        color = stem,
         topLeft = Offset(cx - trunkW / 2f, groundY - trunkH),
         size = Size(trunkW, trunkH)
     )
     drawRect(
-        color = TrunkShade,
+        color = stemShade,
         topLeft = Offset(cx, groundY - trunkH),
         size = Size(trunkW / 2f, trunkH)
     )
@@ -789,9 +906,9 @@ private fun DrawScope.drawPixelTree(
     // Krone: von unten (breit, dunkel) nach oben (schmal, hell); der Wind
     // greift oben stärker.
     val layers = listOf(
-        Triple(s * 1.6f, s * 0.45f, BushShadeColor),
-        Triple(s * 1.2f, s * 0.40f, BushColor),
-        Triple(s * 0.7f, s * 0.35f, GrassLight)
+        Triple(s * 1.6f, s * 0.45f, dark),
+        Triple(s * 1.2f, s * 0.40f, body),
+        Triple(s * 0.7f, s * 0.35f, light)
     )
     var layerTop = groundY - trunkH
     layers.forEachIndexed { i, (lw, lh, color) ->
@@ -813,19 +930,22 @@ private fun DrawScope.drawPixelTree(
 /**
  * Pixel-Strauch: runde Beeren-Silhouette statt Torten-Stufen — der Bauch
  * in der Mitte ist die breiteste Lage, oben sitzt eine helle Kuppe, und
- * zwei Licht-Tupfer geben dem Grün Textur.
+ * zwei Licht-Tupfer geben der Fläche Textur.
  */
 private fun DrawScope.drawPixelBush(
     cx: Float,
     groundY: Float,
     s: Float,
     sway: Float,
-    cell: Float
+    cell: Float,
+    dark: Color,
+    body: Color,
+    light: Color
 ) {
     val layers = listOf(
-        Triple(s * 2.1f, s * 0.55f, BushShadeColor), // Sockel
-        Triple(s * 2.7f, s * 0.70f, BushColor),      // Bauch — am breitesten
-        Triple(s * 1.5f, s * 0.55f, GrassLight)      // Kuppe
+        Triple(s * 2.1f, s * 0.55f, dark), // Sockel
+        Triple(s * 2.7f, s * 0.70f, body), // Bauch — am breitesten
+        Triple(s * 1.5f, s * 0.55f, light) // Kuppe
     )
     var layerTop = groundY
     layers.forEachIndexed { i, (lw, lh, color) ->
@@ -846,12 +966,12 @@ private fun DrawScope.drawPixelBush(
     // Licht-Tupfer auf dem Bauch
     val u = cell * 1.5f
     drawRect(
-        color = GrassLight,
+        color = light,
         topLeft = Offset(cx - s * 1.0f + sway * 0.4f, groundY - s * 1.05f),
         size = Size(u * 2f, u)
     )
     drawRect(
-        color = GrassLight,
+        color = light,
         topLeft = Offset(cx + s * 0.35f + sway * 0.4f, groundY - s * 0.8f),
         size = Size(u, u)
     )
@@ -859,8 +979,8 @@ private fun DrawScope.drawPixelBush(
 
 /**
  * Pixel-Blume: Stiel mit Blättern und großer Blüte (vier Blütenblätter
- * um eine goldene Mitte). Die Blüte wiegt im Wind, der Stiel bleibt
- * unten verwurzelt.
+ * um eine helle Mitte). Die Blüte wiegt im Wind, der Stiel bleibt unten
+ * verwurzelt.
  */
 private fun DrawScope.drawPixelFlower(
     cx: Float,
@@ -868,6 +988,9 @@ private fun DrawScope.drawPixelFlower(
     s: Float,
     sway: Float,
     cell: Float,
+    dark: Color,
+    body: Color,
+    light: Color,
     petal: Color
 ) {
     val stemH = s * 1.15f
@@ -881,7 +1004,7 @@ private fun DrawScope.drawPixelFlower(
         size = Size(cell * 3f, stemH)
     )
     drawRect(
-        color = BushShadeColor,
+        color = dark,
         topLeft = Offset(cx - cell * 0.75f, by),
         size = Size(cell * 1.5f, stemH)
     )
@@ -894,7 +1017,7 @@ private fun DrawScope.drawPixelFlower(
         size = Size(s * 0.6f + cell * 2f, cell * 3f)
     )
     drawRect(
-        color = BushColor,
+        color = body,
         topLeft = Offset(cx - s * 0.6f, leafY),
         size = Size(s * 0.6f, cell * 1.5f)
     )
@@ -904,12 +1027,12 @@ private fun DrawScope.drawPixelFlower(
         size = Size(s * 0.55f + cell * 2f, cell * 3f)
     )
     drawRect(
-        color = BushColor,
+        color = body,
         topLeft = Offset(cx, leafY + cell * 4f),
         size = Size(s * 0.55f, cell * 1.5f)
     )
 
-    // Blüte: Plus aus vier Blütenblättern um die goldene Mitte
+    // Blüte: Plus aus vier Blütenblättern um die helle Mitte
     val u = s * 0.38f
     fun block(x: Float, y: Float, color: Color) {
         drawRect(
@@ -923,31 +1046,269 @@ private fun DrawScope.drawPixelFlower(
     block(bx - u * 1.5f, by - u / 2f, petal)          // links
     block(bx + u / 2f, by - u / 2f, petal)            // rechts
     block(bx - u / 2f, by + u / 2f, petal)            // unten
-    block(bx - u / 2f, by - u / 2f, DotBody)          // Mitte
+    block(bx - u / 2f, by - u / 2f, light)            // Mitte
 }
 
-/** Sand-Streifen mit Grasnarbe — der statische Boden unter allem. */
-private fun DrawScope.drawGroundStrip(cell: Float) {
+/**
+ * Kaktus: Säule mit zwei versetzten Armen und einer Blüte obendrauf. Die
+ * Arme sitzen auf verschiedenen Höhen — zwei gleich hohe Arme sähen aus
+ * wie ein Zeichen, nicht wie eine Pflanze.
+ */
+private fun DrawScope.drawPixelCactus(
+    cx: Float,
+    groundY: Float,
+    s: Float,
+    sway: Float,
+    cell: Float,
+    dark: Color,
+    body: Color,
+    light: Color,
+    bloom: Color
+) {
+    val stemW = s * 0.34f
+    val stemH = s * 1.5f
+    val armW = s * 0.20f
+    val leftY = groundY - stemH * 0.55f
+    val rightY = groundY - stemH * 0.78f
+    val lean = sway * 0.4f
+
+    drawOutlinedBlocks(
+        cell,
+        listOf(
+            Rect(cx - stemW / 2f, groundY - stemH, stemW, stemH) to body,
+            Rect(cx - s * 0.75f + lean, leftY, s * 0.75f, armW) to body,
+            Rect(cx - s * 0.75f + lean, leftY - s * 0.45f, armW, s * 0.45f + armW) to body,
+            Rect(cx + lean, rightY, s * 0.75f, armW) to body,
+            Rect(cx + s * 0.75f - armW + lean, rightY - s * 0.38f, armW, s * 0.38f + armW) to body
+        )
+    )
+
+    // Schattenseite rechts, Lichtkante links — wie beim Vogel.
+    drawRect(
+        color = dark,
+        topLeft = Offset(cx + stemW * 0.12f, groundY - stemH),
+        size = Size(stemW * 0.38f, stemH)
+    )
+    drawRect(
+        color = light,
+        topLeft = Offset(cx - stemW / 2f, groundY - stemH),
+        size = Size(stemW * 0.26f, stemH * 0.92f)
+    )
+
+    val fw = s * 0.26f
+    drawRect(
+        color = OutlineColor,
+        topLeft = Offset(cx - fw / 2f - cell, groundY - stemH - fw - cell),
+        size = Size(fw + cell * 2f, fw + cell * 2f)
+    )
+    drawRect(
+        color = bloom,
+        topLeft = Offset(cx - fw / 2f, groundY - stemH - fw),
+        size = Size(fw, fw)
+    )
+}
+
+/**
+ * Welle: flacher, breiter Stapel mit Schaumtupfern. Bewusst breiter als
+ * hoch — eine Welle, die wie ein Busch stünde, läse sich als Pflanze.
+ */
+private fun DrawScope.drawPixelWave(
+    cx: Float,
+    groundY: Float,
+    s: Float,
+    sway: Float,
+    cell: Float,
+    dark: Color,
+    body: Color,
+    light: Color,
+    foam: Color
+) {
+    val layers = listOf(
+        Triple(s * 3.0f, s * 0.30f, dark),
+        Triple(s * 2.2f, s * 0.26f, body),
+        Triple(s * 1.2f, s * 0.22f, light)
+    )
+    var layerTop = groundY
+    var lx = cx
+    layers.forEachIndexed { i, (lw, lh, color) ->
+        layerTop -= lh
+        lx = cx + sway * (0.3f + 0.4f * i)
+        drawRect(
+            color = OutlineColor,
+            topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
+            size = Size(lw + cell * 2f, lh + cell * 2f)
+        )
+        drawRect(color = color, topLeft = Offset(lx - lw / 2f, layerTop), size = Size(lw, lh))
+    }
+
+    val u = cell * 1.5f
+    drawRect(color = foam, topLeft = Offset(lx - s * 0.5f, layerTop), size = Size(u * 2f, u))
+    drawRect(color = foam, topLeft = Offset(lx + s * 0.2f, layerTop + u), size = Size(u, u))
+}
+
+/** Nadelbaum: schmaler Stamm, drei spitze Lagen, helle Spitze obendrauf. */
+private fun DrawScope.drawPixelFir(
+    cx: Float,
+    groundY: Float,
+    s: Float,
+    sway: Float,
+    cell: Float,
+    dark: Color,
+    body: Color,
+    light: Color,
+    stem: Color,
+    stemShade: Color
+) {
+    val trunkW = s * 0.22f
+    val trunkH = s * 0.30f
+    drawRect(
+        color = OutlineColor,
+        topLeft = Offset(cx - trunkW / 2f - cell, groundY - trunkH - cell),
+        size = Size(trunkW + cell * 2f, trunkH + cell)
+    )
+    drawRect(
+        color = stem,
+        topLeft = Offset(cx - trunkW / 2f, groundY - trunkH),
+        size = Size(trunkW, trunkH)
+    )
+    drawRect(
+        color = stemShade,
+        topLeft = Offset(cx, groundY - trunkH),
+        size = Size(trunkW / 2f, trunkH)
+    )
+
+    val layers = listOf(
+        Triple(s * 1.50f, s * 0.42f, dark),
+        Triple(s * 1.05f, s * 0.38f, body),
+        Triple(s * 0.60f, s * 0.34f, body)
+    )
+    var layerTop = groundY - trunkH
+    var lx = cx
+    layers.forEachIndexed { i, (lw, lh, color) ->
+        layerTop -= lh
+        lx = cx + sway * (0.3f + 0.3f * i)
+        drawRect(
+            color = OutlineColor,
+            topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
+            size = Size(lw + cell * 2f, lh + cell * 2f)
+        )
+        drawRect(color = color, topLeft = Offset(lx - lw / 2f, layerTop), size = Size(lw, lh))
+    }
+
+    val tw = s * 0.24f
+    val th = s * 0.26f
+    lx = cx + sway * 1.2f
+    drawRect(
+        color = OutlineColor,
+        topLeft = Offset(lx - tw / 2f - cell, layerTop - th - cell),
+        size = Size(tw + cell * 2f, th + cell * 2f)
+    )
+    drawRect(color = light, topLeft = Offset(lx - tw / 2f, layerTop - th), size = Size(tw, th))
+}
+
+/**
+ * Hochhaus: ein Block mit Schattenseite, heller Dachkante und einem
+ * Fensterraster. Ohne Wind — ein wankendes Haus wäre ein Witz, den das
+ * Spiel an dieser Stelle nicht macht.
+ */
+private fun DrawScope.drawPixelTower(
+    cx: Float,
+    groundY: Float,
+    s: Float,
+    cell: Float,
+    dark: Color,
+    body: Color,
+    light: Color,
+    window: Color
+) {
+    val w = s * 0.9f
+    val hgt = s * 2.4f
+    drawRect(
+        color = OutlineColor,
+        topLeft = Offset(cx - w / 2f - cell, groundY - hgt - cell),
+        size = Size(w + cell * 2f, hgt + cell)
+    )
+    drawRect(color = body, topLeft = Offset(cx - w / 2f, groundY - hgt), size = Size(w, hgt))
+    drawRect(color = dark, topLeft = Offset(cx, groundY - hgt), size = Size(w / 2f, hgt))
+    drawRect(color = light, topLeft = Offset(cx - w / 2f, groundY - hgt), size = Size(w, s * 0.16f))
+
+    // Fensterraster: jedes dritte Fenster bleibt dunkel, sonst sähe die
+    // Fassade aus wie ein Schachbrett aus Licht.
+    val uw = w * 0.22f
+    val uh = s * 0.16f
+    for (r in 0 until 5) {
+        val fy = groundY - hgt + s * 0.34f + r * s * 0.36f
+        if (fy + uh > groundY - s * 0.1f) break
+        for (c in 0 until 2) {
+            val fx = cx - w * 0.30f + c * w * 0.34f
+            drawRect(
+                color = if ((r + c) % 3 == 0) dark else window,
+                topLeft = Offset(fx, fy),
+                size = Size(uw, uh)
+            )
+        }
+    }
+}
+
+/** Fels: pyramidenförmiger Stapel, unten am breitesten. */
+private fun DrawScope.drawPixelRock(
+    cx: Float,
+    groundY: Float,
+    s: Float,
+    sway: Float,
+    cell: Float,
+    dark: Color,
+    body: Color,
+    light: Color
+) {
+    val layers = listOf(
+        Triple(s * 2.2f, s * 0.50f, dark),
+        Triple(s * 1.6f, s * 0.45f, body),
+        Triple(s * 0.8f, s * 0.35f, light)
+    )
+    var layerTop = groundY
+    layers.forEachIndexed { i, (lw, lh, color) ->
+        layerTop -= lh
+        val lx = cx + sway * (0.15f + 0.25f * i)
+        drawRect(
+            color = OutlineColor,
+            topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
+            size = Size(lw + cell * 2f, lh + cell * 2f)
+        )
+        drawRect(color = color, topLeft = Offset(lx - lw / 2f, layerTop), size = Size(lw, lh))
+    }
+}
+
+/**
+ * Bodenstreifen: Grundfläche mit dunklerem Band, darüber die Narbe aus
+ * zwei Tönen. Der statische Boden unter allem — welche Farben, sagt die
+ * Kulisse; wo er beginnt, sagt ScenePaint.groundY und sonst niemand.
+ */
+private fun DrawScope.drawGroundStrip(cell: Float, ground: Ground) {
     val h = size.height
     val w = size.width
-    val groundTop = h * 0.88f
+    val groundTop = ScenePaint.groundY(h)
 
     drawRect(
-        color = GroundSand,
+        color = Color(ground.sand),
         topLeft = Offset(0f, groundTop),
         size = Size(w, h - groundTop)
     )
     drawRect(
-        color = GroundSandShade,
+        color = Color(ground.sandShade),
         topLeft = Offset(0f, groundTop + cell * 8),
         size = Size(w, cell * 2)
     )
     val toothW = cell * 5f
-    drawRect(color = GrassDark, topLeft = Offset(0f, groundTop), size = Size(w, cell * 5))
+    drawRect(
+        color = Color(ground.turfDark),
+        topLeft = Offset(0f, groundTop),
+        size = Size(w, cell * 5)
+    )
     var x = 0f
     while (x < w) {
         drawRect(
-            color = GrassLight,
+            color = Color(ground.turfLight),
             topLeft = Offset(x, groundTop),
             size = Size(toothW, cell * 4)
         )
@@ -979,19 +1340,17 @@ private fun DrawScope.drawTrack(
 
         val relativeZone = TimingGame.wrapToPi(a - game.zoneCenter)
         val inZone = abs(relativeZone) <= zoneHalf
-        // Kern fürs Zeichnen auf mindestens einen Rasterschritt aufrunden:
-        // Schrumpft das PERFEKT-Fenster unter das Segment-Raster (Zonen-
-        // Minimum plus PULS-Wellental), würde sonst zeitweise gar kein Block
-        // hell leuchten. Die Tap-Wertung rechnet weiter exakt.
-        val coreHalf = (zoneHalf * TimingGame.PERFECT_SHARE)
-            .coerceAtLeast(Math.PI.toFloat() / segments)
+        // Kern und Fallenbreite kommen aus der Engine, nicht aus dem
+        // Renderer: Was hier leuchtet, ist exakt das Fenster, das der Tap
+        // auch wertet — und die Falle misst sich wie die echte Zone.
+        val coreHalf = game.perfectHalf()
         val inPerfectCore = abs(relativeZone) <= coreHalf
 
+        val fakeHalf = game.fakeZoneHalf()
         val inFake = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= game.zoneHalfWidth
+            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= fakeHalf
         val inFakeCore = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <=
-            game.zoneHalfWidth * TimingGame.PERFECT_SHARE
+            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= coreHalf
 
         val highlighted = inZone || inFake
         val outer = if (highlighted) cell * 5f else cell * 3f

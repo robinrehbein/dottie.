@@ -3,6 +3,7 @@ package de.robinrehbein.punkt.data
 import android.content.Context
 import android.content.SharedPreferences
 import de.robinrehbein.punkt.game.DailyChallenge
+import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.Season
 import de.robinrehbein.punkt.game.SyncState
@@ -104,6 +105,22 @@ class ScoreStore(context: Context) {
             prefs.edit()
                 .putString(KEY_SKIN, value.name)
                 .putLong(KEY_SKIN_CHANGED, System.currentTimeMillis())
+                .apply()
+        }
+
+    /**
+     * Gewählte Kulisse, WIESE als Fallback. Wie beim Skin wird der
+     * Zeitpunkt mitgeschrieben: Auch die Kulisse ist eine Entscheidung,
+     * beim Abgleich mit der Uhr gewinnt deshalb die neuere (siehe
+     * SyncState). Einen Tagespass gibt es hier bewusst nicht — die
+     * Kulisse ist der seltene große Wechsel, nicht das Probierstück.
+     */
+    var selectedScene: DotScene
+        get() = DotScene.fromName(prefs.getString(KEY_SCENE, null))
+        set(value) {
+            prefs.edit()
+                .putString(KEY_SCENE, value.name)
+                .putLong(KEY_SCENE_CHANGED, System.currentTimeMillis())
                 .apply()
         }
 
@@ -260,6 +277,19 @@ class ScoreStore(context: Context) {
         return false
     }
 
+    /**
+     * Tage mit Lauf im laufenden Saison-Fenster — 0, sobald der Kalender
+     * weitergezogen ist. Der Wert steht bewusst nicht in [stats]: Er
+     * verfällt mit dem Monat und taugt deshalb für keine Freischaltung,
+     * nur für die Anzeige des Saison-Ziels (siehe Progress in :core).
+     */
+    fun seasonDaysFor(month: Int, year: Int): Int =
+        if (prefs.getInt(KEY_SEASON_WINDOW, 0) == year * 100 + month) {
+            prefs.getInt(KEY_SEASON_DAYS, 0)
+        } else {
+            0
+        }
+
     /** Aktueller Stand gebündelt, für Skin-Freischaltungen. */
     fun stats(): DotSkin.Stats = DotSkin.Stats(
         bestScore = bestScore,
@@ -289,6 +319,7 @@ class ScoreStore(context: Context) {
     fun syncState(): SyncState {
         val chosen = selectedSkin
         val shareSkin = chosen.isUnlocked(stats())
+        val sceneShared = selectedScene.isUnlocked(stats())
         return SyncState(
             bestScore = bestScore,
             runCount = runCount,
@@ -306,7 +337,13 @@ class ScoreStore(context: Context) {
             // her. Ein mitgeteiltes Flag wäre nur eine zweite, schlechtere
             // Wahrheit — und über den Data Layer fälschbar.
             skin = if (shareSkin) chosen.name else "",
-            skinChangedAt = if (shareSkin) prefs.getLong(KEY_SKIN_CHANGED, 0L) else 0L
+            skinChangedAt = if (shareSkin) prefs.getLong(KEY_SKIN_CHANGED, 0L) else 0L,
+            // Die Kulisse hat keinen Tagespass, sie ist also entweder
+            // verdient oder gar nicht ausgewählt — die Prüfung bleibt
+            // trotzdem stehen, damit ein wiederhergestelltes Backup keine
+            // ungedeckte Wahl auf die Uhr trägt.
+            scene = if (sceneShared) selectedScene.name else "",
+            sceneChangedAt = if (sceneShared) prefs.getLong(KEY_SCENE_CHANGED, 0L) else 0L
         )
     }
 
@@ -363,25 +400,43 @@ class ScoreStore(context: Context) {
             val incoming = DotSkin.fromName(state.skin)
             // stats() liest die Werte, die gerade erst geschrieben werden —
             // deshalb hier mit den zusammengeführten Zahlen prüfen.
-            val merged = DotSkin.Stats(
-                bestScore = maxOf(state.bestScore, before.bestScore),
-                bestPerfectStreak = maxOf(state.bestPerfectStreak, before.bestPerfectStreak),
-                bestDailyStreak = maxOf(state.dailyStreak, before.dailyStreak),
-                runCount = maxOf(state.runCount, before.runCount),
-                totalScore = maxOf(state.totalScore, before.totalScore),
-                daysPlayed = maxOf(state.daysPlayed, before.daysPlayed),
-                monthsPlayed = Integer.bitCount(state.monthsPlayed or before.monthsPlayed),
-                seasonEarned = state.seasonEarned or before.seasonEarned,
-                // Der Kauf steht nicht im Austauschformat, also gilt hier
-                // der lokale Spiegel — sonst fiele ein Gönner-Skin beim
-                // Abgleich stumm auf KLASSIK zurück.
-                patronOwned = patronOwned
-            )
-            if (incoming.isUnlocked(merged)) editor.putString(KEY_SKIN, incoming.name)
+            if (incoming.isUnlocked(mergedStats(state, before))) {
+                editor.putString(KEY_SKIN, incoming.name)
+            }
+        }
+        // Dieselbe Regel für die Kulisse: Die neuere Wahl gewinnt, aber
+        // nur, wenn sie hier auch verdient ist — verdient bleibt verdient.
+        if (state.sceneChangedAt > prefs.getLong(KEY_SCENE_CHANGED, 0L)) {
+            editor.putLong(KEY_SCENE_CHANGED, state.sceneChangedAt)
+            val incoming = DotScene.fromName(state.scene)
+            if (incoming.isUnlocked(mergedStats(state, before))) {
+                editor.putString(KEY_SCENE, incoming.name)
+            }
         }
         editor.apply()
         return true
     }
+
+    /**
+     * Der Stand, wie er nach dem Zusammenführen aussieht. [stats] taugt
+     * hier nicht: Es liest die Werte aus den Preferences, die gerade erst
+     * geschrieben werden — Skin- und Kulissen-Prüfung liefen sonst gegen
+     * den alten Stand und lehnten eine soeben verdiente Wahl ab.
+     */
+    private fun mergedStats(state: SyncState, before: SyncState) = DotSkin.Stats(
+        bestScore = maxOf(state.bestScore, before.bestScore),
+        bestPerfectStreak = maxOf(state.bestPerfectStreak, before.bestPerfectStreak),
+        bestDailyStreak = maxOf(state.dailyStreak, before.dailyStreak),
+        runCount = maxOf(state.runCount, before.runCount),
+        totalScore = maxOf(state.totalScore, before.totalScore),
+        daysPlayed = maxOf(state.daysPlayed, before.daysPlayed),
+        monthsPlayed = Integer.bitCount(state.monthsPlayed or before.monthsPlayed),
+        seasonEarned = state.seasonEarned or before.seasonEarned,
+        // Der Kauf steht nicht im Austauschformat, also gilt hier der
+        // lokale Spiegel — sonst fiele ein Gönner-Skin beim Abgleich
+        // stumm auf KLASSIK zurück.
+        patronOwned = patronOwned
+    )
 
     private companion object {
         const val PREFS_NAME = "punkt_scores"
@@ -391,6 +446,8 @@ class ScoreStore(context: Context) {
         const val KEY_REMINDER = "daily_reminder"
         const val KEY_BEST_PERFECT = "best_perfect_streak"
         const val KEY_SKIN = "selected_skin"
+        const val KEY_SCENE = "selected_scene"
+        const val KEY_SCENE_CHANGED = "scene_changed_at"
         const val KEY_ADS_REMOVED = "ads_removed"
         const val KEY_DAILY_BEST = "daily_best"
         const val KEY_DAILY_DAY = "daily_day"

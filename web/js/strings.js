@@ -168,7 +168,35 @@
       skin_family_goenner: "PATRON",
 
       // Nur im Web: Das Goenner-Paket gibt es hier nicht zu kaufen.
-      skin_patron_web_only: "IN THE APP ONLY"
+      skin_patron_web_only: "IN THE APP ONLY",
+
+      // Kulissen: die zweite Sammlung. Sie entscheidet nie ueber einen
+      // Treffer — deshalb darf sie verkauft werden und die Bahn nicht.
+      scenes: "SCENES",
+      scene_wiese: "MEADOW",
+      scene_wueste: "DESERT",
+      scene_meer: "SEA",
+      scene_berg: "MOUNTAIN",
+      scene_stadt: "CITY",
+      scene_weltraum: "SPACE",
+      scene_hint_wueste: "500 RUNS",
+      scene_hint_meer: "10,000 POINTS TOTAL",
+      scene_hint_berg: "DAILY STREAK: 30 DAYS",
+      scene_hint_stadt: "BEST 85",
+      scene_hint_weltraum: "COLLECT EVERY OTHER SCENE",
+
+      // Statistik-Seite: Die vier Ausdauer-Achsen liefen seit v2.20
+      // unsichtbar mit — hier stehen sie samt naechster Ziele.
+      stats: "STATS",
+      stats_runs: "RUNS",
+      stats_total_score: "TOTAL POINTS",
+      stats_days: "DAYS PLAYED",
+      stats_months: "MONTHS PLAYED",
+      stats_perfect: "BEST PERFECT STREAK",
+      stats_daily_streak: "DAILY STREAK",
+      stats_goals: "NEXT GOALS",
+      // "FOOTBALL 218/300" — Name der Belohnung plus Stand auf der Achse.
+      goal_progress: "%1$s %2$d/%3$d"
     },
     de: {
       app_name: "Dottie.",
@@ -331,7 +359,35 @@
       skin_family_goenner: "GOENNER",
 
       // Nur im Web: Das Goenner-Paket gibt es hier nicht zu kaufen.
-      skin_patron_web_only: "NUR IN DER APP"
+      skin_patron_web_only: "NUR IN DER APP",
+
+      // Kulissen: die zweite Sammlung. Sie entscheidet nie ueber einen
+      // Treffer — deshalb darf sie verkauft werden und die Bahn nicht.
+      scenes: "KULISSEN",
+      scene_wiese: "WIESE",
+      scene_wueste: "WUESTE",
+      scene_meer: "MEER",
+      scene_berg: "BERG",
+      scene_stadt: "STADT",
+      scene_weltraum: "WELTRAUM",
+      scene_hint_wueste: "500 LAEUFE",
+      scene_hint_meer: "10.000 PUNKTE INSGESAMT",
+      scene_hint_berg: "DAILY-SERIE: 30 TAGE",
+      scene_hint_stadt: "REKORD 85",
+      scene_hint_weltraum: "ALLE ANDEREN KULISSEN SAMMELN",
+
+      // Statistik-Seite: Die vier Ausdauer-Achsen liefen seit v2.20
+      // unsichtbar mit — hier stehen sie samt naechster Ziele.
+      stats: "STATISTIK",
+      stats_runs: "LAEUFE",
+      stats_total_score: "PUNKTE INSGESAMT",
+      stats_days: "TAGE GESPIELT",
+      stats_months: "MONATE GESPIELT",
+      stats_perfect: "BESTE PERFEKT-SERIE",
+      stats_daily_streak: "DAILY-SERIE",
+      stats_goals: "NAECHSTE ZIELE",
+      // "FUSSBALL 218/300" — Name der Belohnung plus Stand auf der Achse.
+      goal_progress: "%1$s %2$d/%3$d"
     }
   };
 
