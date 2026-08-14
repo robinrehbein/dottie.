@@ -596,15 +596,14 @@ final class GameScene: SKScene {
         let segments = GameScene.segmentCount
         let zoneHalf = CGFloat(game.effectiveZoneHalf())
         let zoneCenter = CGFloat(game.zoneCenter)
-        let baseHalf = CGFloat(game.zoneHalfWidth)
         let fakeCenter = CGFloat(game.fakeZoneCenter)
         let hasFake = game.hasFakeZone
 
-        // Kern fürs Zeichnen auf mindestens einen Rasterschritt aufrunden.
-        let coreHalf = max(
-            zoneHalf * CGFloat(TimingGame.perfectShare),
-            CGFloat.pi / CGFloat(segments)
-        )
+        // Kern und Fallenbreite kommen aus der Engine, nicht aus dem
+        // Renderer: Was hier leuchtet, ist exakt das Fenster, das der Tap
+        // auch wertet — und die Falle misst sich wie die echte Zone.
+        let coreHalf = CGFloat(game.perfectHalf())
+        let fakeHalf = CGFloat(game.fakeZoneHalf())
 
         for k in 0..<segments {
             let a = CGFloat(k) / CGFloat(segments) * 2 * CGFloat.pi
@@ -613,8 +612,8 @@ final class GameScene: SKScene {
             let inPerfectCore = abs(relativeZone) <= coreHalf
 
             let relativeFake = CGFloat(TimingGame.wrapToPi(Float(a) - Float(fakeCenter)))
-            let inFake = hasFake && abs(relativeFake) <= baseHalf
-            let inFakeCore = hasFake && abs(relativeFake) <= baseHalf * CGFloat(TimingGame.perfectShare)
+            let inFake = hasFake && abs(relativeFake) <= fakeHalf
+            let inFakeCore = hasFake && abs(relativeFake) <= coreHalf
 
             let highlighted = inZone || inFake
             let outer = highlighted ? cell * 5 : cell * 3

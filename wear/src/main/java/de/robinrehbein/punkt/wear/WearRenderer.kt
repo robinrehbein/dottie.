@@ -153,17 +153,15 @@ private fun DrawScope.drawWearTrack(
 
         val relativeZone = TimingGame.wrapToPi(a - game.zoneCenter)
         val inZone = abs(relativeZone) <= zoneHalf
-        // Kern-Radius nie unter ein Segment schrumpfen lassen, sonst leuchtet
-        // bei geschrumpfter/pulsierender Zone zeitweise gar kein Block hell.
-        val coreHalf = (zoneHalf * TimingGame.PERFECT_SHARE)
-            .coerceAtLeast(Math.PI.toFloat() / segments)
+        // Kern und Fallenbreite kommen aus der Engine — siehe perfectHalf().
+        val coreHalf = game.perfectHalf()
         val inPerfectCore = abs(relativeZone) <= coreHalf
 
+        val fakeHalf = game.fakeZoneHalf()
         val inFake = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= game.zoneHalfWidth
+            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= fakeHalf
         val inFakeCore = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <=
-            game.zoneHalfWidth * TimingGame.PERFECT_SHARE
+            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= coreHalf
 
         val highlighted = inZone || inFake
         val outer = if (highlighted) zoneOuter else neutralOuter

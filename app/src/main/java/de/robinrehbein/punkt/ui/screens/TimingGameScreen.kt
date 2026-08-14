@@ -1299,19 +1299,17 @@ private fun DrawScope.drawTrack(
 
         val relativeZone = TimingGame.wrapToPi(a - game.zoneCenter)
         val inZone = abs(relativeZone) <= zoneHalf
-        // Kern fürs Zeichnen auf mindestens einen Rasterschritt aufrunden:
-        // Schrumpft das PERFEKT-Fenster unter das Segment-Raster (Zonen-
-        // Minimum plus PULS-Wellental), würde sonst zeitweise gar kein Block
-        // hell leuchten. Die Tap-Wertung rechnet weiter exakt.
-        val coreHalf = (zoneHalf * TimingGame.PERFECT_SHARE)
-            .coerceAtLeast(Math.PI.toFloat() / segments)
+        // Kern und Fallenbreite kommen aus der Engine, nicht aus dem
+        // Renderer: Was hier leuchtet, ist exakt das Fenster, das der Tap
+        // auch wertet — und die Falle misst sich wie die echte Zone.
+        val coreHalf = game.perfectHalf()
         val inPerfectCore = abs(relativeZone) <= coreHalf
 
+        val fakeHalf = game.fakeZoneHalf()
         val inFake = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= game.zoneHalfWidth
+            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= fakeHalf
         val inFakeCore = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <=
-            game.zoneHalfWidth * TimingGame.PERFECT_SHARE
+            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= coreHalf
 
         val highlighted = inZone || inFake
         val outer = if (highlighted) cell * 5f else cell * 3f

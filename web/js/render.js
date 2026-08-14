@@ -392,15 +392,17 @@
 
       var relativeZone = TG.wrapToPi(a - game.zoneCenter);
       var inZone = Math.abs(relativeZone) <= zoneHalf;
-      // Kern fürs Zeichnen auf mindestens einen Rasterschritt aufrunden.
-      var coreHalf = Math.max(zoneHalf * TG.C.PERFECT_SHARE, Math.PI / segments);
+      // Kern und Fallenbreite kommen aus der Engine, nicht aus dem
+      // Renderer: Was hier leuchtet, ist exakt das Fenster, das der Tap
+      // auch wertet — und die Falle misst sich wie die echte Zone.
+      var coreHalf = game.perfectHalf();
       var inPerfectCore = Math.abs(relativeZone) <= coreHalf;
 
+      var fakeHalf = game.fakeZoneHalf();
       var inFake = game.hasFakeZone &&
-        Math.abs(TG.wrapToPi(a - game.fakeZoneCenter)) <= game.zoneHalfWidth;
+        Math.abs(TG.wrapToPi(a - game.fakeZoneCenter)) <= fakeHalf;
       var inFakeCore = game.hasFakeZone &&
-        Math.abs(TG.wrapToPi(a - game.fakeZoneCenter)) <=
-          game.zoneHalfWidth * TG.C.PERFECT_SHARE;
+        Math.abs(TG.wrapToPi(a - game.fakeZoneCenter)) <= coreHalf;
 
       var highlighted = inZone || inFake;
       var outer = highlighted ? cell * 5 : cell * 3;

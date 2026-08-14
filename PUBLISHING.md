@@ -16,12 +16,14 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.20.
       `python3 store/check_skin_paint.py`)
 - [ ] Optional: Play Games Services einrichten → Bestenlisten (Anleitung unten)
 - [x] AdMob-IDs eingetragen — **Werbung ist aktiv** (Abschnitt unten)
-- [ ] In-App-Kauf „remove_ads" in der Play Console anlegen (Abschnitt unten)
+- [x] In-App-Kauf „remove_ads" in der Play Console anlegen (Abschnitt unten)
+- [x] In-App-Kauf „patron_pack" (Gönner-Paket) anlegen und aktivieren (Abschnitt 4c)
 - [ ] Data-Safety-Formular **mit** Werbung ausfüllen (Abschnitt unten) —
       „keine Daten erhoben" wäre jetzt falsch
 - [ ] IARC-Fragebogen (Content-Rating) ausfüllen
-- [ ] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
-      oder per CI-Job `play-internal`, siehe unten)
+- [x] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
+      oder per CI-Job `play-internal`, siehe unten) — interner und
+      geschlossener Test laufen bereits
 - [ ] Optional: Wear-App mitverteilen — Formfaktor Wear OS aktivieren und
       `wear-release.aab` mit hochladen (Anleitung unten)
 - [ ] 12 Tester einladen, 14 Tage testen lassen (Pflicht bei neuen Privat-Konten)

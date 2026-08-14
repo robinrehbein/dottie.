@@ -703,6 +703,43 @@ function driveToZoneAndTap(game) {
   assert(svg.indexOf('viewBox="0 0 16 16"') > 0, "Motiv auf dem 16er-Raster");
 })();
 
+// ===== Bahn: Bild und Wertung duerfen nicht auseinanderlaufen =====
+//
+// Der PERFEKT-Kern und die Fallenbreite kommen seit v2.21 aus der Engine
+// (game.perfectHalf / game.fakeZoneHalf). Rechnet ein Renderer sie wieder
+// selbst aus, verspricht das Bild etwas anderes als der Tap wertet — genau
+// der Fehler, den es vorher gab, und zwar unsichtbar. Pruefbar ist das nur
+// an der Quelle, nicht am Ergebnis.
+(function () {
+  var fs = require("fs");
+  var path = require("path");
+  var wurzel = path.join(__dirname, "..", "..");
+
+  var quellen = [
+    ["render.js", "web/js/render.js"],
+    ["TimingGameScreen.kt", "app/src/main/java/de/robinrehbein/punkt/ui/screens/TimingGameScreen.kt"],
+    ["WearRenderer.kt", "wear/src/main/java/de/robinrehbein/punkt/wear/WearRenderer.kt"],
+    ["GameScene.swift", "ios/Dottie/Sources/UI/GameScene.swift"]
+  ];
+
+  quellen.forEach(function (paar) {
+    var name = paar[0];
+    var text;
+    try {
+      text = fs.readFileSync(path.join(wurzel, paar[1]), "utf8");
+    } catch (e) {
+      assert(false, name + " nicht lesbar");
+      return;
+    }
+    assert(/perfectHalf\s*\(/.test(text), name + " zieht den PERFEKT-Kern aus der Engine");
+    assert(/fakeZoneHalf\s*\(/.test(text), name + " zieht die Fallenbreite aus der Engine");
+    assert(
+      !/(PERFECT_SHARE|perfectShare)/.test(text),
+      name + " rechnet den Kern nicht mehr selbst aus"
+    );
+  });
+})();
+
 // ===== Farb- und Text-Parität mit den Android-Quellen =====
 (function () {
   var fs = require("fs");
