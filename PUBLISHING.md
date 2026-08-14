@@ -456,18 +456,18 @@ Upgrade-Pfad, das lässt sich im Store nicht lösen. Drei Wege:
 2. **Werbefreiheit aus dem Paket nehmen** und es als reines Skin-Paket
    für 3,99 € verkaufen. Sauber trennbar, aber ein „Gönner-Paket", das
    die Werbung stehen lässt, wirkt geizig.
-3. **Empfehlung:** Paket so lassen, aber in der App die Zeile für
-   Besitzer von `remove_ads` anders beschriften („GOENNER-PAKET — DREI
-   SKINS" statt „… UND WERBEFREI"), damit niemand doppelt für dasselbe
-   Versprechen zahlt, ohne es zu merken. Das ist eine App-Änderung, kein
-   Store-Eintrag — sie steht auf der Liste in `docs/TODO.md`.
+3. **Umgesetzt (v2.22):** Das Paket bleibt wie es ist, aber die Zeile im
+   SKINS-Overlay liest für Besitzer von `remove_ads` „GOENNER-PAKET: DREI
+   SKINS — 4,99 €" statt nur „GOENNER-PAKET — 4,99 €". Damit sieht diese
+   Gruppe, was für sie wirklich neu ist, statt ein zweites Mal für die
+   Werbefreiheit zu zahlen, ohne es zu merken. Preis und Produkt bleiben
+   unverändert.
 
-**Voraussetzung, die leicht übersehen wird:** Der BillingClient wird
-insgesamt erst gestartet, wenn in `res/values/ads.xml` echte AdMob-IDs
-stehen (`AdsManager.configured`). Ohne diese IDs gibt es also auch kein
-Gönner-Paket — die drei Skins bleiben unerreichbar, ohne dass eine
-Fehlermeldung erscheint. Wer das Paket unabhängig von Werbung verkaufen
-will, muss die Kopplung auftrennen; auch das steht auf der Liste.
+**Erledigt (v2.22):** Der Kauf hing früher an der Werbe-Konfiguration —
+ohne AdMob-IDs kein BillingClient und damit kein Gönner-Paket. Die
+Kopplung ist aufgetrennt: Das Paket ist auch in einem werbefreien Build
+verkäuflich. Ohne Play-Dienste oder ohne angelegtes Produkt bleibt die
+Zeile unsichtbar, das regelt der BillingClient von selbst.
 
 Getestet wird wie bei `remove_ads` über **Einstellungen → Lizenztests**
 (Kaufpreis 0) und eine über einen Play-Track installierte App. Die

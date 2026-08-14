@@ -23,12 +23,17 @@ import de.robinrehbein.punkt.data.ScoreStore
  * ([PRODUCT_ID]) und das Gönner-Paket ([PATRON_ID]) — beide
  * non-consumable.
  *
- * Genau wie [de.robinrehbein.punkt.ads.AdsManager] hart feature-geflaggt:
- * Ohne AdMob-IDs gibt es keine Werbung, also auch nichts zu entfernen —
- * dann wird gar kein BillingClient gebaut und Google nie kontaktiert.
- * Das Gönner-Paket hängt an derselben Flagge, weil es "Werbung entfernen"
- * enthält: Zwei getrennte Schalter für dieselbe Monetarisierung wären
- * eine zweite Wahrheit, die irgendwann auseinanderläuft.
+ * Der Kauf hängt bewusst NICHT mehr an der Werbe-Konfiguration. Solange
+ * es nur "Werbung entfernen" gab, war die Kopplung richtig: ohne Werbung
+ * nichts zu entfernen. Mit dem Gönner-Paket stimmt sie nicht mehr — drei
+ * Skins sind auch ohne eine einzige Anzeige verkäuflich, und ein leeres
+ * ads.xml hätte das Produkt sonst unerreichbar gemacht, ohne dass
+ * irgendwo ein Fehler erscheint.
+ *
+ * Ein eigener Schalter ist dafür nicht nötig: Der BillingClient ist von
+ * selbst harmlos, wenn nichts da ist. Ohne Play-Dienste scheitert der
+ * Verbindungsaufbau, ohne angelegtes Produkt bleibt die Antwort leer —
+ * und in beiden Fällen erscheint schlicht keine Kauf-Zeile.
  *
  * Beim Start läuft eine Wiederherstellung ([queryPurchases]): Die Käufe
  * hängen am Google-Konto, nicht am Gerät. Nach einer Neuinstallation ist
@@ -45,7 +50,6 @@ import de.robinrehbein.punkt.data.ScoreStore
 class BillingManager(
     private val activity: Activity?,
     private val store: ScoreStore,
-    private val configured: Boolean,
     private val onAdsRemoved: () -> Unit,
     private val onPatronOwned: () -> Unit = {}
 ) {
@@ -70,9 +74,7 @@ class BillingManager(
         private set
 
     /** Klartext-Zustand für die versteckte Diagnose-Zeile. */
-    var status by mutableStateOf(
-        if (!configured) "aus — keine Werbe-IDs" else "nicht verbunden"
-    )
+    var status by mutableStateOf("nicht verbunden")
         private set
 
     private val purchasesUpdated = PurchasesUpdatedListener { result, purchases ->
@@ -84,9 +86,9 @@ class BillingManager(
         }
     }
 
-    /** Einmal beim Start aufrufen; ohne AdMob-IDs ein No-op. */
+    /** Einmal beim Start aufrufen; ohne Activity ein No-op. */
     fun connect() {
-        if (!configured || activity == null || client != null) return
+        if (activity == null || client != null) return
         try {
             val billing = BillingClient.newBuilder(activity)
                 .setListener(purchasesUpdated)

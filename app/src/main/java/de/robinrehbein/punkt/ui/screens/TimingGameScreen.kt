@@ -184,12 +184,18 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     // bei offenem Skin-Menü eintreffen, und die drei neuen Skins sollen
     // dann sofort dastehen statt erst beim nächsten Öffnen.
     var patronOwned by remember { mutableStateOf(store.patronOwned) }
+    // Ebenfalls als Zustand: Wer waehrend der Sitzung werbefrei kauft,
+    // soll die Goenner-Zeile sofort in ihrer ehrlichen Fassung sehen
+    // (siehe SkinOverlay) — nicht erst beim naechsten Start.
+    var adsRemoved by remember { mutableStateOf(store.adsRemoved) }
     val billing = remember {
         BillingManager(
             activity = context as? Activity,
             store = store,
-            configured = ads.configured,
-            onAdsRemoved = { ads.disableAfterPurchase() },
+            onAdsRemoved = {
+                ads.disableAfterPurchase()
+                adsRemoved = true
+            },
             onPatronOwned = { patronOwned = true }
         )
     }
@@ -677,6 +683,10 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 // patronOwned wird hier bewusst noch einmal gelesen: Erst
                 // dieser Zugriff lässt die Liste nach dem Kauf neu zeichnen.
                 stats = store.stats().copy(patronOwned = patronOwned),
+                // Wer schon werbefrei ist, liest am Goenner-Angebot, was
+                // fuer ihn wirklich neu ist — sonst zahlt er die
+                // Werbefreiheit ein zweites Mal, ohne es zu merken.
+                adsAlreadyRemoved = adsRemoved,
                 selected = skin,
                 selectedScene = scene,
                 onSelectScene = {

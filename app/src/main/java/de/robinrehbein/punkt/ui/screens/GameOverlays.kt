@@ -908,6 +908,13 @@ private fun TwistHelpRow(color: Color, title: String, text: String) {
  *
  * [patronPrice] ist der von Google gelieferte Preis des Gönner-Pakets
  * (null = nicht kaufbar, dann bleibt das Angebot unsichtbar).
+ *
+ * [adsAlreadyRemoved] ändert nur die Beschriftung dieses Angebots. Das
+ * Paket enthält "Werbung entfernen"; wer das schon gekauft hat, würde es
+ * ein zweites Mal bezahlen. Play kennt für Einmalprodukte keinen
+ * Upgrade-Pfad, im Store ist das also nicht zu lösen — in der App schon:
+ * Diese Gruppe liest, was für sie wirklich neu ist, nämlich die drei
+ * Skins. Am Preis und am Produkt ändert sich nichts.
  */
 @Composable
 internal fun SkinOverlay(
@@ -921,6 +928,7 @@ internal fun SkinOverlay(
     adOfferReady: Boolean = false,
     onWatchAdFor: (DotSkin) -> Unit = {},
     patronPrice: String? = null,
+    adsAlreadyRemoved: Boolean = false,
     onPatron: () -> Unit = {}
 ) {
     // Uhr und Kalender einmal pro Öffnen ablesen, nicht pro Vorschau:
@@ -1011,8 +1019,13 @@ internal fun SkinOverlay(
                         (stats.patronOwned || patronPrice != null)
                     ) {
                         Text(
-                            text = if (stats.patronOwned) stringResource(R.string.patron_owned)
-                            else stringResource(R.string.patron_pack, patronPrice.orEmpty()),
+                            text = when {
+                                stats.patronOwned -> stringResource(R.string.patron_owned)
+                                adsAlreadyRemoved -> stringResource(
+                                    R.string.patron_pack_skins_only, patronPrice.orEmpty()
+                                )
+                                else -> stringResource(R.string.patron_pack, patronPrice.orEmpty())
+                            },
                             fontFamily = Bytesized,
                             fontSize = 15.sp,
                             color = DotBody,
