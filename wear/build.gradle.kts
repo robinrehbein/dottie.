@@ -25,8 +25,8 @@ android {
         // beiden Zähler nie.
         // 100005 ging bereits als Build 110 raus (Augen-Kontur), der
         // Uhr-Abgleich bekommt deshalb 100006.
-        versionCode = 100006
-        versionName = "0.2.4-wear"
+        versionCode = 100007
+        versionName = "0.2.5-wear"
     }
 
     signingConfigs {
@@ -93,4 +93,13 @@ dependencies {
     // libs.versions.toml) — nicht Teil der androidx.compose-BOM.
     implementation(libs.androidx.wear.compose.material)
     implementation(libs.androidx.wear.compose.foundation)
+
+    // Play Billing, hier ausschliesslich LESEND (WearPatron): Der
+    // Goenner-Kauf haengt am Google-Konto, nicht am Geraet, und Wear- und
+    // Phone-APK teilen sich die Paket-ID — die Uhr fragt ihn deshalb
+    // selbst ab, statt sich ein faelschbares Flag schicken zu lassen.
+    // Gleiche Version wie in :app (libs.versions.toml).
+    implementation(libs.billing.ktx)
+
+    testImplementation(libs.junit)
 }

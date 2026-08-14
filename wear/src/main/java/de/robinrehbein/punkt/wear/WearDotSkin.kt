@@ -75,7 +75,7 @@ internal enum class WearDotSkin(val id: SkinId) {
     HERZ(SkinId.HERZ),
     OSTEREI(SkinId.OSTEREI),
 
-    // Gönner — gekauft; auf der Uhr gibt es kein Billing, siehe Stats
+    // Gönner — gekauft; die Uhr fragt Play selbst danach (WearPatron)
     DIAMANT(SkinId.DIAMANT),
     PHOENIX(SkinId.PHOENIX),
     ONYX(SkinId.ONYX);
@@ -104,9 +104,11 @@ internal enum class WearDotSkin(val id: SkinId) {
      * [monthsPlayed] ist bereits die ANZAHL gesetzter Bits, nicht die
      * Maske: SkinStats erwartet an dieser Stelle den Zähler.
      *
-     * [patronOwned] bleibt auf der Uhr immer false. Der Prototyp hat kein
-     * Billing, die Gönner-Skins sind hier also nicht erreichbar — sie
-     * kommen höchstens über den Abgleich mit dem Telefon in die Liste.
+     * [patronOwned] ist kein Verdienst, sondern der Kauf des
+     * Gönner-Pakets. Die Uhr fragt ihn über Play selbst ab ([WearPatron])
+     * und spiegelt ihn lokal — er hängt am Google-Konto, nicht am Gerät.
+     * Ohne Play (seitlich installiert, keine Play-Dienste) bleibt er
+     * false und die drei Gönner-Skins damit gesperrt.
      */
     data class Stats(
         val bestScore: Int,

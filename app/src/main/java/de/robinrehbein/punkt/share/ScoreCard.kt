@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import androidx.core.content.FileProvider
 import de.robinrehbein.punkt.R
+import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
@@ -27,20 +28,7 @@ object ScoreCard {
     private const val H = 1350
     private const val CELL = 6f
 
-    /**
-     * Himmelsfarbe pro 5er-Stufe — Kopie der SkyStages aus dem Spiel; die
-     * Stufe zum Score kommt wie dort aus SkinPaint.skyStage.
-     */
-    private val SKY = intArrayOf(
-        0xFF4EC0CA.toInt(), 0xFF5B9BD5.toInt(), 0xFF7B6FD0.toInt(),
-        0xFFC0616F.toInt(), 0xFFD98A3D.toInt(), 0xFF3D4A8C.toInt(),
-        0xFF2A2640.toInt()
-    )
     private const val OUTLINE = 0xFF543847.toInt()
-    private const val CLOUD = 0xFFE9FCFD.toInt()
-    private const val SAND = 0xFFDED895.toInt()
-    private const val GRASS_LIGHT = 0xFF9DE85A.toInt()
-    private const val GRASS_DARK = 0xFF74BF2E.toInt()
     private const val ACCENT = 0xFFFF8A3C.toInt()
     private const val RECORD_YELLOW = 0xFFFFE95E.toInt()
 
@@ -51,10 +39,11 @@ object ScoreCard {
         bestScore: Int,
         isNewRecord: Boolean,
         skin: DotSkin,
+        scene: DotScene,
         daily: Boolean,
         dailyStreak: Int
     ) {
-        val bitmap = render(context, score, bestScore, isNewRecord, skin, daily, dailyStreak)
+        val bitmap = render(context, score, bestScore, isNewRecord, skin, scene, daily, dailyStreak)
         val dir = File(context.cacheDir, "share").apply { mkdirs() }
         val file = File(dir, "punkt-score.png")
         file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -84,6 +73,7 @@ object ScoreCard {
         bestScore: Int,
         isNewRecord: Boolean,
         skin: DotSkin,
+        scene: DotScene,
         daily: Boolean,
         dailyStreak: Int
     ): Bitmap {
@@ -103,27 +93,35 @@ object ScoreCard {
             canvas.drawText(str, x, y, text)
         }
 
-        // Himmel nach erreichter Stufe, wie im Spiel
-        paint.color = SKY[SkinPaint.skyStage(score)]
+        // Himmel, Wolken und Boden kommen aus der gewaehlten Kulisse —
+        // sonst saehe niemand ausser der Besitzerin, welche sie traegt.
+        val kulisse = scene.scene
+        paint.color = kulisse.sky[SkinPaint.skyStage(score)].toInt()
         canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), paint)
 
-        drawCloud(canvas, paint, W * 0.08f, H * 0.10f)
-        drawCloud(canvas, paint, W * 0.62f, H * 0.17f)
-
-        // Boden mit Grasnarbe
-        val groundTop = H * 0.86f
-        paint.color = SAND
-        canvas.drawRect(0f, groundTop, W.toFloat(), H.toFloat(), paint)
-        paint.color = GRASS_DARK
-        canvas.drawRect(0f, groundTop, W.toFloat(), groundTop + CELL * 5, paint)
-        paint.color = GRASS_LIGHT
-        var x = 0f
-        while (x < W) {
-            canvas.drawRect(x, groundTop, x + CELL * 5, groundTop + CELL * 4, paint)
-            x += CELL * 10
+        kulisse.cloud?.let { cloud ->
+            drawCloud(canvas, paint, W * 0.08f, H * 0.10f, cloud.toInt())
+            drawCloud(canvas, paint, W * 0.62f, H * 0.17f, cloud.toInt())
         }
-        paint.color = OUTLINE
-        canvas.drawRect(0f, groundTop - CELL, W.toFloat(), groundTop, paint)
+
+        // Boden mit Narbe. Auf der Karte sitzt die Kante bei 86 % statt
+        // 88 %, weil unten die Aufforderung steht — die Kulisse ohne
+        // Boden (WELTRAUM) laesst den Streifen einfach weg.
+        val groundTop = H * 0.86f
+        kulisse.ground?.let { ground ->
+            paint.color = ground.sand.toInt()
+            canvas.drawRect(0f, groundTop, W.toFloat(), H.toFloat(), paint)
+            paint.color = ground.turfDark.toInt()
+            canvas.drawRect(0f, groundTop, W.toFloat(), groundTop + CELL * 5, paint)
+            paint.color = ground.turfLight.toInt()
+            var x = 0f
+            while (x < W) {
+                canvas.drawRect(x, groundTop, x + CELL * 5, groundTop + CELL * 4, paint)
+                x += CELL * 10
+            }
+            paint.color = OUTLINE
+            canvas.drawRect(0f, groundTop - CELL, W.toFloat(), groundTop, paint)
+        }
 
         val cx = W / 2f
         drawShadowed("DOTTIE.", cx, H * 0.14f, 130f, Color.WHITE)
@@ -144,6 +142,12 @@ object ScoreCard {
         // Mittig zwischen Score-Zahl (Baseline 0.55) und REKORD-Zeile (0.68),
         // damit PUNKTE weder an der Zahl noch am REKORD klebt.
         drawShadowed(context.getString(R.string.card_points), cx, H * 0.615f, 60f, Color.WHITE)
+        // Die Kulisse steht klein neben PUNKTE: Sie ist Teil der
+        // Sammlung, aber sie ist nicht die Nachricht der Karte.
+        drawShadowed(
+            context.getString(R.string.card_scene, context.getString(scene.titleRes)),
+            cx, H * 0.645f, 34f, Color.WHITE
+        )
 
         val recordLine = when {
             isNewRecord -> context.getString(R.string.new_record)
@@ -170,9 +174,9 @@ object ScoreCard {
     }
 
     /** Blockige Retro-Wolke, wie im Spiel aus drei Rechtecken gestapelt. */
-    private fun drawCloud(canvas: Canvas, paint: Paint, x: Float, y: Float) {
+    private fun drawCloud(canvas: Canvas, paint: Paint, x: Float, y: Float, color: Int) {
         val u = CELL * 4f
-        paint.color = CLOUD
+        paint.color = color
         canvas.drawRect(x, y + u * 2, x + u * 14, y + u * 5, paint)
         canvas.drawRect(x + u * 2, y, x + u * 9, y + u * 2, paint)
         canvas.drawRect(x + u * 4, y - u * 1.5f, x + u * 8, y, paint)

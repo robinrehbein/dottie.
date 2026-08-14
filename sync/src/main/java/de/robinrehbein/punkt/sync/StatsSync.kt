@@ -160,6 +160,12 @@ class StatsSync(
         const val KEY_MONTHS_PLAYED = "months_played"
         const val KEY_SEASON_EARNED = "season_earned"
 
+        // Kulissen-Wahl (ab v2.21). Wie der Skin eine Entscheidung: Fehlt
+        // sie in einer Nachricht, weil die Gegenseite eine ältere App
+        // fährt, bleibt der Zeitstempel 0 — dann gewinnt die lokale Wahl.
+        const val KEY_SCENE = "scene"
+        const val KEY_SCENE_CHANGED = "scene_changed_at"
+
         fun DataMap.putState(s: SyncState) {
             putInt(KEY_BEST, s.bestScore)
             putInt(KEY_RUNS, s.runCount)
@@ -174,6 +180,8 @@ class StatsSync(
             putInt(KEY_SEASON_EARNED, s.seasonEarned)
             putString(KEY_SKIN, s.skin)
             putLong(KEY_SKIN_CHANGED, s.skinChangedAt)
+            putString(KEY_SCENE, s.scene)
+            putLong(KEY_SCENE_CHANGED, s.sceneChangedAt)
         }
 
         fun DataMap.toState() = SyncState(
@@ -189,7 +197,9 @@ class StatsSync(
             monthsPlayed = getInt(KEY_MONTHS_PLAYED, 0),
             seasonEarned = getInt(KEY_SEASON_EARNED, 0),
             skin = getString(KEY_SKIN, ""),
-            skinChangedAt = getLong(KEY_SKIN_CHANGED, 0L)
+            skinChangedAt = getLong(KEY_SKIN_CHANGED, 0L),
+            scene = getString(KEY_SCENE, ""),
+            sceneChangedAt = getLong(KEY_SCENE_CHANGED, 0L)
         )
     }
 }

@@ -9,6 +9,10 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
+# Auch die Build-Ordner der Module — ohne diese Zeile ist nur der
+# Wurzelordner geschuetzt, und Kompilat wandert unbemerkt in den Index
+# (genau so ist sync/build/ hineingeraten).
+build/
 /captures
 .externalNativeBuild
 .cxx
@@ -16,5 +20,8 @@ local.properties
 # Sitzungs- und Fehlerdateien des Kotlin-Compiler-Daemons
 /.kotlin
 
-# Claude-Code-Arbeitsdaten (Agent-Worktrees etc.)
-/.claude/
+# Claude-Code-Arbeitsdaten (Agent-Worktrees etc.) — die geteilte
+# Projekt-Konfiguration bleibt aber im Repo, sonst kennt sie niemand ausser
+# dem Rechner, auf dem sie entstanden ist.
+/.claude/*
+!/.claude/settings.json

@@ -40,6 +40,12 @@ final class GameScene: SKScene {
     private var skinUnlockedThisRun = false
     private var newMedalThisRun = false
     private var skin: DotSkin = .klassik
+    /// Die gewählte Kulisse. Sie hat keinen Tagespass und kein
+    /// Verfallsdatum — ein schlichter Zustand reicht.
+    // Nicht "scene" nennen: SKNode fuehrt bereits eine Eigenschaft
+    // dieses Namens (die Szene, in der der Knoten haengt), und Swift
+    // liest die Deklaration dann als Ueberschreibung mit falschem Typ.
+    private var selectedScene: SceneId = .wiese
 
     private var lastUpdateTime: TimeInterval = 0
     private var lastPhase: TimingGame.Phase = .over // erzwingt READY-Setup im 1. Frame
@@ -75,6 +81,11 @@ final class GameScene: SKScene {
     private var skyNode = SKSpriteNode()
     private var cloudNodes: [SKSpriteNode] = []
     private var sceneryNodes: [SKSpriteNode] = []
+    /// Windanteil je Requisiten-Platz (Prop.sway) — ohne ihn wackelten
+    /// auch Hochhäuser, und der kleine Baum liefe mit dem Wind statt
+    /// gegen ihn.
+    private var scenerySway: [CGFloat] = []
+    private var groundNode = SKSpriteNode()
     private var segmentOutlines: [SKSpriteNode] = []
     private var segmentInners: [SKSpriteNode] = []
     private var burstGlowNode = SKSpriteNode()
@@ -97,11 +108,13 @@ final class GameScene: SKScene {
     private var overOverlay: GameOverOverlay?
     private var helpOverlay: HelpOverlay?
     private var skinOverlay: SkinOverlay?
+    private var statsOverlay: StatsOverlay?
 
     // MARK: - Aufbau
 
     override func didMove(to view: SKView) {
-        backgroundColor = Palette.skyStages[0]
+        selectedScene = store.selectedScene
+        backgroundColor = UIColor(rgb: ScenePaint.of(selectedScene).sky[0])
         skin = store.selectedSkin
         audio.muted = store.soundMuted
         bestScore = store.bestScore
@@ -132,16 +145,19 @@ final class GameScene: SKScene {
         let w = size.width
         let h = size.height
 
-        skyNode = SKSpriteNode(color: Palette.skyStages[0], size: CGSize(width: w + 80, height: h + 80))
+        skyNode = SKSpriteNode(
+            color: UIColor(rgb: ScenePaint.of(selectedScene).sky[0]),
+            size: CGSize(width: w + 80, height: h + 80)
+        )
         skyNode.position = CGPoint(x: w / 2, y: h / 2)
         skyNode.zPosition = 0
         worldNode.addChild(skyNode)
 
-        // Langsam driftende Wolken.
-        let cloudTexture = PixelArt.cloudTexture(cell: cell)
+        // Langsam driftende Wolken. Im Vakuum gibt es keine — dann bleibt
+        // der Knoten leer, statt graue Attrappen zu zeigen.
         let cloudTopsA: [CGFloat] = [h * 0.16 - cell * 3, h * 0.24 - cell * 3]
         for topA in cloudTopsA {
-            let cloud = SKSpriteNode(texture: cloudTexture)
+            let cloud = SKSpriteNode()
             cloud.anchorPoint = CGPoint(x: 0, y: 1)
             cloud.position = CGPoint(x: 0, y: flipY(topA))
             cloud.zPosition = 1
@@ -149,28 +165,13 @@ final class GameScene: SKScene {
             cloudNodes.append(cloud)
         }
 
-        // Szenerie: Bäume, Blumen, Sträucher vor dem Boden (Parallaxe).
+        // Requisiten vor dem Boden (Parallaxe). Welche an welchem Platz
+        // steht, sagt die Kulisse — die Liste wird zyklisch abgelaufen.
         let spacing = w * 0.26
         let count = Int(w / spacing) + 3
-        let groundBaselineA = h * 0.88 + cell * 2
-        let treeBig = PixelArt.treeTexture(s: h * 0.075, cell: cell)
-        let treeSmall = PixelArt.treeTexture(s: h * 0.058, cell: cell)
-        let flowerRed = PixelArt.flowerTexture(s: h * 0.032, cell: cell, petal: Palette.recordRed)
-        let flowerWhite = PixelArt.flowerTexture(s: h * 0.032, cell: cell, petal: Palette.cloud)
-        let bush = PixelArt.bushTexture(s: h * 0.026, cell: cell)
-        for k in 0..<count {
-            let texture: SKTexture
-            switch k % 4 {
-            case 0:
-                texture = treeBig
-            case 1:
-                texture = (k / 4) % 2 == 0 ? flowerRed : flowerWhite
-            case 2:
-                texture = treeSmall
-            default:
-                texture = bush
-            }
-            let node = SKSpriteNode(texture: texture)
+        let groundBaselineA = ScenePaint.groundY(h) + cell * 2
+        for _ in 0..<count {
+            let node = SKSpriteNode()
             node.anchorPoint = CGPoint(x: 0.5, y: 0)
             node.position = CGPoint(x: 0, y: flipY(groundBaselineA))
             node.zPosition = 2
@@ -179,13 +180,13 @@ final class GameScene: SKScene {
         }
 
         // Boden-Streifen (verdeckt die Wurzeln der Szenerie).
-        let ground = SKSpriteNode(texture: PixelArt.groundTexture(
-            width: w, sandHeight: h * 0.12, cell: cell
-        ))
-        ground.anchorPoint = CGPoint(x: 0, y: 0)
-        ground.position = CGPoint(x: 0, y: 0)
-        ground.zPosition = 3
-        worldNode.addChild(ground)
+        groundNode = SKSpriteNode()
+        groundNode.anchorPoint = CGPoint(x: 0, y: 0)
+        groundNode.position = CGPoint(x: 0, y: 0)
+        groundNode.zPosition = 3
+        worldNode.addChild(groundNode)
+
+        rebuildScenery()
 
         // Perlenketten-Bahn: 60 Segmente, jedes als Outline + Innenblock.
         for k in 0..<GameScene.segmentCount {
@@ -282,6 +283,70 @@ final class GameScene: SKScene {
         skins.isHidden = true
         addChild(skins)
         self.skinOverlay = skins
+
+        let stats = StatsOverlay(sceneSize: size)
+        stats.zPosition = 300
+        stats.isHidden = true
+        addChild(stats)
+        self.statsOverlay = stats
+    }
+
+    /// Kalender für die Ziel-Rechnung: Der Monat entscheidet, ob ein
+    /// Saison-Ziel überhaupt gilt, das Jahr gehört zum Saison-Fenster.
+    /// Bewusst frisch abgelesen — eine App kann über Mitternacht und über
+    /// einen Monatswechsel hinweg offen bleiben.
+    private func goals(limit: Int) -> [Goal] {
+        let parts = Calendar.current.dateComponents([.year, .month], from: Date())
+        let month = parts.month ?? 0
+        let year = parts.year ?? 0
+        return Progress.nextGoals(
+            store.stats(),
+            month: month,
+            seasonDays: store.seasonDaysFor(year: year, month: month),
+            limit: limit
+        )
+    }
+
+    /// Texturen der Kulisse neu erzeugen: Himmel, Wolken, Requisiten und
+    /// Boden. Läuft beim Aufbau und nach jedem Kulissen-Wechsel — die
+    /// Positionen und Knoten bleiben dabei stehen, nur ihr Bild wechselt.
+    private func rebuildScenery() {
+        let w = size.width
+        let h = size.height
+        let paint = ScenePaint.of(selectedScene)
+
+        let cloudTexture = paint.cloud.map { PixelArt.cloudTexture(cell: cell, color: UIColor(rgb: $0)) }
+        for cloud in cloudNodes {
+            cloud.texture = cloudTexture
+            cloud.size = cloudTexture?.size() ?? .zero
+            cloud.isHidden = cloudTexture == nil
+        }
+
+        // Je Requisiten-Platz eine Textur; der Akzent wechselt eine Ebene
+        // langsamer, also erst mit der nächsten Wiederholung.
+        let slots = paint.props.count
+        scenerySway = []
+        for (k, node) in sceneryNodes.enumerated() {
+            let prop = paint.props[k % slots]
+            let accent = prop.accents.isEmpty
+                ? 0x543847
+                : prop.accents[(k / slots) % prop.accents.count]
+            let texture = PixelArt.propTexture(prop, s: h * prop.size, cell: cell, accent: accent)
+            node.texture = texture
+            node.size = texture.size()
+            scenerySway.append(prop.sway)
+        }
+
+        if let ground = paint.ground {
+            let texture = PixelArt.groundTexture(
+                width: w, sandHeight: h * 0.12, cell: cell, ground: ground
+            )
+            groundNode.texture = texture
+            groundNode.size = texture.size()
+            groundNode.isHidden = false
+        } else {
+            groundNode.isHidden = true
+        }
     }
 
     /// Ohne Zustand: Standbild mit der Uhr des Geräts — TAGESZEIT und
@@ -478,7 +543,10 @@ final class GameScene: SKScene {
                 dailyBest: store.dailyBestFor(epochDay: runEpochDay),
                 dailyStreak: store.dailyStreak,
                 skinUnlocked: skinUnlockedThisRun,
-                newMedal: newMedalThisRun
+                newMedal: newMedalThisRun,
+                // Der Lauf ist beim Tod schon gezählt: Der Balken zeigt
+                // also den Stand NACH diesem Lauf.
+                goal: goals(limit: 1).first
             )
             overOverlay?.isHidden = false
         }
@@ -517,9 +585,9 @@ final class GameScene: SKScene {
             worldNode.position = .zero
         }
 
-        // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht.
-        let stageIndex = SkinPaint.skyStage(game.score)
-        skyNode.color = Palette.skyStages[stageIndex]
+        // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht —
+        // welche sieben Töne das sind, sagt die Kulisse.
+        skyNode.color = UIColor(rgb: ScenePaint.skyFor(selectedScene, score: game.score))
 
         // Wolken driften nach links.
         let cloudDrift = elapsed * h * 0.01
@@ -535,7 +603,10 @@ final class GameScene: SKScene {
         for (k, node) in sceneryNodes.enumerated() {
             let raw = (CGFloat(k) * spacing - sceneryDrift).truncatingRemainder(dividingBy: total)
             node.position.x = (raw + total).truncatingRemainder(dividingBy: total) - spacing
-            node.zRotation = sin(elapsed * 1.4 + CGFloat(k) * 1.7) * 0.04
+            // Der Windanteil kommt aus der Requisite: Hochhäuser stehen
+            // still, der kleine Baum lehnt gegen den großen.
+            let sway = k < scenerySway.count ? scenerySway[k] : 1
+            node.zRotation = sin(elapsed * 1.4 + CGFloat(k) * 1.7) * 0.04 * sway
         }
 
         renderTrack()
@@ -551,15 +622,14 @@ final class GameScene: SKScene {
         let segments = GameScene.segmentCount
         let zoneHalf = CGFloat(game.effectiveZoneHalf())
         let zoneCenter = CGFloat(game.zoneCenter)
-        let baseHalf = CGFloat(game.zoneHalfWidth)
         let fakeCenter = CGFloat(game.fakeZoneCenter)
         let hasFake = game.hasFakeZone
 
-        // Kern fürs Zeichnen auf mindestens einen Rasterschritt aufrunden.
-        let coreHalf = max(
-            zoneHalf * CGFloat(TimingGame.perfectShare),
-            CGFloat.pi / CGFloat(segments)
-        )
+        // Kern und Fallenbreite kommen aus der Engine, nicht aus dem
+        // Renderer: Was hier leuchtet, ist exakt das Fenster, das der Tap
+        // auch wertet — und die Falle misst sich wie die echte Zone.
+        let coreHalf = CGFloat(game.perfectHalf())
+        let fakeHalf = CGFloat(game.fakeZoneHalf())
 
         for k in 0..<segments {
             let a = CGFloat(k) / CGFloat(segments) * 2 * CGFloat.pi
@@ -568,8 +638,8 @@ final class GameScene: SKScene {
             let inPerfectCore = abs(relativeZone) <= coreHalf
 
             let relativeFake = CGFloat(TimingGame.wrapToPi(Float(a) - Float(fakeCenter)))
-            let inFake = hasFake && abs(relativeFake) <= baseHalf
-            let inFakeCore = hasFake && abs(relativeFake) <= baseHalf * CGFloat(TimingGame.perfectShare)
+            let inFake = hasFake && abs(relativeFake) <= fakeHalf
+            let inFakeCore = hasFake && abs(relativeFake) <= coreHalf
 
             let highlighted = inZone || inFake
             let outer = highlighted ? cell * 5 : cell * 3
@@ -721,6 +791,12 @@ final class GameScene: SKScene {
             help.isHidden = true
             return
         }
+        // Die Statistik-Seite scrollt nicht: Ein Tap irgendwo schließt sie,
+        // wie die Hilfe.
+        if let stats = statsOverlay, !stats.isHidden {
+            stats.isHidden = true
+            return
+        }
         // Der Skin-Picker scrollt: Er entscheidet erst beim Loslassen, ob
         // die Berührung ein Tipp oder ein Zug war.
         if let skins = skinOverlay, !skins.isHidden {
@@ -768,6 +844,11 @@ final class GameScene: SKScene {
             store.selectedSkin = selected
             rebuildBirdTextures()
             skins.isHidden = true
+        case .selectScene(let selected):
+            selectedScene = selected
+            store.selectedScene = selected
+            rebuildScenery()
+            skins.isHidden = true
         case .close:
             skins.isHidden = true
         }
@@ -788,8 +869,13 @@ final class GameScene: SKScene {
             prepareRun()
             game.tap()
         case "btn.skins":
-            skinOverlay?.refresh(stats: store.stats(), selected: skin)
+            skinOverlay?.refresh(stats: store.stats(), selected: skin, selectedScene: selectedScene)
             skinOverlay?.isHidden = false
+        case "btn.stats":
+            // Beim Öffnen einmal rechnen: Die Seite steht still, solange
+            // sie offen ist.
+            statsOverlay?.refresh(stats: store.stats(), goals: goals(limit: Progress.pageGoals))
+            statsOverlay?.isHidden = false
         case "btn.menu":
             dailyMode = false
             game.reset()

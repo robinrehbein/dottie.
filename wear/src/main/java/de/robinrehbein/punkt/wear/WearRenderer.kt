@@ -5,6 +5,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
+import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.TimingGame
@@ -18,16 +20,10 @@ import kotlin.math.sqrt
 // TimingGameScreen.kt übernommen, damit der Wear-Prototyp optisch zur
 // Telefon-Version passt, ohne eine Abhängigkeit auf :app zu brauchen. =====
 
-/** Himmelsfarbe pro 5er-Stufe (aus TimingGameScreen.kt, dort privat). */
-internal val WearSkyStages = listOf(
-    Color(0xFF4EC0CA), // 0+  Tag (türkis)
-    Color(0xFF5B9BD5), // 5+  Blau
-    Color(0xFF7B6FD0), // 10+ Lila
-    Color(0xFFC0616F), // 15+ Altrosa
-    Color(0xFFD98A3D), // 20+ Sonnenuntergang
-    Color(0xFF3D4A8C), // 25+ Dämmerung
-    Color(0xFF2A2640)  // 30+ Nacht
-)
+// Die Himmelsfarben kommen aus ScenePaint (:core) — die Uhr zieht sie nur
+// LESEND mit, gewählt wird eine Kulisse hier nicht. Ohne Boden und
+// Szenerie ist der Himmel ohnehin alles, was von einer Kulisse auf das
+// kleine Display passt; die Bahn bleibt in jeder Kulisse unverändert.
 
 internal val WearOutlineColor = Color(0xFF543847)
 internal val WearGrassLight = Color(0xFF9DE85A)
@@ -98,14 +94,21 @@ private const val WEAR_CORE_ZONE = 0.68f
  * Szenerie-/Boden-Hintergrund wie am Phone, das Display ist dafür zu klein.
  *
  * [hour] und [month] kommen von der Geräte-Uhr (Controller): TAGESZEIT
- * und JAHRESZEIT ziehen daraus ihr Kleid.
+ * und JAHRESZEIT ziehen daraus ihr Kleid. [scene] ist die Kulisse des
+ * Telefons — die Uhr wählt keine, sie zeigt nur, was ankommt.
  */
-internal fun DrawScope.drawWearWorld(game: TimingGame, skin: WearDotSkin, hour: Int, month: Int) {
+internal fun DrawScope.drawWearWorld(
+    game: TimingGame,
+    skin: WearDotSkin,
+    hour: Int,
+    month: Int,
+    scene: SceneId = SceneId.WIESE
+) {
     val d = size.minDimension
     val cx = size.width / 2f
     val cy = size.height / 2f
 
-    val sky = WearSkyStages[SkinPaint.skyStage(game.score)]
+    val sky = Color(ScenePaint.skyFor(scene, game.score))
     drawRect(color = sky, topLeft = Offset.Zero, size = size)
 
     // Radius proportional zu minDimension statt zur Bildhöhe wie am Phone —
@@ -150,17 +153,15 @@ private fun DrawScope.drawWearTrack(
 
         val relativeZone = TimingGame.wrapToPi(a - game.zoneCenter)
         val inZone = abs(relativeZone) <= zoneHalf
-        // Kern-Radius nie unter ein Segment schrumpfen lassen, sonst leuchtet
-        // bei geschrumpfter/pulsierender Zone zeitweise gar kein Block hell.
-        val coreHalf = (zoneHalf * TimingGame.PERFECT_SHARE)
-            .coerceAtLeast(Math.PI.toFloat() / segments)
+        // Kern und Fallenbreite kommen aus der Engine — siehe perfectHalf().
+        val coreHalf = game.perfectHalf()
         val inPerfectCore = abs(relativeZone) <= coreHalf
 
+        val fakeHalf = game.fakeZoneHalf()
         val inFake = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= game.zoneHalfWidth
+            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= fakeHalf
         val inFakeCore = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <=
-            game.zoneHalfWidth * TimingGame.PERFECT_SHARE
+            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= coreHalf
 
         val highlighted = inZone || inFake
         val outer = if (highlighted) zoneOuter else neutralOuter

@@ -123,12 +123,12 @@ enum class DotSkin(
 
     /** Überschriften des Skin-Menüs. */
     enum class Family(@StringRes val titleRes: Int) {
-        EINFARBIG(R.string.skin_family_solid),
-        GEMUSTERT(R.string.skin_family_pattern),
-        BEWEGT(R.string.skin_family_moving),
-        REAGIEREND(R.string.skin_family_reactive),
-        SAISON(R.string.skin_family_season),
-        GOENNER(R.string.skin_family_patron)
+        EINFARBIG(R.string.skin_family_einfarbig),
+        GEMUSTERT(R.string.skin_family_gemustert),
+        BEWEGT(R.string.skin_family_bewegt),
+        REAGIEREND(R.string.skin_family_reagierend),
+        SAISON(R.string.skin_family_saison),
+        GOENNER(R.string.skin_family_goenner)
     }
 
     /**
@@ -153,14 +153,31 @@ enum class DotSkin(
         val seasonEarned: Int = 0,
         /** Gönner-Paket gekauft — schaltet nur die Gönner-Familie frei. */
         val patronOwned: Boolean = false
-    )
+    ) {
+        /**
+         * Derselbe Stand in der Sprache von :core. Skins, Kulissen und die
+         * Ziel-Rechnung ([Progress]) fragen alle danach — deshalb steht
+         * die Übersetzung genau einmal hier und nicht dreimal.
+         */
+        fun toSkinStats(): SkinStats = SkinStats(
+            bestScore = bestScore,
+            bestPerfectStreak = bestPerfectStreak,
+            bestDailyStreak = bestDailyStreak,
+            runCount = runCount,
+            totalScore = totalScore,
+            daysPlayed = daysPlayed,
+            monthsPlayed = monthsPlayed,
+            seasonEarned = seasonEarned,
+            patronOwned = patronOwned
+        )
+    }
 
     /**
      * Dauerhaft verdient? Diese Frage kennt bewusst KEINE Tagespässe:
      * An ihr hängen die Freischalt-Feier im Game-Over und [unlockedCount],
      * und ein geliehener Skin darf sich nicht als Leistung ausgeben.
      */
-    fun isUnlocked(stats: Stats): Boolean = SkinPaint.isUnlocked(id, stats.toPaint())
+    fun isUnlocked(stats: Stats): Boolean = SkinPaint.isUnlocked(id, stats.toSkinStats())
 
     /**
      * Jetzt spielbar? Also dauerhaft verdient ODER der eine Skin, für den
@@ -172,28 +189,22 @@ enum class DotSkin(
         isUnlocked(stats) || this == pass
 
     companion object {
-        private fun Stats.toPaint() = SkinStats(
-            bestScore = bestScore,
-            bestPerfectStreak = bestPerfectStreak,
-            bestDailyStreak = bestDailyStreak,
-            runCount = runCount,
-            totalScore = totalScore,
-            daysPlayed = daysPlayed,
-            monthsPlayed = monthsPlayed,
-            seasonEarned = seasonEarned,
-            patronOwned = patronOwned
-        )
-
         /** Skin zu einem gespeicherten Namen, KLASSIK als Fallback. */
         fun fromName(name: String?): DotSkin =
             entries.firstOrNull { it.name == name } ?: KLASSIK
+
+        /**
+         * Der Eintrag zu einer [SkinId] aus :core — der Weg von einem
+         * Ziel ([Goal.skin]) zu seiner Beschriftung.
+         */
+        fun of(id: SkinId): DotSkin = entries.first { it.id == id }
 
         /**
          * Sammlungsstand: nur Skins, die für die Sammlung zählen — Saison
          * und Gönner bleiben außen vor (siehe SkinPaint.unlockedCount).
          * An dieser Zahl hängt auch die Bedingung des REGENBOGEN.
          */
-        fun unlockedCount(stats: Stats): Int = SkinPaint.unlockedCount(stats.toPaint())
+        fun unlockedCount(stats: Stats): Int = SkinPaint.unlockedCount(stats.toSkinStats())
 
         /** Wie viele Skins der Sammlungsstand insgesamt erreichen kann. */
         fun collectableCount(): Int = SkinPaint.collectableCount()

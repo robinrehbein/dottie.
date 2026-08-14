@@ -41,16 +41,13 @@ enum Palette {
     static let bannerOrange = UIColor(rgb: 0xFF8A3C)
     static let perfectYellow = UIColor(rgb: 0xFFE95E)
 
-    /// Himmelsfarbe pro 5er-Stufe: von Tag über Abendrot bis Nacht.
-    static let skyStages: [UIColor] = [
-        UIColor(rgb: 0x4EC0CA), // 0+  Tag (türkis)
-        UIColor(rgb: 0x5B9BD5), // 5+  Blau
-        UIColor(rgb: 0x7B6FD0), // 10+ Lila
-        UIColor(rgb: 0xC0616F), // 15+ Altrosa
-        UIColor(rgb: 0xD98A3D), // 20+ Sonnenuntergang
-        UIColor(rgb: 0x3D4A8C), // 25+ Dämmerung
-        UIColor(rgb: 0x2A2640)  // 30+ Nacht
-    ]
+    /// Himmelsfarbe pro 5er-Stufe: von Tag über Abendrot bis Nacht. Seit
+    /// den Kulissen sagt ScenePaint, welche sieben Töne das sind — hier
+    /// bleibt nur der Bestand (WIESE), an dem sich der CHAMAELEON und
+    /// jede Vorschau ohne Kulisse orientieren.
+    static var skyStages: [UIColor] {
+        return ScenePaint.of(.wiese).sky.map { UIColor(rgb: $0) }
+    }
 
     /// Körper- und Schattenfarbe pro Medaillen-Stufe.
     static func medalColors(_ tier: MedalTier) -> (body: UIColor, shade: UIColor) {

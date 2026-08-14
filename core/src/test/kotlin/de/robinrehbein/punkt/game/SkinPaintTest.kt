@@ -363,13 +363,110 @@ class SkinPaintTest {
     fun `Farbwerkzeug rechnet richtig`() {
         assertEquals(0xFF000000, SkinPaint.mix(0xFF000000, 0xFFFFFFFF, 0f))
         assertEquals(0xFFFFFFFF, SkinPaint.mix(0xFF000000, 0xFFFFFFFF, 1f))
-        assertEquals(0xFF7F7F7F, SkinPaint.mix(0xFF000000, 0xFFFFFFFF, 0.5f))
+        // 50 % Grau ist 127,5 — seit dem Umstieg vom Abschneiden aufs
+        // kaufmännische Runden fällt das auf 0x80 statt auf 0x7F. Der
+        // Web-Port (Math.round) und iOS (rounded()) rechnen genauso; vorher
+        // lag die App bis zu eine Stufe je Kanal unter der PWA.
+        assertEquals(0xFF808080, SkinPaint.mix(0xFF000000, 0xFFFFFFFF, 0.5f))
         assertEquals("Werte außerhalb 0..1 werden gekappt", 0xFFFFFFFF, SkinPaint.mix(0xFF000000, 0xFFFFFFFF, 4f))
 
         assertEquals(0xFFFF0000, SkinPaint.hsl(0f, 1f, 0.5f))
         assertEquals(0xFF00FF00, SkinPaint.hsl(120f, 1f, 0.5f))
         assertEquals(0xFF0000FF, SkinPaint.hsl(240f, 1f, 0.5f))
         assertEquals("Negative Winkel wickeln sich", SkinPaint.hsl(30f, 1f, 0.5f), SkinPaint.hsl(-330f, 1f, 0.5f))
+        // Grau aus HSL trifft dieselbe Stufe wie die Mischung — beide gehen
+        // durch dieselbe Rundung.
+        assertEquals(0xFF808080, SkinPaint.hsl(0f, 0f, 0.5f))
+    }
+
+    @Test
+    fun `Runden weicht hoechstens eine Stufe vom frueheren Abschneiden ab`() {
+        // Alt gegen neu: Bis zu dieser Änderung schnitten mix und hsl den
+        // Kanal ab (toInt()), der Web-Port rundete. Die Beweislast dieses
+        // Tests ist die Größe des Sprungs — pro Aufruf höchstens eine Stufe
+        // je Kanal, und nie nach unten. Damit ist keine Skin-Farbe neu
+        // gemischt, nur der Rundungsfehler halbiert.
+        //
+        // Wo ein Skin zwei Mischungen hintereinanderlegt (CHROM, HOLO,
+        // DIAMANT und PHOENIX mischen erst die Fläche und dann den
+        // Glanzstreifen darüber), können sich zwei solche Sprünge
+        // aufaddieren — dort sind es im Höchstfall zwei Stufen je Kanal,
+        // gemessen an unter 3 % der Felder. Auch das bleibt unterhalb der
+        // Wahrnehmungsschwelle und gilt in App und PWA gleichermaßen, weil
+        // beide Seiten jetzt dieselbe Rundung nutzen.
+        fun kanaele(color: Long) = intArrayOf(
+            ((color shr 16) and 0xFF).toInt(),
+            ((color shr 8) and 0xFF).toInt(),
+            (color and 0xFF).toInt()
+        )
+
+        /** Die frühere Mischung, Kanal für Kanal abgeschnitten. */
+        fun alteMischung(a: Long, b: Long, k: Float): Long {
+            val f = k.coerceIn(0f, 1f)
+            var out = 0xFF000000L
+            for (shift in intArrayOf(16, 8, 0)) {
+                val ca = (a shr shift) and 0xFF
+                val cb = (b shr shift) and 0xFF
+                out = out or ((ca + (cb - ca) * f).toInt().coerceIn(0, 255).toLong() shl shift)
+            }
+            return out
+        }
+
+        val farben = listOf(
+            0xFF000000L, 0xFFFFFFFFL, 0xFF8E2410L, 0xFFFFD847L, 0xFF4E3C86L,
+            0xFF231A3FL, 0xFF5B6478L, 0xFFE6EAF2L, 0xFF8A6A1EL, 0xFFE5341AL
+        )
+        farben.forEach { a ->
+            farben.forEach { b ->
+                (0..100).forEach { step ->
+                    val k = step / 100f
+                    val neu = kanaele(SkinPaint.mix(a, b, k))
+                    val alt = kanaele(alteMischung(a, b, k))
+                    neu.indices.forEach { i ->
+                        val d = neu[i] - alt[i]
+                        assertTrue(
+                            "mix($a, $b, $k) springt um $d statt um höchstens eine Stufe",
+                            d in 0..1
+                        )
+                    }
+                }
+            }
+        }
+
+        // HSL: Der Rohwert je Kanal steht in der Formel, also lässt sich die
+        // alte Stufe direkt daraus bilden — abgeschnitten ist der Boden des
+        // Rohwerts, gerundet höchstens eine Stufe darüber.
+        var geprueft = 0
+        (0..359 step 3).forEach { grad ->
+            listOf(0.55f, 0.70f, 0.75f, 0.85f).forEach { s ->
+                listOf(0.40f, 0.44f, 0.46f, 0.60f, 0.62f, 0.66f).forEach { l ->
+                    val h = grad.toFloat()
+                    val hue = ((h % 360f) + 360f) % 360f
+                    val c = (1f - kotlin.math.abs(2f * l - 1f)) * s
+                    val x = c * (1f - kotlin.math.abs((hue / 60f) % 2f - 1f))
+                    val m = l - c / 2f
+                    val roh = when {
+                        hue < 60f -> listOf(c, x, 0f)
+                        hue < 120f -> listOf(x, c, 0f)
+                        hue < 180f -> listOf(0f, c, x)
+                        hue < 240f -> listOf(0f, x, c)
+                        hue < 300f -> listOf(x, 0f, c)
+                        else -> listOf(c, 0f, x)
+                    }.map { ((it + m) * 255f) }
+                    val neu = kanaele(SkinPaint.hsl(h, s, l))
+                    roh.forEachIndexed { i, wert ->
+                        val alt = wert.toInt().coerceIn(0, 255)
+                        val d = neu[i] - alt
+                        assertTrue(
+                            "hsl($h, $s, $l) springt um $d statt um höchstens eine Stufe",
+                            d in 0..1
+                        )
+                        geprueft++
+                    }
+                }
+            }
+        }
+        assertTrue("genug HSL-Stützstellen geprüft", geprueft > 1_000)
     }
 
     @Test

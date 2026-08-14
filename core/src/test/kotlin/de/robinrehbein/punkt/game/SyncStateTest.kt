@@ -89,6 +89,24 @@ class SyncStateTest {
     }
 
     @Test
+    fun `die juengere Kulissen-Wahl gewinnt, unabhaengig vom Skin`() {
+        // Kulisse und Skin sind zwei Sammlungen und zwei Entscheidungen:
+        // Wer am Telefon die Kulisse und auf der Uhr den Skin gewechselt
+        // hat, soll beides behalten.
+        val a = phone.copy(scene = "MEER", sceneChangedAt = 3_000L)
+        val b = watch.copy(scene = "WIESE", sceneChangedAt = 1_500L)
+        assertEquals("MEER", a.mergedWith(b).scene)
+        assertEquals("MEER", b.mergedWith(a).scene)
+        assertEquals("FROST", a.mergedWith(b).skin)
+
+        // Gleichstand: beide Geräte entscheiden gleich, sonst
+        // überschreiben sie sich gegenseitig endlos.
+        val c = phone.copy(scene = "BERG", sceneChangedAt = 500L)
+        val d = phone.copy(scene = "STADT", sceneChangedAt = 500L)
+        assertEquals(c.mergedWith(d).scene, d.mergedWith(c).scene)
+    }
+
+    @Test
     fun `am selben Tag zaehlt der bessere Tageslauf`() {
         assertEquals(8, phone.mergedWith(watch).dailyBest)
     }

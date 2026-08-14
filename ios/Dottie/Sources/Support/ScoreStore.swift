@@ -71,6 +71,14 @@ final class ScoreStore {
         set { defaults.set(newValue.rawValue, forKey: ScoreStore.keySkin) }
     }
 
+    /// Gewählte Kulisse, WIESE als Fallback. Wie die Skin-Wahl eine
+    /// Entscheidung, keine Bestleistung — und ohne Tagespass: Die Kulisse
+    /// ist der seltene große Wechsel, nicht das Probierstück.
+    var selectedScene: SceneId {
+        get { return SceneId.fromName(defaults.string(forKey: ScoreStore.keyScene)) }
+        set { defaults.set(newValue.rawValue, forKey: ScoreStore.keyScene) }
+    }
+
     // MARK: - Daily Challenge
 
     /// Tagesbest-Score — gilt nur für den in `dailyDay` gespeicherten Tag.
@@ -197,6 +205,17 @@ final class ScoreStore {
         return false
     }
 
+    /// Tage mit Lauf im laufenden Saison-Fenster — 0, sobald der Kalender
+    /// weitergezogen ist. Der Wert gehört nicht in `stats()`: Er verfällt
+    /// mit dem Monat und taugt für keine Freischaltung, nur für die
+    /// Anzeige des Saison-Ziels (siehe `Progress`).
+    func seasonDaysFor(year: Int, month: Int) -> Int {
+        guard defaults.integer(forKey: ScoreStore.keySeasonWindow) == year * 100 + month else {
+            return 0
+        }
+        return defaults.integer(forKey: ScoreStore.keySeasonDays)
+    }
+
     /// Alles, woraus sich Freischaltungen speisen — Bestleistungen und
     /// Ausdauer gebündelt.
     func stats() -> DotSkin.Stats {
@@ -225,6 +244,7 @@ final class ScoreStore {
     private static let keyReminder = "daily_reminder"
     private static let keyBestPerfect = "best_perfect_streak"
     private static let keySkin = "selected_skin"
+    private static let keyScene = "selected_scene"
     private static let keyDailyBest = "daily_best"
     private static let keyDailyDay = "daily_day"
     private static let keyDailyStreak = "daily_streak"
