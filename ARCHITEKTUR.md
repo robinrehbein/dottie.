@@ -1,9 +1,13 @@
-# Architektur: vier Plattformen, dreimal dieselbe Logik
+# Architektur: vier Ziele, zweimal dieselbe Logik
 
-Dieses Dokument beschreibt, wo der Code heute steht, warum er dreifach
-existiert, und was eine Vereinheitlichung mit **Kotlin Multiplatform**
-(KMP) konkret kosten und bringen würde. Es ist eine Entscheidungsgrundlage,
-kein Plan — umgesetzt ist bisher nichts davon.
+Dieses Dokument beschreibt, wo der Code heute steht, warum die Spiellogik
+doppelt existiert, und was eine Vereinheitlichung mit **Kotlin
+Multiplatform** (KMP) konkret kosten und bringen würde. Es ist eine
+Entscheidungsgrundlage, kein Plan — umgesetzt ist bisher nichts davon.
+
+Stand v2.23: Ausgeliefert wird nativ auf Android (Telefon und Wear OS)
+und iOS. Die Web-Version ist entfallen; wo sie unten noch als Option
+auftaucht, steht das ausdrücklich als erledigt dabei.
 
 ## Wo der Code steht
 
@@ -14,18 +18,16 @@ kein Plan — umgesetzt ist bisher nichts davon.
 | Wear-App | `wear/src/main` | 1536 | Kotlin (Wear Compose) |
 | iOS: Engine-Port | `ios/Dottie/Sources/Engine` | 1338 | Swift |
 | iOS: UI und Umfeld | `ios/Dottie/Sources/{UI,Support}` | 2246 | Swift (SpriteKit) |
-| Web: Logik-Port | `web/js/{game,daily,synth,skins}.js` | 1114 | JavaScript |
-| Web: UI und Umfeld | `web/js/{render,main,pixelbutton,audio,store,strings}.js` | 1859 | JavaScript |
 
 `:app` und `:wear` teilen sich `:core` direkt — dort liegen `TimingGame`,
-`DailyChallenge`, `SkinPaint` und `MedalPaint`. Zwischen Kotlin, Swift und
-JavaScript gibt es dagegen keine geteilte Zeile: **2452 Zeilen Logik sind
-von Hand nachgebaut.**
+`DailyChallenge`, `SkinPaint`, `ScenePaint`, `MedalPaint` und `Progress`.
+Zwischen Kotlin und Swift gibt es dagegen keine geteilte Zeile:
+**1338 Zeilen Logik sind von Hand nachgebaut.**
 
 Abgesichert ist das seit dem Paritäts-Vertrag in
-[`parity/`](parity/README.md): `:core` erzeugt Soll-Werte, alle Ports
-prüfen sich dagegen. Das *findet* Abweichungen — es *verhindert* sie
-nicht. Der nächste Schritt wäre, sie unmöglich zu machen.
+[`parity/`](parity/README.md): `:core` erzeugt Soll-Werte, der Port prüft
+sich dagegen. Das *findet* Abweichungen — es *verhindert* sie nicht. Der
+nächste Schritt wäre, sie unmöglich zu machen.
 
 ## Was KMP lösen würde — und was nicht
 
@@ -41,17 +43,16 @@ diese Datei nicht mehr nötig, sondern **unmöglich falsch**: Es liefe
 
 **Nicht lösen würde es:**
 
-- **Die Renderer.** Compose Canvas, SpriteKit und Canvas2D zeichnen
-  dieselben Rechtecke mit drei verschiedenen APIs. Das sind 2246 Zeilen
-  Swift und 1859 Zeilen JavaScript, die bleiben (außer bei Option C).
-- **Die Texte.** `strings.xml`, `Localizable.strings` und `strings.js` —
-  dreimal dieselben Sätze. Geteilte Ressourcen gehen mit KMP (Compose
-  Resources, moko-resources), das ist aber ein eigenes Projekt mit
-  eigener Abhängigkeit.
-- **Audio, Haptik, Persistenz, Teilen.** SoundPool vs. AVAudioEngine vs.
-  WebAudio; DataStore vs. UserDefaults vs. localStorage. Das ist
-  `expect`/`actual`-Gebiet: die Schnittstelle wird geteilt, die
-  Umsetzung nicht.
+- **Die Renderer.** Compose Canvas und SpriteKit zeichnen dieselben
+  Rechtecke mit zwei verschiedenen APIs. Das sind 2246 Zeilen Swift, die
+  bleiben (außer bei Option C).
+- **Die Texte.** `strings.xml` und `Localizable.strings` — zweimal
+  dieselben Sätze. Geteilte Ressourcen gehen mit KMP (Compose Resources,
+  moko-resources), das ist aber ein eigenes Projekt mit eigener
+  Abhängigkeit.
+- **Audio, Haptik, Persistenz, Teilen.** SoundPool vs. AVAudioEngine,
+  DataStore vs. UserDefaults. Das ist `expect`/`actual`-Gebiet: die
+  Schnittstelle wird geteilt, die Umsetzung nicht.
 
 ## Option A — `:core` als KMP-Modul für Android und iOS
 
@@ -99,31 +100,16 @@ und wird als Framework in die Xcode-App gelinkt.
 **Aufwand:** grob ein bis zwei Tage für Setup und Umstellung der
 Aufrufstellen, plus eine CI-Runde zum Geradeziehen.
 
-## Option B — zusätzlich Kotlin/JS für die PWA
+## Option B — Kotlin/JS für die PWA (hinfällig)
 
-Technisch dieselbe Bewegung, ein Ziel `js(IR)` mehr, und die 1114 Zeilen
-JavaScript-Logik fielen weg. Die Web-Daily-Challenge liefe dann sogar
-erstmals synchron zu Android und iOS (heute eine bewusste, dokumentierte
-Abweichung).
+Stand früher hier als denkbarer zweiter Schritt: ein `js(IR)`-Ziel, das
+den JavaScript-Port ersetzt hätte. Abgeraten wurde davon, weil die PWA
+bewusst ohne Build-Tooling auskam und ein Kotlin/JS-Bundle um ein
+Mehrfaches größer gewesen wäre als die 32 KB gzip des Handports.
 
-**Dagegen spricht ziemlich viel:**
-
-- `web/` hat heute **kein Build-Tooling**. Man legt die Dateien auf einen
-  Webserver, fertig; jede Datei ist lesbar und einzeln debuggbar. Mit
-  Kotlin/JS braucht die PWA einen Gradle-Build, bevor sie überhaupt
-  startet.
-- **Größe.** Die gesamte PWA-Logik wiegt heute 107 KB unkomprimiert,
-  32 KB gzip — davon 38 KB der Engine-Anteil. Ein Kotlin/JS-Bundle
-  derselben Logik landet mit Runtime typischerweise bei einem
-  Mehrfachen davon. Für ein Spiel, dessen Verkaufsargument „lädt sofort,
-  läuft offline, ist der kostenlose Weg auf iPhones" ist, ist das die
-  falsche Richtung.
-- Die JS-UI (1859 Zeilen) bliebe ohnehin und müsste dann über
-  `@JsExport`-Grenzen mit der Engine reden.
-
-**Empfehlung: nicht machen.** Die Paritäts-Vektoren decken beim Web-Port
-genau das ab, was zählt (Regeln, Farben, Schwellen, Texte), und die
-Abweichung beim Zufallsgenerator ist bewusst gewählt.
+Mit dem Wegfall der Web-Version in v2.23 hat sich die Frage erledigt.
+Sollte je wieder eine Browser-Fassung entstehen, ist die alte Abwägung im
+Commit `b4ed73f` nachlesbar — samt dem fertigen Handport.
 
 ## Option C — Compose Multiplatform statt SpriteKit
 
@@ -151,9 +137,13 @@ gerade nichts.
 
 Solange iOS ein gelegentlich nachgezogener Port ist, reicht der
 Paritäts-Vertrag in `parity/`; sobald iOS regelmäßig neue Spiel-Features
-bekommen soll, ist **Option A** der richtige Zeitpunkt-Auslöser — Web
-bleibt außen vor, und Compose Multiplatform ist eine Frage für einen
-größeren Umbau, nicht für den nächsten Schritt.
+bekommen soll, ist **Option A** der richtige Zeitpunkt-Auslöser. Compose
+Multiplatform ist eine Frage für einen größeren Umbau, nicht für den
+nächsten Schritt.
+
+Seit dem Wegfall der Web-Version ist Option A außerdem billiger geworden:
+Es gibt nur noch ein Ziel nachzuziehen statt zwei, und `:core` ist bis
+auf die Testquellen bereits commonMain-tauglich.
 
 Der Auslöser ist also nicht „wir sparen Zeilen", sondern „iOS bekommt
 laufend neue Logik". Bis dahin gilt: Die Vektoren sagen Bescheid, wenn
