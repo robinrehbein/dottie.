@@ -302,21 +302,28 @@
     }
   }
 
-  /** Fels: pyramidenfoermiger Stapel, unten am breitesten. */
+  /**
+   * Fels: Umriss aus ROCK_PARTS, unsymmetrisch und mit Lichtseite.
+   * Erst alle Konturen, dann alle Flaechen — sonst schnitte die Kontur
+   * eines hoeheren Stuecks in die Flaeche des darunterliegenden, und der
+   * Stein bekaeme Fugen, die er nicht hat.
+   */
   function drawPixelRock(ctx, cx, groundY, s, sway, cell, p) {
-    var layers = [
-      [s * 2.2, s * 0.50, p.dark],
-      [s * 1.6, s * 0.45, p.body],
-      [s * 0.8, s * 0.35, p.light]
-    ];
-    var layerTop = groundY;
-    for (var i = 0; i < layers.length; i++) {
-      var lw = layers[i][0], lh = layers[i][1], color = layers[i][2];
-      layerTop -= lh;
-      var lx = cx + sway * (0.15 + 0.25 * i);
-      rect(ctx, OutlineColor, lx - lw / 2 - cell, layerTop - cell,
-        lw + cell * 2, lh + cell * 2);
-      rect(ctx, color, lx - lw / 2, layerTop, lw, lh);
+    var parts = global.DotScene.ROCK_PARTS;
+    var i, q, lx, ly;
+    for (i = 0; i < parts.length; i++) {
+      q = parts[i];
+      lx = cx + sway * (0.15 + 0.25 * q.y) + q.x * s;
+      ly = groundY - (q.y + q.h) * s;
+      rect(ctx, OutlineColor, lx - cell, ly - cell,
+        q.w * s + cell * 2, q.h * s + cell * 2);
+    }
+    for (i = 0; i < parts.length; i++) {
+      q = parts[i];
+      lx = cx + sway * (0.15 + 0.25 * q.y) + q.x * s;
+      ly = groundY - (q.y + q.h) * s;
+      rect(ctx, q.tone === 0 ? p.dark : (q.tone === 1 ? p.body : p.light),
+        lx, ly, q.w * s, q.h * s);
     }
   }
 

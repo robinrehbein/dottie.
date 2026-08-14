@@ -55,6 +55,7 @@ import de.robinrehbein.punkt.game.MedalTier
 import de.robinrehbein.punkt.game.Progress
 import de.robinrehbein.punkt.game.Prop
 import de.robinrehbein.punkt.game.PropShape
+import de.robinrehbein.punkt.game.RockPart
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
@@ -1260,7 +1261,12 @@ private fun DrawScope.drawPixelTower(
     }
 }
 
-/** Fels: pyramidenförmiger Stapel, unten am breitesten. */
+/**
+ * Fels: Umriss aus [ScenePaint.ROCK_PARTS], unsymmetrisch und mit
+ * Lichtseite. Erst alle Konturen, dann alle Flächen — sonst schnitte die
+ * Kontur eines höheren Stücks in die Fläche des darunterliegenden, und
+ * der Stein bekäme Fugen, die er nicht hat.
+ */
 private fun DrawScope.drawPixelRock(
     cx: Float,
     groundY: Float,
@@ -1271,21 +1277,27 @@ private fun DrawScope.drawPixelRock(
     body: Color,
     light: Color
 ) {
-    val layers = listOf(
-        Triple(s * 2.2f, s * 0.50f, dark),
-        Triple(s * 1.6f, s * 0.45f, body),
-        Triple(s * 0.8f, s * 0.35f, light)
-    )
-    var layerTop = groundY
-    layers.forEachIndexed { i, (lw, lh, color) ->
-        layerTop -= lh
-        val lx = cx + sway * (0.15f + 0.25f * i)
+    val parts = ScenePaint.ROCK_PARTS
+    fun left(p: RockPart) = cx + sway * (0.15f + 0.25f * p.y) + p.x * s
+    fun top(p: RockPart) = groundY - (p.y + p.h) * s
+
+    parts.forEach { p ->
         drawRect(
             color = OutlineColor,
-            topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
-            size = Size(lw + cell * 2f, lh + cell * 2f)
+            topLeft = Offset(left(p) - cell, top(p) - cell),
+            size = Size(p.w * s + cell * 2f, p.h * s + cell * 2f)
         )
-        drawRect(color = color, topLeft = Offset(lx - lw / 2f, layerTop), size = Size(lw, lh))
+    }
+    parts.forEach { p ->
+        drawRect(
+            color = when (p.tone) {
+                0 -> dark
+                1 -> body
+                else -> light
+            },
+            topLeft = Offset(left(p), top(p)),
+            size = Size(p.w * s, p.h * s)
+        )
     }
 }
 

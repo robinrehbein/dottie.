@@ -54,9 +54,22 @@ enum class PropShape {
     /** Hochhaus: hoher Block mit Schattenseite, Dachkante und Fenstern. */
     HOCHHAUS,
 
-    /** Fels: pyramidenförmiger Stapel, unten am breitesten. */
+    /** Fels: unsymmetrischer Umriss mit Lichtseite (siehe ROCK_PARTS). */
     FELS
 }
+
+/**
+ * Ein Rechteck des Fels-Umrisses, in Vielfachen der Requisiten-Größe.
+ * [x] ist auf die Mitte bezogen, [y] zählt vom Boden nach oben, [tone]
+ * wählt aus der Requisiten-Palette: 0 dunkel, 1 Körper, 2 hell.
+ */
+data class RockPart(
+    val x: Float,
+    val y: Float,
+    val w: Float,
+    val h: Float,
+    val tone: Int
+)
 
 /**
  * Eine Requisite der Kulisse. Die Renderer laufen die Liste einer Kulisse
@@ -136,6 +149,42 @@ object ScenePaint {
      * würde die Reihe sichtbar kurz wiederholen.
      */
     const val PROP_SLOTS = 4
+
+    /**
+     * Der Fels als Umriss statt als Stapel.
+     *
+     * Vorher waren es drei mittig gestapelte Rechtecke, jedes schmaler
+     * als das darunter. Bei der kleinsten Requisiten-Größe (0.026 der
+     * Bildhöhe) sind das drei Streifen von wenigen Pixeln Höhe — das
+     * liest sich als Treppe, nicht als Stein. Genau danach hat auch
+     * niemand gefragt: Man sieht einen Klotz und rät.
+     *
+     * Was einem Klotz zum Fels fehlt, ist zweierlei. Erstens eine
+     * unsymmetrische Kante — ein mittig gestapelter Umriss wirkt gebaut,
+     * kein Stein liegt so. Die Kuppe sitzt deshalb links der Mitte und
+     * die rechte Flanke fällt steiler ab. Zweitens eine Lichtseite: Die
+     * obere linke Fläche ist die einzige helle, die rechte Flanke und
+     * der Fuß liegen im Schatten. Licht von links oben, wie bei jeder
+     * anderen Requisite auch.
+     *
+     * Die Tabelle steht hier und nicht in den Renderern, weil sie sonst
+     * drei Ports von Hand gleich treffen müssten. So füllen sie stumpf
+     * Rechtecke — dieselbe Arbeitsteilung wie bei den Requisitenfarben.
+     */
+    val ROCK_PARTS: List<RockPart> = listOf(
+        RockPart(-1.20f, 0.00f, 2.40f, 0.42f, 0), // Fuß, im Bodenschatten
+        RockPart(-1.10f, 0.42f, 1.45f, 0.40f, 1), // Mittelbau
+        RockPart(0.35f, 0.42f, 0.75f, 0.40f, 0),  // rechte Flanke, Schatten
+        RockPart(-0.85f, 0.82f, 0.70f, 0.36f, 2), // obere linke Fläche, Licht
+        RockPart(-0.15f, 0.82f, 0.55f, 0.36f, 1), // Übergang zur Schattenseite
+        RockPart(-0.60f, 1.18f, 0.50f, 0.32f, 2)  // Kuppe
+    )
+
+    /** Breite des Fels-Umrisses in Vielfachen der Requisiten-Größe. */
+    const val ROCK_WIDTH = 2.40f
+
+    /** Höhe des Fels-Umrisses in Vielfachen der Requisiten-Größe. */
+    const val ROCK_HEIGHT = 1.50f
 
     /**
      * Mindestabstand im RGB-Raum, den eine Kulissenfarbe zu Zielzone und
@@ -275,7 +324,7 @@ object ScenePaint {
                 accents = listOf(0xFFF2A83C, 0xFFE8607A)
             ),
             Prop(
-                PropShape.FELS, 0.026f, 0.4f,
+                PropShape.FELS, 0.026f, 0f,
                 dark = 0xFF8A6A4A, body = 0xFFA88860, light = 0xFFC4A87C
             )
         )
@@ -311,7 +360,7 @@ object ScenePaint {
                 accents = listOf(0xFFFFFFFF, 0xFFDFF4FF)
             ),
             Prop(
-                PropShape.FELS, 0.026f, 0.4f,
+                PropShape.FELS, 0.026f, 0f,
                 dark = 0xFF4A5A6A, body = 0xFF6B7C8C, light = 0xFF9AAAB8
             )
         )
@@ -346,7 +395,7 @@ object ScenePaint {
                 stem = 0xFF5C4130, stemShade = 0xFF46311F
             ),
             Prop(
-                PropShape.FELS, 0.026f, 0.4f,
+                PropShape.FELS, 0.026f, 0f,
                 dark = 0xFF6A6E78, body = 0xFF8A8F9C, light = 0xFFB8BEC9
             )
         )
@@ -386,7 +435,7 @@ object ScenePaint {
                 accents = listOf(0xFFFFD847, 0xFF7FD8E8)
             ),
             Prop(
-                PropShape.FELS, 0.026f, 0.4f,
+                PropShape.FELS, 0.026f, 0f,
                 dark = 0xFF4E4A56, body = 0xFF6A6672, light = 0xFF8C8894
             )
         )

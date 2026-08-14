@@ -91,7 +91,7 @@
         prop("FELS", 0.032, 0, "#8A6A4A", "#A88860", "#C4A87C"),
         prop("KAKTUS", 0.058, -1.0, "#1F6B41", "#2E8B57", "#43A96B", null, null,
           ["#F2A83C", "#E8607A"]),
-        prop("FELS", 0.026, 0.4, "#8A6A4A", "#A88860", "#C4A87C")
+        prop("FELS", 0.026, 0, "#8A6A4A", "#A88860", "#C4A87C")
       ]
     },
     {
@@ -110,7 +110,7 @@
           ["#DFF4FF", "#FFFFFF"]),
         prop("WELLE", 0.058, -1.0, "#1F5FA8", "#2E86D8", "#7FC8F0", null, null,
           ["#FFFFFF", "#DFF4FF"]),
-        prop("FELS", 0.026, 0.4, "#4A5A6A", "#6B7C8C", "#9AAAB8")
+        prop("FELS", 0.026, 0, "#4A5A6A", "#6B7C8C", "#9AAAB8")
       ]
     },
     {
@@ -126,7 +126,7 @@
         prop("NADELBAUM", 0.075, 1.0, "#1E5140", "#2A6B52", "#D8E8F0", "#5C4130", "#46311F"),
         prop("FELS", 0.032, 0, "#6A6E78", "#8A8F9C", "#B8BEC9"),
         prop("NADELBAUM", 0.058, -1.0, "#1E5140", "#2A6B52", "#D8E8F0", "#5C4130", "#46311F"),
-        prop("FELS", 0.026, 0.4, "#6A6E78", "#8A8F9C", "#B8BEC9")
+        prop("FELS", 0.026, 0, "#6A6E78", "#8A8F9C", "#B8BEC9")
       ]
     },
     {
@@ -147,7 +147,7 @@
           ["#7FD8E8", "#FFD847"]),
         prop("HOCHHAUS", 0.062, 0, "#3A4C50", "#54686C", "#869A9E", null, null,
           ["#FFD847", "#7FD8E8"]),
-        prop("FELS", 0.026, 0.4, "#4E4A56", "#6A6672", "#8C8894")
+        prop("FELS", 0.026, 0, "#4E4A56", "#6A6672", "#8C8894")
       ]
     },
     {
@@ -226,10 +226,34 @@
     return SCENES.filter(function (s) { return isUnlocked(s, stats); }).length;
   }
 
+  /**
+   * Der Fels-Umriss (ScenePaint.ROCK_PARTS). x ist auf die Mitte
+   * bezogen, y zaehlt vom Boden nach oben, tone waehlt aus der
+   * Requisiten-Palette: 0 dunkel, 1 Koerper, 2 hell.
+   */
+  function rockPart(x, y, w, h, tone) {
+    return { x: x, y: y, w: w, h: h, tone: tone };
+  }
+
+  var ROCK_PARTS = [
+    rockPart(-1.20, 0.00, 2.40, 0.42, 0),
+    rockPart(-1.10, 0.42, 1.45, 0.40, 1),
+    rockPart(0.35, 0.42, 0.75, 0.40, 0),
+    rockPart(-0.85, 0.82, 0.70, 0.36, 2),
+    rockPart(-0.15, 0.82, 0.55, 0.36, 1),
+    rockPart(-0.60, 1.18, 0.50, 0.32, 2)
+  ];
+
+  var ROCK_WIDTH = 2.40;
+  var ROCK_HEIGHT = 1.50;
+
   var DotScene = {
     SCENES: SCENES,
     GROUND_TOP: GROUND_TOP,
     PROP_SLOTS: PROP_SLOTS,
+    ROCK_PARTS: ROCK_PARTS,
+    ROCK_WIDTH: ROCK_WIDTH,
+    ROCK_HEIGHT: ROCK_HEIGHT,
     MIN_ZONE_DISTANCE: MIN_ZONE_DISTANCE,
     MIN_SKY_STEP: MIN_SKY_STEP,
     LEGACY_ZONE_GREENS: LEGACY_ZONE_GREENS,

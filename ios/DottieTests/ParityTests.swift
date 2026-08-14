@@ -313,6 +313,27 @@ final class ParityTests: XCTestCase {
         XCTAssertEqual(Float(ScenePaint.minSkyStep), try vectors.float("scene.minSkyStep"),
                        accuracy: eps, "Himmels-Schrittweite")
 
+        // Der Fels-Umriss: die einzige Requisitenform, die als Datentabelle
+        // vorliegt statt als Zeichencode. Läuft der Swift-Port davon weg,
+        // verrät das kein Farbwert — nur der Stein sähe anders aus.
+        let rockSize = try vectors.strings("scene.rockSize")
+        XCTAssertEqual(rockSize.count, 2, "scene.rockSize")
+        XCTAssertEqual(Float(ScenePaint.rockWidth), Float(rockSize[0]) ?? .nan,
+                       accuracy: eps, "Fels: Breite")
+        XCTAssertEqual(Float(ScenePaint.rockHeight), Float(rockSize[1]) ?? .nan,
+                       accuracy: eps, "Fels: Höhe")
+        XCTAssertFalse(vectors.has("scene.rock.\(ScenePaint.rockParts.count)"),
+                       "der Port hat weniger Fels-Stücke als :core")
+        for (index, part) in ScenePaint.rockParts.enumerated() {
+            let row = try vectors.strings("scene.rock.\(index)")
+            XCTAssertEqual(row.count, 5, "scene.rock.\(index)")
+            XCTAssertEqual(Float(part.x), Float(row[0]) ?? .nan, accuracy: eps, "Fels \(index): x")
+            XCTAssertEqual(Float(part.y), Float(row[1]) ?? .nan, accuracy: eps, "Fels \(index): y")
+            XCTAssertEqual(Float(part.w), Float(row[2]) ?? .nan, accuracy: eps, "Fels \(index): Breite")
+            XCTAssertEqual(Float(part.h), Float(row[3]) ?? .nan, accuracy: eps, "Fels \(index): Höhe")
+            XCTAssertEqual(String(part.tone), row[4], "Fels \(index): Farblage")
+        }
+
         for id in SceneId.allCases {
             let scene = ScenePaint.of(id)
             let name = id.rawValue

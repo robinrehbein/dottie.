@@ -1877,6 +1877,29 @@ function driveToZoneAndTap(game) {
     });
   });
 
+  // Der Fels-Umriss: die einzige Requisitenform, die als Datentabelle
+  // vorliegt statt als Zeichencode. Genau deshalb muss sie geprueft
+  // werden — laeuft ein Port weg, sieht man es an keiner Farbe.
+  (function () {
+    var groesse = V["scene.rockSize"];
+    assert(groesse !== undefined, "Vektoren kennen scene.rockSize");
+    assert(approx(DotScene.ROCK_WIDTH, parseFloat(groesse[0]), 1e-5), "Fels: Breite");
+    assert(approx(DotScene.ROCK_HEIGHT, parseFloat(groesse[1]), 1e-5), "Fels: Hoehe");
+
+    assert(V["scene.rock." + DotScene.ROCK_PARTS.length] === undefined,
+      "der Port hat weniger Fels-Stuecke als :core");
+    DotScene.ROCK_PARTS.forEach(function (q, i) {
+      var row = V["scene.rock." + i];
+      assert(row !== undefined, "Vektoren kennen Fels-Stueck " + i);
+      if (!row) return;
+      assert(approx(q.x, parseFloat(row[0]), 1e-5), "Fels " + i + ": x");
+      assert(approx(q.y, parseFloat(row[1]), 1e-5), "Fels " + i + ": y");
+      assert(approx(q.w, parseFloat(row[2]), 1e-5), "Fels " + i + ": Breite");
+      assert(approx(q.h, parseFloat(row[3]), 1e-5), "Fels " + i + ": Hoehe");
+      assertEq(String(q.tone), row[4], "Fels " + i + ": Farblage");
+    });
+  })();
+
   V["scene.skyForScore.WIESE"].forEach(function (token, i) {
     assert(sameColor(rgb(token), DotScene.skyFor(DotScene.SCENES[0], i * 5)),
       "WIESE: Himmel bei Score " + (i * 5));

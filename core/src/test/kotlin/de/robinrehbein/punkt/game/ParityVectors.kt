@@ -362,6 +362,17 @@ object ParityVectors {
         line("scene.propSlots", ScenePaint.PROP_SLOTS.toString())
         line("scene.minZoneDistance", f(ScenePaint.MIN_ZONE_DISTANCE))
         line("scene.minSkyStep", f(ScenePaint.MIN_SKY_STEP))
+        // Der Fels-Umriss steht hier, weil er als einzige Requisitenform
+        // eine Datentabelle ist statt Zeichencode: Drei Ports lesen
+        // dieselben Rechtecke. Läuft einer davon weg, sieht man es an
+        // keinem Farbwert — nur daran, dass der Stein anders aussieht.
+        line("scene.rockSize", f(ScenePaint.ROCK_WIDTH), f(ScenePaint.ROCK_HEIGHT))
+        ScenePaint.ROCK_PARTS.forEachIndexed { index, part ->
+            line(
+                "scene.rock.$index",
+                f(part.x), f(part.y), f(part.w), f(part.h), part.tone.toString()
+            )
+        }
         // MIN_SKY_SIGNAL_DISTANCE steht bewusst NICHT hier: Die Schwelle
         // ist eine Zusicherung über die Farbtabellen (ScenePaintTest prüft
         // sie in :core), kein Wert, den ein Port nachbaut. Eine Zeile, die
