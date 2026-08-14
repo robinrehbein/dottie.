@@ -788,8 +788,17 @@
   // keinen verlässlichen Weg (Web Share mit Dateien fehlt auf iOS-Safari
   // je nach Version), deshalb teilen wir denselben Text wie die App und
   // legen ihn sonst in die Zwischenablage.
+  //
+  // Den Beinamen trägt der Text mit: Er ist auf der Karte der Android-App
+  // die Zeile unter dem Titel, und ohne ihn hieße dieselbe Leistung im
+  // Browser weniger als in der App. Die Rahmenstufe bleibt notgedrungen
+  // draußen — sie ist Bild, und ein Bild hat die PWA hier nicht.
   button(el.btnShare, function () {
     var text = t(dailyMode ? "share_text_daily" : "share_text", game.score);
+    var beiname = CardStyle.epithet(ScoreStore.stats());
+    if (beiname) {
+      text = CardStyle.label(beiname, Strings.lang === "de") + " — " + text;
+    }
     if (navigator.share) {
       navigator.share({ text: text }).catch(function () {});
     } else if (navigator.clipboard && navigator.clipboard.writeText) {

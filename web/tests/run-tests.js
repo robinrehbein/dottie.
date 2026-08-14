@@ -1622,6 +1622,163 @@ function driveToZoneAndTap(game) {
   });
 })();
 
+// ===== Rahmen und Beinamen gegen CardStyle.kt =====
+// Rahmenstufe und Beiname der Score-Karte stehen in :core und in
+// cardstyle.js. Laufen sie auseinander, traegt dieselbe Leistung in App
+// und PWA einen anderen Titel — und das faellt erst auf, wenn zwei Leute
+// ihre Karten nebeneinanderlegen. Geprueft wird deshalb JEDER Eintrag in
+// beide Richtungen: Ein Beiname, den nur eine Seite kennt, muss den
+// Testlauf umwerfen und darf nicht stillschweigend uebersprungen werden.
+(function () {
+  var fs = require("fs");
+  var path = require("path");
+  var CardStyle = require("../js/cardstyle.js");
+
+  var kt;
+  try {
+    kt = fs.readFileSync(
+      path.join(__dirname, "..", "..", "core", "src", "main", "kotlin",
+        "de", "robinrehbein", "punkt", "game", "CardStyle.kt"),
+      "utf8"
+    );
+  } catch (e) {
+    console.log("Hinweis: CardStyle.kt nicht gefunden — Karten-Paritaet uebersprungen.");
+    return;
+  }
+
+  /** Der Rumpf einer Aufzaehlung, ohne den Kopf und ohne alles danach. */
+  function enumBlock(name) {
+    var i = kt.indexOf("enum class " + name);
+    assert(i >= 0, "Aufzaehlung " + name + " in CardStyle.kt gefunden");
+    var block = kt.slice(kt.indexOf("{", i) + 1);
+    return block.slice(0, block.indexOf("\n}"));
+  }
+
+  // ----- Rahmenstufen -----
+
+  var frames = (enumBlock("CardFrame").match(/^ {4}([A-Z][A-Z_]*),?$/gm) || [])
+    .map(function (zeile) { return zeile.trim().replace(",", ""); });
+  assertEq(frames.length, 4, "vier Rahmenstufen in Kotlin");
+  assertEq(CardStyle.FRAMES.join(","), frames.join(","), "Rahmenstufen wie CardFrame");
+
+  var steps = (/val FRAME_STEPS = intArrayOf\(([^)]*)\)/.exec(kt) || [])[1];
+  assert(steps !== undefined, "CardStyle.kt nennt FRAME_STEPS");
+  var ktSteps = steps.split(",").map(function (v) {
+    return parseInt(v.trim().replace(/_/g, ""), 10);
+  });
+  assertEq(CardStyle.FRAME_STEPS.join(","), ktSteps.join(","), "Schwellen der Rahmenstufen");
+  assertEq(ktSteps.length, frames.length - 1, "eine Schwelle weniger als Stufen");
+
+  // Die Kante jeder Stufe: Bei der Schwelle faellt sie, ein Skin darunter
+  // steht sie noch.
+  ktSteps.forEach(function (schwelle, i) {
+    assertEq(CardStyle.frame(schwelle), frames[i + 1], "Rahmen ab " + schwelle + " Skins");
+    assertEq(CardStyle.frame(schwelle - 1), frames[i], "Rahmen bei " + (schwelle - 1) + " Skins");
+  });
+  assertEq(CardStyle.frame(0), frames[0], "ohne Sammlung der schlichte Rand");
+
+  // Der Rahmen haengt am gezaehlten Bestand — Goenner-Skins zaehlen dort
+  // nicht mit, also darf das Paket die Stufe nicht bewegen.
+  var stand = { bestScore: 60, bestPerfectStreak: 10, bestDailyStreak: 14, runCount: 300 };
+  var gekauft = Object.assign({}, stand, { patronOwned: true, seasonEarned: 15 });
+  assertEq(CardStyle.frame(gekauft), CardStyle.frame(stand),
+    "Goenner- und Saison-Skins bewegen den Rahmen nicht");
+  assertEq(CardStyle.frame(stand), CardStyle.frame(DotSkin.unlockedCount(stand)),
+    "Rahmen zaehlt mit DotSkin.unlockedCount");
+
+  // ----- Beinamen -----
+
+  var ktEpithets = [], em;
+  var epithetRe = /^ {4}(\w+)\("([^"]*)", "([^"]*)"\),?$/gm;
+  var epithetBlock = enumBlock("Epithet");
+  while ((em = epithetRe.exec(epithetBlock)) !== null) {
+    ktEpithets.push({ key: em[1], de: em[2], en: em[3] });
+  }
+  assert(ktEpithets.length >= 6 && ktEpithets.length <= 8,
+    "sechs bis acht Beinamen in Kotlin (" + ktEpithets.length + ")");
+  assertEq(CardStyle.EPITHETS.length, ktEpithets.length, "gleich viele Beinamen im Web");
+
+  // Die Reihenfolge ist die Rangfolge — sie muss Eintrag fuer Eintrag
+  // stimmen, nicht nur als Menge.
+  assertEq(
+    CardStyle.EPITHETS.map(function (e) { return e.key; }).join(","),
+    ktEpithets.map(function (e) { return e.key; }).join(","),
+    "Rangfolge der Beinamen wie in Kotlin"
+  );
+
+  // Bedingungen aus qualifies(): Achse und Schwelle je Beiname.
+  var kopf = "fun qualifies(epithet: Epithet, stats: SkinStats): Boolean = when (epithet) {";
+  var qBlock = kt.slice(kt.indexOf(kopf) + kopf.length);
+  assert(kt.indexOf(kopf) >= 0, "qualifies() in CardStyle.kt gefunden");
+  qBlock = qBlock.slice(0, qBlock.indexOf("\n    }"));
+  var regeln = {}, qm;
+  var qRe = /Epithet\.(\w+) -> stats\.(\w+) >= ([\d_]+)/g;
+  while ((qm = qRe.exec(qBlock)) !== null) {
+    regeln[qm[1]] = { axis: qm[2], target: parseInt(qm[3].replace(/_/g, ""), 10) };
+  }
+  assertEq(Object.keys(regeln).length, ktEpithets.length,
+    "jeder Beiname hat eine Bedingung in qualifies()");
+
+  ktEpithets.forEach(function (ktEintrag, rang) {
+    var web = CardStyle.EPITHETS[rang];
+    assert(!!web, "PWA kennt den Beinamen " + ktEintrag.key);
+    if (!web) return;
+    assertEq(web.de, ktEintrag.de, ktEintrag.key + ": deutscher Name");
+    assertEq(web.en, ktEintrag.en, ktEintrag.key + ": englischer Name");
+    assert(web.de.length > 0 && web.en.length > 0, ktEintrag.key + ": beide Namen gefuellt");
+    // Die Pixelschrift der Karte kennt keine Umlaute.
+    assert(!/[ÄÖÜäöüß]/.test(web.de), ktEintrag.key + ": deutscher Name ohne Umlaute");
+    assertEq(web.de, web.de.toUpperCase(), ktEintrag.key + ": Versalien");
+    assertEq(web.en, web.en.toUpperCase(), ktEintrag.key + ": Versalien (en)");
+
+    var regel = regeln[ktEintrag.key];
+    assert(!!regel, ktEintrag.key + ": Bedingung in Kotlin gefunden");
+    if (!regel) return;
+    assertEq(web.axis, regel.axis, ktEintrag.key + ": Achse");
+    assertEq(web.target, regel.target, ktEintrag.key + ": Schwelle");
+
+    // Kante: An der Schwelle greift die Bedingung, darunter nicht — und an
+    // der Schwelle traegt der Beiname sich auch gegen alle anderen durch,
+    // denn hoeher gereihte haengen an hoeheren Zahlen.
+    var genug = {}; genug[regel.axis] = regel.target;
+    var knapp = {}; knapp[regel.axis] = regel.target - 1;
+    assert(CardStyle.qualifies(web, genug), ktEintrag.key + ": greift ab " + regel.target);
+    assert(!CardStyle.qualifies(web, knapp), ktEintrag.key + ": greift nicht darunter");
+    var getragen = CardStyle.epithet(genug);
+    assertEq(getragen && getragen.key, ktEintrag.key,
+      ktEintrag.key + ": wird an seiner Schwelle getragen");
+  });
+
+  // Kein Beiname der PWA ohne Gegenstueck in Kotlin (die andere Richtung).
+  var ktKeys = ktEpithets.map(function (e) { return e.key; });
+  CardStyle.EPITHETS.forEach(function (web) {
+    assert(ktKeys.indexOf(web.key) >= 0, "Beiname " + web.key + " steht auch in CardStyle.kt");
+  });
+
+  // In den ersten Laeufen traegt niemand einen Titel.
+  assertEq(CardStyle.epithet({}), null, "ohne Spielstand kein Beiname");
+
+  // Bei mehreren erfuellten Bedingungen gewinnt immer der oberste Eintrag.
+  var alles = {
+    bestScore: 999, bestPerfectStreak: 99, bestDailyStreak: 99,
+    runCount: 9999, totalScore: 999999, daysPlayed: 365
+  };
+  assertEq(CardStyle.epithet(alles).key, ktKeys[0], "der oberste Beiname gewinnt");
+  for (var a = 0; a <= 100; a += 10) {
+    for (var b = 0; b <= 600; b += 100) {
+      var probe = {
+        bestScore: a, bestPerfectStreak: Math.floor(a / 6), bestDailyStreak: Math.floor(a / 3),
+        runCount: b, totalScore: b * 25, daysPlayed: Math.floor(b / 10)
+      };
+      var erster = null;
+      for (var i = 0; i < CardStyle.EPITHETS.length && !erster; i++) {
+        if (CardStyle.qualifies(CardStyle.EPITHETS[i], probe)) erster = CardStyle.EPITHETS[i];
+      }
+      assertEq(CardStyle.epithet(probe), erster, "Auswahl ist der erste passende Eintrag");
+    }
+  }
+})();
+
 // ===== Paritäts-Vektoren aus :core (parity/golden-vectors.txt) =====
 //
 // Dieselbe Datei prüft der Swift-Port in ios/DottieTests. Was hier nicht

@@ -8,12 +8,17 @@ import android.graphics.Color
 import android.graphics.Paint
 import androidx.core.content.FileProvider
 import de.robinrehbein.punkt.R
+import de.robinrehbein.punkt.game.CardFrame
+import de.robinrehbein.punkt.game.CardStyle
 import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
+import de.robinrehbein.punkt.game.SkinStats
 import java.io.File
 import java.time.LocalDateTime
+import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
@@ -28,9 +33,15 @@ object ScoreCard {
     private const val H = 1350
     private const val CELL = 6f
 
+    /** Kantenlänge der Karte im Pixelraster — der Rahmen rechnet in Feldern. */
+    private const val COLS = 180
+    private const val ROWS = 225
+
     private const val OUTLINE = 0xFF543847.toInt()
     private const val ACCENT = 0xFFFF8A3C.toInt()
     private const val RECORD_YELLOW = 0xFFFFE95E.toInt()
+    private const val INLAY = 0xFF4EC0CA.toInt()
+    private const val PEARL = 0xFFF7F3EE.toInt()
 
     /** Baut die Card, schreibt sie in den Cache und öffnet den Share-Dialog. */
     fun share(
@@ -41,9 +52,11 @@ object ScoreCard {
         skin: DotSkin,
         scene: DotScene,
         daily: Boolean,
-        dailyStreak: Int
+        dailyStreak: Int,
+        stats: SkinStats
     ) {
-        val bitmap = render(context, score, bestScore, isNewRecord, skin, scene, daily, dailyStreak)
+        val bitmap =
+            render(context, score, bestScore, isNewRecord, skin, scene, daily, dailyStreak, stats)
         val dir = File(context.cacheDir, "share").apply { mkdirs() }
         val file = File(dir, "punkt-score.png")
         file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -67,7 +80,7 @@ object ScoreCard {
         )
     }
 
-    private fun render(
+    internal fun render(
         context: Context,
         score: Int,
         bestScore: Int,
@@ -75,7 +88,8 @@ object ScoreCard {
         skin: DotSkin,
         scene: DotScene,
         daily: Boolean,
-        dailyStreak: Int
+        dailyStreak: Int,
+        stats: SkinStats
     ): Bitmap {
         val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
@@ -124,9 +138,32 @@ object ScoreCard {
         }
 
         val cx = W / 2f
-        drawShadowed("DOTTIE.", cx, H * 0.14f, 130f, Color.WHITE)
+        // Titel und die Zeilen darunter sind seit dem Rahmen ein Stück
+        // nach innen gerutscht: Die Prachtstufe ist 90 Pixel breit, und
+        // ein Titel, der im Rahmen klemmt, sieht nach Fehler aus.
+        drawShadowed("DOTTIE.", cx, H * 0.155f, 120f, Color.WHITE)
+
+        // Unter dem Titel wird gestapelt, nicht gesetzt: Daily-Hinweis und
+        // Beiname können einzeln oder zusammen auftreten, und zwei feste
+        // Zeilen ständen im Leerfall schief.
+        var subline = H * 0.205f
         if (daily) {
-            drawShadowed(context.getString(R.string.card_daily), cx, H * 0.20f, 56f, RECORD_YELLOW)
+            drawShadowed(context.getString(R.string.card_daily), cx, subline, 52f, RECORD_YELLOW)
+            subline += H * 0.04f
+        }
+        CardStyle.epithet(stats)?.let { titel ->
+            // Der Beiname bekommt ein dunkles Schild statt nur einen
+            // Schatten: In dieser Höhe stehen die Wolken, und heller Text
+            // auf heller Wolke ist genau die Stelle, an der eine geteilte
+            // Karte unleserlich wird.
+            val label = CardStyle.label(titel, isGerman(context))
+            text.textSize = 52f
+            val halb = raster(text.measureText(label) / 2f + CELL * 4)
+            val oben = raster(subline - CELL * 8)
+            paint.color = OUTLINE
+            canvas.drawRect(cx - halb, oben, cx + halb, oben + CELL * 10, paint)
+            text.color = RECORD_YELLOW
+            canvas.drawText(label, cx, oben + CELL * 8, text)
         }
 
         // Punkt im gewählten Skin, mittig über dem Score. Uhr und Kalender
@@ -134,7 +171,7 @@ object ScoreCard {
         // Karte das Kleid des Moments, in dem geteilt wird.
         val now = LocalDateTime.now()
         drawPixelDot(
-            canvas, paint, cx, H * 0.32f, 110f, skin,
+            canvas, paint, cx, H * 0.345f, 105f, skin,
             SkinState(hour = now.hour, month = now.monthValue)
         )
 
@@ -169,8 +206,195 @@ object ScoreCard {
             drawMedal(canvas, paint, cx, H * 0.79f, 62f, medal.first, medal.second)
         }
 
-        drawShadowed(context.getString(R.string.card_challenge), cx, H * 0.945f, 72f, ACCENT)
+        // Die Aufforderung rückt vom Blattrand weg: Sie stand bei 94,5 %,
+        // und dort läge sie jetzt unter der breitesten Rahmenstufe.
+        drawShadowed(context.getString(R.string.card_challenge), cx, H * 0.92f, 72f, ACCENT)
+
+        // Der Rahmen kommt zuletzt: Er liegt über Kulisse UND Schrift,
+        // damit an der Kante nichts durchscheint.
+        drawFrame(canvas, paint, CardStyle.frame(stats))
         return bmp
+    }
+
+    /** Nächste Rasterlinie — alles auf der Karte sitzt auf ganzen Feldern. */
+    private fun raster(px: Float): Float = (px / CELL).roundToInt() * CELL
+
+    /** Zeigt die App gerade Deutsch? Nur dafür braucht der Beiname die Sprache. */
+    private fun isGerman(context: Context): Boolean =
+        context.resources.configuration.locales[0].language == "de"
+
+    // ===== Rahmen =====
+
+    /**
+     * Der verdiente Rahmen. Vier Stufen, gestaffelt nach der Größe der
+     * Sammlung (siehe [CardStyle.frame]) — und jede muss sich schon im
+     * Vorschaubild eines Messengers von der vorigen unterscheiden. Deshalb
+     * wächst nicht nur die Breite, sondern es kommen Farbe, Zinnen und
+     * Eckornamente dazu: Zwei Pixel mehr Rand sieht auf 150 Pixel Breite
+     * niemand.
+     *
+     * Gezeichnet wird ausschließlich im Feldraster ([CELL]) — ein Rahmen
+     * mit krummen Kanten wäre der einzige Nicht-Pixel im ganzen Spiel.
+     */
+    private fun drawFrame(canvas: Canvas, paint: Paint, frame: CardFrame) {
+        when (frame) {
+            // Die Kante, mit der jeder anfängt: eine Linie, sonst nichts.
+            CardFrame.SCHLICHT -> band(canvas, paint, 0, 2, OUTLINE)
+
+            CardFrame.DOPPELLINIE -> {
+                band(canvas, paint, 0, 2, OUTLINE)
+                band(canvas, paint, 2, 2, ACCENT)
+                band(canvas, paint, 4, 2, OUTLINE)
+                // Ecknieten: drei ineinandergesetzte Quadrate. Sie sind
+                // der Teil, den man im Daumenbild zuerst sieht.
+                cornerBlocks(canvas, paint, 0, 10, OUTLINE)
+                cornerBlocks(canvas, paint, 2, 6, ACCENT)
+                cornerBlocks(canvas, paint, 4, 2, RECORD_YELLOW)
+            }
+
+            CardFrame.ZINNEN -> {
+                band(canvas, paint, 0, 2, OUTLINE)
+                band(canvas, paint, 2, 4, ACCENT)
+                // Zinnenkranz: gelbe Zähne im Farbband, alle sechs Felder.
+                // Sie tragen die Stufe — das breitere Band allein wäre im
+                // Vorschaubild nur ein etwas dickerer Strich.
+                teeth(canvas, paint, 3, 2, 6, RECORD_YELLOW)
+                band(canvas, paint, 6, 2, OUTLINE)
+                band(canvas, paint, 8, 2, RECORD_YELLOW)
+                band(canvas, paint, 10, 2, OUTLINE)
+                cornerBlocks(canvas, paint, 0, 16, OUTLINE)
+                cornerBlocks(canvas, paint, 2, 12, RECORD_YELLOW)
+                cornerBlocks(canvas, paint, 5, 6, OUTLINE)
+                cornerBlocks(canvas, paint, 7, 2, ACCENT)
+            }
+
+            CardFrame.PRACHT -> {
+                band(canvas, paint, 0, 2, OUTLINE)
+                band(canvas, paint, 2, 3, RECORD_YELLOW)
+                band(canvas, paint, 5, 2, OUTLINE)
+                band(canvas, paint, 7, 4, ACCENT)
+                // Dieselben Zinnen, aber perlweiß und eine Lage weiter
+                // innen — nebeneinander gelegt sind die beiden Stufen
+                // dadurch auch dann auseinanderzuhalten, wenn die Breite
+                // im Vorschaubild verlorengeht.
+                teeth(canvas, paint, 8, 2, 6, PEARL)
+                band(canvas, paint, 11, 2, INLAY)
+                band(canvas, paint, 13, 2, OUTLINE)
+                // Eckrosetten: ein eingelegter Rhombus statt der
+                // gestapelten Quadrate der Stufe darunter.
+                cornerBlocks(canvas, paint, 0, 22, OUTLINE)
+                cornerDiamonds(canvas, paint, 1, 20, RECORD_YELLOW)
+                cornerDiamonds(canvas, paint, 6, 10, ACCENT)
+                cornerBlocks(canvas, paint, 9, 4, PEARL)
+            }
+        }
+    }
+
+    /** Ein Rechteck im Feldraster. */
+    private fun block(
+        canvas: Canvas,
+        paint: Paint,
+        col: Int,
+        row: Int,
+        cols: Int,
+        rows: Int,
+        color: Int
+    ) {
+        paint.color = color
+        canvas.drawRect(
+            col * CELL, row * CELL, (col + cols) * CELL, (row + rows) * CELL, paint
+        )
+    }
+
+    /** Ein umlaufendes Band, [inset] Felder vom Blattrand, [thickness] dick. */
+    private fun band(canvas: Canvas, paint: Paint, inset: Int, thickness: Int, color: Int) {
+        val breite = COLS - 2 * inset
+        val hoehe = ROWS - 2 * inset
+        block(canvas, paint, inset, inset, breite, thickness, color)
+        block(canvas, paint, inset, ROWS - inset - thickness, breite, thickness, color)
+        block(canvas, paint, inset, inset, thickness, hoehe, color)
+        block(canvas, paint, COLS - inset - thickness, inset, thickness, hoehe, color)
+    }
+
+    /**
+     * Zähne auf allen vier Kanten, im Takt [step]. Gezählt wird von beiden
+     * Enden zur Mitte, damit die Reihe an jeder Ecke gleich anfängt — von
+     * links nach rechts durchgezählt bliebe an einer Kante ein Rest übrig.
+     */
+    private fun teeth(
+        canvas: Canvas,
+        paint: Paint,
+        inset: Int,
+        size: Int,
+        step: Int,
+        color: Int
+    ) {
+        var k = 0
+        while (inset + k * step + size <= COLS - inset) {
+            val col = inset + k * step
+            block(canvas, paint, col, inset, size, size, color)
+            block(canvas, paint, COLS - col - size, inset, size, size, color)
+            block(canvas, paint, col, ROWS - inset - size, size, size, color)
+            block(canvas, paint, COLS - col - size, ROWS - inset - size, size, size, color)
+            k++
+        }
+        k = 0
+        while (inset + k * step + size <= ROWS - inset) {
+            val row = inset + k * step
+            block(canvas, paint, inset, row, size, size, color)
+            block(canvas, paint, inset, ROWS - row - size, size, size, color)
+            block(canvas, paint, COLS - inset - size, row, size, size, color)
+            block(canvas, paint, COLS - inset - size, ROWS - row - size, size, size, color)
+            k++
+        }
+    }
+
+    /** Dasselbe Quadrat in allen vier Ecken. */
+    private fun cornerBlocks(
+        canvas: Canvas,
+        paint: Paint,
+        inset: Int,
+        size: Int,
+        color: Int
+    ) {
+        for (col in intArrayOf(inset, COLS - inset - size)) {
+            for (row in intArrayOf(inset, ROWS - inset - size)) {
+                block(canvas, paint, col, row, size, size, color)
+            }
+        }
+    }
+
+    /** Dasselbe für den Rhombus der Prachtstufe. */
+    private fun cornerDiamonds(
+        canvas: Canvas,
+        paint: Paint,
+        inset: Int,
+        size: Int,
+        color: Int
+    ) {
+        for (col in intArrayOf(inset, COLS - inset - size)) {
+            for (row in intArrayOf(inset, ROWS - inset - size)) {
+                diamond(canvas, paint, col, row, size, color)
+            }
+        }
+    }
+
+    /** Ein Rhombus aus Zeilen — die einzige Form, die der Rahmen nicht rechteckig baut. */
+    private fun diamond(
+        canvas: Canvas,
+        paint: Paint,
+        col: Int,
+        row: Int,
+        size: Int,
+        color: Int
+    ) {
+        val mitte = size / 2
+        for (r in 0 until size) {
+            // Von der nächstgelegenen Kante nach innen gezählt: Die Zeile
+            // wächst bis zur Mitte und schrumpft wieder.
+            val halb = min(min(r, size - 1 - r) + 1, mitte)
+            block(canvas, paint, col + mitte - halb, row + r, 2 * halb, 1, color)
+        }
     }
 
     /** Blockige Retro-Wolke, wie im Spiel aus drei Rechtecken gestapelt. */
