@@ -1,3 +1,4 @@
+import DottieCore
 import SpriteKit
 import UIKit
 
@@ -305,7 +306,7 @@ final class GameScene: SKScene {
         let parts = Calendar.current.dateComponents([.year, .month], from: Date())
         let month = parts.month ?? 0
         let year = parts.year ?? 0
-        return Progress.nextGoals(
+        return Goals.nextGoals(
             store.stats(),
             month: month,
             seasonDays: store.seasonDaysFor(year: year, month: month),
@@ -901,7 +902,7 @@ final class GameScene: SKScene {
         case "btn.stats":
             // Beim Öffnen einmal rechnen: Die Seite steht still, solange
             // sie offen ist.
-            statsOverlay?.refresh(stats: store.stats(), goals: goals(limit: Progress.pageGoals))
+            statsOverlay?.refresh(stats: store.stats(), goals: goals(limit: Goals.pageGoals))
             statsOverlay?.isHidden = false
         case "btn.menu":
             dailyMode = false

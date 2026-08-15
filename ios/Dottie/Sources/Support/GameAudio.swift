@@ -1,4 +1,5 @@
 import AVFoundation
+import DottieCore
 import Foundation
 
 /// Chiptune-Soundeffekte für das Spiel — zur Laufzeit aus Rechteckwellen

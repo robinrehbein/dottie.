@@ -1,3 +1,4 @@
+import DottieCore
 import Foundation
 import UserNotifications
 

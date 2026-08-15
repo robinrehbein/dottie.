@@ -1,3 +1,4 @@
+import DottieCore
 import SpriteKit
 import UIKit
 
@@ -252,7 +253,7 @@ final class PixelButton: SKNode {
 
 /// Der Fortschrittsbalken im Pixel-Look: dunkler Rahmen, Sandbett, gold
 /// gefüllte Blöcke. Der Füllstand rastet auf ganze Blöcke ein
-/// (`Progress.barBlocks`) — ein weicher Balken wäre der einzige
+/// (`Goals.barBlocks`) — ein weicher Balken wäre der einzige
 /// stufenlose Verlauf im ganzen Spiel.
 final class GoalBar: SKNode {
 
@@ -295,9 +296,9 @@ final class GoalBar: SKNode {
 
     var fraction: CGFloat = 0 {
         didSet {
-            let blocks = Progress.filledBlocks(fraction)
+            let blocks = Goals.filledBlocks(fraction)
             fill.size = CGSize(
-                width: innerWidth * CGFloat(blocks) / CGFloat(Progress.barBlocks),
+                width: innerWidth * CGFloat(blocks) / CGFloat(Goals.barBlocks),
                 height: fill.size.height
             )
             fill.isHidden = blocks <= 0
@@ -836,7 +837,7 @@ final class StatsOverlay: SKNode {
         firstGoalY = goalTop
         // Bis 78 Punkt über dem unteren Rand: Darunter steht der
         // Schließen-Hinweis.
-        maxGoals = max(0, min(Progress.pageGoals, Int((goalTop - 78) / StatsOverlay.goalStep)))
+        maxGoals = max(0, min(Goals.pageGoals, Int((goalTop - 78) / StatsOverlay.goalStep)))
         super.init()
 
         let scrim = SKSpriteNode(

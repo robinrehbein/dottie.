@@ -1,3 +1,4 @@
+import DottieCore
 import UIKit
 
 extension UIColor {

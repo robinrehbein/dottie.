@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import DottieCore
 
-/// Die einzige Stelle, an der iOS auf `:core` trifft.
+/// Die Stelle, an der iOS auf `:core` trifft.
 ///
 /// Bis v2.23 lag die Spiellogik hier ein zweites Mal — rund 2 900 Zeilen
 /// Swift, von Hand aus Kotlin übersetzt und über
@@ -23,6 +23,8 @@ import DottieCore
 /// - **Namen.** Kotlin/Native exportiert `object X` als `X.shared` und
 ///   `companion object` als `X.companion`. Die Erweiterungen unten holen
 ///   die Schreibweise zurück, die der Renderer schon immer benutzt hat.
+///   Wo ein Name schon vergeben ist — Kotlins `Progress` gegen Foundations
+///   `Progress` —, steht hier ein `typealias` daneben.
 /// - **Aufzählungen.** Kotlin-`enum`s werden zu Klassen; `switch` geht
 ///   darauf nicht. Wo der Renderer eine Fallunterscheidung braucht
 ///   (Requisiten-Formen), steht hier ein echtes Swift-`enum` daneben.
@@ -449,13 +451,18 @@ extension ChipSynth {
 
 // MARK: - Ziele
 
-extension Progress {
+/// Kotlins `Progress` unter einem Namen, der nicht schon vergeben ist:
+/// Foundation bringt `Progress` (NSProgress) mit, und `import Foundation`
+/// steht in jeder Datei dieser App.
+typealias Goals = DottieCore.Progress
 
-    static var pageGoals: Int { return Int(Progress.shared.PAGE_GOALS) }
-    static var barBlocks: Int { return Int(Progress.shared.BAR_BLOCKS) }
+extension DottieCore.Progress {
+
+    static var pageGoals: Int { return Int(Goals.shared.PAGE_GOALS) }
+    static var barBlocks: Int { return Int(Goals.shared.BAR_BLOCKS) }
 
     static func filledBlocks(_ fraction: CGFloat) -> Int {
-        return Int(Progress.shared.filledBlocks(fraction: Float(fraction)))
+        return Int(Goals.shared.filledBlocks(fraction: Float(fraction)))
     }
 
     static func nextGoals(
@@ -464,7 +471,7 @@ extension Progress {
         seasonDays: Int,
         limit: Int
     ) -> [Goal] {
-        return Progress.shared.nextGoals(
+        return Goals.shared.nextGoals(
             stats: stats,
             month: Int32(month),
             seasonDays: Int32(seasonDays),

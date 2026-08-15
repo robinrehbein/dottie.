@@ -1,3 +1,4 @@
+import DottieCore
 import SpriteKit
 import UIKit
 

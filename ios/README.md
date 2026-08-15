@@ -8,8 +8,8 @@ die Android-App in `app/` und die Wear-App in `wear/` rechnen.
 
 Die **Spiellogik kommt aus `:core`** — demselben Kotlin-Modul, mit dem
 auch die Android- und die Wear-App rechnen. Es wird als
-`DottieCore.xcframework` gelinkt; die einzige Swift-Datei, die davon
-weiß, ist `Dottie/Sources/Core/CoreBridge.swift`.
+`DottieCore.xcframework` gelinkt; übersetzt wird an genau einer Stelle,
+in `Dottie/Sources/Core/CoreBridge.swift`.
 
 Bis v2.23 lagen unter `Dottie/Sources/Engine` 2 893 Zeilen Swift, die
 dieselbe Logik von Hand nachbauten (`TimingGame`, `SkinPaint`,
@@ -123,7 +123,7 @@ ios/
 │   │   ├── AppDelegate.swift    # UIKit-Lifecycle ohne Storyboard
 │   │   ├── GameViewController.swift
 │   │   ├── Core/
-│   │   │   └── CoreBridge.swift # die einzige Stelle mit `import DottieCore`
+│   │   │   └── CoreBridge.swift # Zahlen, Farben und Namen an der Sprachgrenze
 │   │   ├── Support/             # Store, Audio, Haptik, Farben, L10n
 │   │   └── UI/                  # GameScene, Overlays, Pixel-Texturen
 │   └── Resources/

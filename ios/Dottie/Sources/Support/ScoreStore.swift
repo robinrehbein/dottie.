@@ -1,3 +1,4 @@
+import DottieCore
 import Foundation
 
 /// Port von app/.../ScoreStore.kt: Persistiert Highscore, Daily-Stand,

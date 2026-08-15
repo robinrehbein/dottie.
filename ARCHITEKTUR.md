@@ -55,7 +55,9 @@ Sprachen, und zwar nur die.
   als 0xRRGGBB in `UInt32`.
 - **Namen.** Kotlin/Native exportiert `object X` als `X.shared` und
   `companion object` als `X.companion`. Erweiterungen holen die
-  Schreibweise zurück, die der Renderer schon vorher benutzt hat.
+  Schreibweise zurück, die der Renderer schon vorher benutzt hat; wo ein
+  Name schon vergeben ist — Kotlins `Progress` gegen Foundations
+  `Progress` —, steht ein `typealias` daneben.
 - **Aufzählungen.** Kotlin-`enum`s werden Klassen; `switch` geht darauf
   nicht. Wo der Renderer eine Fallunterscheidung braucht (die acht
   Requisiten-Formen), steht ein Swift-`enum` daneben.
