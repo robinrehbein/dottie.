@@ -222,13 +222,15 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     var phase by remember { mutableStateOf(TimingGame.Phase.READY) }
     var score by remember { mutableIntStateOf(0) }
     var bestScore by remember { mutableIntStateOf(store.bestScore) }
-    var runNumber by remember { mutableIntStateOf(store.runCount) }
     var isNewRecord by remember { mutableStateOf(false) }
     var taunt by remember { mutableStateOf("") }
     var showPerfect by remember { mutableStateOf(false) }
     var perfectPoints by remember { mutableIntStateOf(2) }
     var bannerText by remember { mutableStateOf("") }
     var showHelp by remember { mutableStateOf(false) }
+    // Einstellungs-Overlay hinter dem Zahnrad: Ton, Erinnerung, Hilfe,
+    // Werbe-Kauf und Datenschutz.
+    var showSettings by remember { mutableStateOf(false) }
     var soundOn by remember { mutableStateOf(!store.soundMuted) }
     var dailyMode by remember { mutableStateOf(false) }
     var skin by remember { mutableStateOf(store.selectedSkin) }
@@ -249,9 +251,10 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     var showStats by remember { mutableStateOf(false) }
     var statsSnapshot by remember { mutableStateOf(store.stats()) }
     var statsGoals by remember { mutableStateOf(emptyList<Goal>()) }
-    // Das nächstliegende Ziel für die Zeile im Game-Over — gefüllt in dem
-    // Moment, in dem der Lauf gezählt ist, damit der Balken den gerade
-    // beendeten Lauf schon enthält.
+    // Das nächstliegende Ziel für die Zeile im Game-Over und auf dem
+    // Startbildschirm — im Game-Over gefüllt in dem Moment, in dem der
+    // Lauf gezählt ist, damit der Balken den gerade beendeten Lauf schon
+    // enthält; für den Startbildschirm beim Eintritt in READY.
     var nextGoal by remember { mutableStateOf<Goal?>(null) }
     // Versteckte Diagnose-Zeile (langer Druck auf den Titel).
     var showDiagnostics by remember { mutableStateOf(false) }
@@ -323,6 +326,21 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
 
     // Beim Start prüfen, ob die gespeicherte Auswahl heute noch gilt.
     LaunchedEffect(Unit) { refreshSkinPass(LocalDate.now().toEpochDay()) }
+
+    // Die Ziel-Zeile des Startbildschirms wird beim Eintritt in READY
+    // gerechnet und nicht pro Frame: Sie ändert sich nur durch einen Lauf,
+    // und genau danach steht sie hier wieder an. Der Kalender wird dabei
+    // frisch abgelesen — daran hängt, ob ein Saison-Ziel überhaupt gilt.
+    LaunchedEffect(phase) {
+        if (phase == TimingGame.Phase.READY) {
+            val now = LocalDateTime.now()
+            nextGoal = Progress.nextGoal(
+                stats = store.stats().toSkinStats(),
+                month = now.monthValue,
+                seasonDays = store.seasonDaysFor(now.monthValue, now.year)
+            )
+        }
+    }
 
     // Werbung und Kauf hochfahren — beides No-op ohne AdMob-IDs.
     LaunchedEffect(Unit) {
@@ -452,7 +470,6 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             )
                             taunt = pickTaunt(context, game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
-                            runNumber = store.runCount
                             // Jeder beendete Lauf ist ein moeglicher neuer
                             // Stand fuer die Uhr. Ohne Aenderung ist der
                             // Aufruf ein No-op.
@@ -562,10 +579,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         when (phase) {
             TimingGame.Phase.READY -> ReadyOverlay(
                 bestScore = bestScore,
-                runNumber = runNumber,
                 hint = stringResource(R.string.ready_hint),
-                dailyBest = dailyBestToday,
                 dailyStreak = dailyStreak,
+                goal = nextGoal,
                 onDaily = {
                     dailyMode = true
                     prepareRun()
@@ -590,38 +606,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     )
                     showStats = true
                 },
-                leaderboardAvailable = leaderboards.available,
-                onLeaderboard = { leaderboards.show() },
-                onHelp = { showHelp = true },
-                soundOn = soundOn,
-                onToggleSound = {
-                    soundOn = !soundOn
-                    store.soundMuted = !soundOn
-                    audio.muted = !soundOn
-                },
-                reminderOn = reminderOn,
-                onToggleReminder = {
-                    when {
-                        reminderOn -> {
-                            reminderOn = false
-                            store.reminderEnabled = false
-                            DailyReminder.cancel(context)
-                        }
-                        Build.VERSION.SDK_INT >= 33 && DailyReminder.needsPermission(context) ->
-                            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        else -> {
-                            reminderOn = true
-                            store.reminderEnabled = true
-                            DailyReminder.schedule(context)
-                        }
-                    }
-                },
-                // Kein Preis von Google = kein Angebot. Ein Knopf, der
-                // ins Leere greift, ist schlimmer als gar keiner.
-                removeAdsPrice = if (ads.enabled) billing.priceLabel else null,
-                onRemoveAds = { (context as? Activity)?.let { billing.purchase(it) } },
-                privacyVisible = ads.enabled && ads.privacyOptionsRequired,
-                onPrivacy = { (context as? Activity)?.let { ads.showPrivacyOptions(it) } },
+                onSettings = { showSettings = true },
                 diagnostics = if (showDiagnostics) {
                     "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n" +
                         "WERBUNG: ${ads.status}\n" +
@@ -689,7 +674,50 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             StatsOverlay(
                 stats = statsSnapshot,
                 goals = statsGoals,
-                onClose = { showStats = false }
+                onClose = { showStats = false },
+                leaderboardAvailable = leaderboards.available,
+                onLeaderboard = { leaderboards.show() }
+            )
+        }
+
+        if (showSettings) {
+            SettingsOverlay(
+                soundOn = soundOn,
+                onToggleSound = {
+                    soundOn = !soundOn
+                    store.soundMuted = !soundOn
+                    audio.muted = !soundOn
+                },
+                reminderOn = reminderOn,
+                onToggleReminder = {
+                    when {
+                        reminderOn -> {
+                            reminderOn = false
+                            store.reminderEnabled = false
+                            DailyReminder.cancel(context)
+                        }
+                        Build.VERSION.SDK_INT >= 33 && DailyReminder.needsPermission(context) ->
+                            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        else -> {
+                            reminderOn = true
+                            store.reminderEnabled = true
+                            DailyReminder.schedule(context)
+                        }
+                    }
+                },
+                // Die Hilfe bleibt ein eigenes Overlay: Sie ist keine
+                // Einstellung, sie wird nur von hier aus geöffnet.
+                onHelp = {
+                    showSettings = false
+                    showHelp = true
+                },
+                onClose = { showSettings = false },
+                // Kein Preis von Google = kein Angebot. Ein Knopf, der
+                // ins Leere greift, ist schlimmer als gar keiner.
+                removeAdsPrice = if (ads.enabled) billing.priceLabel else null,
+                onRemoveAds = { (context as? Activity)?.let { billing.purchase(it) } },
+                privacyVisible = ads.enabled && ads.privacyOptionsRequired,
+                onPrivacy = { (context as? Activity)?.let { ads.showPrivacyOptions(it) } }
             )
         }
 

@@ -166,6 +166,17 @@ class StatsSync(
         const val KEY_SCENE = "scene"
         const val KEY_SCENE_CHANGED = "scene_changed_at"
 
+        /**
+         * Bestwert der Daily-Serie (ab v2.23). Er steht als eigenes Feld
+         * im Austausch, weil die aktuelle Serie ihn nicht ersetzen kann:
+         * Sie fällt nach einer Lücke auf 1 zurück, und ein auf der Uhr
+         * verdienter AURORA bliebe am Telefon sonst für immer gesperrt.
+         * Fehlt der Schlüssel, weil die Gegenseite eine ältere App fährt,
+         * tritt deren laufende Serie als Untergrenze ein — mehr weiß man
+         * von ihr nicht, weniger darf man ihr nicht zutrauen.
+         */
+        const val KEY_BEST_DAILY_STREAK = "best_daily_streak"
+
         // Ton-Set-Wahl (ab v2.23), nach derselben Regel: Fehlt sie in
         // einer Nachricht, bleibt der Zeitstempel 0 und die lokale Wahl
         // gewinnt — eine ältere App darf keinen Klang zurückdrehen.
@@ -179,6 +190,7 @@ class StatsSync(
             putLong(KEY_DAILY_DAY, s.dailyDay)
             putInt(KEY_DAILY_BEST, s.dailyBest)
             putInt(KEY_DAILY_STREAK, s.dailyStreak)
+            putInt(KEY_BEST_DAILY_STREAK, s.bestDailyStreak)
             putInt(KEY_TOTAL_SCORE, s.totalScore)
             putInt(KEY_DAYS_PLAYED, s.daysPlayed)
             putLong(KEY_LAST_PLAYED_DAY, s.lastPlayedDay)
@@ -199,6 +211,13 @@ class StatsSync(
             dailyDay = getLong(KEY_DAILY_DAY, 0L),
             dailyBest = getInt(KEY_DAILY_BEST, 0),
             dailyStreak = getInt(KEY_DAILY_STREAK, 0),
+            // Die laufende Serie ist die Untergrenze des Bestwerts: Eine
+            // ältere App schickt den Bestwert nicht mit, hat aber
+            // offensichtlich mindestens ihre laufende Serie erreicht.
+            bestDailyStreak = maxOf(
+                getInt(KEY_BEST_DAILY_STREAK, 0),
+                getInt(KEY_DAILY_STREAK, 0)
+            ),
             totalScore = getInt(KEY_TOTAL_SCORE, 0),
             daysPlayed = getInt(KEY_DAYS_PLAYED, 0),
             lastPlayedDay = getLong(KEY_LAST_PLAYED_DAY, 0L),

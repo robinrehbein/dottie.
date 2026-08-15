@@ -4,10 +4,6 @@
 <resources>
     <!-- Startscreen -->
     <string name="ready_hint">STOPPE DEN PUNKT IN DER GRUENEN ZONE</string>
-    <string name="sound_on">TON: AN</string>
-    <string name="sound_off">TON: AUS</string>
-    <string name="reminder_on">ERINNERUNG: AN</string>
-    <string name="reminder_off">ERINNERUNG: AUS</string>
     <string name="best_score">REKORD: %1$d</string>
     <string name="leaderboard">RANGLISTE</string>
     <string name="daily">DAILY</string>
@@ -15,7 +11,14 @@
     <string name="today_score">HEUTE: %1$d</string>
     <string name="streak_one">SERIE: 1 TAG</string>
     <string name="streak_many">SERIE: %1$d TAGE</string>
-    <string name="run_number">VERSUCH #%1$d</string>
+
+    <!-- Einstellungen (Zahnrad oben rechts) -->
+    <string name="settings">EINSTELLUNGEN</string>
+    <string name="sound_on">TON: AN</string>
+    <string name="sound_off">TON: AUS</string>
+    <string name="reminder_on">ERINNERUNG: AN</string>
+    <string name="reminder_off">ERINNERUNG: AUS</string>
+    <string name="help">HILFE</string>
 
     <!-- Lauf / Banner -->
     <string name="perfect_plus">PERFEKT! +%1$d</string>
@@ -233,6 +236,21 @@
     <string name="stats_goals">NAECHSTE ZIELE</string>
     <!-- "FUSSBALL 218/300" — Name der Belohnung plus Stand auf der Achse. -->
     <string name="goal_progress">%1$s %2$d/%3$d</string>
+    <!-- Die lange Fassung fuer den Startbildschirm, wo das Ziel ohne
+         Ueberschrift steht: "NAECHSTER SKIN: MEDAILLE — 199/200 LAEUFE".
+         Ohne die Achse liest sich "MEDAILLE 199/200" als 199 von 200
+         Medaillen. -->
+    <string name="goal_next_skin">NAECHSTER SKIN: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_next_scene">NAECHSTE KULISSE: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_next_sound">NAECHSTER TON: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_axis_points">PUNKTE</string>
+    <string name="goal_axis_total">PUNKTE INSGESAMT</string>
+    <string name="goal_axis_perfect">PERFEKTE IN FOLGE</string>
+    <string name="goal_axis_days">TAGE</string>
+    <string name="goal_axis_months">MONATE</string>
+    <string name="goal_axis_runs">LAEUFE</string>
+    <string name="goal_axis_skins">SKINS</string>
+    <string name="goal_axis_scenes">KULISSEN</string>
 
     <!-- Score-Card / Teilen -->
     <string name="share_text">%1$d Punkte in DOTTIE. — schaffst du mehr?</string>

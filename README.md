@@ -108,8 +108,9 @@ aus der Play Console stehen (Anleitung in PUBLISHING.md). Die
 Store-Feature-Grafik liegt generiert unter `store/feature-graphic.png`.
 
 Ab v2.11 gibt es zusätzlich eine optionale **tägliche Erinnerung** an
-die Daily Challenge (Opt-in über den Startscreen, komplett lokal per
-WorkManager, ab Android 13 hinter der Notification-Permission).
+die Daily Challenge (Opt-in in den Einstellungen hinter dem Zahnrad,
+komplett lokal per WorkManager, ab Android 13 hinter der
+Notification-Permission).
 
 Ab v2.17 ist die **Monetarisierung aktiv**: ein freiwilliger
 Rewarded-Spot für den **Skin-Tagespass**, seltene Interstitials
@@ -124,7 +125,7 @@ verkäuflich, denn drei Skins haben mit Anzeigen nichts zu tun. Ohne
 Play-Dienste oder ohne angelegtes Produkt bleibt die Kauf-Zeile
 weiterhin unsichtbar — das regelt der BillingClient von selbst. Vor der ersten Anzeige
 fragt Googles UMP nach der Einwilligung; wo das Pflicht ist, führt eine
-Zeile auf dem Startscreen dauerhaft zurück in dieses Formular.
+Zeile in den Einstellungen dauerhaft zurück in dieses Formular.
 Datenschutzerklärung: `docs/index.html`, restliche Schritte in
 PUBLISHING.md.
 
@@ -301,6 +302,38 @@ Zielwert fallen und einen Schritt davor noch stehen.
 Auf der Uhr gibt es die Seite nicht — dort ist der Bildschirm zu klein
 für neun Zeilen und drei Balken.
 
+## Startbildschirm: ein Ziel statt vierzehn Elemente (ab v2.23)
+
+Der Startscreen war über die Versionen zugewachsen: Titel, Rekord,
+Hinweiszeile, drei Icon-Knöpfe, RANGLISTE, DAILY/SKINS/STATISTIK, eine
+Zeile „HEUTE … · SERIE …", der Versuchszähler, die Kauf-Zeile und die
+Datenschutz-Zeile — vierzehn Dinge, von denen genau eines zählt: der
+nächste Lauf. Seit v2.23 sind es acht:
+
+- **Zahnrad oben rechts** öffnet die **Einstellungen** — ein Overlay im
+  Stil der übrigen (dunkler Scrim, Tap daneben schließt): TON AN/AUS,
+  ERINNERUNG AN/AUS, HILFE, darunter klein die Kauf-Zeile „Werbung
+  entfernen" und der Datenschutz-Widerruf. Beide Zeilen erscheinen unter
+  exakt denselben Bedingungen wie vorher (Preis von Google bzw.
+  UMP-Pflicht) — sie sind umgezogen, nicht geändert.
+- **Die Daily-Serie hängt als rotes Abzeichen am DAILY-Knopf** statt als
+  eigene Zeile: Sie ist eine Eigenschaft der Daily, keine Meldung. Der
+  Tagesbestwert bleibt dort, wo er hingehört — im Daily-Game-Over und in
+  der Statistik.
+- **Die RANGLISTE** (nur bei konfigurierten Play-Games-IDs) steht jetzt
+  unten in der Statistik: Wer den eigenen Stand ansieht, ist der Einzige,
+  den der Stand der anderen interessiert.
+- **VERSUCH #n entfällt** — die Lauf-Zahl steht als Zähler in der
+  Statistik.
+- Stattdessen trägt **eine** Zeile mit Balken das nächstliegende Ziel,
+  dieselbe Rechnung wie im Game-Over: „NAECHSTER SKIN: MEDAILLE —
+  199/200 LAEUFE". Die Achse steht mit dabei, denn „MEDAILLE 199/200"
+  allein liest sich als 199 von 200 Medaillen. Ist alles freigeschaltet,
+  fällt die Zeile ersatzlos weg — der gewollte Endzustand.
+
+Unverändert bleiben Titel, REKORD-Zeile, der blinkende Hinweis und die
+drei Knöpfe in Form und Breite.
+
 ## Abgleich zwischen Telefon und Uhr (ab v2.19)
 
 Rekord, Lauf-Zahl, beste Perfekt-Serie, Daily-Stand sowie Skin-,
@@ -328,6 +361,12 @@ Die Regeln:
   Telefon für sich genommen bei 1 stand, weil es von gestern nichts
   wusste. Bei aufeinanderfolgenden Tagen zählt deshalb `gestern + 1`,
   bei einer echten Lücke reißt die Serie wie gewohnt.
+- **Bestwert der Daily-Serie**: eigenes Feld neben der laufenden Serie
+  (ab v2.23), Regel wieder „der höhere gewinnt". An ihm hängen PRISMA,
+  KOI, AURORA, DISCO und die Kulisse BERG — eine Lücke im Kalender darf
+  sie nicht wieder zusperren, und ein auf der Uhr verdienter AURORA soll
+  auch am Telefon offen sein. Fehlt das Feld, weil die Gegenseite eine
+  ältere App fährt, tritt deren laufende Serie als Untergrenze ein.
 
 Der Abgleich läuft nur, solange eine der beiden Apps offen ist — bewusst
 ohne Hintergrunddienst. Beim Öffnen wird geholt, was die Gegenseite
@@ -356,7 +395,7 @@ geschrieben und laufen latenzarm über einen `SoundPool`:
 - PERFEKT ist ein Münz-Sound, der pro Serien-Stufe höher klingt
 - Tod = fallender Sweep + Rausch-Burst, Twists/Stufen = Fanfare,
   neuer Rekord = eigener Jingle
-- Ton-Schalter auf dem Startscreen („TON: AN/AUS"), Einstellung bleibt
+- Ton-Schalter in den Einstellungen („TON: AN/AUS"), Einstellung bleibt
   gespeichert
 
 ## Ehemaliger zweiter Modus: FLIP (entfernt in v2.6)
