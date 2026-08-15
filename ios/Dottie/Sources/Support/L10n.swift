@@ -19,6 +19,41 @@ enum L10n {
         return format("streak_many", days)
     }
 
+    // MARK: - Ziel-Zeile
+
+    /// Die eine Zeile des Startbildes:
+    /// "NAECHSTER SKIN: MEDAILLE — 199/200 LAEUFE".
+    ///
+    /// Anders als im Game-Over und in der Statistik (dort steht die
+    /// Kurzform "MEDAILLE 199/200", umgeben von ihresgleichen) steht diese
+    /// Zeile allein. Sie muss deshalb aus sich heraus verständlich sein:
+    /// Was es gibt, wofür man es bekommt, und vor allem — worin gezählt
+    /// wird. "199/200" ohne Einheit ist eine Zahl ohne Aufgabe.
+    static func goalLine(_ goal: Goal) -> String {
+        // Genau eines von skin und scene ist gesetzt (siehe Goal).
+        let kind = text(goal.scene != nil ? "goal_next_scene" : "goal_next_skin")
+        return format(
+            "goal_line", kind, text(goal.titleKey), goal.current, goal.target, axisLabel(goal.axis)
+        )
+    }
+
+    /// Die Einheit einer Achse, in der Wortwahl der Freischalt-Hinweise
+    /// im Skin-Menü ("500 LAEUFE", "DAILY-SERIE: 7 TAGE").
+    private static func axisLabel(_ axis: GoalAxis) -> String {
+        switch axis {
+        case .bestScore: return text("goal_axis_best")
+        case .perfectStreak: return text("goal_axis_perfect")
+        case .dailyStreak: return text("goal_axis_daily_streak")
+        case .runCount: return text("goal_axis_runs")
+        case .totalScore: return text("goal_axis_total")
+        case .daysPlayed: return text("goal_axis_days")
+        case .monthsPlayed: return text("goal_axis_months")
+        case .seasonDays: return text("goal_axis_season")
+        case .skinCollection: return text("goal_axis_skins")
+        case .sceneCollection: return text("goal_axis_scenes")
+        }
+    }
+
     // MARK: - Spott-Texte für den Rage-Faktor
 
     private static let tauntsZero = ["taunts_zero_0", "taunts_zero_1", "taunts_zero_2", "taunts_zero_3"]

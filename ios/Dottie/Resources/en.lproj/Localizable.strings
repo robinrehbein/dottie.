@@ -4,8 +4,6 @@
 
 /* Startscreen */
 "ready_hint" = "STOP THE DOT IN THE GREEN ZONE";
-"sound_on" = "SOUND: ON";
-"sound_off" = "SOUND: OFF";
 "best_score" = "BEST: %1$d";
 "daily" = "DAILY";
 "skins" = "SKINS";
@@ -13,6 +11,15 @@
 "streak_one" = "STREAK: 1 DAY";
 "streak_many" = "STREAK: %1$d DAYS";
 "run_number" = "RUN #%1$d";
+
+/* Einstellungen — das Blatt hinter dem Zahnrad. Die drei Schalter
+   standen frueher als Icons im Startbild; hier tragen sie Klartext. */
+"settings" = "SETTINGS";
+"sound_on" = "SOUND: ON";
+"sound_off" = "SOUND: OFF";
+"reminder_on" = "REMINDER: ON";
+"reminder_off" = "REMINDER: OFF";
+"settings_help" = "HELP";
 
 /* Lauf / Banner */
 "perfect_plus" = "PERFECT! +%1$d";
@@ -208,3 +215,20 @@
 "stats_goals" = "NEXT GOALS";
 /* "FOOTBALL 218/300" — Name der Belohnung plus Stand auf der Achse. */
 "goal_progress" = "%1$@ %2$d/%3$d";
+
+/* Die eine Ziel-Zeile im Startbild — dort steht sie allein und muss
+   deshalb ausgeschrieben sein, inklusive Achse:
+   "NEXT SKIN: MEDAL — 199/200 RUNS". */
+"goal_next_skin" = "NEXT SKIN";
+"goal_next_scene" = "NEXT SCENE";
+"goal_line" = "%1$@: %2$@ — %3$d/%4$d %5$@";
+"goal_axis_best" = "BEST SCORE";
+"goal_axis_perfect" = "PERFECT IN A ROW";
+"goal_axis_daily_streak" = "DAILY STREAK DAYS";
+"goal_axis_runs" = "RUNS";
+"goal_axis_total" = "POINTS TOTAL";
+"goal_axis_days" = "DAYS PLAYED";
+"goal_axis_months" = "MONTHS PLAYED";
+"goal_axis_season" = "DAYS THIS MONTH";
+"goal_axis_skins" = "SKINS";
+"goal_axis_scenes" = "SCENES";
