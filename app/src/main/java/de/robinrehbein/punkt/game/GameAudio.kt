@@ -31,11 +31,11 @@ class GameAudio(context: Context) {
     /** Ton-Set → Ereignisname → SoundPool-Id. */
     private val soundIds: Map<SoundSetId, Map<String, Int>>
 
-    /** Stumm geschaltet? Der Screen hält das mit dem ScoreStore synchron. */
+    /** Stumm geschaltet? Der Screen hält das mit dem GameStore synchron. */
     var muted: Boolean = false
 
     /**
-     * Das gewählte Ton-Set. Der Screen hält es mit dem ScoreStore
+     * Das gewählte Ton-Set. Der Screen hält es mit dem GameStore
      * synchron; ein noch nicht verdientes Set kommt hier gar nicht an
      * (die Auswahl lässt es nicht antippen).
      */

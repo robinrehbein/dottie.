@@ -18,7 +18,8 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import de.robinrehbein.punkt.MainActivity
 import de.robinrehbein.punkt.R
-import de.robinrehbein.punkt.data.ScoreStore
+import de.robinrehbein.punkt.ui.data.AndroidKeyValueStore
+import de.robinrehbein.punkt.ui.data.GameStore
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -119,7 +120,7 @@ class DailyReminderWorker(
 ) : Worker(context, params) {
 
     override fun doWork(): Result {
-        val store = ScoreStore(applicationContext)
+        val store = GameStore(AndroidKeyValueStore(applicationContext))
         if (!store.reminderEnabled) return Result.success()
 
         val today = LocalDate.now().toEpochDay()

@@ -2,6 +2,9 @@ package de.robinrehbein.punkt.billing
 
 import android.app.Activity
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
@@ -13,10 +16,8 @@ import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import de.robinrehbein.punkt.data.ScoreStore
+import de.robinrehbein.punkt.ui.data.AndroidKeyValueStore
+import de.robinrehbein.punkt.ui.data.GameStore
 
 /**
  * Play Billing für die beiden einmaligen Käufe: "Werbung entfernen"
@@ -49,7 +50,7 @@ import de.robinrehbein.punkt.data.ScoreStore
  */
 class BillingManager(
     private val activity: Activity?,
-    private val store: ScoreStore,
+    private val store: GameStore,
     private val onAdsRemoved: () -> Unit,
     private val onPatronOwned: () -> Unit = {}
 ) {

@@ -68,6 +68,13 @@ jobs:
           ./gradlew --no-daemon :core:assembleDottieCoreDebugXCFramework
           ls -la core/build/XCFrameworks/debug
 
+      # :ui hat Apple-Ziele, wird aber noch von keiner App gelinkt — sein
+      # iosMain (Uhr, spaeter Speicher und Einstiegspunkt) waere sonst
+      # nirgends uebersetzt. Compilieren statt Linken: Das prueft den
+      # Code, ohne Compose und Skia fuer iOS zu binden.
+      - name: iOS-Quellen der Oberflaeche uebersetzen
+        run: ./gradlew --no-daemon :ui:compileKotlinIosSimulatorArm64
+
       - name: XcodeGen installieren
         run: brew install xcodegen
 

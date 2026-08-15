@@ -1,7 +1,5 @@
-package de.robinrehbein.punkt.data
+package de.robinrehbein.punkt.ui.data
 
-import android.content.Context
-import android.content.SharedPreferences
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
@@ -15,36 +13,42 @@ import de.robinrehbein.punkt.game.SyncState
 
 /**
  * Persistiert Highscore, Daily-Challenge-Stand, Bestleistungen und den
- * gewählten Skin über SharedPreferences — synchron und simpel, genau
- * richtig für eine Handvoll Zahlen.
+ * gewählten Skin — samt der Regeln, die daran hängen: Tages-Serie,
+ * Saison-Fenster, Tagespass, Abgleich mit der Uhr.
+ *
+ * Das ist keine Speicher-Schicht, das sind Spielregeln mit einem
+ * Speicher darunter. Sie lagen bis v2.24 zweimal im Repo — 470 Zeilen
+ * Kotlin hier und 269 Zeilen Swift in `ios/.../Support/ScoreStore.swift`
+ * — und liefen an genau einer Stelle schon auseinander: Android rechnete
+ * einen Lauf dem Tag zu, an dem er startete, iOS dem, an dem er endete
+ * (siehe parity/README.md). Deshalb stehen sie jetzt hier, über einem
+ * [KeyValueStore], den jede Plattform selbst mitbringt.
  *
  * Die Keys tragen noch das "_timing"-Suffix aus der Zeit, als es neben
  * STOPP auch den FLIP-Modus gab (bis v2.5, Tag "v2.5-mit-flip") — so
  * überleben bestehende Highscores das Update.
  */
-class ScoreStore(context: Context) {
-
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+class GameStore(private val prefs: KeyValueStore) {
 
     val bestScore: Int
-        get() = prefs.getInt(KEY_BEST, 0)
+        get() = prefs.int(KEY_BEST, 0)
 
     val runCount: Int
-        get() = prefs.getInt(KEY_RUNS, 0)
+        get() = prefs.int(KEY_RUNS, 0)
 
     /** Beste jemals erreichte Perfekt-Serie (für Skin-Freischaltungen). */
     val bestPerfectStreak: Int
-        get() = prefs.getInt(KEY_BEST_PERFECT, 0)
+        get() = prefs.int(KEY_BEST_PERFECT, 0)
 
     // ===== Ausdauer-Achsen (Menge statt Können) =====
 
     /** Summe aller je erspielten Punkte. */
     val totalScore: Int
-        get() = prefs.getInt(KEY_TOTAL_SCORE, 0)
+        get() = prefs.int(KEY_TOTAL_SCORE, 0)
 
     /** Kalendertage mit mindestens einem Lauf. */
     val daysPlayed: Int
-        get() = prefs.getInt(KEY_DAYS_PLAYED, 0)
+        get() = prefs.int(KEY_DAYS_PLAYED, 0)
 
     /**
      * Bitmaske der Kalendermonate mit mindestens einem Lauf (Bit 0 =
@@ -52,7 +56,7 @@ class ScoreStore(context: Context) {
      * gespielt" verschiedene Monate meint — dreimal im Mai ist einer.
      */
     val monthsPlayedMask: Int
-        get() = prefs.getInt(KEY_MONTHS_PLAYED, 0)
+        get() = prefs.int(KEY_MONTHS_PLAYED, 0)
 
     /**
      * Bitmaske der verdienten Saison-Skins (siehe Season.bit in :core).
@@ -60,7 +64,7 @@ class ScoreStore(context: Context) {
      * würde den Kürbis im November wieder wegnehmen.
      */
     val seasonEarned: Int
-        get() = prefs.getInt(KEY_SEASON_EARNED, 0)
+        get() = prefs.int(KEY_SEASON_EARNED, 0)
 
     /**
      * Gönner-Paket gekauft ("patron_pack"). Wie [adsRemoved] nur der
@@ -68,23 +72,23 @@ class ScoreStore(context: Context) {
      * Start ohne Netz sofort dastehen.
      */
     var patronOwned: Boolean
-        get() = prefs.getBoolean(KEY_PATRON, false)
+        get() = prefs.boolean(KEY_PATRON, false)
         set(value) {
-            prefs.edit().putBoolean(KEY_PATRON, value).apply()
+            prefs.edit { putBoolean(KEY_PATRON, value) }
         }
 
     /** Ton an/aus — überlebt App-Neustarts. */
     var soundMuted: Boolean
-        get() = prefs.getBoolean(KEY_MUTED, false)
+        get() = prefs.boolean(KEY_MUTED, false)
         set(value) {
-            prefs.edit().putBoolean(KEY_MUTED, value).apply()
+            prefs.edit { putBoolean(KEY_MUTED, value) }
         }
 
     /** Tägliche Daily-Challenge-Erinnerung (Opt-in, lokal). */
     var reminderEnabled: Boolean
-        get() = prefs.getBoolean(KEY_REMINDER, false)
+        get() = prefs.boolean(KEY_REMINDER, false)
         set(value) {
-            prefs.edit().putBoolean(KEY_REMINDER, value).apply()
+            prefs.edit { putBoolean(KEY_REMINDER, value) }
         }
 
     /**
@@ -93,9 +97,9 @@ class ScoreStore(context: Context) {
      * ohne Netz sofort weiß, dass keine Werbung erscheinen darf.
      */
     var adsRemoved: Boolean
-        get() = prefs.getBoolean(KEY_ADS_REMOVED, false)
+        get() = prefs.boolean(KEY_ADS_REMOVED, false)
         set(value) {
-            prefs.edit().putBoolean(KEY_ADS_REMOVED, value).apply()
+            prefs.edit { putBoolean(KEY_ADS_REMOVED, value) }
         }
 
     /**
@@ -105,12 +109,12 @@ class ScoreStore(context: Context) {
      * "neuer" gewinnt (siehe SyncState).
      */
     var selectedSkin: SkinId
-        get() = SkinPaint.fromName(prefs.getString(KEY_SKIN, null))
+        get() = SkinPaint.fromName(prefs.string(KEY_SKIN))
         set(value) {
-            prefs.edit()
-                .putString(KEY_SKIN, value.name)
-                .putLong(KEY_SKIN_CHANGED, System.currentTimeMillis())
-                .apply()
+            prefs.edit {
+                putString(KEY_SKIN, value.name)
+                putLong(KEY_SKIN_CHANGED, epochMillis())
+            }
         }
 
     /**
@@ -121,12 +125,12 @@ class ScoreStore(context: Context) {
      * Kulisse ist der seltene große Wechsel, nicht das Probierstück.
      */
     var selectedScene: SceneId
-        get() = ScenePaint.fromName(prefs.getString(KEY_SCENE, null))
+        get() = ScenePaint.fromName(prefs.string(KEY_SCENE))
         set(value) {
-            prefs.edit()
-                .putString(KEY_SCENE, value.name)
-                .putLong(KEY_SCENE_CHANGED, System.currentTimeMillis())
-                .apply()
+            prefs.edit {
+                putString(KEY_SCENE, value.name)
+                putLong(KEY_SCENE_CHANGED, epochMillis())
+            }
         }
 
     /**
@@ -135,12 +139,12 @@ class ScoreStore(context: Context) {
      * neuere gewinnt und nicht die "größere" (siehe SyncState).
      */
     var selectedSound: SoundSetId
-        get() = SoundBank.fromName(prefs.getString(KEY_SOUND, null))
+        get() = SoundBank.fromName(prefs.string(KEY_SOUND))
         set(value) {
-            prefs.edit()
-                .putString(KEY_SOUND, value.name)
-                .putLong(KEY_SOUND_CHANGED, System.currentTimeMillis())
-                .apply()
+            prefs.edit {
+                putString(KEY_SOUND, value.name)
+                putLong(KEY_SOUND_CHANGED, epochMillis())
+            }
         }
 
     // ===== Skin-Tagespass (Rewarded) =====
@@ -152,8 +156,8 @@ class ScoreStore(context: Context) {
      * sondern beantworten die Frage einfach mit null.
      */
     fun skinPassFor(epochDay: Long): SkinId? {
-        if (prefs.getLong(KEY_SKIN_PASS_DAY, Long.MIN_VALUE) != epochDay) return null
-        val name = prefs.getString(KEY_SKIN_PASS_SKIN, null) ?: return null
+        if (prefs.long(KEY_SKIN_PASS_DAY, Long.MIN_VALUE) != epochDay) return null
+        val name = prefs.string(KEY_SKIN_PASS_SKIN) ?: return null
         return SkinPaint.ORDER.firstOrNull { it.name == name }
     }
 
@@ -163,25 +167,25 @@ class ScoreStore(context: Context) {
      * da, gesammelt wird weiter über Medaillen.
      */
     fun grantSkinPass(epochDay: Long, skin: SkinId) {
-        prefs.edit()
-            .putLong(KEY_SKIN_PASS_DAY, epochDay)
-            .putString(KEY_SKIN_PASS_SKIN, skin.name)
-            .apply()
+        prefs.edit {
+                putLong(KEY_SKIN_PASS_DAY, epochDay)
+                putString(KEY_SKIN_PASS_SKIN, skin.name)
+        }
     }
 
     // ===== Daily Challenge =====
 
     /** Tagesbest-Score — gilt nur für den in [dailyDay] gespeicherten Tag. */
     val dailyBest: Int
-        get() = prefs.getInt(KEY_DAILY_BEST, 0)
+        get() = prefs.int(KEY_DAILY_BEST, 0)
 
     /** Epoch-Day, zu dem [dailyBest] gehört. */
     val dailyDay: Long
-        get() = prefs.getLong(KEY_DAILY_DAY, 0L)
+        get() = prefs.long(KEY_DAILY_DAY, 0L)
 
     /** Aktuelle Serie an Tagen mit mindestens einem Daily-Lauf. */
     val dailyStreak: Int
-        get() = prefs.getInt(KEY_DAILY_STREAK, 0)
+        get() = prefs.int(KEY_DAILY_STREAK, 0)
 
     /** Tagesbest für einen konkreten Tag — 0, wenn der Tag nicht passt. */
     fun dailyBestFor(epochDay: Long): Int =
@@ -208,23 +212,23 @@ class ScoreStore(context: Context) {
      * genau dieser Tag entscheidet schon über den Daily-Seed.
      */
     fun submitRun(score: Int, epochDay: Long, month: Int, year: Int): Boolean {
-        val editor = prefs.edit()
-        editor.putInt(KEY_RUNS, runCount + 1)
-        editor.putInt(KEY_TOTAL_SCORE, totalScore + score)
-
-        // Ein neuer Kalendertag zählt genau einmal — gespeichert wird
-        // deshalb der Zähler UND der Tag, an dem er zuletzt stieg.
-        if (prefs.getLong(KEY_LAST_PLAYED_DAY, Long.MIN_VALUE) != epochDay) {
-            editor.putInt(KEY_DAYS_PLAYED, daysPlayed + 1)
-            editor.putLong(KEY_LAST_PLAYED_DAY, epochDay)
-        }
-        editor.putInt(KEY_MONTHS_PLAYED, monthsPlayedMask or (1 shl (month - 1)))
-
-        writeSeasonProgress(editor, epochDay, month, year)
-
         val record = score > bestScore
-        if (record) editor.putInt(KEY_BEST, score)
-        editor.apply()
+        prefs.edit {
+                putInt(KEY_RUNS, runCount + 1)
+                putInt(KEY_TOTAL_SCORE, totalScore + score)
+
+                // Ein neuer Kalendertag zählt genau einmal — gespeichert wird
+                // deshalb der Zähler UND der Tag, an dem er zuletzt stieg.
+                if (prefs.long(KEY_LAST_PLAYED_DAY, Long.MIN_VALUE) != epochDay) {
+                    putInt(KEY_DAYS_PLAYED, daysPlayed + 1)
+                    putLong(KEY_LAST_PLAYED_DAY, epochDay)
+                }
+                putInt(KEY_MONTHS_PLAYED, monthsPlayedMask or (1 shl (month - 1)))
+
+                writeSeasonProgress(epochDay, month, year)
+
+                if (record) putInt(KEY_BEST, score)
+        }
         return record
     }
 
@@ -237,35 +241,34 @@ class ScoreStore(context: Context) {
      * Das erreichte Bit wird dagegen NIE zurückgenommen: Verdient ist
      * verdient, auch im November.
      */
-    private fun writeSeasonProgress(
-        editor: SharedPreferences.Editor,
+    private fun KeyValueEditor.writeSeasonProgress(
         epochDay: Long,
         month: Int,
         year: Int
     ) {
         val season = Season.forMonth(month) ?: return
         val window = year * 100 + month
-        val sameWindow = prefs.getInt(KEY_SEASON_WINDOW, 0) == window
-        val daysSoFar = if (sameWindow) prefs.getInt(KEY_SEASON_DAYS, 0) else 0
+        val sameWindow = prefs.int(KEY_SEASON_WINDOW, 0) == window
+        val daysSoFar = if (sameWindow) prefs.int(KEY_SEASON_DAYS, 0) else 0
         val lastDay = if (sameWindow) {
-            prefs.getLong(KEY_SEASON_LAST_DAY, Long.MIN_VALUE)
+            prefs.long(KEY_SEASON_LAST_DAY, Long.MIN_VALUE)
         } else {
             Long.MIN_VALUE
         }
         val days = if (lastDay == epochDay) daysSoFar else daysSoFar + 1
 
-        editor.putInt(KEY_SEASON_WINDOW, window)
-        editor.putInt(KEY_SEASON_DAYS, days)
-        editor.putLong(KEY_SEASON_LAST_DAY, epochDay)
+        putInt(KEY_SEASON_WINDOW, window)
+        putInt(KEY_SEASON_DAYS, days)
+        putLong(KEY_SEASON_LAST_DAY, epochDay)
         if (days >= season.requiredDays) {
-            editor.putInt(KEY_SEASON_EARNED, seasonEarned or season.bit)
+            putInt(KEY_SEASON_EARNED, seasonEarned or season.bit)
         }
     }
 
     /** Meldet die höchste Perfekt-Serie eines Laufs. */
     fun submitPerfectStreak(streak: Int) {
         if (streak > bestPerfectStreak) {
-            prefs.edit().putInt(KEY_BEST_PERFECT, streak).apply()
+            prefs.edit { putInt(KEY_BEST_PERFECT, streak) }
         }
     }
 
@@ -282,15 +285,15 @@ class ScoreStore(context: Context) {
                 currentStreak = dailyStreak,
                 todayEpochDay = epochDay
             )
-            prefs.edit()
-                .putInt(KEY_DAILY_STREAK, streak)
-                .putLong(KEY_DAILY_DAY, epochDay)
-                .putInt(KEY_DAILY_BEST, score)
-                .apply()
+            prefs.edit {
+                putInt(KEY_DAILY_STREAK, streak)
+                putLong(KEY_DAILY_DAY, epochDay)
+                putInt(KEY_DAILY_BEST, score)
+            }
             return score > 0
         }
         if (score > dailyBest) {
-            prefs.edit().putInt(KEY_DAILY_BEST, score).apply()
+            prefs.edit { putInt(KEY_DAILY_BEST, score) }
             return true
         }
         return false
@@ -303,8 +306,8 @@ class ScoreStore(context: Context) {
      * nur für die Anzeige des Saison-Ziels (siehe Progress in :core).
      */
     fun seasonDaysFor(month: Int, year: Int): Int =
-        if (prefs.getInt(KEY_SEASON_WINDOW, 0) == year * 100 + month) {
-            prefs.getInt(KEY_SEASON_DAYS, 0)
+        if (prefs.int(KEY_SEASON_WINDOW, 0) == year * 100 + month) {
+            prefs.int(KEY_SEASON_DAYS, 0)
         } else {
             0
         }
@@ -349,7 +352,7 @@ class ScoreStore(context: Context) {
             dailyStreak = dailyStreak,
             totalScore = totalScore,
             daysPlayed = daysPlayed,
-            lastPlayedDay = prefs.getLong(KEY_LAST_PLAYED_DAY, 0L),
+            lastPlayedDay = prefs.long(KEY_LAST_PLAYED_DAY, 0L),
             monthsPlayed = monthsPlayedMask,
             seasonEarned = seasonEarned,
             // Der Gönner-Kauf wird bewusst NICHT geteilt: Er hängt am
@@ -357,18 +360,18 @@ class ScoreStore(context: Context) {
             // her. Ein mitgeteiltes Flag wäre nur eine zweite, schlechtere
             // Wahrheit — und über den Data Layer fälschbar.
             skin = if (shareSkin) chosen.name else "",
-            skinChangedAt = if (shareSkin) prefs.getLong(KEY_SKIN_CHANGED, 0L) else 0L,
+            skinChangedAt = if (shareSkin) prefs.long(KEY_SKIN_CHANGED, 0L) else 0L,
             // Die Kulisse hat keinen Tagespass, sie ist also entweder
             // verdient oder gar nicht ausgewählt — die Prüfung bleibt
             // trotzdem stehen, damit ein wiederhergestelltes Backup keine
             // ungedeckte Wahl auf die Uhr trägt.
             scene = if (sceneShared) selectedScene.name else "",
-            sceneChangedAt = if (sceneShared) prefs.getLong(KEY_SCENE_CHANGED, 0L) else 0L,
+            sceneChangedAt = if (sceneShared) prefs.long(KEY_SCENE_CHANGED, 0L) else 0L,
             // Dieselbe Prüfung für das Ton-Set: Die Uhr leitet ihre
             // Freischaltungen selbst aus den Ständen ab und würde ein
             // ungedecktes Set ohnehin abweisen.
             sound = if (soundShared) selectedSound.name else "",
-            soundChangedAt = if (soundShared) prefs.getLong(KEY_SOUND_CHANGED, 0L) else 0L
+            soundChangedAt = if (soundShared) prefs.long(KEY_SOUND_CHANGED, 0L) else 0L
         )
     }
 
@@ -388,65 +391,65 @@ class ScoreStore(context: Context) {
     fun applySync(state: SyncState): Boolean {
         val before = syncState()
         if (before == state) return false
-        val editor = prefs.edit()
-        if (state.bestScore > before.bestScore) editor.putInt(KEY_BEST, state.bestScore)
-        if (state.runCount > before.runCount) editor.putInt(KEY_RUNS, state.runCount)
-        if (state.bestPerfectStreak > before.bestPerfectStreak) {
-            editor.putInt(KEY_BEST_PERFECT, state.bestPerfectStreak)
+        prefs.edit {
+            if (state.bestScore > before.bestScore) putInt(KEY_BEST, state.bestScore)
+            if (state.runCount > before.runCount) putInt(KEY_RUNS, state.runCount)
+            if (state.bestPerfectStreak > before.bestPerfectStreak) {
+                putInt(KEY_BEST_PERFECT, state.bestPerfectStreak)
         }
         // Zahlen wachsen nur, Masken werden verodert — dieselbe Regel wie
         // in SyncState.mergedWith. Ein Monat oder ein Saison-Skin, den nur
         // die Uhr gesehen hat, darf hier nicht verlorengehen.
-        if (state.totalScore > before.totalScore) editor.putInt(KEY_TOTAL_SCORE, state.totalScore)
-        if (state.daysPlayed > before.daysPlayed) editor.putInt(KEY_DAYS_PLAYED, state.daysPlayed)
+        if (state.totalScore > before.totalScore) putInt(KEY_TOTAL_SCORE, state.totalScore)
+        if (state.daysPlayed > before.daysPlayed) putInt(KEY_DAYS_PLAYED, state.daysPlayed)
         if (state.lastPlayedDay > before.lastPlayedDay) {
-            editor.putLong(KEY_LAST_PLAYED_DAY, state.lastPlayedDay)
+            putLong(KEY_LAST_PLAYED_DAY, state.lastPlayedDay)
         }
         if (state.monthsPlayed != before.monthsPlayed) {
-            editor.putInt(KEY_MONTHS_PLAYED, before.monthsPlayed or state.monthsPlayed)
+            putInt(KEY_MONTHS_PLAYED, before.monthsPlayed or state.monthsPlayed)
         }
         if (state.seasonEarned != before.seasonEarned) {
-            editor.putInt(KEY_SEASON_EARNED, before.seasonEarned or state.seasonEarned)
+            putInt(KEY_SEASON_EARNED, before.seasonEarned or state.seasonEarned)
         }
         if (state.dailyDay != before.dailyDay ||
             state.dailyBest != before.dailyBest ||
             state.dailyStreak != before.dailyStreak
         ) {
-            editor.putLong(KEY_DAILY_DAY, state.dailyDay)
-            editor.putInt(KEY_DAILY_BEST, state.dailyBest)
-            editor.putInt(KEY_DAILY_STREAK, state.dailyStreak)
+            putLong(KEY_DAILY_DAY, state.dailyDay)
+            putInt(KEY_DAILY_BEST, state.dailyBest)
+            putInt(KEY_DAILY_STREAK, state.dailyStreak)
         }
         // Bewusst gegen den ROHEN Zeitstempel geprüft, nicht gegen den aus
         // syncState(): Wer sich gerade einen Tagespass-Skin ausgesucht
         // hat, teilt diese Wahl zwar nicht mit, soll sie aber auch nicht
         // von einer älteren Wahl der Uhr weggerissen bekommen.
-        if (state.skinChangedAt > prefs.getLong(KEY_SKIN_CHANGED, 0L)) {
-            editor.putLong(KEY_SKIN_CHANGED, state.skinChangedAt)
+        if (state.skinChangedAt > prefs.long(KEY_SKIN_CHANGED, 0L)) {
+            putLong(KEY_SKIN_CHANGED, state.skinChangedAt)
             val incoming = SkinPaint.fromName(state.skin)
             // stats() liest die Werte, die gerade erst geschrieben werden —
             // deshalb hier mit den zusammengeführten Zahlen prüfen.
             if (SkinPaint.isUnlocked(incoming, mergedStats(state, before))) {
-                editor.putString(KEY_SKIN, incoming.name)
+                putString(KEY_SKIN, incoming.name)
             }
         }
         // Dieselbe Regel für die Kulisse: Die neuere Wahl gewinnt, aber
         // nur, wenn sie hier auch verdient ist — verdient bleibt verdient.
-        if (state.sceneChangedAt > prefs.getLong(KEY_SCENE_CHANGED, 0L)) {
-            editor.putLong(KEY_SCENE_CHANGED, state.sceneChangedAt)
+        if (state.sceneChangedAt > prefs.long(KEY_SCENE_CHANGED, 0L)) {
+            putLong(KEY_SCENE_CHANGED, state.sceneChangedAt)
             val incoming = ScenePaint.fromName(state.scene)
             if (ScenePaint.isUnlocked(incoming, mergedStats(state, before))) {
-                editor.putString(KEY_SCENE, incoming.name)
+                putString(KEY_SCENE, incoming.name)
             }
         }
         // Und dieselbe für das Ton-Set.
-        if (state.soundChangedAt > prefs.getLong(KEY_SOUND_CHANGED, 0L)) {
-            editor.putLong(KEY_SOUND_CHANGED, state.soundChangedAt)
+        if (state.soundChangedAt > prefs.long(KEY_SOUND_CHANGED, 0L)) {
+            putLong(KEY_SOUND_CHANGED, state.soundChangedAt)
             val incoming = SoundBank.fromName(state.sound)
             if (SoundBank.isUnlocked(incoming, mergedStats(state, before))) {
-                editor.putString(KEY_SOUND, incoming.name)
+                putString(KEY_SOUND, incoming.name)
             }
         }
-        editor.apply()
+        }
         return true
     }
 

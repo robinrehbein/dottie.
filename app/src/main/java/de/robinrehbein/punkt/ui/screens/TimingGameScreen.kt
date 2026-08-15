@@ -42,7 +42,6 @@ import de.robinrehbein.punkt.BuildConfig
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.ads.AdsManager
 import de.robinrehbein.punkt.billing.BillingManager
-import de.robinrehbein.punkt.data.ScoreStore
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameEventChainNext
@@ -71,8 +70,9 @@ import de.robinrehbein.punkt.notify.DailyReminder
 import de.robinrehbein.punkt.play.Leaderboards
 import de.robinrehbein.punkt.share.ScoreCard
 import de.robinrehbein.punkt.sync.StatsSync
+import de.robinrehbein.punkt.ui.data.AndroidKeyValueStore
+import de.robinrehbein.punkt.ui.data.GameStore
 import de.robinrehbein.punkt.ui.resources.Res
-import de.robinrehbein.punkt.ui.resources.new_record
 import de.robinrehbein.punkt.ui.resources.banner_chain
 import de.robinrehbein.punkt.ui.resources.banner_record
 import de.robinrehbein.punkt.ui.resources.banner_stage
@@ -81,11 +81,12 @@ import de.robinrehbein.punkt.ui.resources.banner_twist_drift
 import de.robinrehbein.punkt.ui.resources.banner_twist_fake
 import de.robinrehbein.punkt.ui.resources.banner_twist_ghost
 import de.robinrehbein.punkt.ui.resources.banner_twist_pulse
+import de.robinrehbein.punkt.ui.resources.new_record
 import de.robinrehbein.punkt.ui.resources.perfect_plus
 import de.robinrehbein.punkt.ui.resources.ready_hint
 import de.robinrehbein.punkt.ui.screens.rememberTaunter
-import de.robinrehbein.punkt.ui.text.sceneTitle
 import de.robinrehbein.punkt.ui.screens.rememberTwistBanners
+import de.robinrehbein.punkt.ui.text.sceneTitle
 import de.robinrehbein.punkt.ui.world.CELEBRATE_SECONDS
 import de.robinrehbein.punkt.ui.world.FxState
 import de.robinrehbein.punkt.ui.world.drawTimingWorld
@@ -156,7 +157,7 @@ private class RunState {
 fun TimingGameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val haptics = remember { GameHaptics(context) }
-    val store = remember { ScoreStore(context) }
+    val store = remember { GameStore(AndroidKeyValueStore(context)) }
     val audio = remember {
         GameAudio(context).apply {
             muted = store.soundMuted
