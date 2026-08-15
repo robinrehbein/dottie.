@@ -12,10 +12,10 @@ Commit `b4ed73f`.
 | Bereich | Ort | Zeilen | Sprache |
 |---|---|---|---|
 | Spiellogik (geteilt) | `core/src/commonMain/kotlin` | 3506 | Kotlin |
-| Oberflaeche (geteilt) | `ui/src/commonMain` | 1027 | Kotlin (Compose Multiplatform) |
-| Phone-App | `app/src/main` | 5230 | Kotlin (Compose) |
+| Oberflaeche (geteilt) | `ui/src/commonMain` | 3234 | Kotlin (Compose Multiplatform) |
+| Phone-App | `app/src/main` | 2871 | Kotlin (Compose) |
 | Wear-App | `wear/src/main` | 2511 | Kotlin (Wear Compose) |
-| iOS: Brücke zu `:core` | `ios/Dottie/Sources/Core` | 536 | Swift |
+| iOS: Brücke zu `:core` | `ios/Dottie/Sources/Core` | 551 | Swift |
 | iOS: UI und Umfeld | `ios/Dottie/Sources/{UI,Support}` | 3658 | Swift (SpriteKit) |
 
 `:core` ist ein Kotlin-Multiplatform-Modul: `jvm()` für `:app` und
@@ -118,43 +118,70 @@ keine Bild-Assets — `TimingGameScreen.kt`, `GameOverlays.kt` und
 `PixelButton.kt` malen Rechtecke auf ein Compose-Canvas. Genau das läuft
 mit Compose Multiplatform auch auf iOS (über Skia).
 
-### Angefangen: das Modul `:ui` und die Spielwelt
+### Gebaut: `:ui` traegt die Oberflaeche
 
 `:ui` ist ein Compose-Multiplatform-Modul mit denselben vier Zielen wie
 `:core` (`androidTarget`, `iosArm64`, `iosSimulatorArm64`, `iosX64`).
-Darin liegt bisher die **Spielwelt**: Himmel, Wolken, Kulisse, Boden,
-Perlenketten-Bahn und Pixel-Vogel — 813 Zeilen `DrawScope`, die vorher
-in `:app` steckten, plus die Retro-Palette, die Pixel-Bausteine und den
-Effekt-Zustand.
+Darin liegt inzwischen alles, was die Android-App zeichnet, ausser dem
+Controller:
 
-Der Schnitt ist mit Absicht dort gemacht: Die Zeichenschicht kennt weder
-Texte noch Knöpfe noch Werbung, nur `:core` und Compose. Sie war deshalb
-die einzige größere Einheit, die sich ohne Vorarbeit teilen ließ. `:app`
-zeichnet seither über `:ui`; die Android-Wrapper `DotSkin`/`DotScene`
-tauchen im Renderer nicht mehr auf, er rechnet direkt mit `SkinId` und
-`SceneId`.
+- **Die Spielwelt** — Himmel, Wolken, Kulisse, Boden, Perlenketten-Bahn
+  und Pixel-Vogel (813 Zeilen `DrawScope`), dazu die Retro-Palette, die
+  Pixel-Bausteine und der Effekt-Zustand.
+- **Die Overlays** — `GameOverlays`, `StatsOverlay`, `PixelButton`,
+  Theme und Typografie.
+- **Die Texte** — 184 Saetze je Sprache in
+  `ui/src/commonMain/composeResources`. In `:app` bleiben 16: die, die
+  nur Android hat (Benachrichtigungen, Teilen-Text, Score-Karte).
 
-Nutzen hat das aktuell nur die Wartung: Solange iOS SpriteKit benutzt,
-läuft der geteilte Renderer nur auf Android.
+Damit sind vier Aufzaehlungen ersatzlos entfallen — `DotSkin`,
+`DotScene`, `DotSound` und `MedalTier` in `:app`. Es waren 55 Zeilen
+Zuordnung von Kennung zu Ressourcen-ID, und sie existierten nur, weil
+Android `@StringRes`-Ints verlangt. Der Schluessel wird jetzt aus dem
+Namen gerechnet (`"skin_" + name.lowercase()`), genau wie es der iOS-Port
+schon immer tat; dass zu jedem Namen ein Text existiert, prueft
+`TextsTest`.
 
-### Offen: der Rest
+Zwei inhaltliche Ausnahmen von der Namensregel stehen ausdruecklich da:
+KLASSIK hat keinen Freischalt-Hinweis, und die drei Goenner-Skins teilen
+sich einen.
 
-1. **Overlays und Texte.** `GameOverlays.kt` (1 300 Zeilen),
-   `StatsOverlay.kt` und `PixelButton.kt` sind reines Compose, hängen
-   aber an 87 `R.string`/`R.font`-Verweisen. Sie brauchen Compose
-   Resources — und damit fallen auch die Wrapper `DotSkin`, `DotScene`
-   und `DotSound` weg, die es nur gibt, um `@StringRes`-IDs zu tragen.
-2. **Der Controller.** `TimingGameScreen` ist keine Zeichenroutine,
-   sondern die Verdrahtung: Werbung, Kauf, Bestenlisten,
-   Benachrichtigungs-Berechtigung, Lebenszyklus. Er muss in einen
-   geteilten Spielablauf und eine Android-Schale zerfallen.
-3. **`expect`/`actual`** für Audio, Haptik, Persistenz und
-   Benachrichtigungen (SoundPool vs. AVAudioEngine,
-   SharedPreferences vs. UserDefaults).
-4. **iOS-Einstieg** über `ComposeUIViewController`; `ios/project.yml`
-   linkt ein zweites Framework. Erst dann fallen die 3 658 Zeilen Swift
-   unter `ios/Dottie/Sources/{UI,Support}` weg — und mit ihnen
-   `CoreBridge.swift`.
+Nach `:core` gewandert ist dabei `SkinPaint.earnedCount` — "verdient,
+Saison zaehlt mit, Kauf nicht". Daran haengt die Freischalt-Feier; es lag
+im geloeschten Wrapper und ist nicht dasselbe wie `unlockedCount`, dem
+Sammlungsstand ohne Saison.
+
+Nutzen hat das bisher nur die Wartung: Solange iOS SpriteKit benutzt,
+laeuft die geteilte Oberflaeche nur auf Android.
+
+### Offen: der Controller und der iOS-Einstieg
+
+`TimingGameScreen` (1 600 Zeilen) ist die letzte Datei der Oberflaeche,
+die in `:app` steckt — und sie ist kein Bildschirm, sondern die
+Verdrahtung. Sie beruehrt neun Android-Dienste: rund 40 Aufrufe an
+`ScoreStore` und 25 an Werbung, Kauf, Bestenlisten, Abgleich,
+Benachrichtigungen und Teilen.
+
+Was noch zu tun ist:
+
+1. **Schnittstellen statt Dienste.** Ein `GameStore` fuer die Persistenz
+   (die Regeln — Tagespass, Saison-Fenster, Serien — sind auf beiden
+   Plattformen dieselben und liegen heute doppelt: 470 Zeilen Kotlin in
+   `app/data/ScoreStore.kt`, 269 Zeilen Swift in
+   `ios/.../Support/ScoreStore.swift`), dazu `GameSounds` und
+   `GameFeedback`. Werbung, Kauf, Bestenlisten, Abgleich und Teilen
+   bleiben Android-only und haengen hinter optionalen Rueckrufen, die auf
+   iOS nichts tun.
+2. **`TimingGameScreen` nach `:ui`**, mit diesen Schnittstellen als
+   Parametern; `:app` behaelt eine duenne Schale, die sie fuellt.
+3. **`expect`/`actual`** fuer den Schluessel-Wert-Speicher
+   (SharedPreferences / NSUserDefaults), Audio und Haptik.
+4. **iOS-Einstieg** ueber `ComposeUIViewController` in `iosMain`;
+   `ios/project.yml` linkt ein zweites Framework. Erst dann fallen
+   `ios/Dottie/Sources/UI` (2 900 Zeilen SpriteKit) und
+   `CoreBridge.swift` weg. Was in Swift bleiben duerfte, sind die
+   Plattform-Adapter fuer Audio, Haptik und Benachrichtigungen — falls
+   sich AVFoundation aus Kotlin/Native als zu unhandlich erweist.
 
 **Kosten:** Die iOS-App wird ein Kotlin/Native-Compose-Build (App-Größe
 plus etwa 8–12 MB für Compose und Skia, spürbar längere CI-Läufe). AdMob,
@@ -162,7 +189,7 @@ Billing und Play Games bleiben Android-only. Der SpriteKit-Renderer wird
 weggeworfen — er ist fertig und stabil, kostet also gerade nichts.
 
 **Das eigentliche Risiko** liegt nicht auf iOS, sondern auf der Seite,
-die im Play Store steht: Schritt 1 und 2 fassen die Android-Oberfläche
-an, und es gibt keinen UI-Test, der eine Regression fangen würde. Deshalb
-endet dieser Schritt hier — die Spielwelt ist geteilt und der Umbau
-bleibt an einer Stelle stehen, an der beide Apps unverändert laufen.
+die im Play Store steht: Der Umbau fasst die Android-Oberfläche an, und
+es gibt keinen UI-Test, der eine Regression fangen würde. Abgesichert ist
+er über die Logik-Tests (`:core`, `:ui`, `:app`) und darüber, dass jeder
+Schritt an einer Stelle endet, an der beide Apps unverändert laufen.

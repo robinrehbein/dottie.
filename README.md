@@ -432,11 +432,11 @@ für alle drei Apps geändert hat. Alles Weitere in
 [parity/README.md](parity/README.md).
 
 Seit v2.24 gibt es daneben `:ui`, ein Compose-Multiplatform-Modul mit der
-**Spielwelt** — Himmel, Kulisse, Bahn und Pixel-Vogel als geteilte
-Zeichenschicht. Genutzt wird sie bisher nur von der Android-App; was
-fehlt, damit auch das iPhone sie zeichnet (Texte, Controller, Audio und
-Persistenz), steht mit Aufwand und Risiko in
-[ARCHITEKTUR.md](ARCHITEKTUR.md).
+kompletten Oberfläche außer dem Controller: Spielwelt, Overlays, Theme
+und die Texte (184 Sätze je Sprache, vorher zweimal im Repo). Genutzt
+wird sie bisher nur von der Android-App; was fehlt, damit auch das iPhone
+sie zeichnet — der Controller und der iOS-Einstieg —, steht mit Aufwand
+und Risiko in [ARCHITEKTUR.md](ARCHITEKTUR.md).
 
 ## Wear-OS-Prototyp (experimentell)
 
