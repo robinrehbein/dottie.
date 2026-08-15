@@ -110,6 +110,15 @@ final class GameScene: SKScene {
     private var skinOverlay: SkinOverlay?
     private var statsOverlay: StatsOverlay?
 
+    /// Wahr, solange die Berührung läuft, die den Skin-Picker gerade
+    /// geöffnet hat. Der Picker geht in touchesBegan auf, aber
+    /// touchesMoved/touchesEnded bekommen DENSELBEN Finger noch geliefert —
+    /// ohne diese Sperre wertete der Picker ein Loslassen aus, für das er nie
+    /// ein touchBegan gesehen hat: `dragStartY`/`dragStartOffset` sind dann
+    /// von vorhin, und der Öffnen-Tap schlägt als Zeilenwahl oder als
+    /// Schließen durch. Zurückgesetzt beim nächsten touchesBegan.
+    private var skinsOpenedByThisTouch = false
+
     // MARK: - Aufbau
 
     override func didMove(to view: SKView) {
@@ -784,6 +793,8 @@ final class GameScene: SKScene {
             return
         }
         let location = touch.location(in: self)
+        // Ein neuer Finger: Die Sperre des vorigen ist damit erledigt.
+        skinsOpenedByThisTouch = false
 
         // Hilfe/Skins konsumieren den Tap komplett — er darf nicht
         // gleichzeitig als Spiel-Tap (Sofort-Neustart!) durchschlagen.
@@ -826,14 +837,16 @@ final class GameScene: SKScene {
     /// Nur der Skin-Picker hört mit: Im Spiel selbst entscheidet allein
     /// touchesBegan, ein Wischen darf dort nichts auslösen.
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first, let skins = skinOverlay, !skins.isHidden else {
+        guard let touch = touches.first, let skins = skinOverlay, !skins.isHidden,
+              !skinsOpenedByThisTouch else {
             return
         }
         skins.touchMoved(to: touch.location(in: self))
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first, let skins = skinOverlay, !skins.isHidden else {
+        guard let touch = touches.first, let skins = skinOverlay, !skins.isHidden,
+              !skinsOpenedByThisTouch else {
             return
         }
         switch skins.touchEnded(at: touch.location(in: self), stats: store.stats()) {
@@ -871,6 +884,12 @@ final class GameScene: SKScene {
         case "btn.skins":
             skinOverlay?.refresh(stats: store.stats(), selected: skin, selectedScene: selectedScene)
             skinOverlay?.isHidden = false
+            // Der Picker ist ab jetzt sichtbar, der Finger liegt aber noch
+            // auf dem Knopf: Sein Loslassen gehört nicht mehr diesem Tap.
+            // Statt dem Picker hier ein touchBegan unterzuschieben (er
+            // deutete das Loslassen dann als Tipp auf die Zeile unter dem
+            // SKINS-Knopf) wird die Berührung schlicht ignoriert.
+            skinsOpenedByThisTouch = true
         case "btn.stats":
             // Beim Öffnen einmal rechnen: Die Seite steht still, solange
             // sie offen ist.

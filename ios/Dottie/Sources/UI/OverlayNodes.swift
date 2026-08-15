@@ -711,7 +711,47 @@ final class GameOverOverlay: SKNode {
 }
 
 /// Vollflächige Spiel-Erklärung über dunklem Scrim; Tap schließt.
+///
+/// Der Inhalt steht fest — Titel, fünf Regelzeilen, fünf Twists und der
+/// Schließen-Hinweis — nur der Platz nicht: Auf einem 4,7-Zoll-Display
+/// (667 Punkt) lief der Stapel unten aus dem Bild, ausgerechnet mit dem
+/// Hinweis, wie man die Seite wieder loswird.
+///
+/// Anders als bei der Statistik-Seite lässt sich der Bedarf nicht
+/// vorrechnen: Die Regelzeilen brechen um, und wie oft, hängt an Sprache
+/// und Gerätebreite. Deshalb wird gestapelt und danach gemessen — steht
+/// die letzte Zeile zu tief, wird der Stapel verworfen und mit dem
+/// kompakten Maßsatz neu aufgebaut. Ab 4,7 Zoll Plus (736 Punkt) passt
+/// der normale Satz, dort sieht die Seite aus wie eh und je.
 final class HelpOverlay: SKNode {
+
+    /// Ein Satz Maße für den Stapel. Zwei feste Sätze statt einer
+    /// Skalierung des ganzen Knotens: Der Pixel-Font bleibt nur bei
+    /// ganzen Schriftgrößen scharf, und genau darauf steht das Spiel.
+    private struct Metrics {
+        let top: CGFloat
+        let title: CGFloat
+        let body: CGFloat
+        let twistsHeader: CGFloat
+        let twistTitle: CGFloat
+        let twistText: CGFloat
+        let foot: CGFloat
+        /// Abstand unter jeder Zeile.
+        let lineGap: CGFloat
+        /// Abstand von der Twist-Überschrift zu ihrer Erklärung.
+        let twistTitleStep: CGFloat
+        /// Abstand unter einem fertigen Twist-Block.
+        let twistGap: CGFloat
+
+        static let standard = Metrics(
+            top: 120, title: 32, body: 15, twistsHeader: 24, twistTitle: 15,
+            twistText: 13, foot: 14, lineGap: 8, twistTitleStep: 20, twistGap: 10
+        )
+        static let compact = Metrics(
+            top: 96, title: 26, body: 13, twistsHeader: 20, twistTitle: 13,
+            twistText: 12, foot: 13, lineGap: 6, twistTitleStep: 18, twistGap: 8
+        )
+    }
 
     init(sceneSize: CGSize) {
         super.init()
@@ -725,22 +765,44 @@ final class HelpOverlay: SKNode {
         scrim.position = CGPoint(x: w / 2, y: h / 2)
         addChild(scrim)
 
-        var y = h - 120
+        // Der Inhalt hängt an einem eigenen Knoten, damit ein misslungener
+        // Versuch in einem Zug wieder verschwindet — der Scrim bleibt.
+        let content = SKNode()
+        addChild(content)
+        // 32 Punkt über dem unteren Rand: Darunter beginnt bei Geräten mit
+        // Home-Indikator dessen Streifen, und eine Zeile, die halb darunter
+        // liegt, liest niemand mehr.
+        if stack(into: content, sceneSize: sceneSize, metrics: .standard) < 32 {
+            content.removeAllChildren()
+            _ = stack(into: content, sceneSize: sceneSize, metrics: .compact)
+        }
+    }
+
+    /// Stapelt die Seite von oben nach unten in `content` und liefert die
+    /// Höhe zurück, auf der die letzte Zeile (der Schließen-Hinweis)
+    /// gelandet ist — daran entscheidet sich, ob der Maßsatz getaugt hat.
+    private func stack(into content: SKNode, sceneSize: CGSize, metrics: Metrics) -> CGFloat {
+        let w = sceneSize.width
+        let h = sceneSize.height
+
+        var y = h - metrics.top
+        var lastY = y
         func addCentered(_ text: String, _ fontSize: CGFloat, _ color: UIColor, shadow: Bool = false, gapAfter: CGFloat = 0) {
             let label = PixelLabel(text: text, fontSize: fontSize, color: color, shadow: shadow, maxWidth: w - 56)
             label.position = CGPoint(x: w / 2, y: y)
-            addChild(label)
+            content.addChild(label)
             let height = label.calculateAccumulatedFrame().height
-            y -= max(height, fontSize) + 8 + gapAfter
+            lastY = y
+            y -= max(height, fontSize) + metrics.lineGap + gapAfter
         }
 
-        addCentered(L10n.text("help_title"), 32, .white, shadow: true, gapAfter: 6)
-        addCentered(L10n.text("help_line1"), 15, .white)
-        addCentered(L10n.text("help_line2"), 15, .white)
-        addCentered(L10n.text("help_line3"), 15, Palette.dotBody)
-        addCentered(L10n.text("help_line4"), 15, Palette.dotBody)
-        addCentered(L10n.text("help_line5"), 15, .white, gapAfter: 10)
-        addCentered(L10n.text("help_twists"), 24, Palette.bannerOrange, shadow: true, gapAfter: 4)
+        addCentered(L10n.text("help_title"), metrics.title, .white, shadow: true, gapAfter: 6)
+        addCentered(L10n.text("help_line1"), metrics.body, .white)
+        addCentered(L10n.text("help_line2"), metrics.body, .white)
+        addCentered(L10n.text("help_line3"), metrics.body, Palette.dotBody)
+        addCentered(L10n.text("help_line4"), metrics.body, Palette.dotBody)
+        addCentered(L10n.text("help_line5"), metrics.body, .white, gapAfter: 10)
+        addCentered(L10n.text("help_twists"), metrics.twistsHeader, Palette.bannerOrange, shadow: true, gapAfter: 4)
 
         let twists: [(UIColor, String, String)] = [
             (Palette.grassLight, "twist_pulse_title", "twist_pulse_text"),
@@ -752,24 +814,27 @@ final class HelpOverlay: SKNode {
         for (color, titleKey, textKey) in twists {
             let swatch = SKSpriteNode(color: color, size: CGSize(width: 14, height: 14))
             swatch.position = CGPoint(x: 44, y: y)
-            addChild(swatch)
-            let title = PixelLabel(text: L10n.text(titleKey), fontSize: 15, color: color, shadow: false)
+            content.addChild(swatch)
+            let title = PixelLabel(
+                text: L10n.text(titleKey), fontSize: metrics.twistTitle, color: color, shadow: false
+            )
             title.position = CGPoint(x: 60, y: y)
             titleAlignLeft(title)
-            addChild(title)
-            y -= 20
+            content.addChild(title)
+            y -= metrics.twistTitleStep
             let text = PixelLabel(
-                text: L10n.text(textKey), fontSize: 13,
+                text: L10n.text(textKey), fontSize: metrics.twistText,
                 color: UIColor(white: 1, alpha: 0.85), shadow: false, maxWidth: w - 100
             )
             text.position = CGPoint(x: 60, y: y)
             titleAlignLeft(text)
-            addChild(text)
-            y -= max(text.calculateAccumulatedFrame().height, 16) + 10
+            content.addChild(text)
+            y -= max(text.calculateAccumulatedFrame().height, 16) + metrics.twistGap
         }
 
-        addCentered(L10n.text("help_max_twists"), 14, .white, gapAfter: 10)
-        addCentered(L10n.text("tap_to_close"), 14, UIColor(white: 1, alpha: 0.6))
+        addCentered(L10n.text("help_max_twists"), metrics.foot, .white, gapAfter: 10)
+        addCentered(L10n.text("tap_to_close"), metrics.foot, UIColor(white: 1, alpha: 0.6))
+        return lastY
     }
 
     /// Stellt alle Kind-Labels eines PixelLabels auf linksbündig um.
