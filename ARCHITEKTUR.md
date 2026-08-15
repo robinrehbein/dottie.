@@ -181,23 +181,44 @@ iOS-Einstieg aufgefallen.
 
 `TimingGameScreen` (1 600 Zeilen) ist die letzte Datei der Oberflaeche in
 `:app` — und sie ist kein Bildschirm, sondern die Verdrahtung. Nach den
-drei Schnittstellen bleiben 25 Beruehrungspunkte, die wirklich nur
-Android hat: Werbung, Kauf, Bestenlisten, Abgleich mit der Uhr,
-Benachrichtigungs-Berechtigung, Teilen.
+Schnittstellen oben bleiben genau diese Beruehrungspunkte, die wirklich
+nur Android hat. Sie sind hier vollstaendig aufgelistet, damit der Umzug
+nicht noch einmal gesucht werden muss:
 
-Was noch zu tun ist:
+| Was | Wo im Bildschirm | Auf iOS |
+|---|---|---|
+| `ads.enabled`, `ads.status`, `ads.rewardedReady` | Diagnose-Zeile, Skin-Menue | immer `false` |
+| `ads.start()`, `ads.onGameOver(activity)` | Aufbau, Tod | entfaellt |
+| `ads.showRewarded(activity) { … }` | Tagespass im Skin-Menue | entfaellt |
+| `ads.privacyOptionsRequired`, `showPrivacyOptions` | READY-Overlay | entfaellt |
+| `billing.priceLabel`, `patronPriceLabel`, `status` | READY, Skin-Menue | `null` |
+| `billing.purchase/purchasePatron(activity)` | READY, Skin-Menue | entfaellt |
+| `billing.connect()`, `release()` | Lebenszyklus | entfaellt |
+| `leaderboards.available/connect/show` | READY-Overlay | entfaellt |
+| `leaderboards.submitBest/submitDaily` | Tod | entfaellt |
+| `statsSync.start/stop/publish` | Lebenszyklus, nach jeder Wahl | entfaellt |
+| `DailyReminder.schedule/cancel/needsPermission` | READY-Schalter | spaeter UNUserNotificationCenter |
+| `notifPermission.launch(POST_NOTIFICATIONS)` | READY-Schalter | entfaellt |
+| `ScoreCard.share(…)` | Game-Over | spaeter UIActivityViewController |
+| `LocalLifecycleOwner` | Start/Stopp des Abgleichs | Compose Multiplatform hat kein Pendant |
 
-1. **`TimingGameScreen` nach `:ui`**, mit `GameStore`, `GameSounds` und
-   `GameFeedback` als Parametern. Die 25 Android-Punkte haengen an
-   optionalen Rueckrufen, die auf iOS nichts tun; `:app` behaelt eine
-   duenne Schale, die sie fuellt.
-2. **iOS-Umsetzungen** in `iosMain`: `NSUserDefaults` fuer den Speicher,
-   `UIImpactFeedbackGenerator` fuer die Haptik, AVAudioEngine fuer den
-   Klang.
-3. **iOS-Einstieg** ueber `ComposeUIViewController`; `ios/project.yml`
-   linkt ein zweites Framework. Erst dann fallen
-   `ios/Dottie/Sources/UI` (2 900 Zeilen SpriteKit) und
-   `CoreBridge.swift` weg.
+**Der Umbau in drei Schritten**
+
+1. Ein `PlatformHooks` in `:ui` mit genau diesen Punkten als Werte und
+   Rueckrufe, alle mit einem Standard, der nichts tut. Der Bildschirm
+   zieht `GameStore`, `GameSounds`, `GameFeedback` und `PlatformHooks`
+   als Parameter und heisst `GameScreen`.
+2. `:app` behaelt eine duenne `TimingGameScreen`-Schale, die die Dienste
+   baut und die Rueckrufe fuellt — die einzige Datei, die noch `Activity`
+   und `LocalLifecycleOwner` kennt.
+3. `iosMain` bekommt `IosSounds` (AVAudioEngine; `ChipSynth` aus `:core`
+   liefert die Samples, wie es der SpriteKit-Port heute schon tut) und
+   `fun MainViewController() = ComposeUIViewController { GameScreen(…) }`.
+   `ios/project.yml` linkt `DottieUi.xcframework`,
+   `GameViewController.swift` haengt den Controller ein.
+
+Erst danach fallen `ios/Dottie/Sources/UI` (2 900 Zeilen SpriteKit) und
+`CoreBridge.swift` weg.
 
 **Kosten:** Die iOS-App wird ein Kotlin/Native-Compose-Build (App-Größe
 plus etwa 8–12 MB für Compose und Skia, spürbar längere CI-Läufe). AdMob,
