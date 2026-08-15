@@ -12,7 +12,8 @@ Commit `b4ed73f`.
 | Bereich | Ort | Zeilen | Sprache |
 |---|---|---|---|
 | Spiellogik (geteilt) | `core/src/commonMain/kotlin` | 3506 | Kotlin |
-| Phone-App | `app/src/main` | 6157 | Kotlin (Compose) |
+| Oberflaeche (geteilt) | `ui/src/commonMain` | 1027 | Kotlin (Compose Multiplatform) |
+| Phone-App | `app/src/main` | 5230 | Kotlin (Compose) |
 | Wear-App | `wear/src/main` | 2511 | Kotlin (Wear Compose) |
 | iOS: Brücke zu `:core` | `ios/Dottie/Sources/Core` | 536 | Swift |
 | iOS: UI und Umfeld | `ios/Dottie/Sources/{UI,Support}` | 3658 | Swift (SpriteKit) |
@@ -117,28 +118,51 @@ keine Bild-Assets — `TimingGameScreen.kt`, `GameOverlays.kt` und
 `PixelButton.kt` malen Rechtecke auf ein Compose-Canvas. Genau das läuft
 mit Compose Multiplatform auch auf iOS (über Skia).
 
-Damit wäre nicht nur die Engine geteilt, sondern der komplette Renderer
-samt Overlays: eine UI für Telefon und iPhone, `CoreBridge.swift`
-überflüssig, `ios/` auf einen Einstiegspunkt geschrumpft.
+### Angefangen: das Modul `:ui` und die Spielwelt
 
-**Was zu tun wäre**
+`:ui` ist ein Compose-Multiplatform-Modul mit denselben vier Zielen wie
+`:core` (`androidTarget`, `iosArm64`, `iosSimulatorArm64`, `iosX64`).
+Darin liegt bisher die **Spielwelt**: Himmel, Wolken, Kulisse, Boden,
+Perlenketten-Bahn und Pixel-Vogel — 813 Zeilen `DrawScope`, die vorher
+in `:app` steckten, plus die Retro-Palette, die Pixel-Bausteine und den
+Effekt-Zustand.
 
-1. Ein Modul `:ui` mit `kotlin("multiplatform")` und dem
-   Compose-Multiplatform-Plugin; die Zeichen-Ebene aus `:app` dorthin
-   verschieben (Canvas, Overlays, Pixel-Font).
-2. `expect`/`actual` für Audio, Haptik, Persistenz und Benachrichtigungen.
-3. Geteilte Texte (Compose Resources) statt `strings.xml` +
-   `Localizable.strings`.
-4. iOS-Einstieg über `ComposeUIViewController`; `ios/project.yml` linkt
-   ein zweites Framework.
+Der Schnitt ist mit Absicht dort gemacht: Die Zeichenschicht kennt weder
+Texte noch Knöpfe noch Werbung, nur `:core` und Compose. Sie war deshalb
+die einzige größere Einheit, die sich ohne Vorarbeit teilen ließ. `:app`
+zeichnet seither über `:ui`; die Android-Wrapper `DotSkin`/`DotScene`
+tauchen im Renderer nicht mehr auf, er rechnet direkt mit `SkinId` und
+`SceneId`.
+
+Nutzen hat das aktuell nur die Wartung: Solange iOS SpriteKit benutzt,
+läuft der geteilte Renderer nur auf Android.
+
+### Offen: der Rest
+
+1. **Overlays und Texte.** `GameOverlays.kt` (1 300 Zeilen),
+   `StatsOverlay.kt` und `PixelButton.kt` sind reines Compose, hängen
+   aber an 87 `R.string`/`R.font`-Verweisen. Sie brauchen Compose
+   Resources — und damit fallen auch die Wrapper `DotSkin`, `DotScene`
+   und `DotSound` weg, die es nur gibt, um `@StringRes`-IDs zu tragen.
+2. **Der Controller.** `TimingGameScreen` ist keine Zeichenroutine,
+   sondern die Verdrahtung: Werbung, Kauf, Bestenlisten,
+   Benachrichtigungs-Berechtigung, Lebenszyklus. Er muss in einen
+   geteilten Spielablauf und eine Android-Schale zerfallen.
+3. **`expect`/`actual`** für Audio, Haptik, Persistenz und
+   Benachrichtigungen (SoundPool vs. AVAudioEngine,
+   SharedPreferences vs. UserDefaults).
+4. **iOS-Einstieg** über `ComposeUIViewController`; `ios/project.yml`
+   linkt ein zweites Framework. Erst dann fallen die 3 658 Zeilen Swift
+   unter `ios/Dottie/Sources/{UI,Support}` weg — und mit ihnen
+   `CoreBridge.swift`.
 
 **Kosten:** Die iOS-App wird ein Kotlin/Native-Compose-Build (App-Größe
 plus etwa 8–12 MB für Compose und Skia, spürbar längere CI-Läufe). AdMob,
 Billing und Play Games bleiben Android-only. Der SpriteKit-Renderer wird
-weggeworfen — er ist fertig und stabil, kostet also gerade nichts. Und
-der Umbau fasst die Android-UI an, die heute läuft: Das Risiko liegt
-nicht auf iOS, sondern auf der Seite, die im Store steht.
+weggeworfen — er ist fertig und stabil, kostet also gerade nichts.
 
-**Empfehlung:** Erst, wenn eine Änderung an der Darstellung regelmäßig
-zweimal gebaut werden muss. Die Engine war der teure Teil der Dopplung,
-und der ist weg.
+**Das eigentliche Risiko** liegt nicht auf iOS, sondern auf der Seite,
+die im Play Store steht: Schritt 1 und 2 fassen die Android-Oberfläche
+an, und es gibt keinen UI-Test, der eine Regression fangen würde. Deshalb
+endet dieser Schritt hier — die Spielwelt ist geteilt und der Umbau
+bleibt an einer Stelle stehen, an der beide Apps unverändert laufen.

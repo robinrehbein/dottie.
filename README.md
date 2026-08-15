@@ -431,9 +431,12 @@ komplette Läufe fest. `./gradlew :core:jvmTest` prüft dagegen,
 für alle drei Apps geändert hat. Alles Weitere in
 [parity/README.md](parity/README.md).
 
-Was noch doppelt existiert — die Renderer, die Texte, Audio und
-Persistenz — und was ein Zusammenlegen mit Compose Multiplatform kosten
-würde, steht in [ARCHITEKTUR.md](ARCHITEKTUR.md).
+Seit v2.24 gibt es daneben `:ui`, ein Compose-Multiplatform-Modul mit der
+**Spielwelt** — Himmel, Kulisse, Bahn und Pixel-Vogel als geteilte
+Zeichenschicht. Genutzt wird sie bisher nur von der Android-App; was
+fehlt, damit auch das iPhone sie zeichnet (Texte, Controller, Audio und
+Persistenz), steht mit Aufwand und Risiko in
+[ARCHITEKTUR.md](ARCHITEKTUR.md).
 
 ## Wear-OS-Prototyp (experimentell)
 

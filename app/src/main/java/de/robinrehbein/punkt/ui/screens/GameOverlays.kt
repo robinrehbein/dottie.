@@ -59,60 +59,37 @@ import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.components.PixelIcon
 import de.robinrehbein.punkt.ui.components.PixelIconButton
 import de.robinrehbein.punkt.ui.theme.Bytesized
+import de.robinrehbein.punkt.ui.world.GRID
+import de.robinrehbein.punkt.ui.world.drawCloud
+import de.robinrehbein.punkt.ui.world.drawPixelCircle
+import de.robinrehbein.punkt.ui.world.BlockBody
+import de.robinrehbein.punkt.ui.world.BlockCap
+import de.robinrehbein.punkt.ui.world.BlockDark
+import de.robinrehbein.punkt.ui.world.BlockLight
+import de.robinrehbein.punkt.ui.world.BushColor
+import de.robinrehbein.punkt.ui.world.BushShadeColor
+import de.robinrehbein.punkt.ui.world.CloudColor
+import de.robinrehbein.punkt.ui.world.DotBody
+import de.robinrehbein.punkt.ui.world.DotShade
+import de.robinrehbein.punkt.ui.world.DotShine
+import de.robinrehbein.punkt.ui.world.FxState
+import de.robinrehbein.punkt.ui.world.GrassDark
+import de.robinrehbein.punkt.ui.world.GrassLight
+import de.robinrehbein.punkt.ui.world.GroundSand
+import de.robinrehbein.punkt.ui.world.GroundSandShade
+import de.robinrehbein.punkt.ui.world.OutlineColor
+import de.robinrehbein.punkt.ui.world.PanelSand
+import de.robinrehbein.punkt.ui.world.RecordRed
+import de.robinrehbein.punkt.ui.world.SkyColor
+import de.robinrehbein.punkt.ui.world.TextDark
+import de.robinrehbein.punkt.ui.world.TrunkColor
+import de.robinrehbein.punkt.ui.world.TrunkShade
 import java.time.LocalDateTime
-
-// ===== Gemeinsame Retro-Farbpalette =====
-internal val SkyColor = Color(0xFF4EC0CA)
-internal val CloudColor = Color(0xFFE9FCFD)
-internal val BushColor = Color(0xFF71C837)
-internal val BushShadeColor = Color(0xFF5AA82C)
-internal val TrunkColor = Color(0xFF9C6B3C)
-internal val TrunkShade = Color(0xFF7A4E2A)
-internal val GroundSand = Color(0xFFDED895)
-internal val GroundSandShade = Color(0xFFD3C87E)
-internal val GrassLight = Color(0xFF9DE85A)
-internal val GrassDark = Color(0xFF74BF2E)
-internal val OutlineColor = Color(0xFF543847)
-internal val BlockBody = Color(0xFFE0862E)
-internal val BlockLight = Color(0xFFF2A959)
-internal val BlockDark = Color(0xFFA65E1E)
-internal val BlockCap = Color(0xFFFFD28A)
-internal val DotBody = Color(0xFFFFD847)
-internal val DotShade = Color(0xFFF5A623)
-internal val DotShine = Color(0xFFFFF3B8)
-internal val PanelSand = Color(0xFFDED895)
-internal val TextDark = Color(0xFF543847)
-internal val RecordRed = Color(0xFFE53935)
 
 internal val ScoreShadowStyle = TextStyle(
     fontFamily = Bytesized,
     shadow = Shadow(color = OutlineColor, offset = Offset(4f, 4f), blurRadius = 0f)
 )
-
-/** Nicht-Compose-State für Effekte, wird pro Frame im Canvas gelesen. */
-internal class FxState {
-    var flashAlpha = 0f
-    var shakeTime = 0f
-
-    /** Restzeit der Freischalt-Zelebration (goldener Ring + Schimmer). */
-    var celebrateTime = 0f
-
-    /** Sekunden seit dem Tod (Mario-Hüpfer), negativ = kein Tod aktiv. */
-    var deathTime = -1f
-
-    /**
-     * Alle Effekte auf den Ruhezustand — nötig überall dort, wo ein Lauf
-     * endet, ohne dass gleich der nächste startet (Rückkehr ins Menü).
-     * Vor allem [deathTime]: Bliebe der Sturz aktiv, wäre der Vogel im
-     * READY-Bild längst unten aus dem Kader gefallen und unsichtbar.
-     */
-    fun reset() {
-        flashAlpha = 0f
-        shakeTime = 0f
-        celebrateTime = 0f
-        deathTime = -1f
-    }
-}
 
 // ===== Overlays =====
 
@@ -1295,70 +1272,4 @@ internal fun pickTaunt(
     val line = pool[(score + previousBest) % pool.size]
     // Nur die "knapp daneben"-Zeilen tragen einen %1$d-Platzhalter.
     return if (line.contains("%1\$d")) line.format(gap) else line
-}
-
-// ===== Gemeinsame Zeichen-Helfer =====
-
-internal const val GRID = 13f
-
-/**
- * Zeichnet einen blockigen "Pixel"-Kreis aus Rasterzellen. Die Füllfarbe
- * kommt pro Feld aus [cell] — so zeichnet dieselbe Routine einfarbige,
- * gemusterte und animierte Skins (siehe SkinPaint in :core).
- */
-internal fun DrawScope.drawPixelCircle(
-    outline: Color,
-    centerX: Float,
-    centerY: Float,
-    radius: Float,
-    alpha: Float = 1f,
-    cell: (col: Int, row: Int) -> Color
-) {
-    val n = GRID.toInt()
-    val u = (radius * 2f) / GRID
-    val mid = (GRID - 1f) / 2f
-    val rr = GRID / 2f - 0.25f
-
-    for (row in 0 until n) {
-        for (col in 0 until n) {
-            val dx = col - mid
-            val dy = row - mid
-            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-            if (dist <= rr) {
-                val cellColor = if (dist > rr - 1.1f) outline else cell(col, row)
-                drawRect(
-                    color = cellColor,
-                    topLeft = Offset(centerX - radius + col * u, centerY - radius + row * u),
-                    size = Size(u + 0.5f, u + 0.5f),
-                    alpha = alpha
-                )
-            }
-        }
-    }
-}
-
-/** Einfarbige Variante mit Schattenseite — für Münzen und Deko. */
-internal fun DrawScope.drawPixelCircle(
-    color: Color,
-    outline: Color,
-    centerX: Float,
-    centerY: Float,
-    radius: Float,
-    shade: Color = color
-) {
-    drawPixelCircle(outline, centerX, centerY, radius) { col, row ->
-        if (col + row > GRID * 1.15f) shade else color
-    }
-}
-
-/**
- * Blockige Retro-Wolke aus drei gestapelten Rechtecken. Die Farbe kommt
- * seit den Kulissen von außen (ScenePaint) — der Standard ist die Wolke
- * der WIESE, damit Aufrufer ohne Kulisse unverändert bleiben.
- */
-internal fun DrawScope.drawCloud(x: Float, y: Float, cell: Float, color: Color = CloudColor) {
-    val u = cell * 2f
-    drawRect(color = color, topLeft = Offset(x, y + u * 2), size = Size(u * 14, u * 3))
-    drawRect(color = color, topLeft = Offset(x + u * 2, y), size = Size(u * 7, u * 2))
-    drawRect(color = color, topLeft = Offset(x + u * 4, y - u * 1.5f), size = Size(u * 4, u * 1.5f))
 }

@@ -36,6 +36,9 @@ import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.game.Progress
 import de.robinrehbein.punkt.ui.theme.Bytesized
+import de.robinrehbein.punkt.ui.world.DotBody
+import de.robinrehbein.punkt.ui.world.GroundSandShade
+import de.robinrehbein.punkt.ui.world.OutlineColor
 import kotlin.math.max
 
 /**

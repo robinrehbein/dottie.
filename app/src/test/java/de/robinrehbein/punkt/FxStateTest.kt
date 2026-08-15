@@ -1,6 +1,6 @@
 package de.robinrehbein.punkt
 
-import de.robinrehbein.punkt.ui.screens.FxState
+import de.robinrehbein.punkt.ui.world.FxState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

@@ -33,9 +33,13 @@ class RendererSourceTest {
      * Die Renderer, die das Ringband zeichnen. Die SpriteKit-Szene steht
      * mit in der Liste: Sie lässt sich hier nicht kompilieren, aber
      * lesen kann man sie — und ein Rückfall dort wäre genauso teuer.
+     *
+     * Seit v2.24 zeichnen Telefon und (künftig) iPhone aus demselben
+     * Modul: `:ui` trägt die Spielwelt, `:wear` hat wegen der runden
+     * Anzeige weiterhin einen eigenen Renderer.
      */
     private val renderer = listOf(
-        "app/src/main/java/de/robinrehbein/punkt/ui/screens/TimingGameScreen.kt",
+        "ui/src/commonMain/kotlin/de/robinrehbein/punkt/ui/world/WorldRenderer.kt",
         "wear/src/main/java/de/robinrehbein/punkt/wear/WearRenderer.kt",
         "ios/Dottie/Sources/UI/GameScene.swift"
     )
