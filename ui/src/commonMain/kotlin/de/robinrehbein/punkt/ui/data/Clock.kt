@@ -20,3 +20,22 @@ expect fun epochMillis(): Long
  * `LocalDateTime`, auf iOS `NSCalendar`.
  */
 expect fun deviceHourAndMonth(): Pair<Int, Int>
+
+/**
+ * Der Kalender des Geraets in einer Ablesung.
+ *
+ * Alle vier Werte zusammen, weil sie zusammengehoeren: Ein Lauf um
+ * Mitternacht darf seinen Tag nicht aus der einen und seinen Monat nicht
+ * aus der naechsten Ablesung bekommen.
+ */
+data class DeviceCalendar(
+    /** Tage seit 1970-01-01 in der lokalen Zeitzone. */
+    val epochDay: Long,
+    /** Kalendermonat 1-12. */
+    val month: Int,
+    val year: Int,
+    /** Stunde 0-23. */
+    val hour: Int
+)
+
+expect fun deviceCalendar(): DeviceCalendar

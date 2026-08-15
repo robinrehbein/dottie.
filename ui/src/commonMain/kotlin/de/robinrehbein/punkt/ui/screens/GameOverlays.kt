@@ -501,7 +501,8 @@ fun GameOverOverlay(
     newMedal: Boolean,
     // Das nächstliegende offene Ziel — null, wenn alles gesammelt ist.
     goal: Goal?,
-    onShare: () -> Unit,
+    /** null = diese Plattform kann nicht teilen; dann faellt der Knopf weg. */
+    onShare: (() -> Unit)?,
     onMenu: () -> Unit,
     onHelp: () -> Unit
 ) {
@@ -684,7 +685,7 @@ fun GameOverOverlay(
             Spacer(modifier = Modifier.height(20.dp))
 
             Row {
-                PixelButton(
+                if (onShare != null) PixelButton(
                     text = stringResource(Res.string.share),
                     onClick = onShare,
                     backgroundColor = DotBody,
