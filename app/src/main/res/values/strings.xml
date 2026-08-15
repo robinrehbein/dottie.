@@ -224,6 +224,19 @@
     <string name="sound_hint_amboss">25,000 POINTS TOTAL</string>
     <string name="sound_tap_hear">TAP TO HEAR</string>
 
+    <!-- Rahmen der Score-Karte: die vierte Sammlung und die einzige, die
+         andere Leute zu sehen bekommen. Die Stufen bauen aufeinander auf,
+         die Schwellen zaehlen verdiente Skins (ohne Saison und Goenner). -->
+    <string name="frames">FRAMES</string>
+    <string name="frame_schlicht">PLAIN</string>
+    <string name="frame_doppellinie">DOUBLE LINE</string>
+    <string name="frame_zinnen">BATTLEMENT</string>
+    <string name="frame_pracht">SPLENDOUR</string>
+    <string name="frame_hint_doppellinie">COLLECT 10 SKINS</string>
+    <string name="frame_hint_zinnen">COLLECT 20 SKINS</string>
+    <string name="frame_hint_pracht">COLLECT 30 SKINS</string>
+    <string name="frame_on_card">SHOWS ON THE CARD YOU SHARE</string>
+
     <!-- Statistik-Seite (ab v2.22): Die vier Ausdauer-Achsen liefen seit
          v2.20 unsichtbar mit — hier stehen sie samt naechster Ziele. -->
     <string name="stats">STATS</string>
