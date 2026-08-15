@@ -64,10 +64,25 @@ enum SoundEvent: String, CaseIterable {
 
 enum SoundBank {
 
-    /// Ein Ton. Bleibt `fromHz` gleich `toHz`, ist es eine Rechteckwelle;
+    /// Die Wellenformen, die der Baukasten kennt. Mehr als zwei sind es
+    /// bewusst nicht: Der Chip, dem dieses Spiel seinen Klang schuldet,
+    /// hatte Pulskanäle, einen Dreieckkanal und Rauschen — aber keine Säge.
+    enum Wave: String {
+        /// Rechteck mit einstellbarer Pulsbreite — hell und schneidend.
+        case puls = "PULS"
+
+        /// Dreieck: nur ungerade Oberwellen, quadratisch gedämpft. Weich
+        /// und flötenartig; die Pulsbreite bleibt ungelesen.
+        case dreieck = "DREIECK"
+    }
+
+    /// Ein Ton. Bleibt `fromHz` gleich `toHz`, ist es ein stehender Ton;
     /// sonst ein Gleitton. `duty` ist die Pulsbreite und der eigentliche
     /// Charakterregler: 0,5 klingt rund, 0,125 dünn und nasal. Beim
-    /// Gleitton steht sie immer auf 0,5 — `sweep` kennt keine Pulsbreite.
+    /// Gleitton und beim Dreieck steht sie immer auf 0,5 — beide kennen
+    /// keine Pulsbreite. `wave` ist die Form; sie steht am Ton und nicht
+    /// am Set, weil die Glocke ihre weiche Form bis in den Gleitton des
+    /// Todes hinein braucht.
     struct Tone {
         let fromHz: Float
         let toHz: Float
@@ -75,6 +90,7 @@ enum SoundBank {
         let volume: Float
         let decay: Float
         let duty: Float
+        let wave: Wave
     }
 
     /// Rauschanteil, der über die Töne gelegt wird. Er beginnt zugleich
@@ -112,16 +128,28 @@ enum SoundBank {
     ) -> Tone {
         return Tone(
             fromHz: hz, toHz: hz, seconds: seconds,
-            volume: volume, decay: decay, duty: duty
+            volume: volume, decay: decay, duty: duty, wave: .puls
+        )
+    }
+
+    /// Ein Dreieck-Ton fester Höhe — dieselben vier Zahlen, nur die weiche
+    /// Form. Ohne Pulsbreite, weil ein Dreieck keine hat.
+    private static func dreieck(
+        _ hz: Float, _ seconds: Float, _ volume: Float, _ decay: Float
+    ) -> Tone {
+        return Tone(
+            fromHz: hz, toHz: hz, seconds: seconds,
+            volume: volume, decay: decay, duty: 0.5, wave: .dreieck
         )
     }
 
     private static func glide(
-        _ fromHz: Float, _ toHz: Float, _ seconds: Float, _ volume: Float, _ decay: Float
+        _ fromHz: Float, _ toHz: Float, _ seconds: Float, _ volume: Float, _ decay: Float,
+        wave: Wave = .puls
     ) -> Tone {
         return Tone(
             fromHz: fromHz, toHz: toHz, seconds: seconds,
-            volume: volume, decay: decay, duty: 0.5
+            volume: volume, decay: decay, duty: 0.5, wave: wave
         )
     }
 
@@ -150,22 +178,27 @@ enum SoundBank {
         .thud: voice([tone(100, 0.09, 0.5, 14)])
     ]
 
-    /// Glocke: weich und rund. Eine Oktave über dem Bestand, volle
-    /// Pulsbreite, langes Nachklingen. Kein Ereignis trägt Rauschen, auch
-    /// der Tod nicht: Hier zerbricht nichts, hier geht das Licht aus.
+    /// Glocke: weich und rund. Eine Oktave über dem Bestand, jeder Ton ein
+    /// Dreieck, langes Nachklingen. Kein Ereignis trägt Rauschen, auch der
+    /// Tod nicht: Hier zerbricht nichts, hier geht das Licht aus.
+    ///
+    /// Die Form trägt hier mehr als die Tonhöhe: Ein Rechteck in dieser
+    /// Lage sticht, das Dreieck lässt die geraden Oberwellen weg.
     private static let glocke: [SoundEvent: Voice] = [
-        .start: voice([tone(659, 0.16, 0.18, 5)]),
-        .hit: voice([tone(988, 0.2, 0.26, 5)]),
-        .perfect: voice([tone(1319, 0.14, 0.24, 4), tone(1976, 0.3, 0.26, 3)]),
-        .chain: voice([tone(1568, 0.12, 0.22, 5), tone(2093, 0.18, 0.22, 4)]),
+        .start: voice([dreieck(659, 0.16, 0.18, 5)]),
+        .hit: voice([dreieck(988, 0.2, 0.26, 5)]),
+        .perfect: voice([dreieck(1319, 0.14, 0.24, 4), dreieck(1976, 0.3, 0.26, 3)]),
+        .chain: voice([dreieck(1568, 0.12, 0.22, 5), dreieck(2093, 0.18, 0.22, 4)]),
         .unlock: voice([
-            tone(784, 0.14, 0.2, 4), tone(1047, 0.14, 0.2, 4), tone(1568, 0.36, 0.24, 2.5)
+            dreieck(784, 0.14, 0.2, 4), dreieck(1047, 0.14, 0.2, 4), dreieck(1568, 0.36, 0.24, 2.5)
         ]),
         .record: voice([
-            tone(1047, 0.16, 0.22, 3), tone(1319, 0.16, 0.22, 3), tone(2093, 0.5, 0.26, 2)
+            dreieck(1047, 0.16, 0.22, 3), dreieck(1319, 0.16, 0.22, 3), dreieck(2093, 0.5, 0.26, 2)
         ]),
-        .death: voice([glide(932, 294, 0.55, 0.28, 2.5)]),
-        .thud: voice([tone(220, 0.26, 0.3, 5)])
+        // Auch der Tod ist ein Dreieck — ein Rechteck-Gleitton wäre der
+        // eine harte Moment in einem Set, das sonst keinen hat.
+        .death: voice([glide(932, 294, 0.55, 0.28, 2.5, wave: .dreieck)]),
+        .thud: voice([dreieck(220, 0.26, 0.3, 5)])
     ]
 
     /// Amboss: hart, tief und sparsam. Jeder Ton unter 450 Hz, jede

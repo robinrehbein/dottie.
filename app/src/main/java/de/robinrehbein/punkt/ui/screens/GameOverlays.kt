@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.DotCardFrame
 import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.game.MedalTier
@@ -1033,6 +1035,8 @@ internal fun SkinOverlay(
     onSelectScene: (DotScene) -> Unit,
     selectedSound: DotSound,
     onSelectSound: (DotSound) -> Unit,
+    selectedCardFrame: DotCardFrame?,
+    onSelectCardFrame: (DotCardFrame) -> Unit,
     onClose: () -> Unit,
     skinPass: DotSkin? = null,
     adOfferReady: Boolean = false,
@@ -1148,6 +1152,53 @@ internal fun SkinOverlay(
                             fontSize = 14.sp,
                             color = when {
                                 sound == selectedSound -> DotBody
+                                open -> Color.White.copy(alpha = 0.7f)
+                                else -> Color.White.copy(alpha = 0.45f)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Die Rahmen zuletzt unter den drei kleinen Sammlungen: Sie
+            // sind die einzige, die im Spiel selbst nicht vorkommt —
+            // sichtbar wird sie erst auf der geteilten Karte.
+            //
+            // Die angezeigte Wahl ist nie null: Wer nie gewählt hat,
+            // steht auf seiner höchsten verdienten Stufe, und genau die
+            // trägt seine Karte auch.
+            SkinFamilyHeading(stringResource(R.string.frames))
+            val wirksamerRahmen = DotCardFrame.effective(selectedCardFrame, stats)
+            DotCardFrame.entries.forEach { frame ->
+                val open = frame.isUnlocked(stats)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = open) { onSelectCardFrame(frame) }
+                        .padding(horizontal = 48.dp, vertical = 10.dp)
+                ) {
+                    Canvas(modifier = Modifier.size(36.dp)) {
+                        drawCardFramePreview(frame, alpha = if (open) 1f else 0.3f)
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = stringResource(frame.titleRes),
+                            fontFamily = Bytesized,
+                            fontSize = 20.sp,
+                            color = if (open) Color.White else Color.White.copy(alpha = 0.45f)
+                        )
+                        Text(
+                            text = when {
+                                frame == wirksamerRahmen -> stringResource(R.string.skin_selected)
+                                open -> stringResource(R.string.frame_on_card)
+                                else -> frame.unlockHintRes?.let { stringResource(it) } ?: ""
+                            },
+                            fontFamily = Bytesized,
+                            fontSize = 14.sp,
+                            color = when {
+                                frame == wirksamerRahmen -> DotBody
                                 open -> Color.White.copy(alpha = 0.7f)
                                 else -> Color.White.copy(alpha = 0.45f)
                             }
@@ -1361,6 +1412,61 @@ private fun DrawScope.drawSoundPreview(sound: DotSound, alpha: Float) {
             size = Size(breite, hoehe),
             alpha = alpha
         )
+    }
+}
+
+/**
+ * Vorschau einer Rahmenstufe: eine leere Karte im Seitenverhältnis der
+ * echten, mit genau dem Rahmen, den sie bekäme.
+ *
+ * Bewusst ohne Inhalt — kein Punkt, kein Titel, keine Zahl. Die Kachel
+ * beantwortet eine einzige Frage („wie dick und wie verziert ist der
+ * Rand"), und alles andere darin wäre bei 36 dp ohnehin nur Grieß.
+ */
+private fun DrawScope.drawCardFramePreview(frame: DotCardFrame, alpha: Float) {
+    val d = size.minDimension
+    // Die Karte ist breiter als hoch; die Kachel ist quadratisch. Also
+    // ein liegendes Rechteck mittig einsetzen, statt zu verzerren.
+    val h = d * 0.72f
+    val top = (d - h) / 2f
+    val staerke = when (frame) {
+        DotCardFrame.SCHLICHT -> d / 18f
+        DotCardFrame.DOPPELLINIE -> d / 12f
+        DotCardFrame.ZINNEN -> d / 8f
+        DotCardFrame.PRACHT -> d / 6f
+    }
+
+    drawRect(color = OutlineColor, topLeft = Offset(0f, top), size = Size(d, h), alpha = alpha)
+    drawRect(
+        color = PanelSand,
+        topLeft = Offset(staerke, top + staerke),
+        size = Size(d - staerke * 2f, h - staerke * 2f),
+        alpha = alpha
+    )
+    // Ab der zweiten Stufe liegt ein farbiges Band im Rahmen — dasselbe
+    // Erkennungszeichen wie auf der Karte selbst.
+    if (frame != DotCardFrame.SCHLICHT) {
+        val band = staerke / 3f
+        drawRect(
+            color = DotBody,
+            topLeft = Offset(band, top + band),
+            size = Size(d - band * 2f, h - band * 2f),
+            alpha = alpha,
+            style = Stroke(width = band)
+        )
+    }
+    // Die Prachtstufe bekommt ihre Eckrosetten, sonst sähe sie aus wie
+    // eine bloß dickere Zinnenstufe.
+    if (frame == DotCardFrame.PRACHT) {
+        val eck = staerke * 0.8f
+        listOf(
+            Offset(0f, top),
+            Offset(d - eck, top),
+            Offset(0f, top + h - eck),
+            Offset(d - eck, top + h - eck)
+        ).forEach {
+            drawRect(color = DotBody, topLeft = it, size = Size(eck, eck), alpha = alpha)
+        }
     }
 }
 

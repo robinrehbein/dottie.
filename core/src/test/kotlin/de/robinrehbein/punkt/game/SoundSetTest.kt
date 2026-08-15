@@ -1,5 +1,6 @@
 package de.robinrehbein.punkt.game
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -102,6 +103,31 @@ class SoundSetTest {
     }
 
     @Test
+    fun `ein Dreieck traegt keine erfundene Pulsbreite`() {
+        // Dieselbe Regel wie beim Gleitton, aus demselben Grund:
+        // ChipSynth.triangle nimmt keine Pulsbreite entgegen, also darf
+        // in der Tabelle keine stehen, die etwas anderes behauptet.
+        SoundSetId.entries.forEach { id ->
+            toene(id).filter { it.wave == Wave.DREIECK }.forEach {
+                assertEquals("Dreieck in $id mit fremder Pulsbreite", 0.5f, it.duty, 1e-6f)
+            }
+        }
+    }
+
+    @Test
+    fun `der Bestand bleibt Rechteck`() {
+        // Die Dreieckwelle kam für die GLOCKE dazu. Rutschte sie in den
+        // Bestand, klänge KLASSIK anders als vor der Umstellung — und
+        // genau das darf eine neue Wellenform nie tun.
+        toene(SoundSetId.KLASSIK).forEach {
+            assertEquals("KLASSIK ist Rechteck, nicht Dreieck", Wave.PULS, it.wave)
+        }
+        toene(SoundSetId.AMBOSS).forEach {
+            assertEquals("Der AMBOSS ist Rechteck: seine Härte ist die Kante", Wave.PULS, it.wave)
+        }
+    }
+
+    @Test
     fun `kein Set klingt bei einem Ereignis wie ein anderes`() {
         // Der eigentliche Sinn der Sammlung: Ein Set muss sich beim ersten
         // Treffer verraten, nicht erst im Vergleich zweier Aufnahmen.
@@ -144,10 +170,15 @@ class SoundSetTest {
 
     @Test
     fun `die Glocke klingt nach und zerbricht nie`() {
-        // Der Charakter in Zahlen: volle Pulsbreite (rund), langsames
-        // Abklingen (singend), kein Rauschen (weich) — auch beim Tod.
+        // Der Charakter in Zahlen: Dreieckwelle (weich), langsames
+        // Abklingen (singend), kein Rauschen — auch beim Tod.
+        //
+        // Die Form ist hier die eigentliche Zusicherung. Ohne sie wäre
+        // die GLOCKE nur ein hoch gestimmter Bestand: dieselbe Kante,
+        // dieselben geraden Oberwellen, bloß weiter oben — und in hoher
+        // Lage sticht ein Rechteck mehr, statt weicher zu werden.
         toene(SoundSetId.GLOCKE).forEach {
-            assertEquals("Die GLOCKE ist rund, nicht nasal", 0.5f, it.duty, 1e-6f)
+            assertEquals("Die GLOCKE ist ein Dreieck, kein Rechteck", Wave.DREIECK, it.wave)
             assertTrue("Die GLOCKE klingt nach: ${it.decay}", it.decay <= 5f)
         }
         SoundEvent.entries.forEach {
@@ -269,6 +300,58 @@ class SoundSetTest {
         )
         // Und ohne Angabe bleibt es das Standard-Set.
         assertArrayEquals(effects.getValue("hit"), ChipSynth.effects().getValue("hit"))
+    }
+
+    @Test
+    fun `die Dreieckwelle wird auch wirklich gerendert`() {
+        // Der Test, der zählt: Ein Wave-Feld, das die Tabelle setzt und
+        // der Synthesizer überliest, wäre an den Zahlen der Tabelle nicht
+        // zu sehen — die GLOCKE klänge weiter wie ein hoher Bestand, und
+        // jeder andere Test hier bliebe grün.
+        //
+        // Unterschieden wird an der Form der Samples: Eine Rechteckwelle
+        // springt zwischen +Hüllkurve und -Hüllkurve und hält sich nie
+        // dazwischen auf. Ein Dreieck durchläuft alles dazwischen.
+        fun anteilInDerMitte(samples: FloatArray): Float {
+            val spitze = samples.maxOf { abs(it) }
+            val mitte = samples.count { abs(it) < spitze * 0.5f }
+            return mitte.toFloat() / samples.size
+        }
+
+        val rechteck = ChipSynth.square(440f, 0.2f, volume = 0.4f, decay = 0f)
+        val dreieck = ChipSynth.triangle(440f, 0.2f, volume = 0.4f, decay = 0f)
+
+        // Ohne Abklingen sitzt das Rechteck praktisch nur auf den Spitzen;
+        // was dazwischen liegt, sind die Flanken und die Attack-Rampe.
+        assertTrue(
+            "Ein Rechteck darf sich nicht in der Mitte aufhalten: ${anteilInDerMitte(rechteck)}",
+            anteilInDerMitte(rechteck) < 0.05f
+        )
+        // Beim Dreieck ist die Hälfte der Zeit die untere Hälfte der
+        // Auslenkung — das ist die Definition der Form.
+        assertTrue(
+            "Ein Dreieck muss durch die Mitte laufen: ${anteilInDerMitte(dreieck)}",
+            anteilInDerMitte(dreieck) > 0.4f
+        )
+
+        // Und dasselbe am fertigen Set. Hier hilft der Anteil-Test nicht
+        // mehr: Die Hüllkurve zieht jeden abklingenden Ton Richtung null,
+        // und ein schnell abklingendes Rechteck sähe damit aus wie ein
+        // Dreieck. Verglichen wird deshalb Sample für Sample gegen beide
+        // Formen — eindeutig und unabhängig vom Abklingen.
+        val ton = SoundBank.voice(SoundSetId.GLOCKE, SoundEvent.HIT).tones.single()
+        val glocke = ChipSynth.effects(SoundSetId.GLOCKE).getValue("hit")
+        assertArrayEquals(
+            "Der Treffer der GLOCKE ist nicht das, was triangle() liefert",
+            ChipSynth.triangle(ton.fromHz, ton.seconds, ton.volume, ton.decay),
+            glocke,
+            1e-6f
+        )
+        assertFalse(
+            "Der Treffer der GLOCKE ist eine Rechteckwelle geblieben",
+            ChipSynth.square(ton.fromHz, ton.seconds, ton.volume, ton.decay, ton.duty)
+                .contentEquals(glocke)
+        )
     }
 
     @Test

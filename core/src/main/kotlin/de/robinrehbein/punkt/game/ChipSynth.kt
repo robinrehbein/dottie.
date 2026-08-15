@@ -1,8 +1,34 @@
 package de.robinrehbein.punkt.game
 
+import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.pow
 import kotlin.random.Random
+
+/**
+ * Die Wellenformen, die der Baukasten kennt.
+ *
+ * Mehr als zwei sind es bewusst nicht. Eine Sägezahnwelle klänge im
+ * NES-Rahmen wie ein Fremdkörper — der Chip, dem dieses Spiel seinen
+ * Klang schuldet, hatte zwei Pulskanäle, einen Dreieckkanal und
+ * Rauschen, aber keine Säge. Wer eine dritte Form hinzufügt, sollte
+ * also erst sagen können, welches Ton-Set sie braucht.
+ */
+enum class Wave {
+    /**
+     * Rechteck mit einstellbarer Pulsbreite — hell, schneidend, der
+     * Klang des Bestands. Die Pulsbreite ist hier der Charakterregler.
+     */
+    PULS,
+
+    /**
+     * Dreieck: nur ungerade Oberwellen, und die fallen quadratisch statt
+     * linear ab. Klingt deshalb weich und flötenartig statt schneidend,
+     * und trägt in hoher Lage, wo ein Rechteck sticht. Die Pulsbreite
+     * bleibt hier ungelesen — ein Dreieck hat keine.
+     */
+    DREIECK
+}
 
 /**
  * Purer Kotlin-Synthesizer für Chiptune-Soundeffekte im NES-Stil:
@@ -32,16 +58,30 @@ object ChipSynth {
         volume: Float = 0.4f,
         decay: Float = 14f,
         duty: Float = 0.5f
-    ): FloatArray = render(seconds, volume, decay) { _ -> freqHz to duty }
+    ): FloatArray = render(seconds, volume, decay, Wave.PULS) { _ -> freqHz to duty }
 
-    /** Rechteckwelle, deren Frequenz linear von [fromHz] nach [toHz] gleitet. */
+    /**
+     * Dreieckwelle mit fester Frequenz — dieselbe Hüllkurve wie
+     * [square], nur eine weichere Form. Keine Pulsbreite: Ein Dreieck
+     * hat keine, und ein Parameter, den niemand liest, wäre eine Lüge
+     * in der Signatur.
+     */
+    fun triangle(
+        freqHz: Float,
+        seconds: Float,
+        volume: Float = 0.4f,
+        decay: Float = 14f
+    ): FloatArray = render(seconds, volume, decay, Wave.DREIECK) { _ -> freqHz to 0.5f }
+
+    /** Welle, deren Frequenz linear von [fromHz] nach [toHz] gleitet. */
     fun sweep(
         fromHz: Float,
         toHz: Float,
         seconds: Float,
         volume: Float = 0.4f,
-        decay: Float = 5f
-    ): FloatArray = render(seconds, volume, decay) { progress ->
+        decay: Float = 5f,
+        wave: Wave = Wave.PULS
+    ): FloatArray = render(seconds, volume, decay, wave) { progress ->
         (fromHz + (toHz - fromHz) * progress) to 0.5f
     }
 
@@ -107,10 +147,13 @@ object ChipSynth {
     fun render(voice: Voice): FloatArray {
         val tones = concat(
             *voice.tones.map { t ->
-                if (t.fromHz == t.toHz) {
-                    square(t.fromHz, t.seconds, volume = t.volume, decay = t.decay, duty = t.duty)
-                } else {
-                    sweep(t.fromHz, t.toHz, t.seconds, volume = t.volume, decay = t.decay)
+                when {
+                    t.fromHz != t.toHz ->
+                        sweep(t.fromHz, t.toHz, t.seconds, t.volume, t.decay, t.wave)
+                    t.wave == Wave.DREIECK ->
+                        triangle(t.fromHz, t.seconds, volume = t.volume, decay = t.decay)
+                    else ->
+                        square(t.fromHz, t.seconds, volume = t.volume, decay = t.decay, duty = t.duty)
                 }
             }.toTypedArray()
         )
@@ -165,11 +208,20 @@ object ChipSynth {
         return out
     }
 
-    /** Rendert eine Rechteckwelle; [voice] liefert pro Fortschritt Frequenz und Duty. */
+    /**
+     * Rendert eine Welle; [voice] liefert pro Fortschritt Frequenz und
+     * Pulsbreite, [shape] die Form.
+     *
+     * Beide Formen teilen sich Phasenlauf und Hüllkurve — nur die eine
+     * Zeile, die aus der Phase einen Wert macht, unterscheidet sie. Das
+     * ist der Grund, warum ein zweites Ton-Set kein zweiter Synthesizer
+     * ist.
+     */
     private inline fun render(
         seconds: Float,
         volume: Float,
         decay: Float,
+        shape: Wave,
         voice: (progress: Float) -> Pair<Float, Float>
     ): FloatArray {
         val n = (seconds * SAMPLE_RATE).toInt()
@@ -178,7 +230,19 @@ object ChipSynth {
         for (i in 0 until n) {
             val t = i.toFloat() / SAMPLE_RATE
             val (freq, duty) = voice(if (n > 1) i.toFloat() / (n - 1) else 0f)
-            val wave = if (phase < duty) 1f else -1f
+            val wave = when (shape) {
+                // Unverändert gegenüber der Fassung vor der Dreieckwelle:
+                // Der Bestand darf sich nicht um ein Sample verschieben.
+                Wave.PULS -> if (phase < duty) 1f else -1f
+                // Um eine Viertelperiode verschoben, damit der Ton im
+                // Nulldurchgang beginnt und steigt. Ohne die Verschiebung
+                // stünde bei Phase 0 der Scheitel, und die Attack-Rampe
+                // arbeitete gegen einen Sprung von 0 auf 1.
+                Wave.DREIECK -> {
+                    val q = (phase + 0.25f) % 1f
+                    1f - 4f * abs(q - 0.5f)
+                }
+            }
             out[i] = wave * volume * envelope(i, n, t, decay)
             phase += freq / SAMPLE_RATE
             if (phase >= 1f) phase -= 1f

@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.DotCardFrame
 import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.Season
 import de.robinrehbein.punkt.game.SyncState
@@ -137,6 +138,27 @@ class ScoreStore(context: Context) {
                 .putString(KEY_SOUND, value.name)
                 .putLong(KEY_SOUND_CHANGED, System.currentTimeMillis())
                 .apply()
+        }
+
+    /**
+     * Gewählter Rahmen der Score-Karte — null heißt "nie gewählt", und
+     * das ist etwas anderes als SCHLICHT. Wer nie gewählt hat, bekommt
+     * automatisch seine höchste verdiente Stufe; erst eine Wahl macht
+     * SCHLICHT zu einer Entscheidung statt zu einem Anfangszustand.
+     *
+     * Anders als Skin, Kulisse und Ton-Set wird der Rahmen **nicht** mit
+     * der Uhr abgeglichen und trägt deshalb auch keinen Zeitstempel: Die
+     * Uhr hat keine Score-Karte. Ein Wert, den die Gegenseite nicht
+     * benutzen kann, gehört nicht in den [SyncState] — er wäre nur ein
+     * weiteres Feld, das auseinanderlaufen kann, ohne dass es jemandem
+     * auffällt.
+     */
+    var selectedCardFrame: DotCardFrame?
+        get() = DotCardFrame.fromName(prefs.getString(KEY_CARD_FRAME, null))
+        set(value) {
+            prefs.edit().apply {
+                if (value == null) remove(KEY_CARD_FRAME) else putString(KEY_CARD_FRAME, value.name)
+            }.apply()
         }
 
     // ===== Skin-Tagespass (Rewarded) =====
@@ -507,6 +529,7 @@ class ScoreStore(context: Context) {
         const val KEY_SCENE_CHANGED = "scene_changed_at"
         const val KEY_SOUND = "selected_sound"
         const val KEY_SOUND_CHANGED = "sound_changed_at"
+        const val KEY_CARD_FRAME = "selected_card_frame"
         const val KEY_ADS_REMOVED = "ads_removed"
         const val KEY_DAILY_BEST = "daily_best"
         const val KEY_DAILY_DAY = "daily_day"

@@ -47,6 +47,7 @@ import de.robinrehbein.punkt.data.ScoreStore
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.DotCardFrame
 import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
@@ -240,6 +241,10 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     // Und das Ton-Set als dritte Sammlung — dieselbe Bauart, nur hört
     // man sie, statt sie zu sehen.
     var sound by remember { mutableStateOf(store.selectedSound) }
+    // Der Rahmen der Score-Karte als vierte Sammlung. null heisst "nie
+    // gewaehlt" und ist etwas anderes als SCHLICHT: Ohne Wahl traegt die
+    // Karte automatisch die hoechste verdiente Stufe.
+    var cardFrame by remember { mutableStateOf(store.selectedCardFrame) }
     // Der per Spot geliehene Skin des heutigen Tages (null = keiner).
     var skinPass by remember {
         mutableStateOf(store.skinPassFor(LocalDate.now().toEpochDay()))
@@ -643,11 +648,14 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                         scene = scene,
                         daily = dailyMode,
                         dailyStreak = dailyStreak,
-                        // Rahmen und Beiname hängen am Gesamtstand, nicht
-                        // am Lauf — der Stand wird erst beim Tippen auf
-                        // TEILEN geholt, damit er den eben gezählten Lauf
-                        // sicher enthält.
-                        stats = store.stats().toSkinStats()
+                        // Der Beiname hängt am Gesamtstand, nicht am Lauf —
+                        // der Stand wird erst beim Tippen auf TEILEN
+                        // geholt, damit er den eben gezählten Lauf sicher
+                        // enthält. Für den Rahmen gilt dasselbe: Wer sich
+                        // die Stufe im letzten Lauf verdient hat, teilt
+                        // sie auch.
+                        stats = store.stats().toSkinStats(),
+                        cardFrame = cardFrame?.id
                     )
                 },
                 onMenu = {
@@ -743,6 +751,14 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     // muss sofort raus, sonst ueberschreibt sie beim
                     // naechsten Abgleich die juengere Wahl der Gegenseite.
                     statsSync.publish()
+                },
+                selectedCardFrame = cardFrame,
+                onSelectCardFrame = {
+                    cardFrame = it
+                    store.selectedCardFrame = it
+                    // Kein statsSync.publish(): Der Rahmen wird nicht mit
+                    // der Uhr abgeglichen, weil die Uhr keine Score-Karte
+                    // hat. Siehe ScoreStore.selectedCardFrame.
                 },
                 selectedScene = scene,
                 onSelectScene = {

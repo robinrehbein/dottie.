@@ -97,15 +97,58 @@ object CardStyle {
      */
     val FRAME_STEPS = intArrayOf(10, 20, 30)
 
-    /** Rahmenstufe zu einem Sammlungsstand. */
+    /** Die höchste Rahmenstufe zu einem Sammlungsstand. */
     fun frame(collected: Int): CardFrame {
         var stufe = 0
         FRAME_STEPS.forEach { if (collected >= it) stufe++ }
         return CardFrame.entries[stufe]
     }
 
-    /** Rahmenstufe zu einem Spielstand — der Weg, den der Zeichencode nimmt. */
+    /**
+     * Die höchste verdiente Rahmenstufe zu einem Spielstand — die
+     * Vorgabe, solange niemand etwas anderes gewählt hat.
+     */
     fun frame(stats: SkinStats): CardFrame = frame(SkinPaint.unlockedCount(stats))
+
+    /**
+     * Ist diese Stufe verdient? [CardFrame.SCHLICHT] immer — er ist der
+     * Bestand und damit kein Fund, sondern der Ausgangspunkt.
+     *
+     * Dass die Stufen aufeinander aufbauen, macht die Frage einfacher als
+     * bei Skins oder Ton-Sets: Wer die dritte Stufe hat, hat auch die
+     * zweite. Eine eigene Schwellenliste je Stufe wäre hier eine Lüge
+     * über die Sammlung.
+     */
+    fun isUnlocked(frame: CardFrame, stats: SkinStats): Boolean =
+        frame.ordinal <= frame(stats).ordinal
+
+    /** Wie viele Rahmenstufen offen sind — reine Leistungsanzeige. */
+    fun unlockedCount(stats: SkinStats): Int = frame(stats).ordinal + 1
+
+    /**
+     * Der Rahmen, den die Karte trägt: die Wahl, falls sie verdient ist —
+     * sonst die höchste verdiente Stufe.
+     *
+     * Der Rückfall ist kein Randfall, sondern der Normalfall beim ersten
+     * Mal: Wer nie gewählt hat ([gewaehlt] ist null), bekommt weiterhin
+     * automatisch seine höchste Stufe. Die Karte ändert sich also durch
+     * die Einführung der Wahl für niemanden — sie wird nur wählbar.
+     *
+     * Der zweite Fall ist seltener und unangenehmer: Ein gespeicherter
+     * Rahmen, der nicht mehr verdient ist. Das kann beim Abgleich mit
+     * einem anderen Gerät passieren, dessen Spielstand weiter war. Dann
+     * gewinnt der Spielstand und nicht die gespeicherte Wahl — sonst
+     * trüge eine Karte einen Rahmen, den ihr Stand nicht deckt.
+     */
+    fun frame(gewaehlt: CardFrame?, stats: SkinStats): CardFrame {
+        val hoechste = frame(stats)
+        if (gewaehlt == null || gewaehlt.ordinal > hoechste.ordinal) return hoechste
+        return gewaehlt
+    }
+
+    /** Rahmenstufe zu einem gespeicherten Namen, null bei Unbekanntem. */
+    fun fromName(name: String?): CardFrame? =
+        CardFrame.entries.firstOrNull { it.name == name }
 
     /**
      * Die Maße des Bestands: die Karte, wie sie vor den Rahmen aussah.
