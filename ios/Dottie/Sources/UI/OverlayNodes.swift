@@ -697,7 +697,7 @@ final class GameOverOverlay: SKNode {
             goalLabel.text = L10n.format(
                 "goal_progress", L10n.text(goal.titleKey), Int(goal.current), Int(goal.target)
             )
-            goalBar.fraction = goal.fraction
+            goalBar.fraction = CGFloat(goal.fraction)
         }
         goalLabel.isHidden = goal == nil
         goalBar.isHidden = goal == nil

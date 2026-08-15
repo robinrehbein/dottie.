@@ -530,17 +530,16 @@ final class GameScene: SKScene {
             return
         }
         lastPhase = phase
-        switch phase {
-        case .ready:
+        // `GamePhase` kommt aus :core und ist in Swift eine Klasse, kein
+        // `enum` — `switch` kann seine Vollstaendigkeit nicht beweisen.
+        if phase == .ready {
             enterReady()
-        case .running:
+        } else if phase == .running {
             readyOverlay?.isHidden = true
             overOverlay?.isHidden = true
             hud?.isHidden = false
             hud?.dailyLabel.isHidden = !dailyMode
-        case .dying:
-            break
-        case .over:
+        } else if phase == .over {
             hud?.isHidden = true
             overOverlay?.configure(
                 score: Int(game.score),
@@ -558,6 +557,8 @@ final class GameScene: SKScene {
             )
             overOverlay?.isHidden = false
         }
+        // GamePhase.DYING braucht keinen Zweig: Der Sturz laeuft im
+        // Renderer weiter, die Overlays bleiben, wie sie sind.
     }
 
     private func enterReady() {
