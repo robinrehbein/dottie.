@@ -39,7 +39,7 @@ class ParityVectorsTest {
         assertEquals(
             "Die Kotlin-Engine liefert andere Werte als parity/golden-vectors.txt. " +
                 "Wenn das gewollt ist: ./gradlew :core:test -Dparity.update=true " +
-                "und die Ports in ios/ und web/ nachziehen.",
+                "und den Port in ios/ nachziehen.",
             file.readText(),
             generated
         )

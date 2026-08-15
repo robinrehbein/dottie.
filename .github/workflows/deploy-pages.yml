@@ -1,17 +1,22 @@
-# Veröffentlicht die Web-PWA (web/) plus Datenschutzerklärung auf
-# GitHub Pages unter der eigenen Domain dottie.robinrehbein.de.
+# Veröffentlicht die Datenschutzerklärung auf GitHub Pages unter der
+# eigenen Domain dottie.robinrehbein.de.
 # Voraussetzung: Settings → Pages → Source "GitHub Actions".
 #
+# Bis v2.22 lag hier auch die Web-Version des Spiels (web/). Die ist mit
+# der Konzentration auf die nativen Apps entfallen — der letzte Stand
+# steht im Commit b4ed73f. Was bleibt, hängt an der laufenden Android-App
+# und muss deshalb erreichbar bleiben:
+#
 # Site-Layout:
-#   /            -> das Spiel (web/, Cache-First-Service-Worker)
-#   /datenschutz -> docs/index.html (Datenschutz-URL fürs Play-Listing)
+#   /             -> Datenschutzerklärung (damit die Domain nicht ins Leere läuft)
+#   /datenschutz/ -> dieselbe Seite unter der URL, die im Play-Eintrag steht
+#   /app-ads.txt  -> Verkäufer-Verifikation für AdMob
 name: Deploy Pages
 
 on:
   push:
     branches: [main]
     paths:
-      - "web/**"
       - "docs/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
@@ -42,15 +47,18 @@ jobs:
         with:
           enablement: true
 
-      - name: Web-Tests
-        run: node web/tests/run-tests.js
-
       - name: Site zusammenstellen
         run: |
           mkdir -p _site/datenschutz
-          cp -r web/. _site/
-          rm -rf _site/tests _site/README.md
+          # Die im Play-Eintrag hinterlegte URL endet auf /datenschutz/ und
+          # darf sich nicht ändern — ein toter Datenschutz-Link kann den
+          # Store-Eintrag kosten. Dieselbe Seite liegt zusätzlich auf der
+          # Wurzel, damit die Domain nicht mit einem 404 antwortet.
           cp docs/index.html _site/datenschutz/index.html
+          cp docs/index.html _site/index.html
+          # AdMob prüft die Verkäufer-Verifikation unter der Domain, die im
+          # Play-Eintrag als Website steht.
+          cp docs/app-ads.txt _site/app-ads.txt
           # Pages soll die Dateien 1:1 ausliefern, kein Jekyll-Build
           touch _site/.nojekyll
           # Eigene Domain. Die Datei muss im veröffentlichten Verzeichnis

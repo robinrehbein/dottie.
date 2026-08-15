@@ -81,14 +81,20 @@ Keystore ist nur der Upload-Key und ließe sich notfalls erneut tauschen.
 ## Datenschutzerklärung (Pflicht fürs Listing)
 
 Liegt als statische Seite unter `docs/index.html`. Veröffentlicht wird
-sie zusammen mit der Web-PWA über den Workflow
-`.github/workflows/deploy-pages.yml` (läuft bei jedem Push auf `main`,
-der `web/` oder `docs/` ändert):
+sie über den Workflow `.github/workflows/deploy-pages.yml` (läuft bei
+jedem Push auf `main`, der `docs/` ändert):
 
-- `https://dottie.robinrehbein.de/` → das Spiel (Web-PWA)
 - `https://dottie.robinrehbein.de/datenschutz/` → die
   Datenschutzerklärung — **diese URL** im Play-Listing als
   Datenschutz-URL eintragen
+- `https://dottie.robinrehbein.de/` → dieselbe Seite, damit die Domain
+  nicht mit einem 404 antwortet
+- `https://dottie.robinrehbein.de/app-ads.txt` → die
+  Verkäufer-Verifikation für AdMob (siehe unten)
+
+Bis v2.22 lag unter der Wurzel die Web-Version des Spiels. Sie ist mit
+der Konzentration auf die nativen Apps entfallen; die Domain und beide
+oben genannten URLs bleiben unverändert — daran hängt der Play-Eintrag.
 
 Einmalige Voraussetzungen:
 
@@ -347,7 +353,7 @@ Die Datei beweist Anzeigen-Käufern, dass unser Werbeplatz echt ist —
 ohne sie fällt ein Teil der Nachfrage weg, weil manche Käufer
 ausschließlich auf verifiziertes Inventar bieten.
 
-Sie liegt als `web/app-ads.txt` im Repo und wird damit unter
+Sie liegt als `docs/app-ads.txt` im Repo und wird damit unter
 `https://dottie.robinrehbein.de/app-ads.txt` ausgeliefert. Inhalt:
 
 ```

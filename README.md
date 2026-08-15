@@ -91,7 +91,7 @@ Wachstum ein:
 
   Farben und Schwellen liegen in `SkinPaint` (`:core`): Ein Skin ist dort
   eine Funktion über das 13x13-Raster des Vogels, kein Tripel aus drei
-  Farben mehr — Android, Wear, PWA und iOS zeichnen alle dasselbe Raster.
+  Farben mehr — Android, Wear und iOS zeichnen alle dasselbe Raster.
   Zwei Regeln sichert `:core` per Test ab: Kein Skin färbt sich flächig
   wie die grüne Zielzone — mit zwei benannten Ausnahmen im Bestand, denn
   die Schale der Melone trägt exakt GrassDark und Auroras Welle läuft
@@ -139,8 +139,7 @@ und Serien — ein Tagespass zählt nicht als Freischaltung und löst die
 „NEUER SKIN FREIGESCHALTET!"-Feier nicht aus.
 
 Der Tagespass ist eine reine Android-Sache: Er hängt am Rewarded-Spot,
-und PWA (`web/`) sowie iOS (`ios/`) haben keine Werbung — dort ändert
-sich nichts.
+und iOS (`ios/`) hat keine Werbung — dort ändert sich nichts.
 
 ## Kulissen (ab v2.21)
 
@@ -205,7 +204,7 @@ jede Requisiten-Größe stammt unverändert aus `GameOverlays.kt` /
 `TimingGameScreen.kt`. Wer die Umstellung sieht, hat sie falsch gemacht.
 
 Gewählt wird im SKINS-Overlay, wo die Kulissen als eigener Abschnitt über
-den Skin-Familien stehen (Android, PWA, iOS); gesperrte zeigen ihre
+den Skin-Familien stehen (Android, iOS); gesperrte zeigen ihre
 Bedingung. Die Wahl wird wie die Skin-Wahl gespeichert und steht auf der
 Score-Card — sonst sähe sie niemand außer der Besitzerin. Die Uhr wählt
 keine Kulisse; sie zieht die Himmelsfarben nur lesend aus `ScenePaint`.
@@ -385,16 +384,24 @@ Festgehaltene Design-Ideen für ein FLIP-Comeback („FLIP-Münzen"):
 - Münzen ab Score 5, etwa jede 3.–4. Säule, Pixel-Explosion + Haptik
   beim Einsammeln, eigene Gier-Spott-Texte beim Tod
 
-## Web-Version (PWA)
+## Ehemalige Web-Version (entfernt in v2.23)
 
-Unter `web/` liegt ein kompletter Browser-Port als Progressive Web App —
-statische Dateien ohne Build-Tooling, Spiellogik 1:1 aus `TimingGame`
-portiert, offline spielbar (Service Worker). Auf iPhones ist das der
-kostenlose Verteilweg: Safari → Teilen → „Zum Home-Bildschirm".
-Der Workflow `deploy-pages.yml` veröffentlicht sie bei jedem Push auf
-`main` nach GitHub Pages:
-**<https://dottie.robinrehbein.de/>** (Datenschutzerklärung unter
-`/datenschutz/`). Tests: `node web/tests/run-tests.js`.
+Bis v2.22 lag unter `web/` ein vollständiger Browser-Port als Progressive
+Web App — eigene Spiellogik, eigener Renderer, eigene Chiptune-Synthese,
+offline spielbar. Sie ist entfallen, weil sich die Entwicklung auf die
+nativen Apps konzentriert: Android und iOS, jeweils Telefon und Uhr.
+
+Der letzte funktionierende Stand ist der Commit `b4ed73f`. Wer ihn wieder
+braucht:
+
+```sh
+git checkout b4ed73f -- web/
+```
+
+Die Domain **<https://dottie.robinrehbein.de/>** bleibt bestehen, liefert
+aber nur noch die Datenschutzerklärung (`/datenschutz/`) und
+`app-ads.txt` — beides hängt am Play-Eintrag der Android-App und muss
+erreichbar bleiben.
 
 ## iOS-Port
 
@@ -402,23 +409,26 @@ Unter `ios/` liegt ein nativer Swift-Port (SpriteKit), gebaut über
 XcodeGen aus `ios/project.yml` — Details und Verteilweg in
 [ios/README.md](ios/README.md).
 
-## Vier Plattformen, eine Wahrheit
+## Vier Ziele, eine Wahrheit
 
-Die Spiellogik gibt es dreifach: Kotlin in `:core`, Swift in `ios/`,
-JavaScript in `web/`. Damit die Ports nicht auseinanderlaufen, erzeugt
-`:core` eine Datei mit Soll-Werten — Konstanten, Medaillen-Schwellen,
-Skin-Farben, die Zahlenfolge von Kotlins Zufallsgenerator und zwei
-komplette Läufe Treffer für Treffer:
+Ausgeliefert wird auf vier Zielen — Android-Telefon, Wear OS, iPhone und
+Apple Watch (letztere noch nicht) —, aber die Spiellogik gibt es nur
+zweifach: Kotlin in `:core` und Swift in `ios/`. `:app` und `:wear`
+teilen sich `:core` direkt, der Swift-Port ist von Hand nachgebaut.
+
+Damit er nicht wegdriftet, erzeugt `:core` eine Datei mit Soll-Werten —
+Konstanten, Medaillen-Schwellen, Skin- und Kulissen-Farben, Ziele, die
+Zahlenfolge von Kotlins Zufallsgenerator und zwei komplette Läufe
+Treffer für Treffer:
 
 ```
 parity/golden-vectors.txt
 ```
 
-Alle drei prüfen sich dagegen (`./gradlew :core:test`,
-`node web/tests/run-tests.js`, `xcodebuild test` in der iOS-CI). Ändert
-sich `:core` absichtlich, schreibt
+Beide Seiten prüfen sich dagegen (`./gradlew :core:test`, `xcodebuild
+test` in der iOS-CI). Ändert sich `:core` absichtlich, schreibt
 `./gradlew :core:test -Dparity.update=true` die Datei neu — der Diff
-zeigt dann, was in `ios/` und `web/` nachzuziehen ist. Alles Weitere in
+zeigt dann, was in `ios/` nachzuziehen ist. Alles Weitere in
 [parity/README.md](parity/README.md).
 
 `:wear` teilt sich den Kotlin-Code mit `:app` direkt: Spiellogik,
@@ -486,10 +496,9 @@ Welcher Workflow wann läuft:
 
 | Workflow | Läuft bei | Prüft |
 |---|---|---|
-| `build-apk.yml` | Push auf `main`, jedem PR | Kotlin-Tests (`:core` und `:app`), Debug-Build; auf `main` zusätzlich Release-Artefakte |
-| `web-tests.yml` | PR/Push mit Änderungen an `web/`, `core/`, `app/src/main/` | Logik-, Farb-, Text- und Paritäts-Tests der PWA |
-| `build-ios.yml` | manuell, PR mit Änderungen an `ios/`, `core/`, `parity/` | Paritäts-Tests im Simulator, Device- und Simulator-Build |
-| `deploy-pages.yml` | Push auf `main` mit Änderungen an `web/`, `docs/` | veröffentlicht die PWA auf GitHub Pages |
+| `build-apk.yml` | Push auf `main` und `claude/**` | Kotlin-Tests (`:core` und `:app`), Debug-Build; auf `main` zusätzlich Release-Artefakte |
+| `build-ios.yml` | Push mit Änderungen an `ios/`, `core/`, `parity/`; sonst manuell | Paritäts-Tests im Simulator, Device- und Simulator-Build |
+| `deploy-pages.yml` | Push auf `main` mit Änderungen an `docs/` | veröffentlicht Datenschutzerklärung und `app-ads.txt` |
 
 ## Veröffentlichung
 

@@ -6,31 +6,24 @@ import kotlin.random.Random
 /**
  * Erzeugt die Paritäts-Vektoren in `parity/golden-vectors.txt` — den
  * gemeinsamen Vertrag zwischen der Kotlin-Engine (:core, die Quelle der
- * Wahrheit) und ihren Handports nach Swift (ios/) und JavaScript (web/).
+ * Wahrheit) und ihrem Handport nach Swift (ios/).
  *
- * Warum das nötig ist: Die Spiellogik existiert dreifach. Was in Kotlin
- * getestet ist, sagt nichts über den Swift-Port aus — der hat bis hierher
- * gar keine Tests gehabt, obwohl ausgerechnet [KotlinRandom in Swift] die
- * Daily Challenge bit-genau nachbauen muss. Statt jeden Port einzeln
- * nachzutesten, schreibt Kotlin einmal auf, was herauskommen muss, und
- * jeder Port prüft sich gegen dieselbe Datei.
+ * Warum das nötig ist: Die Spiellogik existiert zweifach. Was in Kotlin
+ * getestet ist, sagt nichts über den Swift-Port aus — der hatte bis zu
+ * diesen Vektoren gar keine Tests, obwohl ausgerechnet `KotlinRandom` in
+ * Swift Kotlins Zufallsgenerator bit-genau nachbauen muss, damit iPhone
+ * und Android an demselben Tag dieselbe Daily Challenge spielen. Statt
+ * jeden Fall zweimal zu schreiben, schreibt Kotlin einmal auf, was
+ * herauskommen muss, und der Port prüft sich dagegen.
  *
  * Format: eine Zeile pro Wert, `schlüssel wert…`, durch Leerzeichen
- * getrennt, `#` leitet einen Kommentar ein. Bewusst so simpel, dass drei
- * Sprachen es ohne JSON-Bibliothek lesen können.
+ * getrennt, `#` leitet einen Kommentar ein. Bewusst so simpel, dass es
+ * jede Sprache ohne JSON-Bibliothek lesen kann.
  *
- * Wer welchen Abschnitt prüft:
- *
- * | Abschnitt | Kotlin | Swift | JS |
- * |---|---|---|---|
- * | `const.*`, `medal.*`, `sky.*`, `skin.*` | ja | ja | ja |
- * | `rng.*`, `trace.*` | ja | ja | nein |
- *
- * Der Web-Port lässt `rng`/`trace` bewusst aus: Er baut Kotlins XorWow
- * nicht nach (siehe Kommentar in web/js/game.js), seine Daily Challenge
- * hat also eine eigene Abfolge. Regeln, Farben und Konstanten müssen
- * trotzdem überall gleich sein — genau die stehen in den anderen
- * Abschnitten.
+ * Bis v2.22 hat sich auch ein JavaScript-Port (web/) hier geprüft; er
+ * ließ `rng` und `trace` aus, weil er Kotlins XorWow nicht nachbaute.
+ * Mit der Konzentration auf die nativen Apps ist er entfallen — jetzt
+ * gilt jeder Abschnitt für beide Seiten.
  */
 object ParityVectors {
 
@@ -150,20 +143,20 @@ object ParityVectors {
     // ===== Abschnitte =====
 
     private fun StringBuilder.header() {
-        appendLine("# Dottie. — Paritäts-Vektoren zwischen Kotlin, Swift und JavaScript.")
+        appendLine("# Dottie. — Paritäts-Vektoren zwischen der Kotlin-Engine und dem Swift-Port.")
         appendLine("#")
         appendLine("# ERZEUGT — nicht von Hand bearbeiten. Neu schreiben mit:")
         appendLine("#   ./gradlew :core:test -Dparity.update=true")
         appendLine("#")
         appendLine("# Quelle der Wahrheit ist :core. Ändert sich hier eine Zahl, ist das")
-        appendLine("# die Ansage an ios/ und web/, nachzuziehen — siehe parity/README.md.")
+        appendLine("# die Ansage an ios/, nachzuziehen — siehe parity/README.md.")
         appendLine()
         line("version", VERSION.toString())
         appendLine()
     }
 
     private fun StringBuilder.constants() {
-        section("Konstanten der Engine (TimingGame). Namen wie in Kotlin und JS.")
+        section("Konstanten der Engine (TimingGame). Namen wie in Kotlin.")
         line("const.MAX_DELTA", f(TimingGame.MAX_DELTA))
         line("const.BASE_SPEED", f(TimingGame.BASE_SPEED))
         line("const.SPEED_PER_HIT", f(TimingGame.SPEED_PER_HIT))
@@ -362,8 +355,8 @@ object ParityVectors {
     private fun StringBuilder.scenes() {
         section(
             "Kulissen (ScenePaint) — die zweite Sammlung. Farben, Boden und\n" +
-                "# Requisiten sind dreifach als Datentabelle nachgebaut, die\n" +
-                "# Freischaltung dreifach als Regel."
+                "# Requisiten sind im Swift-Port als Datentabelle nachgebaut, die\n" +
+                "# Freischaltung als Regel."
         )
         line("scene.order", *SceneId.entries.map { it.name }.toTypedArray())
         line("scene.groundTop", f(ScenePaint.GROUND_TOP))
@@ -480,9 +473,10 @@ object ParityVectors {
     private fun StringBuilder.progress() {
         section(
             "Ziele und Fortschrittsbalken (Progress). Die Schwellen stehen\n" +
-                "# damit zum vierten Mal im Repo — hier wird geprüft, dass alle\n" +
-                "# vier dasselbe sagen, inklusive Reihenfolge: Das erste Ziel\n" +
-                "# ist das, was Spieler:innen im Game-Over lesen."
+                "# damit dreifach im Repo (SkinPaint, ScenePaint, Progress) und\n" +
+                "# im Swift-Port noch einmal — hier wird geprüft, dass alle\n" +
+                "# dasselbe sagen, inklusive Reihenfolge: Das erste Ziel ist\n" +
+                "# das, was Spieler:innen im Game-Over lesen."
         )
         line("progress.pageGoals", Progress.PAGE_GOALS.toString())
         line("progress.barBlocks", Progress.BAR_BLOCKS.toString())
