@@ -72,7 +72,15 @@ data class SyncState(
      * [skinChangedAt] eine Entscheidung und kein Rekord — auch hier
      * gewinnt die neuere Wahl, nicht die "größere".
      */
-    val sceneChangedAt: Long = 0L
+    val sceneChangedAt: Long = 0L,
+    /** Name des gewählten Ton-Sets; leer = nie bewusst gewählt. */
+    val sound: String = "",
+    /**
+     * Wann das Ton-Set zuletzt bewusst gewechselt wurde. Die dritte
+     * Entscheidung neben Skin und Kulisse, und deshalb dieselbe Regel:
+     * neuer gewinnt, nicht größer.
+     */
+    val soundChangedAt: Long = 0L
 ) {
 
     /**
@@ -103,6 +111,15 @@ data class SyncState(
             other.sceneChangedAt < sceneChangedAt -> false
             else -> other.scene < scene
         }
+        // Und dieselbe für das Ton-Set. Dass hier zum dritten Mal
+        // derselbe Dreisatz steht, ist Absicht: Eine gemeinsame
+        // Hilfsfunktion würde die Regel verstecken, und genau an dieser
+        // Regel hängt, dass zwei Geräte je zur Ruhe kommen.
+        val soundFromOther = when {
+            other.soundChangedAt > soundChangedAt -> true
+            other.soundChangedAt < soundChangedAt -> false
+            else -> other.sound < sound
+        }
         return SyncState(
             bestScore = maxOf(bestScore, other.bestScore),
             runCount = maxOf(runCount, other.runCount),
@@ -126,7 +143,9 @@ data class SyncState(
             skin = if (skinFromOther) other.skin else skin,
             skinChangedAt = maxOf(skinChangedAt, other.skinChangedAt),
             scene = if (sceneFromOther) other.scene else scene,
-            sceneChangedAt = maxOf(sceneChangedAt, other.sceneChangedAt)
+            sceneChangedAt = maxOf(sceneChangedAt, other.sceneChangedAt),
+            sound = if (soundFromOther) other.sound else sound,
+            soundChangedAt = maxOf(soundChangedAt, other.soundChangedAt)
         )
     }
 

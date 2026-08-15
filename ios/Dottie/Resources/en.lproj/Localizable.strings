@@ -202,6 +202,16 @@
 "scene_hint_stadt" = "BEST 85";
 "scene_hint_weltraum" = "COLLECT EVERY OTHER SCENE";
 
+/* Ton-Sets: die dritte Sammlung. Sie entscheidet nie ueber einen
+   Treffer — jedes Set meldet jedes Ereignis, nur eben anders. */
+"sounds" = "SOUNDS";
+"sound_klassik" = "CLASSIC";
+"sound_glocke" = "BELL";
+"sound_amboss" = "ANVIL";
+"sound_hint_glocke" = "PERFECT STREAK: 20";
+"sound_hint_amboss" = "25,000 POINTS TOTAL";
+"sound_tap_hear" = "TAP TO HEAR";
+
 /* Statistik-Seite: Die vier Ausdauer-Achsen liefen seit v2.20 unsichtbar
    mit — hier stehen sie samt naechster Ziele. */
 "stats" = "STATS";
@@ -220,6 +230,7 @@
    "NEXT SKIN: MEDAL — 199/200 RUNS". */
 "goal_next_skin" = "NEXT SKIN";
 "goal_next_scene" = "NEXT SCENE";
+"goal_next_sound" = "NEXT SOUND";
 "goal_line" = "%1$@: %2$@ — %3$d/%4$d %5$@";
 "goal_axis_best" = "BEST SCORE";
 "goal_axis_perfect" = "PERFECT IN A ROW";

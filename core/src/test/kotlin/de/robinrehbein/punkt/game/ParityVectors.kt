@@ -115,7 +115,14 @@ object ParityVectors {
         SkinStats(
             bestScore = 85, bestPerfectStreak = 0, bestDailyStreak = 30,
             runCount = 500, totalScore = 10_000
-        )
+        ),
+        // Die Ton-Sets (SoundBank) liegen noch einmal höher und auf
+        // Zahlen, auf denen sonst nichts liegt — ohne eigene Proben wäre
+        // von ihnen nur "alles zu" geprüft.
+        SkinStats(0, 19, 0),
+        SkinStats(0, 20, 0),
+        SkinStats(0, 0, 0, totalScore = 24_999),
+        SkinStats(0, 0, 0, totalScore = 25_000)
     )
 
     fun build(): String {
@@ -126,6 +133,7 @@ object ParityVectors {
         out.sky()
         out.skins()
         out.scenes()
+        out.sounds()
         out.progress()
         out.rng()
         out.traces()
@@ -355,6 +363,17 @@ object ParityVectors {
         line("scene.propSlots", ScenePaint.PROP_SLOTS.toString())
         line("scene.minZoneDistance", f(ScenePaint.MIN_ZONE_DISTANCE))
         line("scene.minSkyStep", f(ScenePaint.MIN_SKY_STEP))
+        // Der Fels-Umriss steht hier, weil er als einzige Requisitenform
+        // eine Datentabelle ist statt Zeichencode: Drei Ports lesen
+        // dieselben Rechtecke. Läuft einer davon weg, sieht man es an
+        // keinem Farbwert — nur daran, dass der Stein anders aussieht.
+        line("scene.rockSize", f(ScenePaint.ROCK_WIDTH), f(ScenePaint.ROCK_HEIGHT))
+        ScenePaint.ROCK_PARTS.forEachIndexed { index, part ->
+            line(
+                "scene.rock.$index",
+                f(part.x), f(part.y), f(part.w), f(part.h), part.tone.toString()
+            )
+        }
         // MIN_SKY_SIGNAL_DISTANCE steht bewusst NICHT hier: Die Schwelle
         // ist eine Zusicherung über die Farbtabellen (ScenePaintTest prüft
         // sie in :core), kein Wert, den ein Port nachbaut. Eine Zeile, die
@@ -401,6 +420,50 @@ object ParityVectors {
             line(
                 "scene.unlocked.$index",
                 ScenePaint.unlockedCount(stats).toString(),
+                *open.map { it.name }.toTypedArray()
+            )
+        }
+        appendLine()
+    }
+
+    private fun StringBuilder.sounds() {
+        section(
+            "Ton-Sets (SoundBank) — die dritte Sammlung. Jeder Ton steht\n" +
+                "# als Zahlenreihe da, damit kein Port seine eigene Synthese\n" +
+                "# erfindet: fromHz toHz Sekunden Lautstärke Abklingrate\n" +
+                "# Pulsbreite, je Ton ein Wort mit Doppelpunkten getrennt."
+        )
+        line("sound.order", *SoundSetId.entries.map { it.name }.toTypedArray())
+        line("sound.events", *SoundEvent.entries.map { it.name }.toTypedArray())
+        line("sound.minHz", f(SoundBank.MIN_HZ))
+        line("sound.maxHz", f(SoundBank.MAX_HZ))
+        line("sound.minPitchRatio", f(SoundBank.MIN_PITCH_RATIO))
+
+        SoundSetId.entries.forEach { id ->
+            SoundEvent.entries.forEach { event ->
+                val voice = SoundBank.voice(id, event)
+                line(
+                    "sound.voice.${id.name}.${event.name}",
+                    voice.tones.joinToString(" ") { t ->
+                        listOf(t.fromHz, t.toHz, t.seconds, t.volume, t.decay, t.duty)
+                            .joinToString(":") { f(it) }
+                    },
+                    // Das Rauschen steht am Ende derselben Zeile, damit
+                    // ein Port, der es überliest, an der Feldzahl auffällt.
+                    voice.noise?.let { "noise:" + f(it.seconds) + ":" + f(it.volume) + ":" + f(it.decay) }
+                        ?: "-"
+                )
+            }
+            line("sound.chips.${id.name}", *SoundBank.chips(id).map { f(it) }.toTypedArray())
+        }
+        appendLine()
+
+        section("Freischaltung der Ton-Sets — dieselben Proben wie bei den Skins.")
+        UNLOCK_PROBES.forEachIndexed { index, stats ->
+            val open = SoundSetId.entries.filter { SoundBank.isUnlocked(it, stats) }
+            line(
+                "sound.unlocked.$index",
+                SoundBank.unlockedCount(stats).toString(),
                 *open.map { it.name }.toTypedArray()
             )
         }
@@ -468,7 +531,9 @@ object ParityVectors {
 
     /** Ein Ziel als ein Wort: WAS:NAME|ACHSE|stand|ziel. */
     private fun goalToken(goal: Goal): String {
-        val subject = goal.skin?.let { "SKIN:${it.name}" } ?: "SCENE:${goal.scene!!.name}"
+        val subject = goal.skin?.let { "SKIN:${it.name}" }
+            ?: goal.scene?.let { "SCENE:${it.name}" }
+            ?: "SOUND:${goal.sound!!.name}"
         return "$subject|${goal.axis.name}|${goal.current}|${goal.target}"
     }
 

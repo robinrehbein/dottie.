@@ -10,6 +10,11 @@ import java.io.File
  * synthetisiert (ChipSynth), keine Audio-Assets im Repo. Die fertigen
  * WAVs landen einmalig im Cache und laufen über einen SoundPool, damit
  * die Latenz für ein Timing-Spiel niedrig genug ist.
+ *
+ * Seit den Ton-Sets liegen ALLE Sets im Pool, nicht nur das gewählte:
+ * Drei Sets sind zusammen keine 200 kB, und ein Wechsel muss sofort
+ * hörbar sein — mit Nachladen käme die Hörprobe in der Auswahl erst,
+ * wenn der Finger längst weg ist.
  */
 class GameAudio(context: Context) {
 
@@ -23,19 +28,30 @@ class GameAudio(context: Context) {
         )
         .build()
 
-    private val soundIds: Map<String, Int>
+    /** Ton-Set → Ereignisname → SoundPool-Id. */
+    private val soundIds: Map<SoundSetId, Map<String, Int>>
 
     /** Stumm geschaltet? Der Screen hält das mit dem ScoreStore synchron. */
     var muted: Boolean = false
 
+    /**
+     * Das gewählte Ton-Set. Der Screen hält es mit dem ScoreStore
+     * synchron; ein noch nicht verdientes Set kommt hier gar nicht an
+     * (die Auswahl lässt es nicht antippen).
+     */
+    var soundSet: SoundSetId = SoundSetId.KLASSIK
+
     init {
         // Der Cache-Ordner ist versioniert: Ändert sich die Synthese,
-        // Namen hochzählen — sonst spielen alte Dateien weiter.
-        val dir = File(context.cacheDir, "sfx-v1").apply { mkdirs() }
-        soundIds = ChipSynth.effects().mapValues { (name, samples) ->
-            val file = File(dir, "$name.wav")
-            if (!file.exists()) file.writeBytes(ChipSynth.toWav(samples))
-            soundPool.load(file.path, 1)
+        // Namen hochzählen — sonst spielen alte Dateien weiter. v2 trennt
+        // die Sets in eigene Dateinamen.
+        val dir = File(context.cacheDir, "sfx-v2").apply { mkdirs() }
+        soundIds = SoundSetId.entries.associateWith { set ->
+            ChipSynth.effects(set).mapValues { (name, samples) ->
+                val file = File(dir, "${set.name}-$name.wav")
+                if (!file.exists()) file.writeBytes(ChipSynth.toWav(samples))
+                soundPool.load(file.path, 1)
+            }
         }
     }
 
@@ -53,11 +69,19 @@ class GameAudio(context: Context) {
     fun thud() = play("thud")
     fun newRecord() = play("record")
 
+    /**
+     * Hörprobe für die Auswahl: die Fanfare des angetippten Sets, auch
+     * wenn es gerade nicht das gewählte ist. Ein Ton-Set ohne Probe wäre
+     * eine Kachel, die man kaufen soll, ohne sie gesehen zu haben — und
+     * die Fanfare zeigt vom Set am meisten: Lage, Länge und Anschlag.
+     */
+    fun preview(set: SoundSetId) = play("unlock", set = set)
+
     fun release() = soundPool.release()
 
-    private fun play(name: String, rate: Float = 1f) {
+    private fun play(name: String, rate: Float = 1f, set: SoundSetId = soundSet) {
         if (muted) return
-        val id = soundIds[name] ?: return
+        val id = soundIds[set]?.get(name) ?: return
         soundPool.play(id, 1f, 1f, 1, 0, rate.coerceIn(0.5f, 2f))
     }
 }

@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.game.GoalAxis
 import de.robinrehbein.punkt.game.Progress
@@ -97,8 +98,8 @@ internal fun StatsOverlay(
             StatRow(stringResource(R.string.stats_months), stats.monthsPlayed.toString())
             StatRow(stringResource(R.string.stats_perfect), stats.bestPerfectStreak.toString())
             StatRow(stringResource(R.string.stats_daily_streak), stats.bestDailyStreak.toString())
-            // Beide Sammlungen als Stand "12/35": Die Zahl allein sagt
-            // nichts, erst das Verhältnis zeigt, wie weit es noch ist.
+            // Alle drei Sammlungen als Stand "12/35": Die Zahl allein
+            // sagt nichts, erst das Verhältnis zeigt, wie weit es noch ist.
             StatRow(
                 stringResource(R.string.skins),
                 "${DotSkin.unlockedCount(stats)}/${DotSkin.collectableCount()}"
@@ -106,6 +107,10 @@ internal fun StatsOverlay(
             StatRow(
                 stringResource(R.string.scenes),
                 "${DotScene.unlockedCount(stats)}/${DotScene.entries.size}"
+            )
+            StatRow(
+                stringResource(R.string.sounds),
+                "${DotSound.unlockedCount(stats)}/${DotSound.entries.size}"
             )
 
             if (goals.isNotEmpty()) {
@@ -197,7 +202,11 @@ internal fun goalLabel(goal: Goal): String =
  */
 @Composable
 internal fun goalHeadline(goal: Goal): String = stringResource(
-    if (goal.skin != null) R.string.goal_next_skin else R.string.goal_next_scene,
+    when {
+        goal.skin != null -> R.string.goal_next_skin
+        goal.scene != null -> R.string.goal_next_scene
+        else -> R.string.goal_next_sound
+    },
     goalName(goal),
     goal.current,
     goal.target,
@@ -208,10 +217,11 @@ internal fun goalHeadline(goal: Goal): String = stringResource(
 @Composable
 private fun goalName(goal: Goal): String {
     val skin = goal.skin
-    return if (skin != null) {
-        stringResource(DotSkin.of(skin).titleRes)
-    } else {
-        stringResource(DotScene.of(goal.scene!!).titleRes)
+    val scene = goal.scene
+    return when {
+        skin != null -> stringResource(DotSkin.of(skin).titleRes)
+        scene != null -> stringResource(DotScene.of(scene).titleRes)
+        else -> stringResource(DotSound.of(goal.sound!!).titleRes)
     }
 }
 

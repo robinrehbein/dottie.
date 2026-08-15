@@ -217,6 +217,16 @@
     <string name="scene_hint_stadt">BEST 85</string>
     <string name="scene_hint_weltraum">COLLECT EVERY OTHER SCENE</string>
 
+    <!-- Ton-Sets: die dritte Sammlung. Sie entscheidet nie ueber einen
+         Treffer — jedes Set meldet jedes Ereignis, nur eben anders. -->
+    <string name="sounds">SOUNDS</string>
+    <string name="sound_klassik">CLASSIC</string>
+    <string name="sound_glocke">BELL</string>
+    <string name="sound_amboss">ANVIL</string>
+    <string name="sound_hint_glocke">PERFECT STREAK: 20</string>
+    <string name="sound_hint_amboss">25,000 POINTS TOTAL</string>
+    <string name="sound_tap_hear">TAP TO HEAR</string>
+
     <!-- Statistik-Seite (ab v2.22): Die vier Ausdauer-Achsen liefen seit
          v2.20 unsichtbar mit — hier stehen sie samt naechster Ziele. -->
     <string name="stats">STATS</string>
@@ -234,6 +244,7 @@
          Achse liest sich "MEDAL 199/200" als 199 von 200 Medaillen. -->
     <string name="goal_next_skin">NEXT SKIN: %1$s — %2$d/%3$d %4$s</string>
     <string name="goal_next_scene">NEXT SCENE: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_next_sound">NEXT SOUND: %1$s — %2$d/%3$d %4$s</string>
     <string name="goal_axis_points">POINTS</string>
     <string name="goal_axis_total">POINTS TOTAL</string>
     <string name="goal_axis_perfect">PERFECTS IN A ROW</string>

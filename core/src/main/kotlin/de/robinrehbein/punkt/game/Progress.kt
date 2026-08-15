@@ -46,22 +46,23 @@ enum class GoalAxis {
  * Ein noch offenes Ziel: was es freischaltet, woran es hängt, wo man
  * steht und wo es fällt.
  *
- * [skin] und [scene] sind bewusst zwei Felder statt einer versiegelten
- * Klasse: Dieselbe Form wird nach JavaScript und Swift portiert, und dort
- * ist ein Paar aus zwei Optionalen billiger als eine nachgebaute
- * Vererbungshierarchie. Genau eines von beiden ist gesetzt.
+ * [skin], [scene] und [sound] sind bewusst drei Felder statt einer
+ * versiegelten Klasse: Dieselbe Form wird nach JavaScript und Swift
+ * portiert, und dort sind drei Optionale billiger als eine nachgebaute
+ * Vererbungshierarchie. Genau eines von dreien ist gesetzt.
  */
 data class Goal(
     val skin: SkinId?,
     val scene: SceneId?,
+    val sound: SoundSetId? = null,
     val axis: GoalAxis,
     /** Aktueller Stand auf der Achse, nie größer als [target]. */
     val current: Int,
     val target: Int
 ) {
     init {
-        require((skin == null) != (scene == null)) {
-            "Ein Ziel schaltet genau einen Skin ODER eine Kulisse frei"
+        require(listOfNotNull(skin, scene, sound).size == 1) {
+            "Ein Ziel schaltet genau einen Skin ODER eine Kulisse ODER ein Ton-Set frei"
         }
     }
 
@@ -153,6 +154,19 @@ object Progress {
     )
 
     /**
+     * Und dieselbe für die Ton-Sets (siehe [SoundBank.isUnlocked]).
+     *
+     * Beide Schwellen liegen bewusst auf Zahlen, die sonst nirgends
+     * vorkommen: Fiele ein Ton-Set zusammen mit einem Skin oder einer
+     * Kulisse, hörte niemand das neue Set — er sähe den neuen Vogel und
+     * hielte den Klang für dessen Beiwerk.
+     */
+    private val SOUND_THRESHOLDS: List<Triple<SoundSetId, GoalAxis, Int>> = listOf(
+        Triple(SoundSetId.GLOCKE, GoalAxis.PERFECT_STREAK, 20),
+        Triple(SoundSetId.AMBOSS, GoalAxis.TOTAL_SCORE, 25_000)
+    )
+
+    /**
      * Alle noch offenen Ziele, das nächstliegende zuerst.
      *
      * [month] ist der Kalendermonat 1-12 (0 = kein Kalender bekannt, dann
@@ -211,6 +225,15 @@ object Progress {
             )
         }
 
+        // Die Ton-Sets haben keinen Abschluss wie REGENBOGEN und
+        // WELTRAUM: Drei Sets sind zu wenig für ein Sammel-Ziel, und ein
+        // Set, das nur auf zwei andere wartet, wäre kein eigener Weg.
+        SOUND_THRESHOLDS.forEach { (id, axis, target) ->
+            if (!SoundBank.isUnlocked(id, stats)) {
+                open += goal(sound = id, axis = axis, stats = stats, target = target)
+            }
+        }
+
         return open.sortedWith(NEAREST_FIRST)
     }
 
@@ -239,17 +262,30 @@ object Progress {
     private val NEAREST_FIRST: Comparator<Goal> =
         compareByDescending<Goal> { it.fraction }
             .thenBy { it.remaining }
-            .thenBy { it.skin?.ordinal ?: (SkinId.entries.size + it.scene!!.ordinal) }
+            .thenBy { order(it) }
+
+    /**
+     * Die Reihenfolge der Sammlungen als eine Zahl: erst die Skins, dann
+     * die Kulissen, dann die Ton-Sets. Sie entscheidet nur bei
+     * Gleichstand — aber dort auf beiden Geräten gleich.
+     */
+    private fun order(goal: Goal): Int = when {
+        goal.skin != null -> goal.skin.ordinal
+        goal.scene != null -> SkinId.entries.size + goal.scene.ordinal
+        else -> SkinId.entries.size + SceneId.entries.size + goal.sound!!.ordinal
+    }
 
     private fun goal(
         skin: SkinId? = null,
         scene: SceneId? = null,
+        sound: SoundSetId? = null,
         axis: GoalAxis,
         stats: SkinStats,
         target: Int
     ) = Goal(
         skin = skin,
         scene = scene,
+        sound = sound,
         axis = axis,
         // Ein Balken zeigt nie mehr als voll: Der Rohwert kann die
         // Schwelle nur überholen, wenn das Ziel längst offen ist.

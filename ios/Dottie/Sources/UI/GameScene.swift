@@ -47,6 +47,10 @@ final class GameScene: SKScene {
     // liest die Deklaration dann als Ueberschreibung mit falschem Typ.
     private var selectedScene: SceneId = .wiese
 
+    /// Das gewaehlte Ton-Set — die dritte Sammlung, nur hoert man sie,
+    /// statt sie zu sehen.
+    private var selectedSound: SoundSetId = .klassik
+
     private var lastUpdateTime: TimeInterval = 0
     private var lastPhase: TimingGame.Phase = .over // erzwingt READY-Setup im 1. Frame
 
@@ -124,6 +128,8 @@ final class GameScene: SKScene {
 
     override func didMove(to view: SKView) {
         selectedScene = store.selectedScene
+        selectedSound = store.selectedSound
+        audio.soundSet = selectedSound
         backgroundColor = UIColor(rgb: ScenePaint.of(selectedScene).sky[0])
         skin = store.selectedSkin
         audio.muted = store.soundMuted
@@ -901,6 +907,21 @@ final class GameScene: SKScene {
             store.selectedScene = selected
             rebuildScenery()
             skins.isHidden = true
+        case .selectSound(let selected):
+            selectedSound = selected
+            store.selectedSound = selected
+            audio.soundSet = selected
+            // Die Hoerprobe ist der ganze Sinn der Zeile: Ohne sie waehlt
+            // man einen Klang nach seinem Namen. Der Picker bleibt offen —
+            // wer eines hoert, will das naechste hoeren.
+            audio.preview(selected)
+            skins.refresh(
+                stats: store.stats(),
+                selected: skin,
+                selectedScene: selectedScene,
+                selectedSound: selectedSound,
+                scrollToSelected: false
+            )
         case .close:
             skins.isHidden = true
         }
@@ -920,7 +941,12 @@ final class GameScene: SKScene {
             prepareRun()
             game.tap()
         case "btn.skins":
-            skinOverlay?.refresh(stats: store.stats(), selected: skin, selectedScene: selectedScene)
+            skinOverlay?.refresh(
+                stats: store.stats(),
+                selected: skin,
+                selectedScene: selectedScene,
+                selectedSound: selectedSound
+            )
             skinOverlay?.isHidden = false
             // Der Picker ist ab jetzt sichtbar, der Finger liegt aber noch
             // auf dem Knopf: Sein Loslassen gehört nicht mehr diesem Tap.

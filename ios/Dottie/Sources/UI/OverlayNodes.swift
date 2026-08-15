@@ -1094,7 +1094,8 @@ final class StatsOverlay: SKNode {
     /// füllt `refresh` nach.
     private static let rowKeys = [
         "record_label", "stats_runs", "stats_total_score", "stats_days",
-        "stats_months", "stats_perfect", "stats_daily_streak", "skins", "scenes"
+        "stats_months", "stats_perfect", "stats_daily_streak", "skins", "scenes",
+        "sounds"
     ]
 
     init(sceneSize: CGSize) {
@@ -1180,10 +1181,11 @@ final class StatsOverlay: SKNode {
             String(stats.monthsPlayed),
             String(stats.bestPerfectStreak),
             String(stats.bestDailyStreak),
-            // Beide Sammlungen als Stand "12/35": Die Zahl allein sagt
-            // nichts, erst das Verhältnis zeigt, wie weit es noch ist.
+            // Alle drei Sammlungen als Stand "12/35": Die Zahl allein
+            // sagt nichts, erst das Verhältnis zeigt, wie weit es noch ist.
             "\(DotSkin.unlockedCount(stats))/\(DotSkin.collectableCount())",
-            "\(ScenePaint.unlockedCount(stats))/\(SceneId.allCases.count)"
+            "\(ScenePaint.unlockedCount(stats))/\(SceneId.allCases.count)",
+            "\(SoundBank.unlockedCount(stats))/\(SoundSetId.allCases.count)"
         ]
         for (label, value) in zip(valueLabels, values) {
             label.text = value
@@ -1238,6 +1240,7 @@ final class SkinOverlay: SKNode {
         case scrolled
         case select(DotSkin)
         case selectScene(SceneId)
+        case selectSound(SoundSetId)
         case close
     }
 
@@ -1260,8 +1263,20 @@ final class SkinOverlay: SKNode {
         let statusLabel: PixelLabel
     }
 
+    /// Und dieselbe Zeile fuer ein Ton-Set. Auch hier ein eigener Typ:
+    /// Die drei Sammlungen haben nichts gemeinsam ausser dem Aussehen
+    /// ihrer Zeile.
+    private struct SoundRow {
+        let sound: SoundSetId
+        let centerY: CGFloat
+        let swatch: SKSpriteNode
+        let titleLabel: PixelLabel
+        let statusLabel: PixelLabel
+    }
+
     private var rows: [Row] = []
     private var sceneRows: [SceneRow] = []
+    private var soundRows: [SoundRow] = []
     private let rowHeight: CGFloat = 58
     private let headerHeight: CGFloat = 36
 
@@ -1344,6 +1359,50 @@ final class SkinOverlay: SKNode {
 
             sceneRows.append(SceneRow(
                 scene: scene,
+                centerY: y,
+                swatch: swatch,
+                titleLabel: titleLabel,
+                statusLabel: statusLabel
+            ))
+            y -= rowHeight
+        }
+        y -= 8
+
+        // Die Ton-Sets stehen direkt hinter den Kulissen und vor den
+        // Skins: Es sind drei, sie wirken wie die Kulisse auf den ganzen
+        // Lauf, und die Hoerprobe beim Antippen soll nicht hinter 42
+        // Vogel-Zeilen liegen.
+        let soundsHeader = PixelLabel(
+            text: L10n.text("sounds"), fontSize: 15,
+            color: Palette.dotBody, shadow: false
+        )
+        soundsHeader.position = CGPoint(x: 40, y: y)
+        alignLeft(soundsHeader)
+        contentNode.addChild(soundsHeader)
+        y -= headerHeight
+
+        for sound in SoundSetId.allCases {
+            let swatch = SKSpriteNode(texture: PixelArt.soundPreviewTexture(sound: sound, size: 36))
+            swatch.size = CGSize(width: 36, height: 36)
+            swatch.position = CGPoint(x: 64, y: y)
+            contentNode.addChild(swatch)
+
+            let titleLabel = PixelLabel(
+                text: L10n.text(sound.titleKey), fontSize: 20, color: .white, shadow: false
+            )
+            titleLabel.position = CGPoint(x: 96, y: y + 10)
+            alignLeft(titleLabel)
+            contentNode.addChild(titleLabel)
+
+            let statusLabel = PixelLabel(
+                text: "", fontSize: 14, color: UIColor(white: 1, alpha: 0.7), shadow: false
+            )
+            statusLabel.position = CGPoint(x: 96, y: y - 12)
+            alignLeft(statusLabel)
+            contentNode.addChild(statusLabel)
+
+            soundRows.append(SoundRow(
+                sound: sound,
                 centerY: y,
                 swatch: swatch,
                 titleLabel: titleLabel,
@@ -1479,6 +1538,11 @@ final class SkinOverlay: SKNode {
             // bei jedem Tipp daneben.
             return row.scene.isUnlocked(stats) ? .selectScene(row.scene) : .close
         }
+        for row in soundRows where abs(contentY - row.centerY) <= rowHeight / 2 {
+            // Ein Tipp auf ein offenes Set waehlt es UND spielt die
+            // Hoerprobe; der Picker bleibt dabei offen (siehe GameScene).
+            return SoundBank.isUnlocked(row.sound, stats) ? .selectSound(row.sound) : .close
+        }
         for row in rows where abs(contentY - row.centerY) <= rowHeight / 2 {
             // Auf eine gesperrte Zeile getippt: Der Picker schließt wie
             // bei jedem Tipp daneben — der Hinweis unten verspricht genau das.
@@ -1487,7 +1551,32 @@ final class SkinOverlay: SKNode {
         return .close
     }
 
-    func refresh(stats: DotSkin.Stats, selected: DotSkin, selectedScene: SceneId) {
+    /// [scrollToSelected] springt beim Oeffnen zum gewaehlten Skin. Beim
+    /// Nachziehen nach einer Ton-Set-Wahl darf das nicht passieren: Die
+    /// Liste wuerde unter dem Finger wegspringen, obwohl der Tipp ganz
+    /// oben war.
+    func refresh(
+        stats: DotSkin.Stats,
+        selected: DotSkin,
+        selectedScene: SceneId,
+        selectedSound: SoundSetId,
+        scrollToSelected: Bool = true
+    ) {
+        for row in soundRows {
+            let unlocked = SoundBank.isUnlocked(row.sound, stats)
+            row.swatch.alpha = unlocked ? 1.0 : 0.3
+            row.titleLabel.color = unlocked ? .white : UIColor(white: 1, alpha: 0.45)
+            if row.sound == selectedSound {
+                row.statusLabel.text = L10n.text("skin_selected")
+                row.statusLabel.color = Palette.dotBody
+            } else if unlocked {
+                row.statusLabel.text = L10n.text("sound_tap_hear")
+                row.statusLabel.color = UIColor(white: 1, alpha: 0.7)
+            } else {
+                row.statusLabel.text = row.sound.unlockHintKey.map { L10n.text($0) } ?? ""
+                row.statusLabel.color = UIColor(white: 1, alpha: 0.45)
+            }
+        }
         for row in sceneRows {
             let unlocked = row.scene.isUnlocked(stats)
             row.swatch.alpha = unlocked ? 1.0 : 0.3
@@ -1522,7 +1611,9 @@ final class SkinOverlay: SKNode {
                 row.statusLabel.color = UIColor(white: 1, alpha: 0.45)
             }
         }
-        scrollTo(selected)
+        if scrollToSelected {
+            scrollTo(selected)
+        }
     }
 
     /// Beim Öffnen zum gewählten Skin springen: Bei 42 Zeilen wäre er

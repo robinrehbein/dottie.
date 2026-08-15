@@ -64,6 +64,9 @@ enum SceneId: String, CaseIterable {
 
 /// Die Formen, aus denen Kulissen ihre Requisiten bauen. Jede ist als
 /// Stapel von Rechtecken umgesetzt — der Pixel-Look entsteht aus Blöcken.
+/// Der Fels ist die Ausnahme: Sein Umriss steht als Tabelle in
+/// `ScenePaint.rockParts`, damit ihn drei Ports nicht dreimal von Hand
+/// gleich treffen müssen.
 enum PropShape {
     case baum
     case blume
@@ -132,6 +135,35 @@ enum ScenePaint {
     /// Requisiten-Plätze je Kulisse (Bestand: Baum, Blume, Baum, Strauch).
     static let propSlots = 4
 
+    /// Ein Rechteck des Fels-Umrisses, in Vielfachen der Requisiten-Größe.
+    /// `x` ist auf die Mitte bezogen, `y` zählt vom Boden nach oben,
+    /// `tone` wählt aus der Requisiten-Palette: 0 dunkel, 1 Körper, 2 hell.
+    struct RockPart {
+        let x: CGFloat
+        let y: CGFloat
+        let w: CGFloat
+        let h: CGFloat
+        let tone: Int
+    }
+
+    /// Der Fels als Umriss statt als Stapel (siehe ScenePaint.kt für die
+    /// Begründung): unsymmetrische Kante, Kuppe links der Mitte, die obere
+    /// linke Fläche als einzige im Licht.
+    static let rockParts: [RockPart] = [
+        RockPart(x: -1.20, y: 0.00, w: 2.40, h: 0.42, tone: 0),
+        RockPart(x: -1.10, y: 0.42, w: 1.45, h: 0.40, tone: 1),
+        RockPart(x: 0.35, y: 0.42, w: 0.75, h: 0.40, tone: 0),
+        RockPart(x: -0.85, y: 0.82, w: 0.70, h: 0.36, tone: 2),
+        RockPart(x: -0.15, y: 0.82, w: 0.55, h: 0.36, tone: 1),
+        RockPart(x: -0.60, y: 1.18, w: 0.50, h: 0.32, tone: 2)
+    ]
+
+    /// Breite des Fels-Umrisses in Vielfachen der Requisiten-Größe.
+    static let rockWidth: CGFloat = 2.40
+
+    /// Höhe des Fels-Umrisses in Vielfachen der Requisiten-Größe.
+    static let rockHeight: CGFloat = 1.50
+
     /// Mindestabstände im RGB-Raum (siehe ScenePaintTest in :core).
     static let minZoneDistance: CGFloat = 60
     static let minSkyStep: CGFloat = 40
@@ -183,7 +215,7 @@ enum ScenePaint {
             Prop(shape: .kaktus, size: 0.058, sway: -1.0,
                  dark: 0x1F6B41, body: 0x2E8B57, light: 0x43A96B,
                  accents: [0xF2A83C, 0xE8607A]),
-            Prop(shape: .fels, size: 0.026, sway: 0.4,
+            Prop(shape: .fels, size: 0.026, sway: 0,
                  dark: 0x8A6A4A, body: 0xA88860, light: 0xC4A87C)
         ]
     )
@@ -203,7 +235,7 @@ enum ScenePaint {
             Prop(shape: .welle, size: 0.058, sway: -1.0,
                  dark: 0x1F5FA8, body: 0x2E86D8, light: 0x7FC8F0,
                  accents: [0xFFFFFF, 0xDFF4FF]),
-            Prop(shape: .fels, size: 0.026, sway: 0.4,
+            Prop(shape: .fels, size: 0.026, sway: 0,
                  dark: 0x4A5A6A, body: 0x6B7C8C, light: 0x9AAAB8)
         ]
     )
@@ -222,7 +254,7 @@ enum ScenePaint {
             Prop(shape: .nadelbaum, size: 0.058, sway: -1.0,
                  dark: 0x1E5140, body: 0x2A6B52, light: 0xD8E8F0,
                  stem: 0x5C4130, stemShade: 0x46311F),
-            Prop(shape: .fels, size: 0.026, sway: 0.4,
+            Prop(shape: .fels, size: 0.026, sway: 0,
                  dark: 0x6A6E78, body: 0x8A8F9C, light: 0xB8BEC9)
         ]
     )
@@ -244,7 +276,7 @@ enum ScenePaint {
             Prop(shape: .hochhaus, size: 0.062, sway: 0,
                  dark: 0x3A4C50, body: 0x54686C, light: 0x869A9E,
                  accents: [0xFFD847, 0x7FD8E8]),
-            Prop(shape: .fels, size: 0.026, sway: 0.4,
+            Prop(shape: .fels, size: 0.026, sway: 0,
                  dark: 0x4E4A56, body: 0x6A6672, light: 0x8C8894)
         ]
     )

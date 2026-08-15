@@ -79,6 +79,13 @@ final class ScoreStore {
         set { defaults.set(newValue.rawValue, forKey: ScoreStore.keyScene) }
     }
 
+    /// Gewähltes Ton-Set, KLASSIK als Fallback — die dritte Sammlung
+    /// nach demselben Muster.
+    var selectedSound: SoundSetId {
+        get { return SoundSetId.fromName(defaults.string(forKey: ScoreStore.keySound)) }
+        set { defaults.set(newValue.rawValue, forKey: ScoreStore.keySound) }
+    }
+
     // MARK: - Daily Challenge
 
     /// Tagesbest-Score — gilt nur für den in `dailyDay` gespeicherten Tag.
@@ -263,6 +270,7 @@ final class ScoreStore {
     private static let keyBestPerfect = "best_perfect_streak"
     private static let keySkin = "selected_skin"
     private static let keyScene = "selected_scene"
+    private static let keySound = "selected_sound"
     private static let keyDailyBest = "daily_best"
     private static let keyDailyDay = "daily_day"
     private static let keyDailyStreak = "daily_streak"

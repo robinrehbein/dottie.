@@ -258,6 +258,64 @@ class ScenePaintTest {
     }
 
     @Test
+    fun `ein Fels auf festem Boden steht still`() {
+        // Der Fehler, der das nötig gemacht hat: Alle sechs Kulissen sind
+        // aus demselben Raster gebaut, und Platz vier ist in der WIESE ein
+        // Strauch mit Windanteil 0.4. In den fünf neuen Kulissen rutschte
+        // dort ein Fels hinein — der Windanteil wanderte mit. Auf der
+        // Straße der STADT wackelte damit ein Kiesel neben Hochhäusern,
+        // die per Kommentar ausdrücklich nicht wanken.
+        //
+        // Der WELTRAUM ist die Ausnahme und erkennt sich selbst daran,
+        // dass er keinen Boden hat: Dort treibt absichtlich alles.
+        SceneId.entries.forEach { id ->
+            if (ScenePaint.ground(id) == null) return@forEach
+            ScenePaint.props(id).filter { it.shape == PropShape.FELS }.forEach {
+                assertEquals("$id: ein Stein auf dem Boden darf nicht schwanken", 0f, it.sway, 0f)
+            }
+        }
+    }
+
+    @Test
+    fun `der Fels ist ein Umriss und kein Stapel`() {
+        val parts = ScenePaint.ROCK_PARTS
+        assertTrue("Ein Fels aus zwei Rechtecken bleibt ein Klotz", parts.size >= 5)
+
+        // Alle drei Farblagen müssen vorkommen. Fehlt die helle, fehlt die
+        // Lichtseite — und ohne Lichtseite liest sich jede Silhouette als
+        // Klotz, egal wie fein ihr Umriss ist.
+        assertEquals("Der Fels braucht alle drei Farblagen", setOf(0, 1, 2), parts.map { it.tone }.toSet())
+
+        parts.forEach {
+            assertTrue("Ein Stück ohne Fläche zeichnet nichts", it.w > 0f && it.h > 0f)
+            assertTrue("Kein Stück darf unter den Boden reichen", it.y >= 0f)
+        }
+
+        // Der Fuß ist die breiteste Lage — ein Stein steht auf seiner
+        // Grundfläche, nicht auf seiner Spitze.
+        val fuss = parts.filter { it.y == 0f }.sumOf { it.w.toDouble() }.toFloat()
+        assertEquals("Die Grundfläche muss ROCK_WIDTH entsprechen", ScenePaint.ROCK_WIDTH, fuss, 1e-4f)
+        parts.groupBy { it.y }.forEach { (y, lage) ->
+            val breite = lage.sumOf { it.w.toDouble() }.toFloat()
+            assertTrue("Die Lage bei $y ist breiter als der Fuß", breite <= fuss + 1e-4f)
+        }
+
+        // Die Höhe der Tabelle und die angegebene Höhe müssen sich decken,
+        // sonst schneidet iOS die Textur an der Kuppe ab.
+        val hoehe = parts.maxOf { it.y + it.h }
+        assertEquals("ROCK_HEIGHT muss die Tabelle abdecken", ScenePaint.ROCK_HEIGHT, hoehe, 1e-4f)
+
+        // Und der eigentliche Punkt: Der Umriss ist unsymmetrisch. Wäre er
+        // mittig, hätten wir wieder den Stapel, nur mit mehr Rechtecken.
+        val schwerpunkt = parts.sumOf { ((it.x + it.w / 2f) * it.w * it.h).toDouble() } /
+            parts.sumOf { (it.w * it.h).toDouble() }
+        assertTrue(
+            "Der Fels ist mittig aufgebaut und damit wieder ein Stapel (Schwerpunkt $schwerpunkt)",
+            schwerpunkt < -0.04
+        )
+    }
+
+    @Test
     fun `die WIESE ist offen, alles andere haengt an Leistung`() {
         val leer = SkinStats(0, 0, 0)
         assertTrue(ScenePaint.isUnlocked(SceneId.WIESE, leer))

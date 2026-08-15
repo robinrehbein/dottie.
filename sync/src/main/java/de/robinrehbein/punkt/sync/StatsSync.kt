@@ -177,6 +177,12 @@ class StatsSync(
          */
         const val KEY_BEST_DAILY_STREAK = "best_daily_streak"
 
+        // Ton-Set-Wahl (ab v2.23), nach derselben Regel: Fehlt sie in
+        // einer Nachricht, bleibt der Zeitstempel 0 und die lokale Wahl
+        // gewinnt — eine ältere App darf keinen Klang zurückdrehen.
+        const val KEY_SOUND = "sound"
+        const val KEY_SOUND_CHANGED = "sound_changed_at"
+
         fun DataMap.putState(s: SyncState) {
             putInt(KEY_BEST, s.bestScore)
             putInt(KEY_RUNS, s.runCount)
@@ -194,6 +200,8 @@ class StatsSync(
             putLong(KEY_SKIN_CHANGED, s.skinChangedAt)
             putString(KEY_SCENE, s.scene)
             putLong(KEY_SCENE_CHANGED, s.sceneChangedAt)
+            putString(KEY_SOUND, s.sound)
+            putLong(KEY_SOUND_CHANGED, s.soundChangedAt)
         }
 
         fun DataMap.toState() = SyncState(
@@ -218,7 +226,9 @@ class StatsSync(
             skin = getString(KEY_SKIN, ""),
             skinChangedAt = getLong(KEY_SKIN_CHANGED, 0L),
             scene = getString(KEY_SCENE, ""),
-            sceneChangedAt = getLong(KEY_SCENE_CHANGED, 0L)
+            sceneChangedAt = getLong(KEY_SCENE_CHANGED, 0L),
+            sound = getString(KEY_SOUND, ""),
+            soundChangedAt = getLong(KEY_SOUND_CHANGED, 0L)
         )
     }
 }

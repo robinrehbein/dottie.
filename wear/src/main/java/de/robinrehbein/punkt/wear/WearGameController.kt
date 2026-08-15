@@ -12,6 +12,7 @@ import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
+import de.robinrehbein.punkt.game.SoundBank
 import de.robinrehbein.punkt.game.SyncState
 import de.robinrehbein.punkt.game.TimingGame
 import java.time.LocalDate
@@ -48,6 +49,7 @@ private const val KEY_BEST_DAILY_STREAK = "best_daily_streak"
 private const val KEY_SKIN_CHANGED = "skin_changed_at"
 
 /**
+
  * Kulissen-Wahl des Telefons, gespiegelt wie der Skin — die Uhr wählt
  * selbst nie eine Kulisse (siehe README, Abschnitt "Kulissen"), sie zieht
  * nur die Himmelsfarben aus ScenePaint. Ohne diese beiden Keys bliebe die
@@ -55,6 +57,16 @@ private const val KEY_SKIN_CHANGED = "skin_changed_at"
  */
 private const val KEY_SCENE = "selected_scene"
 private const val KEY_SCENE_CHANGED = "scene_changed_at"
+
+/**
+ * Das gewählte Ton-Set und wann es gewählt wurde. Die Uhr hat keinen
+ * eigenen Wähler dafür (wie schon bei den Kulissen): Gewählt wird am
+ * Telefon, die Uhr übernimmt die Wahl über den Abgleich — und spielt sie
+ * dann auch. Ein Klang, den man am Telefon hört und auf der Uhr nicht,
+ * wäre schlechter als gar keine Auswahl.
+ */
+private const val KEY_SOUND = "selected_sound"
+private const val KEY_SOUND_CHANGED = "sound_changed_at"
 
 /**
  * Ausdauer-Zähler. Sie hängen nicht am Können und sind der einzige Weg,
@@ -157,6 +169,13 @@ internal class WearGameController(context: Context) {
     var scene by mutableStateOf(ScenePaint.fromName(prefs.getString(KEY_SCENE, null)))
         private set
 
+    /**
+     * Das gewählte Ton-Set. Kein Wähler auf der Uhr — es kommt vom
+     * Telefon und steht hier nur, damit WearAudio es kennt.
+     */
+    var soundSet = SoundBank.fromName(prefs.getString(KEY_SOUND, null))
+        private set
+
     /** Ist der Skin-Wähler offen? Nur aus dem READY-Overlay erreichbar. */
     var skinPickerOpen by mutableStateOf(false)
         private set
@@ -222,6 +241,7 @@ internal class WearGameController(context: Context) {
 
     init {
         audio.muted = !soundOn
+        audio.soundSet = soundSet
         refreshDailyDisplay()
         refreshClock(force = true)
     }
@@ -420,7 +440,12 @@ internal class WearGameController(context: Context) {
         // bleibt SyncState.mergedWith stabil: Ohne dieses Zurückmelden
         // würde ein Abgleich die Kulisse jedes Mal neu "verlieren".
         scene = scene.name,
-        sceneChangedAt = prefs.getLong(KEY_SCENE_CHANGED, 0L)
+        sceneChangedAt = prefs.getLong(KEY_SCENE_CHANGED, 0L),
+        // Die Uhr wählt das Ton-Set nicht selbst, gibt aber weiter, was
+        // sie hat: Sonst hielte sie beim nächsten Abgleich die Wahl des
+        // Telefons für neu und würde sie endlos zurückspiegeln.
+        sound = soundSet.name,
+        soundChangedAt = prefs.getLong(KEY_SOUND_CHANGED, 0L)
     )
 
     /**
@@ -495,6 +520,18 @@ internal class WearGameController(context: Context) {
             editor.putString(KEY_SCENE, adopted.name)
             editor.putLong(KEY_SCENE_CHANGED, state.sceneChangedAt)
         }
+        // Das Ton-Set nach derselben Regel wie der Skin: Die neuere Wahl
+        // gewinnt, aber nur, wenn sie hier auch verdient ist. Die Uhr
+        // leitet das aus den zusammengeführten Zahlen ab und nicht aus
+        // dem, was das Telefon behauptet.
+        if (state.soundChangedAt > before.soundChangedAt) {
+            val merged = WearSyncMerge.skinStats(before, state, patronOwned)
+            val incoming = SoundBank.fromName(state.sound)
+            if (SoundBank.isUnlocked(incoming, merged.toSkinStats())) {
+                editor.putString(KEY_SOUND, incoming.name)
+                editor.putLong(KEY_SOUND_CHANGED, state.soundChangedAt)
+            }
+        }
         editor.apply()
 
         // Angezeigte Werte nachziehen — die Compose-Felder lesen die Prefs
@@ -503,6 +540,8 @@ internal class WearGameController(context: Context) {
         bestPerfectStreak = prefs.getInt(KEY_BEST_PERFECT, 0)
         skin = WearDotSkin.fromName(prefs.getString(KEY_SKIN, null))
         scene = ScenePaint.fromName(prefs.getString(KEY_SCENE, null))
+        soundSet = SoundBank.fromName(prefs.getString(KEY_SOUND, null))
+        audio.soundSet = soundSet
         refreshDailyDisplay()
         return true
     }

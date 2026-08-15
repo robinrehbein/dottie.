@@ -30,8 +30,16 @@ enum L10n {
     /// Was es gibt, wofür man es bekommt, und vor allem — worin gezählt
     /// wird. "199/200" ohne Einheit ist eine Zahl ohne Aufgabe.
     static func goalLine(_ goal: Goal) -> String {
-        // Genau eines von skin und scene ist gesetzt (siehe Goal).
-        let kind = text(goal.scene != nil ? "goal_next_scene" : "goal_next_skin")
+        // Genau eines von skin, scene und sound ist gesetzt (siehe Goal).
+        let kindKey: String
+        if goal.skin != nil {
+            kindKey = "goal_next_skin"
+        } else if goal.scene != nil {
+            kindKey = "goal_next_scene"
+        } else {
+            kindKey = "goal_next_sound"
+        }
+        let kind = text(kindKey)
         return format(
             "goal_line", kind, text(goal.titleKey), goal.current, goal.target, axisLabel(goal.axis)
         )
