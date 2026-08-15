@@ -218,7 +218,8 @@ enum PixelArt {
         case .welle: return CGSize(width: s * 3.0 + cell * 4, height: s * 0.9 + cell * 3)
         case .nadelbaum: return CGSize(width: s * 1.5 + cell * 4, height: s * 1.8 + cell * 3)
         case .hochhaus: return CGSize(width: s * 0.9 + cell * 4, height: s * 2.4 + cell * 3)
-        case .fels: return CGSize(width: s * 2.2 + cell * 4, height: s * 1.4 + cell * 3)
+        case .fels: return CGSize(width: s * ScenePaint.rockWidth + cell * 4,
+                                  height: s * ScenePaint.rockHeight + cell * 3)
         }
     }
 
@@ -433,22 +434,22 @@ enum PixelArt {
         }
     }
 
-    /// Fels: pyramidenförmiger Stapel, unten am breitesten.
+    /// Fels: Umriss aus `ScenePaint.rockParts`, unsymmetrisch und mit
+    /// Lichtseite. Erst alle Konturen, dann alle Flächen — sonst schnitte
+    /// die Kontur eines höheren Stücks in die Fläche des darunterliegenden,
+    /// und der Stein bekäme Fugen, die er nicht hat.
     private static func drawRock(
         _ ctx: CGContext, cx: CGFloat, groundY: CGFloat, s: CGFloat, cell: CGFloat,
         dark: UIColor, body: UIColor, light: UIColor
     ) {
-        let layers: [(CGFloat, CGFloat, UIColor)] = [
-            (s * 2.2, s * 0.50, dark),
-            (s * 1.6, s * 0.45, body),
-            (s * 0.8, s * 0.35, light)
-        ]
-        var layerTop = groundY
-        for (lw, lh, color) in layers {
-            layerTop -= lh
-            fill(ctx, Palette.outline, cx - lw / 2 - cell, layerTop - cell,
-                 lw + cell * 2, lh + cell * 2)
-            fill(ctx, color, cx - lw / 2, layerTop, lw, lh)
+        let parts = ScenePaint.rockParts
+        for p in parts {
+            fill(ctx, Palette.outline, cx + p.x * s - cell, groundY - (p.y + p.h) * s - cell,
+                 p.w * s + cell * 2, p.h * s + cell * 2)
+        }
+        for p in parts {
+            let color = p.tone == 0 ? dark : (p.tone == 1 ? body : light)
+            fill(ctx, color, cx + p.x * s, groundY - (p.y + p.h) * s, p.w * s, p.h * s)
         }
     }
 
@@ -499,6 +500,31 @@ enum PixelArt {
             fill(ctx, UIColor(rgb: prop.dark), d * 0.22, horizon - d * 0.22, d * 0.26, d * 0.22)
             fill(ctx, UIColor(rgb: prop.body), d * 0.28, horizon - d * 0.34, d * 0.16, d * 0.14)
             fill(ctx, UIColor(rgb: prop.light), d * 0.58, horizon - d * 0.16, d * 0.18, d * 0.16)
+        }
+    }
+
+    /// Vorschau eines Ton-Sets: drei Balken für Treffer, Perfekt und
+    /// Rekord, deren Höhe aus `SoundBank.chips` kommt. Ein Ton-Set hat
+    /// kein Bild — die Kachel zeigt die Lage des Sets: Die Glocke steht
+    /// hoch, der Amboss bleibt am Boden. Dieselbe Sprache wie der
+    /// Fortschrittsbalken: Sandbett, goldene Blöcke.
+    static func soundPreviewTexture(sound: SoundSetId, size: CGFloat) -> SKTexture {
+        let d = max(size, 8)
+        let chips = SoundBank.chips(sound)
+        return texture(size: CGSize(width: d, height: d)) { ctx in
+            let border = d / 12
+            let innen = d - border * 2
+            fill(ctx, Palette.outline, 0, 0, d, d)
+            fill(ctx, Palette.panelSand, border, border, innen, innen)
+            let breite = innen / CGFloat(chips.count * 2 - 1)
+            for (index, anteil) in chips.enumerated() {
+                // Auch das tiefste Set bleibt sichtbar: ein Fünftel
+                // Mindesthöhe.
+                let hoehe = innen * (0.2 + 0.75 * CGFloat(anteil))
+                fill(ctx, Palette.dotBody,
+                     border + CGFloat(index) * breite * 2, border + innen - hoehe,
+                     breite, hoehe)
+            }
         }
     }
 

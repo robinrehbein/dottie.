@@ -32,10 +32,12 @@ enum GoalAxis {
 }
 
 /// Ein noch offenes Ziel: was es freischaltet, woran es hängt, wo man
-/// steht und wo es fällt. Genau eines von `skin` und `scene` ist gesetzt.
+/// steht und wo es fällt. Genau eines von `skin`, `scene` und `sound` ist
+/// gesetzt.
 struct Goal {
     let skin: DotSkin?
     let scene: SceneId?
+    let sound: SoundSetId?
     let axis: GoalAxis
     /// Aktueller Stand auf der Achse, nie größer als `target`.
     let current: Int
@@ -51,7 +53,9 @@ struct Goal {
     }
 
     /// Der Beschriftungs-Schlüssel der Belohnung.
-    var titleKey: String { return skin?.titleKey ?? scene?.titleKey ?? "" }
+    var titleKey: String {
+        return skin?.titleKey ?? scene?.titleKey ?? sound?.titleKey ?? ""
+    }
 }
 
 enum Progress {
@@ -121,6 +125,15 @@ enum Progress {
         (.stadt, .bestScore, 85)
     ]
 
+    /// Und dieselbe für die Ton-Sets (siehe `SoundBank.isUnlocked`).
+    /// Beide Schwellen liegen auf Zahlen, auf denen sonst nichts liegt:
+    /// Fiele ein Ton-Set zusammen mit einem Skin oder einer Kulisse,
+    /// hörte niemand das neue Set — er sähe den neuen Vogel.
+    private static let soundThresholds: [(SoundSetId, GoalAxis, Int)] = [
+        (.glocke, .perfectStreak, 20),
+        (.amboss, .totalScore, 25_000)
+    ]
+
     /// Alle noch offenen Ziele, das nächstliegende zuerst. `month` ist der
     /// Kalendermonat 1-12 (0 = kein Kalender, dann keine Saison-Ziele),
     /// `seasonDays` der Tageszähler des laufenden Saison-Fensters.
@@ -131,6 +144,7 @@ enum Progress {
             open.append(Goal(
                 skin: skin,
                 scene: nil,
+                sound: nil,
                 axis: axis,
                 // Ein Balken zeigt nie mehr als voll: Der Rohwert kann die
                 // Schwelle nur überholen, wenn das Ziel längst offen ist.
@@ -144,6 +158,7 @@ enum Progress {
             open.append(Goal(
                 skin: season.skin,
                 scene: nil,
+                sound: nil,
                 axis: .seasonDays,
                 current: min(max(0, seasonDays), season.requiredDays),
                 target: season.requiredDays
@@ -156,6 +171,7 @@ enum Progress {
             open.append(Goal(
                 skin: .regenbogen,
                 scene: nil,
+                sound: nil,
                 axis: .skinCollection,
                 current: DotSkin.unlockedCount(stats),
                 target: DotSkin.collectableCount() - 1
@@ -166,6 +182,7 @@ enum Progress {
             open.append(Goal(
                 skin: nil,
                 scene: scene,
+                sound: nil,
                 axis: axis,
                 current: min(value(axis, stats, seasonDays: seasonDays), target),
                 target: target
@@ -177,9 +194,23 @@ enum Progress {
             open.append(Goal(
                 skin: nil,
                 scene: .weltraum,
+                sound: nil,
                 axis: .sceneCollection,
                 current: ScenePaint.unlockedCount(stats),
                 target: SceneId.allCases.count - 1
+            ))
+        }
+
+        // Die Ton-Sets haben keinen Abschluss wie REGENBOGEN und
+        // WELTRAUM: Drei Sets sind zu wenig für ein Sammel-Ziel.
+        for (sound, axis, target) in soundThresholds where !sound.isUnlocked(stats) {
+            open.append(Goal(
+                skin: nil,
+                scene: nil,
+                sound: sound,
+                axis: axis,
+                current: min(value(axis, stats, seasonDays: seasonDays), target),
+                target: target
             ))
         }
 
@@ -212,12 +243,19 @@ enum Progress {
         return order(a) < order(b)
     }
 
+    /// Die Reihenfolge der Sammlungen als eine Zahl: erst die Skins, dann
+    /// die Kulissen, dann die Ton-Sets. Sie entscheidet nur bei
+    /// Gleichstand — aber dort auf allen Plattformen gleich.
     private static func order(_ goal: Goal) -> Int {
         if let skin = goal.skin {
             return DotSkin.allCases.firstIndex(of: skin) ?? DotSkin.allCases.count
         }
-        let scene = goal.scene ?? .wiese
-        return DotSkin.allCases.count + (SceneId.allCases.firstIndex(of: scene) ?? 0)
+        if let scene = goal.scene {
+            return DotSkin.allCases.count + (SceneId.allCases.firstIndex(of: scene) ?? 0)
+        }
+        let sound = goal.sound ?? .klassik
+        return DotSkin.allCases.count + SceneId.allCases.count +
+            (SoundSetId.allCases.firstIndex(of: sound) ?? 0)
     }
 
     /// Der aktuelle Stand auf einer Achse.

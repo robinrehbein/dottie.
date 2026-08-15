@@ -47,6 +47,7 @@ import de.robinrehbein.punkt.data.ScoreStore
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
 import de.robinrehbein.punkt.game.Goal
@@ -55,6 +56,7 @@ import de.robinrehbein.punkt.game.MedalTier
 import de.robinrehbein.punkt.game.Progress
 import de.robinrehbein.punkt.game.Prop
 import de.robinrehbein.punkt.game.PropShape
+import de.robinrehbein.punkt.game.RockPart
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
@@ -168,7 +170,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val haptics = remember { GameHaptics(context) }
     val store = remember { ScoreStore(context) }
-    val audio = remember { GameAudio(context).apply { muted = store.soundMuted } }
+    val audio = remember {
+        GameAudio(context).apply {
+            muted = store.soundMuted
+            soundSet = store.selectedSound.id
+        }
+    }
     val game = remember { TimingGame() }
     val fx = remember { FxState() }
     val bannerState = remember { BannerState() }
@@ -228,6 +235,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     // Die Kulisse ist die zweite Sammlung: kein Tagespass, kein
     // Verfallsdatum — deshalb reicht ein schlichter Zustand.
     var scene by remember { mutableStateOf(store.selectedScene) }
+    // Und das Ton-Set als dritte Sammlung — dieselbe Bauart, nur hört
+    // man sie, statt sie zu sehen.
+    var sound by remember { mutableStateOf(store.selectedSound) }
     // Der per Spot geliehene Skin des heutigen Tages (null = keiner).
     var skinPass by remember {
         mutableStateOf(store.skinPassFor(LocalDate.now().toEpochDay()))
@@ -647,7 +657,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                         skin = skin,
                         scene = scene,
                         daily = dailyMode,
-                        dailyStreak = dailyStreak
+                        dailyStreak = dailyStreak,
+                        // Rahmen und Beiname hängen am Gesamtstand, nicht
+                        // am Lauf — der Stand wird erst beim Tippen auf
+                        // TEILEN geholt, damit er den eben gezählten Lauf
+                        // sicher enthält.
+                        stats = store.stats().toSkinStats()
                     )
                 },
                 onMenu = {
@@ -688,6 +703,19 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 // Werbefreiheit ein zweites Mal, ohne es zu merken.
                 adsAlreadyRemoved = adsRemoved,
                 selected = skin,
+                selectedSound = sound,
+                onSelectSound = {
+                    sound = it
+                    store.selectedSound = it
+                    audio.soundSet = it.id
+                    // Die Hörprobe ist der ganze Sinn der Zeile: Ohne sie
+                    // waehlt man einen Klang nach seinem Namen.
+                    audio.preview(it.id)
+                    // Wie Skin- und Kulissen-Wahl eine Entscheidung: Sie
+                    // muss sofort raus, sonst ueberschreibt sie beim
+                    // naechsten Abgleich die juengere Wahl der Gegenseite.
+                    statsSync.publish()
+                },
                 selectedScene = scene,
                 onSelectScene = {
                     scene = it
@@ -1260,7 +1288,12 @@ private fun DrawScope.drawPixelTower(
     }
 }
 
-/** Fels: pyramidenförmiger Stapel, unten am breitesten. */
+/**
+ * Fels: Umriss aus [ScenePaint.ROCK_PARTS], unsymmetrisch und mit
+ * Lichtseite. Erst alle Konturen, dann alle Flächen — sonst schnitte die
+ * Kontur eines höheren Stücks in die Fläche des darunterliegenden, und
+ * der Stein bekäme Fugen, die er nicht hat.
+ */
 private fun DrawScope.drawPixelRock(
     cx: Float,
     groundY: Float,
@@ -1271,21 +1304,27 @@ private fun DrawScope.drawPixelRock(
     body: Color,
     light: Color
 ) {
-    val layers = listOf(
-        Triple(s * 2.2f, s * 0.50f, dark),
-        Triple(s * 1.6f, s * 0.45f, body),
-        Triple(s * 0.8f, s * 0.35f, light)
-    )
-    var layerTop = groundY
-    layers.forEachIndexed { i, (lw, lh, color) ->
-        layerTop -= lh
-        val lx = cx + sway * (0.15f + 0.25f * i)
+    val parts = ScenePaint.ROCK_PARTS
+    fun left(p: RockPart) = cx + sway * (0.15f + 0.25f * p.y) + p.x * s
+    fun top(p: RockPart) = groundY - (p.y + p.h) * s
+
+    parts.forEach { p ->
         drawRect(
             color = OutlineColor,
-            topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
-            size = Size(lw + cell * 2f, lh + cell * 2f)
+            topLeft = Offset(left(p) - cell, top(p) - cell),
+            size = Size(p.w * s + cell * 2f, p.h * s + cell * 2f)
         )
-        drawRect(color = color, topLeft = Offset(lx - lw / 2f, layerTop), size = Size(lw, lh))
+    }
+    parts.forEach { p ->
+        drawRect(
+            color = when (p.tone) {
+                0 -> dark
+                1 -> body
+                else -> light
+            },
+            topLeft = Offset(left(p), top(p)),
+            size = Size(p.w * s, p.h * s)
+        )
     }
 }
 

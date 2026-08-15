@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.game.MedalTier
 import de.robinrehbein.punkt.game.SkinState
@@ -923,6 +924,8 @@ internal fun SkinOverlay(
     onSelect: (DotSkin) -> Unit,
     selectedScene: DotScene,
     onSelectScene: (DotScene) -> Unit,
+    selectedSound: DotSound,
+    onSelectSound: (DotSound) -> Unit,
     onClose: () -> Unit,
     skinPass: DotSkin? = null,
     adOfferReady: Boolean = false,
@@ -994,6 +997,50 @@ internal fun SkinOverlay(
                             fontSize = 14.sp,
                             color = when {
                                 scene == selectedScene -> DotBody
+                                open -> Color.White.copy(alpha = 0.7f)
+                                else -> Color.White.copy(alpha = 0.45f)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Die Ton-Sets stehen direkt hinter den Kulissen und vor den
+            // Skins: Es sind drei, sie wirken wie die Kulisse auf den
+            // ganzen Lauf, und die Hörprobe beim Antippen soll nicht
+            // hinter 42 Vogel-Zeilen liegen — wer sie hört, will sofort
+            // die nächste hören.
+            SkinFamilyHeading(stringResource(R.string.sounds))
+            DotSound.entries.forEach { sound ->
+                val open = sound.isUnlocked(stats)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = open) { onSelectSound(sound) }
+                        .padding(horizontal = 48.dp, vertical = 10.dp)
+                ) {
+                    Canvas(modifier = Modifier.size(36.dp)) {
+                        drawSoundPreview(sound, alpha = if (open) 1f else 0.3f)
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = stringResource(sound.titleRes),
+                            fontFamily = Bytesized,
+                            fontSize = 20.sp,
+                            color = if (open) Color.White else Color.White.copy(alpha = 0.45f)
+                        )
+                        Text(
+                            text = when {
+                                sound == selectedSound -> stringResource(R.string.skin_selected)
+                                open -> stringResource(R.string.sound_tap_hear)
+                                else -> sound.unlockHintRes?.let { stringResource(it) } ?: ""
+                            },
+                            fontFamily = Bytesized,
+                            fontSize = 14.sp,
+                            color = when {
+                                sound == selectedSound -> DotBody
                                 open -> Color.White.copy(alpha = 0.7f)
                                 else -> Color.White.copy(alpha = 0.45f)
                             }
@@ -1173,6 +1220,41 @@ private fun DrawScope.drawScenePreview(scene: DotScene, alpha: Float) {
         size = Size(d * 0.18f, d * 0.16f),
         alpha = alpha
     )
+}
+
+/**
+ * Vorschau eines Ton-Sets auf 36 dp: drei Balken für Treffer, Perfekt
+ * und Rekord, deren Höhe aus [SoundBank.chips] kommt. Ein Ton-Set hat
+ * kein Bild — die Kachel zeigt deshalb die Lage des Sets: Die Glocke
+ * steht hoch, der Amboss bleibt am Boden. Die Zahlen stammen aus :core,
+ * damit die PWA dieselbe Kachel zeichnet.
+ */
+private fun DrawScope.drawSoundPreview(sound: DotSound, alpha: Float) {
+    val d = size.minDimension
+    val border = d / 12f
+    val innen = d - border * 2f
+
+    drawRect(color = OutlineColor, size = Size(d, d), alpha = alpha)
+    drawRect(
+        color = PanelSand,
+        topLeft = Offset(border, border),
+        size = Size(innen, innen),
+        alpha = alpha
+    )
+    // Dieselbe Sprache wie der Fortschrittsbalken: Sandbett, goldene
+    // Blöcke — nur senkrecht, weil hier keine Strecke gemeint ist.
+    val chips = sound.chips
+    val breite = innen / (chips.size * 2f - 1f)
+    chips.forEachIndexed { index, anteil ->
+        // Auch das tiefste Set bleibt sichtbar: ein Fünftel Mindesthöhe.
+        val hoehe = innen * (0.2f + 0.75f * anteil)
+        drawRect(
+            color = DotBody,
+            topLeft = Offset(border + index * breite * 2f, border + innen - hoehe),
+            size = Size(breite, hoehe),
+            alpha = alpha
+        )
+    }
 }
 
 /**

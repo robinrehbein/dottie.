@@ -209,6 +209,67 @@ Bedingung. Die Wahl wird wie die Skin-Wahl gespeichert und steht auf der
 Score-Card — sonst sähe sie niemand außer der Besitzerin. Die Uhr wählt
 keine Kulisse; sie zieht die Himmelsfarben nur lesend aus `ScenePaint`.
 
+## Ton-Sets (ab v2.23)
+
+Die dritte Sammlung neben Skins und Kulissen: **drei Klangwelten** —
+Klassik, Glocke, Amboss. Ein Ton-Set beschreibt dieselben acht Ereignisse
+(Start, Treffer, Perfekt, Kette, Freischaltung, Rekord, Tod, Aufschlag)
+noch einmal in einem anderen Charakter:
+
+| Set | Charakter |
+|---|---|
+| KLASSIK | der Bestand: NES-Blips, mittlere Lage, volle Pulsbreite, kurzes perkussives Abklingen |
+| GLOCKE | weich und rund: eine Oktave höher, alles klingt lange nach, **kein Rauschen** — auch der Tod nicht, hier zerbricht nichts, hier geht das Licht aus |
+| AMBOSS | hart, tief und sparsam: jeder Ton unter 450 Hz, Pulsbreite höchstens ein Viertel, nichts hallt nach; Treffer und Tod bekommen Rauschen, das aus dem Ton einen Schlag macht |
+
+**Warum ein Ton-Set verdient werden darf.** Wie die Kulisse entscheidet
+es nie über einen Treffer: Die Zone bleibt gleich breit, das
+Gnadenfenster gleich lang, und **jedes** Set gibt zu **jedem** Ereignis
+eine Rückmeldung. Ein Set, das den Perfekt-Ton weglässt, wäre ein
+Nachteil — deshalb besteht `SoundSet` darauf, dass alle acht beschrieben
+sind.
+
+Die Klänge liegen in `SoundBank` (`:core`), analog zu `ScenePaint` — als
+**Daten, nicht als Synthese-Code**: `Tone` trägt Frequenz (von/nach,
+gleich heißt Rechteck, verschieden heißt Gleitton), Dauer, Lautstärke,
+Abklingrate und Pulsbreite, `Noise` den Rauschanteil darüber. Alle vier
+Ports werfen dieselbe Tabelle in denselben Baukasten aus `ChipSynth`;
+ohne diese Trennung müsste jedes neue Set in vier Sprachen nachgebaut
+werden und liefe in vieren auseinander.
+
+Freigeschaltet wird über je eine eigene Achse — Können und Ausdauer:
+
+| Set | Bedingung |
+|---|---|
+| KLASSIK | von Anfang an |
+| GLOCKE | Perfekt-Serie 20 |
+| AMBOSS | 25.000 Punkte insgesamt |
+
+Beide Schwellen liegen bewusst auf Zahlen, auf denen sonst **nichts**
+liegt: Fiele ein Ton-Set zusammen mit einem Skin oder einer Kulisse,
+hörte niemand das neue Set — er sähe den neuen Vogel und hielte den Klang
+für dessen Beiwerk.
+
+Was `:core` per Test festnagelt (`SoundSetTest`):
+
+- **Jedes Set beschreibt jedes Ereignis** und hält sich an die Grenzen
+  des Baukastens (50–2500 Hz, 0,02–0,8 s, Lautstärke bis 0,6).
+- **Kein Set klingt bei einem Ereignis wie ein anderes**: Die Grundtöne
+  zweier Sets liegen mindestens eine Quarte auseinander. Ein Set ist eine
+  Sammlung, keine Nuance — man soll den Unterschied im ersten Treffer
+  hören, nicht erst im Vergleich zweier Aufnahmen.
+- **KLASSIK ist Ton für Ton der Bestand**, und der gerenderte Klang ist
+  Sample für Sample der alte. Wer die Umstellung hört, hat sie falsch
+  gemacht.
+
+Gewählt wird im SKINS-Overlay, direkt hinter den Kulissen und vor den
+Skin-Familien — mit **Hörprobe beim Antippen** (die Fanfare des Sets: sie
+zeigt Lage, Länge und Anschlag). Das Menü bleibt dabei offen: Wer eines
+hört, will das nächste hören. Die Uhr hat keinen eigenen Wähler; sie
+übernimmt die Wahl über den Abgleich und spielt sie dann auch — ein
+Klang, den man am Telefon hört und auf der Uhr nicht, wäre schlechter als
+gar keine Auswahl.
+
 ## Statistik-Seite (ab v2.21)
 
 Seit v2.20 laufen vier Ausdauer-Achsen mit — und sichtbar war davon
@@ -220,7 +281,7 @@ war unsichtbar.
 Der STATISTIK-Knopf auf dem Startscreen öffnet deshalb eine Seite im
 Stil der übrigen Overlays: erst alle Zähler (Rekord, Läufe, Punkte
 insgesamt, Tage, Monate, beste Perfekt-Serie, Daily-Serie, Sammlungsstand
-„12/35" für Skins und Kulissen), darunter die nächsten zwei bis drei
+„12/35" für Skins, Kulissen und Ton-Sets), darunter die nächsten zwei bis drei
 Freischaltungen mit Fortschrittsbalken. Im Game-Over steht **eine** Zeile
 mit dem nächstliegenden Ziel („FUSSBALL 218/300") plus Balken — mehr
 nicht: Wer stirbt, will neu starten, und ein Balken bei 72 % ist dafür
@@ -242,8 +303,9 @@ für neun Zeilen und drei Balken.
 
 ## Abgleich zwischen Telefon und Uhr (ab v2.19)
 
-Rekord, Lauf-Zahl, beste Perfekt-Serie, Daily-Stand sowie Skin- und
-Kulissen-Wahl gleichen sich über den **Wearable Data Layer** ab (Modul `:sync`). Es
+Rekord, Lauf-Zahl, beste Perfekt-Serie, Daily-Stand sowie Skin-,
+Kulissen- und Ton-Set-Wahl gleichen sich über den **Wearable Data Layer**
+ab (Modul `:sync`). Es
 gibt dabei bewusst **keine Haupt- und keine Nebenrolle**: Jedes Gerät
 legt seinen Stand ab, liest den der Gegenseite und führt beide mit
 `SyncState.mergedWith` (`:core`) zusammen. Weil das Zusammenführen
@@ -256,7 +318,7 @@ Die Regeln:
 
 - **Bestleistungen**: der höhere Wert gewinnt. Ein Rekord, der einmal
   existiert hat, darf durch den Abgleich nie verschwinden.
-- **Skin- und Kulissen-Wahl**: die *neuere* gewinnt, nicht die
+- **Skin-, Kulissen- und Ton-Set-Wahl**: die *neuere* gewinnt, nicht die
   „größere" — eine Auswahl ist eine Entscheidung, kein Rekord. Ein nur geliehener
   Tagespass-Skin wird gar nicht erst mitgeteilt: geliehen ist nicht
   verdient, und die Uhr leitet ihre Freischaltungen ohnehin selbst aus

@@ -196,6 +196,16 @@
 "scene_hint_stadt" = "BEST 85";
 "scene_hint_weltraum" = "COLLECT EVERY OTHER SCENE";
 
+/* Ton-Sets: die dritte Sammlung. Sie entscheidet nie ueber einen
+   Treffer — jedes Set meldet jedes Ereignis, nur eben anders. */
+"sounds" = "SOUNDS";
+"sound_klassik" = "CLASSIC";
+"sound_glocke" = "BELL";
+"sound_amboss" = "ANVIL";
+"sound_hint_glocke" = "PERFECT STREAK: 20";
+"sound_hint_amboss" = "25,000 POINTS TOTAL";
+"sound_tap_hear" = "TAP TO HEAR";
+
 /* Statistik-Seite: Die vier Ausdauer-Achsen liefen seit v2.20 unsichtbar
    mit — hier stehen sie samt naechster Ziele. */
 "stats" = "STATS";

@@ -98,44 +98,39 @@ object ChipSynth {
     fun perfectRate(streak: Int): Float =
         2f.pow(((streak - 1).coerceIn(0, 4) * 2) / 12f)
 
-    /** Alle Spiel-Sounds, benannt — die Quelle für GameAudio. */
-    fun effects(): Map<String, FloatArray> = mapOf(
-        // Lauf-Start: dezenter, weicher Blip.
-        "start" to square(440f, 0.06f, volume = 0.22f, decay = 20f),
-        // Treffer: kurzer satter Blip; die Tonhöhe steuert hitRate().
-        "hit" to square(660f, 0.07f, volume = 0.38f, decay = 18f),
-        // Perfekt: der klassische Münz-Sound — zwei Töne schnell aufwärts.
-        "perfect" to concat(
-            square(988f, 0.06f, volume = 0.32f, decay = 12f),
-            square(1319f, 0.16f, volume = 0.38f, decay = 9f)
-        ),
-        // Ketten-Zone: zwei flinke hohe Blips.
-        "chain" to concat(
-            square(880f, 0.05f, volume = 0.3f, decay = 20f),
-            square(1175f, 0.07f, volume = 0.3f, decay = 18f)
-        ),
-        // Twist/Stufe freigeschaltet: kleine Fanfare aufwärts.
-        "unlock" to concat(
-            square(523f, 0.07f, volume = 0.3f, decay = 14f),
-            square(659f, 0.07f, volume = 0.3f, decay = 14f),
-            square(784f, 0.07f, volume = 0.3f, decay = 14f),
-            square(1046f, 0.2f, volume = 0.34f, decay = 8f)
-        ),
-        // Neuer Rekord: längerer Jingle mit ausklingendem Schlusston.
-        "record" to concat(
-            square(784f, 0.09f, volume = 0.32f, decay = 10f),
-            square(1046f, 0.09f, volume = 0.32f, decay = 10f),
-            square(1319f, 0.09f, volume = 0.32f, decay = 10f),
-            square(1568f, 0.3f, volume = 0.36f, decay = 6f)
-        ),
-        // Tod: fallender Sweep plus Rausch-Burst — der Rage-Moment.
-        "death" to mix(
-            sweep(700f, 90f, 0.35f, volume = 0.42f, decay = 4f),
-            noise(0.12f, volume = 0.32f, decay = 22f)
-        ),
-        // Dumpfer Aufschlag, wenn das Ergebnis feststeht.
-        "thud" to square(100f, 0.09f, volume = 0.5f, decay = 14f)
-    )
+    /**
+     * Ein Ereignis-Klang aus der Tabelle: Töne hintereinander, Rauschen
+     * darüber. Die einzige Stelle, an der aus [Voice] Samples werden —
+     * die drei Handports tun exakt dasselbe, damit ein neues Ton-Set
+     * nirgends nachgebaut werden muss.
+     */
+    fun render(voice: Voice): FloatArray {
+        val tones = concat(
+            *voice.tones.map { t ->
+                if (t.fromHz == t.toHz) {
+                    square(t.fromHz, t.seconds, volume = t.volume, decay = t.decay, duty = t.duty)
+                } else {
+                    sweep(t.fromHz, t.toHz, t.seconds, volume = t.volume, decay = t.decay)
+                }
+            }.toTypedArray()
+        )
+        val rausch = voice.noise ?: return tones
+        return mix(tones, noise(rausch.seconds, volume = rausch.volume, decay = rausch.decay))
+    }
+
+    /**
+     * Alle Spiel-Sounds eines Ton-Sets, benannt — die Quelle für
+     * GameAudio. Die Schlüssel sind die Ereignisnamen in Kleinschrift
+     * ("hit", "perfect", …): Sie stehen so in den Cache-Dateien und in
+     * den Abspiel-Schichten aller Ports.
+     */
+    fun effects(set: SoundSetId): Map<String, FloatArray> =
+        SoundEvent.entries.associate { event ->
+            event.name.lowercase() to render(SoundBank.voice(set, event))
+        }
+
+    /** Das Standard-Set — der Bestand, für Aufrufer ohne eigene Wahl. */
+    fun effects(): Map<String, FloatArray> = effects(SoundSetId.KLASSIK)
 
     /** Verpackt Samples als 16-Bit-Mono-WAV (Little Endian, 44-Byte-Header). */
     fun toWav(samples: FloatArray): ByteArray {

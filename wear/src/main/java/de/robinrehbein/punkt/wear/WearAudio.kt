@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
 import de.robinrehbein.punkt.game.ChipSynth
+import de.robinrehbein.punkt.game.SoundSetId
 import java.io.File
 import kotlin.concurrent.thread
 
@@ -17,6 +18,11 @@ import kotlin.concurrent.thread
  * (niedrige Latenz). Synthese, Datei-I/O und das Laden passieren auf
  * einem Hintergrund-Thread, damit App-Start und Frame-Loop nie darauf
  * warten — bis dahin sind die Sounds einfach noch stumm.
+ *
+ * Seit den Ton-Sets liegen alle Sets im Pool. Gewählt wird auf dem
+ * Telefon; die Uhr bekommt die Wahl über den Abgleich und muss sie
+ * sofort spielen können — Nachladen hieße, dass der erste Treffer nach
+ * dem Abgleich noch im alten Set klingt.
  */
 class WearAudio(context: Context) {
 
@@ -32,9 +38,17 @@ class WearAudio(context: Context) {
         )
         .build()
 
-    /** Name → SoundPool-Id; der Lade-Thread befüllt die Map einmalig. */
+    /** Set → Name → SoundPool-Id; der Lade-Thread befüllt die Map einmalig. */
     @Volatile
-    private var soundIds: Map<String, Int> = emptyMap()
+    private var soundIds: Map<SoundSetId, Map<String, Int>> = emptyMap()
+
+    /**
+     * Das gewählte Ton-Set. Die Uhr wählt es nicht selbst — der
+     * Controller setzt es aus den Prefs und aus dem, was der Abgleich
+     * vom Telefon bringt.
+     */
+    @Volatile
+    var soundSet: SoundSetId = SoundSetId.KLASSIK
 
     /** Stumm geschaltet? Der Controller hält das mit den Prefs synchron. */
     @Volatile
@@ -46,16 +60,21 @@ class WearAudio(context: Context) {
     init {
         thread(name = "wear-sfx-init", isDaemon = true) {
             // Der Cache-Ordner ist versioniert wie am Phone: Ändert sich
-            // die Synthese, Namen hochzählen — sonst spielen alte Dateien.
-            val dir = File(appContext.cacheDir, "sfx-v1").apply { mkdirs() }
-            val effects = ChipSynth.effects()
-            val ids = HashMap<String, Int>()
-            for (name in WEAR_EFFECTS) {
-                val samples = effects[name] ?: continue
-                val file = File(dir, "$name.wav")
-                if (!file.exists()) file.writeBytes(ChipSynth.toWav(samples))
-                if (released) return@thread
-                ids[name] = soundPool.load(file.path, 1)
+            // die Synthese, Namen hochzählen — sonst spielen alte
+            // Dateien. v2 trennt die Sets in eigene Dateinamen.
+            val dir = File(appContext.cacheDir, "sfx-v2").apply { mkdirs() }
+            val ids = HashMap<SoundSetId, Map<String, Int>>()
+            for (set in SoundSetId.entries) {
+                val effects = ChipSynth.effects(set)
+                val proSet = HashMap<String, Int>()
+                for (name in WEAR_EFFECTS) {
+                    val samples = effects[name] ?: continue
+                    val file = File(dir, "${set.name}-$name.wav")
+                    if (!file.exists()) file.writeBytes(ChipSynth.toWav(samples))
+                    if (released) return@thread
+                    proSet[name] = soundPool.load(file.path, 1)
+                }
+                ids[set] = proSet
             }
             soundIds = ids
         }
@@ -83,7 +102,7 @@ class WearAudio(context: Context) {
 
     private fun play(name: String, rate: Float = 1f) {
         if (muted || released) return
-        val id = soundIds[name] ?: return
+        val id = soundIds[soundSet]?.get(name) ?: return
         soundPool.play(id, VOLUME, VOLUME, 1, 0, rate.coerceIn(0.5f, 2f))
     }
 
