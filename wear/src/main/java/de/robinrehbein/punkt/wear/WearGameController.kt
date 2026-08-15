@@ -9,6 +9,8 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.robinrehbein.punkt.game.DailyChallenge
+import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SyncState
 import de.robinrehbein.punkt.game.TimingGame
@@ -36,6 +38,15 @@ private const val KEY_DAILY_STREAK = "daily_streak"
 
 /** Wann der Skin zuletzt bewusst gewechselt wurde — nur für den Abgleich. */
 private const val KEY_SKIN_CHANGED = "skin_changed_at"
+
+/**
+ * Kulissen-Wahl des Telefons, gespiegelt wie der Skin — die Uhr wählt
+ * selbst nie eine Kulisse (siehe README, Abschnitt "Kulissen"), sie zieht
+ * nur die Himmelsfarben aus ScenePaint. Ohne diese beiden Keys bliebe die
+ * Uhr für immer bei WIESE, egal was am Telefon gewählt ist.
+ */
+private const val KEY_SCENE = "selected_scene"
+private const val KEY_SCENE_CHANGED = "scene_changed_at"
 
 /**
  * Ausdauer-Zähler. Sie hängen nicht am Können und sind der einzige Weg,
@@ -128,6 +139,14 @@ internal class WearGameController(context: Context) {
 
     /** Gewählter Punkt-Skin; persistent wie der Rekord. */
     var skin by mutableStateOf(WearDotSkin.fromName(prefs.getString(KEY_SKIN, null)))
+        private set
+
+    /**
+     * Kulisse des Telefons, nur gespiegelt (siehe [KEY_SCENE]). Die Uhr
+     * bietet dafür keinen eigenen Wähler — anders als [skin] gibt es hier
+     * also keine öffentliche Setter-Funktion.
+     */
+    var scene by mutableStateOf(ScenePaint.fromName(prefs.getString(KEY_SCENE, null)))
         private set
 
     /** Ist der Skin-Wähler offen? Nur aus dem READY-Overlay erreichbar. */
@@ -374,7 +393,13 @@ internal class WearGameController(context: Context) {
         monthsPlayed = prefs.getInt(KEY_MONTHS_PLAYED, 0),
         seasonEarned = prefs.getInt(KEY_SEASON_EARNED, 0),
         skin = skin.name,
-        skinChangedAt = prefs.getLong(KEY_SKIN_CHANGED, 0L)
+        skinChangedAt = prefs.getLong(KEY_SKIN_CHANGED, 0L),
+        // Die Uhr wählt nie selbst eine Kulisse — hier steht nur zurück,
+        // was das Telefon zuletzt geschickt hat (siehe applySync). Damit
+        // bleibt SyncState.mergedWith stabil: Ohne dieses Zurückmelden
+        // würde ein Abgleich die Kulisse jedes Mal neu "verlieren".
+        scene = scene.name,
+        sceneChangedAt = prefs.getLong(KEY_SCENE_CHANGED, 0L)
     )
 
     /**
@@ -431,6 +456,14 @@ internal class WearGameController(context: Context) {
             // dasselbe. Mit fortgeschriebenem Zeitstempel bliebe die Uhr
             // für immer auf ihrem alten Skin sitzen.
         }
+        // Kulisse nach derselben Neuer-gewinnt-Regel wie der Skin — die
+        // Rechnung steckt in WearSyncMerge, damit sie ohne Prefs testbar
+        // bleibt. null heißt: nichts übernehmen, Zeitstempel bleibt stehen
+        // (siehe WearSyncMerge.sceneToAdopt).
+        WearSyncMerge.sceneToAdopt(before, state, patronOwned)?.let { adopted ->
+            editor.putString(KEY_SCENE, adopted.name)
+            editor.putLong(KEY_SCENE_CHANGED, state.sceneChangedAt)
+        }
         editor.apply()
 
         // Angezeigte Werte nachziehen — die Compose-Felder lesen die Prefs
@@ -438,6 +471,7 @@ internal class WearGameController(context: Context) {
         bestScore = prefs.getInt(KEY_BEST, 0)
         bestPerfectStreak = prefs.getInt(KEY_BEST_PERFECT, 0)
         skin = WearDotSkin.fromName(prefs.getString(KEY_SKIN, null))
+        scene = ScenePaint.fromName(prefs.getString(KEY_SCENE, null))
         refreshDailyDisplay()
         return true
     }
