@@ -33,7 +33,9 @@ import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.Goal
+import de.robinrehbein.punkt.game.GoalAxis
 import de.robinrehbein.punkt.game.Progress
+import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.theme.Bytesized
 import kotlin.math.max
 
@@ -56,7 +58,13 @@ import kotlin.math.max
 internal fun StatsOverlay(
     stats: DotSkin.Stats,
     goals: List<Goal>,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    // Die Rangliste stand früher auf dem Startbildschirm. Sie gehört
+    // hierher: Wer den eigenen Stand ansieht, ist der Einzige, den der
+    // Stand der anderen interessiert. Die Bedingung ist unverändert —
+    // nur sichtbar, wenn Play Games konfiguriert und angemeldet ist.
+    leaderboardAvailable: Boolean = false,
+    onLeaderboard: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -103,6 +111,20 @@ internal fun StatsOverlay(
             if (goals.isNotEmpty()) {
                 SkinFamilyHeading(stringResource(R.string.stats_goals))
                 goals.forEach { goal -> GoalRow(goal) }
+            }
+
+            if (leaderboardAvailable) {
+                Spacer(modifier = Modifier.height(20.dp))
+                PixelButton(
+                    text = stringResource(R.string.leaderboard),
+                    onClick = onLeaderboard,
+                    backgroundColor = PanelSand,
+                    borderColor = TextDark,
+                    textColor = TextDark,
+                    width = 244.dp,
+                    height = 48.dp,
+                    borderWidth = 3.dp
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -162,14 +184,47 @@ internal fun GoalRow(goal: Goal) {
 
 /** "FUSSBALL 218/300" — Name der Belohnung plus Stand auf ihrer Achse. */
 @Composable
-internal fun goalLabel(goal: Goal): String {
+internal fun goalLabel(goal: Goal): String =
+    stringResource(R.string.goal_progress, goalName(goal), goal.current, goal.target)
+
+/**
+ * Die lange Fassung für den Startbildschirm:
+ * "NAECHSTER SKIN: MEDAILLE — 199/200 LAEUFE".
+ *
+ * Dort steht das Ziel allein und ohne Überschrift, deshalb muss die Zeile
+ * beides selbst sagen: was es freischaltet und worauf gezählt wird. Ohne
+ * die Achse läse sich "MEDAILLE 199/200" als 199 von 200 Medaillen.
+ */
+@Composable
+internal fun goalHeadline(goal: Goal): String = stringResource(
+    if (goal.skin != null) R.string.goal_next_skin else R.string.goal_next_scene,
+    goalName(goal),
+    goal.current,
+    goal.target,
+    stringResource(goalAxisRes(goal.axis))
+)
+
+/** Name der Belohnung — Skin oder Kulisse, je nachdem was das Ziel öffnet. */
+@Composable
+private fun goalName(goal: Goal): String {
     val skin = goal.skin
-    val name = if (skin != null) {
+    return if (skin != null) {
         stringResource(DotSkin.of(skin).titleRes)
     } else {
         stringResource(DotScene.of(goal.scene!!).titleRes)
     }
-    return stringResource(R.string.goal_progress, name, goal.current, goal.target)
+}
+
+/** Die Einheit hinter den Zahlen: LAEUFE, PUNKTE, TAGE, … */
+private fun goalAxisRes(axis: GoalAxis): Int = when (axis) {
+    GoalAxis.BEST_SCORE -> R.string.goal_axis_points
+    GoalAxis.TOTAL_SCORE -> R.string.goal_axis_total
+    GoalAxis.PERFECT_STREAK -> R.string.goal_axis_perfect
+    GoalAxis.DAILY_STREAK, GoalAxis.DAYS_PLAYED, GoalAxis.SEASON_DAYS -> R.string.goal_axis_days
+    GoalAxis.MONTHS_PLAYED -> R.string.goal_axis_months
+    GoalAxis.RUN_COUNT -> R.string.goal_axis_runs
+    GoalAxis.SKIN_COLLECTION -> R.string.goal_axis_skins
+    GoalAxis.SCENE_COLLECTION -> R.string.goal_axis_scenes
 }
 
 /**

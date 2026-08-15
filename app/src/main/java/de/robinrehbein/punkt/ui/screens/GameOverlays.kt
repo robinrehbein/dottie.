@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,6 +45,8 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -176,32 +179,30 @@ private fun HelpCornerButton(onHelp: () -> Unit, modifier: Modifier = Modifier) 
     )
 }
 
+/**
+ * Der Startbildschirm. Er zeigt bewusst nur noch acht Dinge: Titel,
+ * Rekord, den blinkenden Hinweis, das Zahnrad, die drei Knöpfe und die
+ * eine Ziel-Zeile.
+ *
+ * Alles, was vorher hier stand und nur selten gebraucht wird, ist
+ * umgezogen: Ton, Erinnerung, Hilfe, Werbe-Kauf und Datenschutz in das
+ * Einstellungs-Overlay hinter dem Zahnrad, die Rangliste in die
+ * Statistik. Die Daily-Serie hängt als Abzeichen am DAILY-Knopf, und
+ * statt Versuchszähler und Tageswerten trägt eine einzige Zeile mit
+ * Balken das nächste Ziel — dieselbe Rechnung wie im Game-Over.
+ */
 @Composable
 internal fun ReadyOverlay(
     bestScore: Int,
-    runNumber: Int,
     hint: String,
-    dailyBest: Int,
     dailyStreak: Int,
+    // Das nächstliegende offene Ziel — null, wenn alles gesammelt ist.
+    // Dann fällt die Zeile ersatzlos weg: Es gibt nichts mehr zu zeigen.
+    goal: Goal?,
     onDaily: () -> Unit,
     onSkins: () -> Unit,
     onStats: () -> Unit,
-    leaderboardAvailable: Boolean,
-    onLeaderboard: () -> Unit,
-    onHelp: () -> Unit,
-    soundOn: Boolean,
-    onToggleSound: () -> Unit,
-    reminderOn: Boolean,
-    onToggleReminder: () -> Unit,
-    // Kauf-Zeile: nur sichtbar, wenn Werbung läuft UND Google ein
-    // kaufbares Produkt liefert (dann steht hier dessen Preis). Ohne
-    // AdMob-IDs sieht der Startscreen exakt aus wie bisher.
-    removeAdsPrice: String? = null,
-    onRemoveAds: () -> Unit = {},
-    // Widerruf der Werbe-Einwilligung. Google blendet die Zeile selbst
-    // nur dort ein, wo sie nötig ist (im Wesentlichen die EU).
-    privacyVisible: Boolean = false,
-    onPrivacy: () -> Unit = {},
+    onSettings: () -> Unit,
     // Versteckte Diagnose: langer Druck auf den Titel blendet den
     // Klartext-Zustand von Werbung und Kauf ein. Nach aussen sieht
     // "keine Einwilligung" genauso aus wie "keine Anzeige verfuegbar" —
@@ -225,40 +226,21 @@ internal fun ReadyOverlay(
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
-        HelpCornerButton(
-            onHelp = onHelp,
+        // Ein Zahnrad statt dreier Einzel-Icons: Ton, Erinnerung und Hilfe
+        // sind Einstellungen, keine Spielzüge — sie gehören hinter eine Tür.
+        PixelIconButton(
+            icon = PixelIcon.GEAR,
+            contentDescription = stringResource(R.string.settings),
+            onClick = onSettings,
+            backgroundColor = PanelSand,
+            borderColor = TextDark,
+            strikeColor = RecordRed,
+            buttonSize = 48.dp,
+            borderWidth = 3.dp,
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(16.dp)
         )
-
-        Row(modifier = Modifier
-            .align(Alignment.TopStart)
-            .padding(16.dp)
-        ) {
-            PixelIconButton(
-                icon = if (soundOn) PixelIcon.SPEAKER_ON else PixelIcon.SPEAKER_OFF,
-                contentDescription = stringResource(if (soundOn) R.string.sound_on else R.string.sound_off),
-                onClick = onToggleSound,
-                backgroundColor = PanelSand,
-                borderColor = TextDark,
-                strikeColor = RecordRed,
-                buttonSize = 48.dp,
-                borderWidth = 3.dp
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            // Tägliche Daily-Challenge-Erinnerung (Opt-in, lokal).
-            PixelIconButton(
-                icon = if (reminderOn) PixelIcon.BELL_ON else PixelIcon.BELL_OFF,
-                contentDescription = stringResource(if (reminderOn) R.string.reminder_on else R.string.reminder_off),
-                onClick = onToggleReminder,
-                backgroundColor = PanelSand,
-                borderColor = TextDark,
-                strikeColor = RecordRed,
-                buttonSize = 48.dp,
-                borderWidth = 3.dp
-            )
-        }
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -319,36 +301,35 @@ internal fun ReadyOverlay(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 48.dp)
         ) {
-            // Nur sichtbar, wenn Play Games konfiguriert und angemeldet ist.
-            if (leaderboardAvailable) {
-                PixelButton(
-                    text = stringResource(R.string.leaderboard),
-                    onClick = onLeaderboard,
-                    backgroundColor = PanelSand,
-                    borderColor = TextDark,
-                    textColor = TextDark,
-                    width = 244.dp,
-                    height = 48.dp,
-                    borderWidth = 3.dp
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-            }
             // Drei Knöpfe statt zwei: Die Statistik gehört auf den
             // Startscreen, nicht in ein Untermenü — sie ist der Grund,
             // den nächsten Lauf zu starten. Dafür sind alle drei etwas
             // schmaler (108 statt 116 dp bei 10 dp Abstand), damit die
             // Reihe auch auf 360-dp-Displays mit Rand steht.
             Row {
-                PixelButton(
-                    text = stringResource(R.string.daily),
-                    onClick = onDaily,
-                    backgroundColor = DotBody,
-                    borderColor = TextDark,
-                    textColor = TextDark,
-                    width = 108.dp,
-                    height = 52.dp,
-                    borderWidth = 3.dp
-                )
+                // Die laufende Serie hängt als Abzeichen am Knopf, zu dem
+                // sie gehört: Sie ist eine Eigenschaft der Daily, keine
+                // eigene Zeile — und in der Ecke sieht man sie trotzdem.
+                Box {
+                    PixelButton(
+                        text = stringResource(R.string.daily),
+                        onClick = onDaily,
+                        backgroundColor = DotBody,
+                        borderColor = TextDark,
+                        textColor = TextDark,
+                        width = 108.dp,
+                        height = 52.dp,
+                        borderWidth = 3.dp
+                    )
+                    if (dailyStreak >= 1) {
+                        StreakBadge(
+                            days = dailyStreak,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 5.dp, y = (-5).dp)
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.width(10.dp))
                 PixelButton(
                     text = stringResource(R.string.skins),
@@ -372,57 +353,56 @@ internal fun ReadyOverlay(
                     borderWidth = 3.dp
                 )
             }
-            if (dailyBest > 0 || dailyStreak > 0) {
-                Spacer(modifier = Modifier.height(8.dp))
+            // Eine Zeile statt einer Zahlenwand: Wo vorher Tageswert,
+            // Serie und Versuchszähler standen, steht jetzt der eine
+            // Grund, gleich noch einmal zu spielen. Die Achse steht mit
+            // dabei — "MEDAILLE 199/200" allein läse sich als Medaillen.
+            if (goal != null) {
+                Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = listOfNotNull(
-                        if (dailyBest > 0) stringResource(R.string.today_score, dailyBest) else null,
-                        if (dailyStreak > 0) streakLabel(dailyStreak) else null
-                    ).joinToString("  ·  "),
+                    text = goalHeadline(goal),
                     style = ScoreShadowStyle,
                     fontSize = 15.sp,
-                    color = DotBody
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 24.dp)
                 )
-            }
-            if (runNumber > 0) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.run_number, runNumber + 1),
-                    style = ScoreShadowStyle,
-                    fontSize = 16.sp,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-            }
-            // Bewusst nur eine kleine Zeile statt eines dritten großen
-            // Knopfs: Der Kauf soll auffindbar sein, aber nicht um
-            // Aufmerksamkeit mit DAILY und SKINS konkurrieren.
-            if (removeAdsPrice != null) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = stringResource(R.string.remove_ads, removeAdsPrice),
-                    style = ScoreShadowStyle,
-                    fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.75f),
-                    modifier = Modifier
-                        .clickable { onRemoveAds() }
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                )
-            }
-            // Noch eine Spur zurückhaltender als die Kauf-Zeile: Der
-            // Widerruf muss dauerhaft erreichbar sein, aber niemand sucht
-            // ihn auf einem Startbildschirm — deshalb klein und blass.
-            if (privacyVisible) {
-                Text(
-                    text = stringResource(R.string.ad_privacy),
-                    style = ScoreShadowStyle,
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.55f),
-                    modifier = Modifier
-                        .clickable { onPrivacy() }
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                )
+                Spacer(modifier = Modifier.height(5.dp))
+                GoalBar(fraction = goal.fraction, modifier = Modifier.width(244.dp))
             }
         }
+    }
+}
+
+/**
+ * Das rote Serien-Abzeichen an der Ecke des DAILY-Knopfs: dunkler
+ * Pixelrahmen, roter Kern, die Zahl der Tage. Dreistellige Serien gibt es
+ * praktisch nicht, deshalb reicht ein quadratisches Feld.
+ */
+@Composable
+private fun StreakBadge(days: Int, modifier: Modifier = Modifier) {
+    val cd = streakLabel(days)
+    Box(
+        modifier = modifier
+            .size(24.dp)
+            .semantics { contentDescription = cd },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val border = 3.dp.toPx()
+            drawRect(color = OutlineColor)
+            drawRect(
+                color = RecordRed,
+                topLeft = Offset(border, border),
+                size = Size(size.width - 2 * border, size.height - 2 * border)
+            )
+        }
+        Text(
+            text = days.toString(),
+            fontFamily = Bytesized,
+            fontSize = 13.sp,
+            color = Color.White
+        )
     }
 }
 
@@ -830,6 +810,133 @@ private fun StopHelpContent() {
 
     Spacer(modifier = Modifier.height(10.dp))
     HelpLine(stringResource(R.string.help_max_twists))
+}
+
+// ===== Einstellungen =====
+
+/**
+ * Alles, was der Startbildschirm nicht mehr trägt: Ton, Erinnerung,
+ * Hilfe, der Werbe-Kauf und der Datenschutz-Widerruf.
+ *
+ * Aufbau wie Hilfe, Skins und Statistik: dunkler Scrim, ein Tap
+ * daneben schließt (und wird konsumiert, damit er nicht als Spiel-Tap
+ * durchschlägt). Die Sichtbarkeits-Regeln der beiden unteren Zeilen sind
+ * unverändert die alten — sie stehen nur woanders: [removeAdsPrice] ist
+ * genau dann gesetzt, wenn Werbung läuft UND Google ein kaufbares
+ * Produkt liefert; [privacyVisible] sagt Google selbst.
+ */
+@Composable
+internal fun SettingsOverlay(
+    soundOn: Boolean,
+    onToggleSound: () -> Unit,
+    reminderOn: Boolean,
+    onToggleReminder: () -> Unit,
+    onHelp: () -> Unit,
+    onClose: () -> Unit,
+    removeAdsPrice: String? = null,
+    onRemoveAds: () -> Unit = {},
+    privacyVisible: Boolean = false,
+    onPrivacy: () -> Unit = {}
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(OutlineColor.copy(alpha = 0.92f))
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onClose() })
+            }
+            .windowInsetsPadding(WindowInsets.systemBars),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 32.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.settings),
+                style = ScoreShadowStyle,
+                fontSize = 32.sp,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Die Knöpfe tragen ihren Zustand als Text — dieselbe Angabe,
+            // die vorher als contentDescription am Icon hing.
+            PixelButton(
+                text = stringResource(if (soundOn) R.string.sound_on else R.string.sound_off),
+                onClick = onToggleSound,
+                backgroundColor = PanelSand,
+                borderColor = TextDark,
+                textColor = TextDark,
+                width = 244.dp,
+                height = 48.dp,
+                borderWidth = 3.dp
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            // Tägliche Daily-Challenge-Erinnerung (Opt-in, lokal).
+            PixelButton(
+                text = stringResource(if (reminderOn) R.string.reminder_on else R.string.reminder_off),
+                onClick = onToggleReminder,
+                backgroundColor = PanelSand,
+                borderColor = TextDark,
+                textColor = TextDark,
+                width = 244.dp,
+                height = 48.dp,
+                borderWidth = 3.dp
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            PixelButton(
+                text = stringResource(R.string.help),
+                onClick = onHelp,
+                backgroundColor = PanelSand,
+                borderColor = TextDark,
+                textColor = TextDark,
+                width = 244.dp,
+                height = 48.dp,
+                borderWidth = 3.dp
+            )
+
+            // Bewusst nur eine kleine Zeile statt eines vierten Knopfs:
+            // Der Kauf soll auffindbar sein, aber nicht um Aufmerksamkeit
+            // mit den Schaltern konkurrieren.
+            if (removeAdsPrice != null) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = stringResource(R.string.remove_ads, removeAdsPrice),
+                    style = ScoreShadowStyle,
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.75f),
+                    modifier = Modifier
+                        .clickable { onRemoveAds() }
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            }
+            // Noch eine Spur zurückhaltender als die Kauf-Zeile: Der
+            // Widerruf muss dauerhaft erreichbar sein, aber niemand sucht
+            // ihn — deshalb klein und blass.
+            if (privacyVisible) {
+                Text(
+                    text = stringResource(R.string.ad_privacy),
+                    style = ScoreShadowStyle,
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .clickable { onPrivacy() }
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = stringResource(R.string.tap_to_close),
+                fontFamily = Bytesized,
+                fontSize = 14.sp,
+                color = Color.White.copy(alpha = 0.6f)
+            )
+        }
+    }
 }
 
 /** "SERIE: n TAG/TAGE" bzw. "STREAK: n DAY/DAYS", sprachrichtig. */
