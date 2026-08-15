@@ -32,13 +32,13 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import de.robinrehbein.punkt.BuildConfig
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.ads.AdsManager
@@ -49,7 +49,15 @@ import de.robinrehbein.punkt.game.DotScene
 import de.robinrehbein.punkt.game.DotSkin
 import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.GameAudio
+import de.robinrehbein.punkt.game.GameEventChainNext
+import de.robinrehbein.punkt.game.GameEventDied
+import de.robinrehbein.punkt.game.GameEventHit
+import de.robinrehbein.punkt.game.GameEventPerfectHit
+import de.robinrehbein.punkt.game.GameEventSettled
+import de.robinrehbein.punkt.game.GameEventStarted
+import de.robinrehbein.punkt.game.GameEventTwistUnlocked
 import de.robinrehbein.punkt.game.GameHaptics
+import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.game.Ground
 import de.robinrehbein.punkt.game.MedalTier
@@ -61,11 +69,11 @@ import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.TimingGame
+import de.robinrehbein.punkt.game.Twist
 import de.robinrehbein.punkt.notify.DailyReminder
 import de.robinrehbein.punkt.play.Leaderboards
 import de.robinrehbein.punkt.share.ScoreCard
 import de.robinrehbein.punkt.sync.StatsSync
-import kotlinx.coroutines.isActive
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.math.abs
@@ -74,6 +82,7 @@ import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
+import kotlinx.coroutines.isActive
 
 /** Fallen-Zone: klar als Gefahr lesbar, aber unter Zeitdruck verwechselbar. */
 private val FakeZoneColor = Color(0xFFB44FD8)
@@ -86,14 +95,14 @@ private val FakeZoneCoreColor = Color(0xFF8A2FB0)
  * Umlauf, nach der Nacht geht es zurück Richtung Tag.
  */
 
-private fun twistBannerText(context: Context, twist: TimingGame.Twist): String =
+private fun twistBannerText(context: Context, twist: Twist): String =
     context.getString(
         when (twist) {
-            TimingGame.Twist.PULSE -> R.string.banner_twist_pulse
-            TimingGame.Twist.DRIFT -> R.string.banner_twist_drift
-            TimingGame.Twist.GHOST -> R.string.banner_twist_ghost
-            TimingGame.Twist.FAKE -> R.string.banner_twist_fake
-            TimingGame.Twist.CHAIN -> R.string.banner_twist_chain
+            Twist.PULSE -> R.string.banner_twist_pulse
+            Twist.DRIFT -> R.string.banner_twist_drift
+            Twist.GHOST -> R.string.banner_twist_ghost
+            Twist.FAKE -> R.string.banner_twist_fake
+            Twist.CHAIN -> R.string.banner_twist_chain
         }
     )
 
@@ -219,7 +228,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     }
 
     var frameTick by remember { mutableLongStateOf(0L) }
-    var phase by remember { mutableStateOf(TimingGame.Phase.READY) }
+    var phase by remember { mutableStateOf(GamePhase.READY) }
     var score by remember { mutableIntStateOf(0) }
     var bestScore by remember { mutableIntStateOf(store.bestScore) }
     var runNumber by remember { mutableIntStateOf(store.runCount) }
@@ -347,7 +356,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         val today = runState.epochDay
         // Jeder Lauf-Start ist auch der Moment, den Tagespass nachzuziehen.
         refreshSkinPass(today)
-        game.reseed(if (dailyMode) DailyChallenge.seedFor(today) else null)
+        if (dailyMode) game.reseed(DailyChallenge.seedFor(today)) else game.reseedSystem()
     }
 
     // Banner mit Priorität: Ein wichtigeres Banner (Twist-Ankündigung)
@@ -380,7 +389,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 var twistUnlockedThisFrame = false
                 events.forEach { event ->
                     when (event) {
-                        is TimingGame.GameEvent.Started -> {
+                        is GameEventStarted -> {
                             // Auch beim Sofort-Neustart aus dem Game-Over:
                             // Banner, Stufen-Zähler und Rekord-Feier auf Anfang.
                             bannerState.lastStage = 0
@@ -393,28 +402,28 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             fx.deathTime = -1f
                             audio.start()
                         }
-                        is TimingGame.GameEvent.Hit -> {
+                        is GameEventHit -> {
                             haptics.score()
                             audio.hit(game.score)
                         }
-                        is TimingGame.GameEvent.PerfectHit -> {
+                        is GameEventPerfectHit -> {
                             haptics.perfect()
                             audio.perfect(game.perfectStreak)
                             perfectPoints = game.lastHitPoints
                             runState.maxPerfect = max(runState.maxPerfect, game.perfectStreak)
                         }
-                        is TimingGame.GameEvent.ChainNext -> {
+                        is GameEventChainNext -> {
                             showBanner(context.getString(R.string.banner_chain), 1.2f, priority = 1)
                             audio.chain()
                         }
-                        is TimingGame.GameEvent.TwistUnlocked -> {
+                        is GameEventTwistUnlocked -> {
                             twistUnlockedThisFrame = true
                             showBanner(twistBannerText(context, event.twist), 2.2f, priority = 2)
                             fx.celebrateTime = CELEBRATE_SECONDS
                             haptics.unlock()
                             audio.unlock()
                         }
-                        is TimingGame.GameEvent.Died -> {
+                        is GameEventDied -> {
                             haptics.death()
                             audio.death()
                             fx.flashAlpha = 1f
@@ -461,7 +470,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                                 haptics.newRecord()
                             }
                         }
-                        is TimingGame.GameEvent.Settled -> {
+                        is GameEventSettled -> {
                             haptics.thud()
                             // Der Rekord-Jingle lief meist schon live im Lauf;
                             // sonst (z. B. allererster Lauf) kommt er jetzt.
@@ -484,7 +493,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
 
                 // Rekord live feiern: In dem Moment, in dem der Lauf den
                 // alten Bestwert überholt — nicht erst beim Tod.
-                if (game.phase == TimingGame.Phase.RUNNING &&
+                if (game.phase == GamePhase.RUNNING &&
                     !bannerState.recordCelebrated &&
                     bestScore > 0 && game.score > bestScore
                 ) {
@@ -499,7 +508,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 // wird gefeiert, sofern nicht ohnehin gerade ein Twist-Banner
                 // die große Bühne bekommt.
                 val stage = game.score / 5
-                if (game.phase == TimingGame.Phase.RUNNING && stage > bannerState.lastStage) {
+                if (game.phase == GamePhase.RUNNING && stage > bannerState.lastStage) {
                     bannerState.lastStage = stage
                     if (!twistUnlockedThisFrame) {
                         showBanner(context.getString(R.string.banner_stage), 1.6f, priority = 1)
@@ -508,14 +517,14 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                         audio.unlock()
                     }
                 }
-                if (game.phase == TimingGame.Phase.READY) {
+                if (game.phase == GamePhase.READY) {
                     bannerState.lastStage = 0
                 }
 
                 phase = game.phase
                 score = game.score
                 showPerfect = game.lastHitPerfect && game.timeSinceHit < 0.6f &&
-                    game.phase == TimingGame.Phase.RUNNING
+                    game.phase == GamePhase.RUNNING
                 frameTick++
             }
         }
@@ -528,8 +537,8 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 detectTapGestures(onPress = {
                     // Ein Tap in READY/OVER startet gleich einen Lauf —
                     // vorher Seed und Tag für den aktuellen Modus setzen.
-                    if (game.phase == TimingGame.Phase.READY ||
-                        game.phase == TimingGame.Phase.OVER
+                    if (game.phase == GamePhase.READY ||
+                        game.phase == GamePhase.OVER
                     ) {
                         prepareRun()
                     }
@@ -560,7 +569,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         }
 
         when (phase) {
-            TimingGame.Phase.READY -> ReadyOverlay(
+            GamePhase.READY -> ReadyOverlay(
                 bestScore = bestScore,
                 runNumber = runNumber,
                 hint = stringResource(R.string.ready_hint),
@@ -631,13 +640,13 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 },
                 onToggleDiagnostics = { showDiagnostics = !showDiagnostics }
             )
-            TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
+            GamePhase.RUNNING, GamePhase.DYING ->
                 ScoreHud(
                     score = score,
                     daily = dailyMode,
-                    banner = if (phase == TimingGame.Phase.RUNNING) bannerText else ""
+                    banner = if (phase == GamePhase.RUNNING) bannerText else ""
                 )
-            TimingGame.Phase.OVER -> GameOverOverlay(
+            GamePhase.OVER -> GameOverOverlay(
                 score = score,
                 bestScore = bestScore,
                 isNewRecord = isNewRecord,
@@ -1560,7 +1569,7 @@ private fun DrawScope.drawTimingDot(
     // Schweif-Skins (Tinte) lassen Nachbilder auf der Bahn zurück. Die
     // Positionen werden aus dem Winkel zurückgerechnet statt gespeichert —
     // damit sehen alle Ports identisch aus, ohne eigenen Zustand.
-    if (skin.hasTrail && game.phase == TimingGame.Phase.RUNNING) {
+    if (skin.hasTrail && game.phase == GamePhase.RUNNING) {
         for (step in SkinPaint.TRAIL_STEPS downTo 1) {
             val a = game.angle - game.direction * step * SkinPaint.TRAIL_SPACING
             drawBird(

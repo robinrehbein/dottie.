@@ -209,7 +209,7 @@ enum PixelArt {
 
     /// Wie groß die Textur einer Form sein muss, damit nichts abgeschnitten
     /// wird — die Breite folgt der breitesten Lage, die Höhe der höchsten.
-    private static func propSize(_ shape: PropShape, s: CGFloat, cell: CGFloat) -> CGSize {
+    private static func propSize(_ shape: PropKind, s: CGFloat, cell: CGFloat) -> CGSize {
         switch shape {
         case .baum: return CGSize(width: s * 1.6 + cell * 4, height: s * 1.8 + cell * 3)
         case .strauch: return CGSize(width: s * 2.7 + cell * 4, height: s * 1.8 + cell * 3)
@@ -520,7 +520,7 @@ enum PixelArt {
             for (index, anteil) in chips.enumerated() {
                 // Auch das tiefste Set bleibt sichtbar: ein Fünftel
                 // Mindesthöhe.
-                let hoehe = innen * (0.2 + 0.75 * CGFloat(anteil))
+                let hoehe = innen * (0.2 + 0.75 * anteil)
                 fill(ctx, Palette.dotBody,
                      border + CGFloat(index) * breite * 2, border + innen - hoehe,
                      breite, hoehe)

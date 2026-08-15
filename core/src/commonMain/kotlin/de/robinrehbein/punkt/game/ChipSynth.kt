@@ -100,17 +100,36 @@ object ChipSynth {
 
     /**
      * Ein Ereignis-Klang aus der Tabelle: Töne hintereinander, Rauschen
-     * darüber. Die einzige Stelle, an der aus [Voice] Samples werden —
-     * die drei Handports tun exakt dasselbe, damit ein neues Ton-Set
-     * nirgends nachgebaut werden muss.
+     * darüber. Die einzige Stelle, an der aus [Voice] Samples werden.
      */
-    fun render(voice: Voice): FloatArray {
+    fun render(voice: Voice): FloatArray = render(voice, 1f)
+
+    /**
+     * Derselbe Klang, um [rate] verstimmt: Frequenz mal r, Dauer durch r,
+     * Abklingrate mal r. Das Rauschen bleibt unberührt — ein Aufprall hat
+     * keine Tonhöhe.
+     *
+     * Android pitcht stattdessen beim Abspielen (SoundPool-Rate) und
+     * kommt mit `rate = 1` aus; iOS hat keine Entsprechung dazu und
+     * rendert jede Stufe einmal vor. Die Rechnung dafür steht hier statt
+     * im Client: Sie gehört zum Klang, nicht zur Abspielschicht.
+     *
+     * Als eigene Überladung statt als Standardwert am Parameter, weil
+     * Kotlin/Native Standardwerte nicht nach Objective-C exportiert.
+     */
+    fun render(voice: Voice, rate: Float): FloatArray {
         val tones = concat(
             *voice.tones.map { t ->
                 if (t.fromHz == t.toHz) {
-                    square(t.fromHz, t.seconds, volume = t.volume, decay = t.decay, duty = t.duty)
+                    square(
+                        t.fromHz * rate, t.seconds / rate,
+                        volume = t.volume, decay = t.decay * rate, duty = t.duty
+                    )
                 } else {
-                    sweep(t.fromHz, t.toHz, t.seconds, volume = t.volume, decay = t.decay)
+                    sweep(
+                        t.fromHz * rate, t.toHz * rate, t.seconds / rate,
+                        volume = t.volume, decay = t.decay * rate
+                    )
                 }
             }.toTypedArray()
         )

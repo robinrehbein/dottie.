@@ -176,8 +176,8 @@ final class ScoreStore {
         defaults.set(Int(epochDay), forKey: ScoreStore.keySeasonLastDay)
         let days = defaults.integer(forKey: ScoreStore.keySeasonDays) + 1
         defaults.set(days, forKey: ScoreStore.keySeasonDays)
-        if days >= season.requiredDays {
-            defaults.set(seasonEarned | season.bit, forKey: ScoreStore.keySeasonEarned)
+        if days >= Int(season.requiredDays) {
+            defaults.set(seasonEarned | Int(season.bit), forKey: ScoreStore.keySeasonEarned)
         }
     }
 
@@ -225,17 +225,19 @@ final class ScoreStore {
 
     /// Alles, woraus sich Freischaltungen speisen — Bestleistungen und
     /// Ausdauer gebündelt.
-    func stats() -> DotSkin.Stats {
-        return DotSkin.Stats(
-            bestScore: bestScore,
-            bestPerfectStreak: bestPerfectStreak,
-            bestDailyStreak: dailyStreak,
-            runCount: runCount,
-            totalScore: totalScore,
-            daysPlayed: daysPlayed,
+    func stats() -> SkinStats {
+        // Int32 statt Int: :core rechnet in Kotlins `Int`, und der ist
+        // 32 Bit breit (siehe CoreBridge).
+        return SkinStats(
+            bestScore: Int32(bestScore),
+            bestPerfectStreak: Int32(bestPerfectStreak),
+            bestDailyStreak: Int32(dailyStreak),
+            runCount: Int32(runCount),
+            totalScore: Int32(totalScore),
+            daysPlayed: Int32(daysPlayed),
             // Die Anzahl gesetzter Bits ist die Anzahl gesehener Monate.
-            monthsPlayed: monthsPlayedMask.nonzeroBitCount,
-            seasonEarned: seasonEarned,
+            monthsPlayed: Int32(monthsPlayedMask.nonzeroBitCount),
+            seasonEarned: Int32(seasonEarned),
             // Kein Billing auf iOS: Die Gönner-Skins stehen im Menü, sind
             // aber gesperrt. Ein "gekauft" zu behaupten, das es nicht gibt,
             // wäre die schlechtere Lüge als ein gesperrter Skin.

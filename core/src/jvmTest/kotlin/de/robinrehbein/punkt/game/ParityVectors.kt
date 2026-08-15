@@ -5,29 +5,27 @@ import kotlin.random.Random
 
 /**
  * Erzeugt die Paritäts-Vektoren in `parity/golden-vectors.txt` — den
- * gemeinsamen Vertrag zwischen der Kotlin-Engine (:core, die Quelle der
- * Wahrheit) und ihrem Handport nach Swift (ios/).
+ * Golden-Master von `:core`.
  *
- * Warum das nötig ist: Die Spiellogik existiert zweifach. Was in Kotlin
- * getestet ist, sagt nichts über den Swift-Port aus — der hatte bis zu
- * diesen Vektoren gar keine Tests, obwohl ausgerechnet `KotlinRandom` in
- * Swift Kotlins Zufallsgenerator bit-genau nachbauen muss, damit iPhone
- * und Android an demselben Tag dieselbe Daily Challenge spielen. Statt
- * jeden Fall zweimal zu schreiben, schreibt Kotlin einmal auf, was
- * herauskommen muss, und der Port prüft sich dagegen.
+ * Ursprünglich waren sie ein Vertrag zwischen zwei Fassungen der Engine:
+ * Kotlin hier, Swift unter `ios/`. Was in Kotlin getestet war, sagte
+ * über den Handport nichts aus — ausgerechnet Kotlins Zufallsgenerator
+ * musste dort bit-genau nachgebaut sein, damit iPhone und Android an
+ * demselben Tag dieselbe Daily Challenge spielen.
+ *
+ * Seit v2.24 linkt iOS `:core` selbst, und es gibt keinen zweiten Nachbau
+ * mehr. Die Datei bleibt trotzdem: Sie zeigt jede Verhaltensänderung als
+ * Diff, bevor sie in drei Apps landet. Genau so hat sie zuletzt
+ * gearbeitet — eine geänderte Farbrundung verschob 78 Zeilen um je eine
+ * Kanalstufe, sichtbar statt still.
  *
  * Format: eine Zeile pro Wert, `schlüssel wert…`, durch Leerzeichen
  * getrennt, `#` leitet einen Kommentar ein. Bewusst so simpel, dass es
  * jede Sprache ohne JSON-Bibliothek lesen kann.
- *
- * Bis v2.22 hat sich auch ein JavaScript-Port (web/) hier geprüft; er
- * ließ `rng` und `trace` aus, weil er Kotlins XorWow nicht nachbaute.
- * Mit der Konzentration auf die nativen Apps ist er entfallen — jetzt
- * gilt jeder Abschnitt für beide Seiten.
  */
 object ParityVectors {
 
-    /** Bei jeder Formatänderung hochzählen; die Ports prüfen sie. */
+    /** Bei jeder Formatänderung hochzählen. */
     const val VERSION = 3
 
     /** Seed der Vektoren — irgendein fester Tag, nichts Magisches. */
@@ -143,7 +141,7 @@ object ParityVectors {
     // ===== Abschnitte =====
 
     private fun StringBuilder.header() {
-        appendLine("# Dottie. — Paritäts-Vektoren zwischen der Kotlin-Engine und dem Swift-Port.")
+        appendLine("# Dottie. — Paritäts-Vektoren: der Golden-Master der Engine in :core.")
         appendLine("#")
         appendLine("# ERZEUGT — nicht von Hand bearbeiten. Neu schreiben mit:")
         appendLine("#   ./gradlew :core:jvmTest -Dparity.update=true")
@@ -195,7 +193,7 @@ object ParityVectors {
         appendLine()
 
         section("Ab welchem Score ein Twist ins Spiel kommt.")
-        TimingGame.Twist.entries.forEach {
+        Twist.entries.forEach {
             line("twist.unlock.${it.name}", TimingGame.unlockScore(it).toString())
         }
         line(
@@ -355,8 +353,7 @@ object ParityVectors {
     private fun StringBuilder.scenes() {
         section(
             "Kulissen (ScenePaint) — die zweite Sammlung. Farben, Boden und\n" +
-                "# Requisiten sind im Swift-Port als Datentabelle nachgebaut, die\n" +
-                "# Freischaltung als Regel."
+                "# Requisiten stehen als Datentabelle, die Freischaltung als Regel."
         )
         line("scene.order", *SceneId.entries.map { it.name }.toTypedArray())
         line("scene.groundTop", f(ScenePaint.GROUND_TOP))
@@ -473,10 +470,10 @@ object ParityVectors {
     private fun StringBuilder.progress() {
         section(
             "Ziele und Fortschrittsbalken (Progress). Die Schwellen stehen\n" +
-                "# damit dreifach im Repo (SkinPaint, ScenePaint, Progress) und\n" +
-                "# im Swift-Port noch einmal — hier wird geprüft, dass alle\n" +
-                "# dasselbe sagen, inklusive Reihenfolge: Das erste Ziel ist\n" +
-                "# das, was Spieler:innen im Game-Over lesen."
+                "# damit dreifach im Repo (SkinPaint, ScenePaint, Progress) —\n" +
+                "# hier wird geprüft, dass alle dasselbe sagen, inklusive\n" +
+                "# Reihenfolge: Das erste Ziel ist das, was Spieler:innen im\n" +
+                "# Game-Over lesen."
         )
         line("progress.pageGoals", Progress.PAGE_GOALS.toString())
         line("progress.barBlocks", Progress.BAR_BLOCKS.toString())
@@ -540,8 +537,8 @@ object ParityVectors {
     private fun StringBuilder.rng() {
         section(
             "kotlin.random.Random(seed) — XorWow inklusive 64 Warmup-Runden.\n" +
-                "# Der Swift-Port (KotlinRandom.swift) muss diese Zahlen exakt\n" +
-                "# treffen, sonst spielt iOS eine andere Daily Challenge."
+                "# An dieser Folge hängt, dass iPhone und Android an demselben\n" +
+                "# Tag dieselbe Daily Challenge spielen."
         )
         line("rng.seed", SEED.toString())
 
@@ -573,7 +570,7 @@ object ParityVectors {
         repeat(4) { round ->
             line(
                 "rng.shuffleTwists.$round",
-                *TimingGame.Twist.entries.shuffled(shuffleRandom)
+                *Twist.entries.shuffled(shuffleRandom)
                     .map { it.name }.toTypedArray()
             )
         }

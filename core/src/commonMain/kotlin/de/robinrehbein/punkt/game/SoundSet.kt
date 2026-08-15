@@ -304,6 +304,12 @@ object SoundBank {
     )
 
     /** Das komplette Set. */
+    /** Alle Ton-Sets in Sammlungs-Reihenfolge (siehe [SkinPaint.ORDER]). */
+    val ORDER: List<SoundSetId> = SoundSetId.entries.toList()
+
+    /** Alle Klang-Ereignisse in fester Reihenfolge. */
+    val EVENTS: List<SoundEvent> = SoundEvent.entries.toList()
+
     fun of(id: SoundSetId): SoundSet = when (id) {
         SoundSetId.KLASSIK -> KLASSIK
         SoundSetId.GLOCKE -> GLOCKE

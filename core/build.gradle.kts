@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 // Multiplattform-Modul mit der kompletten Spiellogik — die einzige
@@ -25,8 +26,23 @@ plugins {
 kotlin {
     jvm()
 
-    iosArm64()
-    iosSimulatorArm64()
+    // Ein XCFramework buendelt Geraet und Simulator in einem Paket —
+    // Xcode sucht sich die passende Scheibe selbst. Gebaut wird es mit
+    //   ./gradlew :core:assembleDottieCoreDebugXCFramework
+    // (nur auf einem Mac), das Ergebnis landet in
+    //   core/build/XCFrameworks/debug/DottieCore.xcframework
+    // und wird von ios/project.yml von dort gelinkt.
+    val xcf = XCFramework("DottieCore")
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+        target.binaries.framework {
+            baseName = "DottieCore"
+            // Statisch: Ein statisches Framework wird beim Linken
+            // einverleibt und muss weder eingebettet noch signiert werden.
+            // Das haelt den unsignierten CI-Build einfach.
+            isStatic = true
+            xcf.add(this)
+        }
+    }
 
     sourceSets {
         val commonMain by getting

@@ -49,14 +49,10 @@ enum Palette {
         return ScenePaint.of(.wiese).sky.map { UIColor(rgb: $0) }
     }
 
-    /// Körper- und Schattenfarbe pro Medaillen-Stufe.
+    /// Körper- und Schattenfarbe pro Medaillen-Stufe — aus :core, wie
+    /// jede andere Farbe des Spiels auch.
     static func medalColors(_ tier: MedalTier) -> (body: UIColor, shade: UIColor) {
-        switch tier {
-        case .bronze: return (UIColor(rgb: 0xCD7F32), UIColor(rgb: 0x9C5A1E))
-        case .silver: return (UIColor(rgb: 0xC0C0C0), UIColor(rgb: 0x8F8F9C))
-        case .gold: return (UIColor(rgb: 0xFFD700), UIColor(rgb: 0xC9A400))
-        case .platinum: return (UIColor(rgb: 0xE5E4E2), UIColor(rgb: 0xADB5C4))
-        }
+        return (UIColor(rgb: tier.bodyColor), UIColor(rgb: tier.shadeColor))
     }
 
     /// PostScript-Name des Pixel-Fonts (Bytesized, via Info.plist geladen).

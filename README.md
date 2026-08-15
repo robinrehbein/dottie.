@@ -403,41 +403,37 @@ aber nur noch die Datenschutzerklärung (`/datenschutz/`) und
 `app-ads.txt` — beides hängt am Play-Eintrag der Android-App und muss
 erreichbar bleiben.
 
-## iOS-Port
+## iOS-App
 
-Unter `ios/` liegt ein nativer Swift-Port (SpriteKit), gebaut über
-XcodeGen aus `ios/project.yml` — Details und Verteilweg in
-[ios/README.md](ios/README.md).
+Unter `ios/` liegt die native iPhone-App: SpriteKit für die Darstellung,
+die Spiellogik aus `:core`. Gebaut über XcodeGen aus `ios/project.yml` —
+Details und Verteilweg in [ios/README.md](ios/README.md).
 
-## Vier Ziele, eine Wahrheit
+## Vier Ziele, eine Spiellogik
 
 Ausgeliefert wird auf vier Zielen — Android-Telefon, Wear OS, iPhone und
 Apple Watch (letztere noch nicht) —, aber die Spiellogik gibt es nur
-zweifach: Kotlin in `:core` und Swift in `ios/`. `:app` und `:wear`
-teilen sich `:core` direkt, der Swift-Port ist von Hand nachgebaut.
+einmal. `:core` ist ein Kotlin-Multiplatform-Modul: `:app` und `:wear`
+binden die JVM-Variante ein, die iOS-App linkt dasselbe Modul als
+`DottieCore.xcframework`.
 
-Damit er nicht wegdriftet, erzeugt `:core` eine Datei mit Soll-Werten —
-Konstanten, Medaillen-Schwellen, Skin- und Kulissen-Farben, Ziele, die
-Zahlenfolge von Kotlins Zufallsgenerator und zwei komplette Läufe
-Treffer für Treffer:
+Bis v2.23 war die Engine unter `ios/Dottie/Sources/Engine` von Hand nach
+Swift portiert — 2 893 Zeilen, abgesichert über Soll-Werte in
+`parity/golden-vectors.txt`. Der Handport ist weg; was blieb, ist
+`ios/Dottie/Sources/Core/CoreBridge.swift`: Zahlen, Farben und Namen an
+der Sprachgrenze übersetzt, keine einzige Spielregel.
 
-```
-parity/golden-vectors.txt
-```
-
-Beide Seiten prüfen sich dagegen (`./gradlew :core:jvmTest`, `xcodebuild
-test` in der iOS-CI). Ändert sich `:core` absichtlich, schreibt
-`./gradlew :core:jvmTest -Dparity.update=true` die Datei neu — der Diff
-zeigt dann, was in `ios/` nachzuziehen ist. Alles Weitere in
+Die Vektoren gibt es weiterhin, jetzt als Rückversicherung für `:core`
+selbst: Sie halten Konstanten, Medaillen-Schwellen, Skin- und
+Kulissen-Farben, Ziele, die Zahlenfolge des Zufallsgenerators und zwei
+komplette Läufe fest. `./gradlew :core:jvmTest` prüft dagegen,
+`-Dparity.update=true` schreibt sie neu — der Diff zeigt dann, was sich
+für alle drei Apps geändert hat. Alles Weitere in
 [parity/README.md](parity/README.md).
 
-`:wear` teilt sich den Kotlin-Code mit `:app` direkt: Spiellogik,
-Skin-Farbwerk (`SkinPaint`) und Medaillen (`MedalPaint`) liegen in
-`:core`, beide Apps halten nur noch ihre eigenen Texte dazu.
-
-Ob und wann sich die drei Ports mit Kotlin Multiplatform wirklich
-zusammenlegen lassen — mit Aufwand, Kosten und Gegenargumenten —, steht
-in [ARCHITEKTUR.md](ARCHITEKTUR.md).
+Was noch doppelt existiert — die Renderer, die Texte, Audio und
+Persistenz — und was ein Zusammenlegen mit Compose Multiplatform kosten
+würde, steht in [ARCHITEKTUR.md](ARCHITEKTUR.md).
 
 ## Wear-OS-Prototyp (experimentell)
 
@@ -497,7 +493,7 @@ Welcher Workflow wann läuft:
 | Workflow | Läuft bei | Prüft |
 |---|---|---|
 | `build-apk.yml` | Push auf `main` und `claude/**` | Kotlin-Tests (`:core` und `:app`), Debug-Build; auf `main` zusätzlich Release-Artefakte |
-| `build-ios.yml` | Push mit Änderungen an `ios/`, `core/`, `parity/`; sonst manuell | Paritäts-Tests im Simulator, Device- und Simulator-Build |
+| `build-ios.yml` | Push mit Änderungen an `ios/`, `core/`, `parity/`; sonst manuell | XCFramework aus `:core`, Brücken-Tests im Simulator, Device- und Simulator-Build |
 | `deploy-pages.yml` | Push auf `main` mit Änderungen an `docs/` | veröffentlicht Datenschutzerklärung und `app-ads.txt` |
 
 ## Veröffentlichung

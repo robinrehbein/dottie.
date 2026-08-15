@@ -5,6 +5,38 @@ import kotlin.math.abs
 import kotlin.math.sin
 import kotlin.random.Random
 
+/** Der Zustand, in dem ein Lauf gerade steckt. */
+enum class GamePhase { READY, RUNNING, DYING, OVER }
+
+/** Die Erschwernisse, die sich mit steigendem Score freischalten. */
+enum class Twist { PULSE, DRIFT, GHOST, FAKE, CHAIN }
+
+/**
+ * Was in einem Frame passiert ist.
+ *
+ * Die Fälle stehen auf oberster Ebene statt in [TimingGame]
+ * verschachtelt, und das ist Absicht: Kotlin/Native flacht
+ * verschachtelte Klassen beim Export nach Objective-C ab. Der Name, den
+ * Swift dann sieht, steht nirgends im Kotlin-Code — er entsteht erst im
+ * erzeugten Header. Auf oberster Ebene heißt jeder Fall in beiden
+ * Sprachen gleich.
+ */
+sealed interface GameEvent
+
+data object GameEventStarted : GameEvent
+
+data object GameEventHit : GameEvent
+
+data object GameEventPerfectHit : GameEvent
+
+data object GameEventChainNext : GameEvent
+
+data class GameEventTwistUnlocked(val twist: Twist) : GameEvent
+
+data object GameEventDied : GameEvent
+
+data object GameEventSettled : GameEvent
+
 /**
  * Pure-Kotlin Engine für das "Stopp"-Spielprinzip: Timing-Präzision.
  *
@@ -35,23 +67,19 @@ import kotlin.random.Random
  *
  * Winkel sind in Radiant, Geschwindigkeiten in Radiant pro Sekunde.
  */
-class TimingGame(private var random: Random = Random.Default) {
+class TimingGame(private var random: Random) {
 
-    enum class Phase { READY, RUNNING, DYING, OVER }
+    /**
+     * Ohne eigene Zufallsquelle — der Normalfall im Spiel.
+     *
+     * Als zweiter Konstruktor statt als Standardwert am Parameter, weil
+     * Kotlin/Native Standardwerte nicht exportiert: Swift sähe sonst nur
+     * `init(random:)` und müsste sich erst einen `kotlin.random.Random`
+     * beschaffen.
+     */
+    constructor() : this(Random.Default)
 
-    enum class Twist { PULSE, DRIFT, GHOST, FAKE, CHAIN }
-
-    sealed interface GameEvent {
-        data object Started : GameEvent
-        data object Hit : GameEvent
-        data object PerfectHit : GameEvent
-        data object ChainNext : GameEvent
-        data class TwistUnlocked(val twist: Twist) : GameEvent
-        data object Died : GameEvent
-        data object Settled : GameEvent
-    }
-
-    var phase: Phase = Phase.READY
+    var phase: GamePhase = GamePhase.READY
         private set
 
     /** Position des Punkts auf der Bahn. */
@@ -175,7 +203,7 @@ class TimingGame(private var random: Random = Random.Default) {
 
     /** Ist der Punkt gerade sichtbar? Blinkt nur im GHOST-Twist. */
     val isDotVisible: Boolean
-        get() = phase != Phase.RUNNING || Twist.GHOST !in activeTwists ||
+        get() = phase != GamePhase.RUNNING || Twist.GHOST !in activeTwists ||
             (elapsed * GHOST_BLINK_SPEED) % 1f < GHOST_VISIBLE_SHARE
 
     fun currentSpeed(): Float =
@@ -188,19 +216,19 @@ class TimingGame(private var random: Random = Random.Default) {
      */
     fun tap(): GameEvent? {
         val event: GameEvent? = when (phase) {
-            Phase.READY -> {
-                phase = Phase.RUNNING
+            GamePhase.READY -> {
+                phase = GamePhase.RUNNING
                 elapsed = 0f
                 spawnZone()
-                GameEvent.Started
+                GameEventStarted
             }
-            Phase.RUNNING -> {
+            GamePhase.RUNNING -> {
                 val rel = relativeToZone()
                 val half = effectiveZoneHalf()
                 if (abs(rel) <= half) {
                     val perfect = abs(rel) <= perfectHalf()
                     registerHit(perfect)
-                    if (perfect) GameEvent.PerfectHit else GameEvent.Hit
+                    if (perfect) GameEventPerfectHit else GameEventHit
                 } else if (rel > half && rel <= half + currentSpeed() * LATE_TAP_FORGIVENESS_SECONDS) {
                     // Touch-Latenz-Gnade: Auf der Auslauf-Seite zählt ein
                     // minimal verspäteter Tap noch als normaler Treffer —
@@ -208,23 +236,23 @@ class TimingGame(private var random: Random = Random.Default) {
                     // der Zeit ist der Punkt sonst längst aus der Zone.
                     // Wer zu früh tappt, war dagegen wirklich zu früh.
                     registerHit(perfect = false)
-                    GameEvent.Hit
+                    GameEventHit
                 } else {
                     // Auch ein Tap in der Fallen-Zone landet hier: Sie ist
                     // mechanisch einfach "daneben" — ihre Gefahr ist optisch.
                     die()
-                    GameEvent.Died
+                    GameEventDied
                 }
             }
-            Phase.DYING -> null
-            Phase.OVER -> {
+            GamePhase.DYING -> null
+            GamePhase.OVER -> {
                 if (elapsed >= RESTART_LOCK_SECONDS) {
                     // Sofort-Neustart: aus der Wut direkt in den nächsten Lauf.
                     reset()
-                    phase = Phase.RUNNING
+                    phase = GamePhase.RUNNING
                     elapsed = 0f
                     spawnZone()
-                    GameEvent.Started
+                    GameEventStarted
                 } else {
                     null
                 }
@@ -239,13 +267,26 @@ class TimingGame(private var random: Random = Random.Default) {
      * aufgerufen, damit jeder Versuch des Tages dieselbe Zonen- und
      * Twist-Abfolge bekommt. `null` stellt echten Zufall wieder her.
      */
-    fun reseed(seed: Long?) {
-        random = if (seed != null) Random(seed) else Random.Default
+    fun reseed(seed: Long) {
+        random = Random(seed)
+    }
+
+    /**
+     * Stellt echten Zufall wieder her — der Weg zurück aus der Daily in
+     * den freien Lauf.
+     *
+     * Früher war das `reseed(null)`. Ein nullbares `Long` wird beim
+     * Export nach Objective-C zu einem eingepackten `KotlinLong?`, und
+     * der Aufrufer müsste die Zahl erst verpacken, um sie gleich wieder
+     * auspacken zu lassen. Zwei Namen sind hier billiger als eine Box.
+     */
+    fun reseedSystem() {
+        random = Random.Default
     }
 
     /** Setzt alles auf den READY-Zustand zurück (Rekord bleibt beim Store). */
     fun reset() {
-        phase = Phase.READY
+        phase = GamePhase.READY
         angle = 0f
         direction = 1
         zoneCenter = 1.8f
@@ -276,10 +317,10 @@ class TimingGame(private var random: Random = Random.Default) {
         pendingEvents.clear()
 
         when (phase) {
-            Phase.READY -> {
+            GamePhase.READY -> {
                 angle = wrapTwoPi(angle + direction * READY_SPEED * dt)
             }
-            Phase.RUNNING -> {
+            GamePhase.RUNNING -> {
                 angle = wrapTwoPi(angle + direction * currentSpeed() * dt)
                 if (Twist.DRIFT in activeTwists) {
                     zoneCenter = wrapTwoPi(
@@ -293,20 +334,20 @@ class TimingGame(private var random: Random = Random.Default) {
                 // anfühlt und späte Taps nicht vom Tod überholt werden.
                 if (relativeToZone() > zoneHalfWidth + currentSpeed() * PASS_BUFFER_SECONDS) {
                     die()
-                    events.add(GameEvent.Died)
+                    events.add(GameEventDied)
                 }
             }
-            Phase.DYING -> {
+            GamePhase.DYING -> {
                 // Kurzer Freeze für Flash und Shake, dann der Mario-Hüpfer:
                 // Das Game-Over-Overlay erscheint erst, wenn der Vogel aus
                 // dem Bild gefallen ist (Settled = "aufgeschlagen").
                 if (elapsed >= DEATH_FREEZE_SECONDS + DEATH_FALL_SECONDS) {
-                    phase = Phase.OVER
+                    phase = GamePhase.OVER
                     elapsed = 0f
-                    events.add(GameEvent.Settled)
+                    events.add(GameEventSettled)
                 }
             }
-            Phase.OVER -> Unit
+            GamePhase.OVER -> Unit
         }
         return events
     }
@@ -333,7 +374,7 @@ class TimingGame(private var random: Random = Random.Default) {
             hasFakeZone = false
             activeTwists.remove(Twist.FAKE)
             spawnChainZone()
-            pendingEvents.add(GameEvent.ChainNext)
+            pendingEvents.add(GameEventChainNext)
         } else {
             direction = -direction
             spawnZone()
@@ -389,7 +430,7 @@ class TimingGame(private var random: Random = Random.Default) {
         if (fresh != null) {
             activeTwists.add(fresh)
             announcedTwists.add(fresh)
-            pendingEvents.add(GameEvent.TwistUnlocked(fresh))
+            pendingEvents.add(GameEventTwistUnlocked(fresh))
         }
 
         val shuffled = unlocked.shuffled(random)
@@ -415,8 +456,8 @@ class TimingGame(private var random: Random = Random.Default) {
         }
 
     private fun die() {
-        if (phase != Phase.RUNNING) return
-        phase = Phase.DYING
+        if (phase != GamePhase.RUNNING) return
+        phase = GamePhase.DYING
         elapsed = 0f
     }
 

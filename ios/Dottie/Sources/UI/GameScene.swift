@@ -52,7 +52,7 @@ final class GameScene: SKScene {
     private var selectedSound: SoundSetId = .klassik
 
     private var lastUpdateTime: TimeInterval = 0
-    private var lastPhase: TimingGame.Phase = .over // erzwingt READY-Setup im 1. Frame
+    private var lastPhase: GamePhase = .over // erzwingt READY-Setup im 1. Frame
 
     /// Alle Effekte auf den Ruhezustand (FxState.reset am Phone) — nötig
     /// überall dort, wo ein Lauf endet, ohne dass gleich der nächste
@@ -375,7 +375,11 @@ final class GameScene: SKScene {
     private func prepareRun() {
         let today = DailyChallenge.todayEpochDay()
         runEpochDay = today
-        game.reseed(dailyMode ? DailyChallenge.seedFor(epochDay: today) : nil)
+        if dailyMode {
+            game.reseed(seed: DailyChallenge.seedFor(epochDay: today))
+        } else {
+            game.reseedSystem()
+        }
     }
 
     /// Banner mit Priorität: Ein wichtigeres Banner (Twist-Ankündigung)
@@ -389,14 +393,8 @@ final class GameScene: SKScene {
         bannerPriority = priority
     }
 
-    private func twistBannerText(_ twist: TimingGame.Twist) -> String {
-        switch twist {
-        case .pulse: return L10n.text("banner_twist_pulse")
-        case .drift: return L10n.text("banner_twist_drift")
-        case .ghost: return L10n.text("banner_twist_ghost")
-        case .fake: return L10n.text("banner_twist_fake")
-        case .chain: return L10n.text("banner_twist_chain")
-        }
+    private func twistBannerText(_ twist: Twist) -> String {
+        return L10n.text(twist.bannerKey)
     }
 
     // MARK: - Game-Loop
@@ -426,7 +424,7 @@ final class GameScene: SKScene {
 
         // Rekord live feiern: In dem Moment, in dem der Lauf den alten
         // Bestwert überholt — nicht erst beim Tod.
-        if game.phase == .running && !recordCelebrated && bestScore > 0 && game.score > bestScore {
+        if game.phase == .running && !recordCelebrated && bestScore > 0 && Int(game.score) > bestScore {
             recordCelebrated = true
             showBanner(L10n.text("banner_record"), seconds: 2.2, priority: 2)
             celebrateTime = GameScene.celebrateSeconds
@@ -435,7 +433,7 @@ final class GameScene: SKScene {
         }
 
         // Stufen-Feedback: jede 5er-Stufe färbt den Himmel um.
-        let stage = game.score / 5
+        let stage = Int(game.score) / 5
         if game.phase == .running && stage > lastStage {
             lastStage = stage
             if !twistUnlockedThisFrame {
@@ -454,9 +452,10 @@ final class GameScene: SKScene {
         renderHud()
     }
 
-    private func handle(event: TimingGame.GameEvent, twistUnlockedThisFrame: inout Bool) {
-        switch event {
-        case .started:
+    private func handle(event: GameEvent, twistUnlockedThisFrame: inout Bool) {
+        // `GameEvent` ist in :core ein sealed interface und kommt hier als
+        // Protokoll an — deshalb `is` statt `switch`.
+        if event is GameEventStarted {
             // Auch beim Sofort-Neustart aus dem Game-Over: Banner,
             // Stufen-Zähler und Rekord-Feier auf Anfang.
             lastStage = 0
@@ -468,24 +467,24 @@ final class GameScene: SKScene {
             newMedalThisRun = false
             deathTime = -1
             audio.start()
-        case .hit:
+        } else if event is GameEventHit {
             haptics.score()
-            audio.hit(score: game.score)
-        case .perfectHit:
+            audio.hit(score: Int(game.score))
+        } else if event is GameEventPerfectHit {
             haptics.perfect()
-            audio.perfect(streak: game.perfectStreak)
-            hud?.perfectLabel.text = L10n.format("perfect_plus", game.lastHitPoints)
-            runMaxPerfect = max(runMaxPerfect, game.perfectStreak)
-        case .chainNext:
+            audio.perfect(streak: Int(game.perfectStreak))
+            hud?.perfectLabel.text = L10n.format("perfect_plus", Int(game.lastHitPoints))
+            runMaxPerfect = max(runMaxPerfect, Int(game.perfectStreak))
+        } else if event is GameEventChainNext {
             showBanner(L10n.text("banner_chain"), seconds: 1.2, priority: 1)
             audio.chain()
-        case .twistUnlocked(let twist):
+        } else if let unlocked = event as? GameEventTwistUnlocked {
             twistUnlockedThisFrame = true
-            showBanner(twistBannerText(twist), seconds: 2.2, priority: 2)
+            showBanner(twistBannerText(unlocked.twist), seconds: 2.2, priority: 2)
             celebrateTime = GameScene.celebrateSeconds
             haptics.unlock()
             audio.unlock()
-        case .died:
+        } else if event is GameEventDied {
             haptics.death()
             audio.death()
             flashAlpha = 1
@@ -493,24 +492,26 @@ final class GameScene: SKScene {
             celebrateTime = 0
             deathTime = 0
             let previousBest = store.bestScore
-            newMedalThisRun = MedalTier.isUpgrade(score: game.score, previousBest: previousBest)
+            newMedalThisRun = MedalTier.isUpgrade(
+                score: Int(game.score), previousBest: previousBest
+            )
             let unlockedBefore = DotSkin.unlockedCount(store.stats())
-            isNewRecord = store.submitRun(score: game.score)
+            isNewRecord = store.submitRun(score: Int(game.score))
             store.submitPerfectStreak(runMaxPerfect)
             if dailyMode {
-                store.submitDailyRun(epochDay: runEpochDay, score: game.score)
+                store.submitDailyRun(epochDay: runEpochDay, score: Int(game.score))
                 // Heute gespielt -> die heutige Erinnerung faellt weg.
                 DailyReminder.refresh(store: store)
             }
             skinUnlockedThisRun = DotSkin.unlockedCount(store.stats()) > unlockedBefore
             taunt = L10n.pickTaunt(
-                score: game.score, previousBest: previousBest, isNewRecord: isNewRecord
+                score: Int(game.score), previousBest: previousBest, isNewRecord: isNewRecord
             )
             bestScore = store.bestScore
             if isNewRecord && !recordCelebrated {
                 haptics.newRecord()
             }
-        case .settled:
+        } else if event is GameEventSettled {
             haptics.thud()
             // Der Rekord-Jingle lief meist schon live im Lauf; sonst
             // (z. B. allererster Lauf) kommt er jetzt.
@@ -541,7 +542,7 @@ final class GameScene: SKScene {
         case .over:
             hud?.isHidden = true
             overOverlay?.configure(
-                score: game.score,
+                score: Int(game.score),
                 bestScore: bestScore,
                 isNewRecord: isNewRecord,
                 taunt: taunt,
@@ -593,7 +594,7 @@ final class GameScene: SKScene {
 
         // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht —
         // welche sieben Töne das sind, sagt die Kulisse.
-        skyNode.color = UIColor(rgb: ScenePaint.skyFor(selectedScene, score: game.score))
+        skyNode.color = UIColor(rgb: ScenePaint.skyFor(selectedScene, score: Int(game.score)))
 
         // Wolken driften nach links.
         let cloudDrift = elapsed * h * 0.01
@@ -697,8 +698,8 @@ final class GameScene: SKScene {
         // also nichts.
         let state = SkinPaint.State.now(
             elapsed: CGFloat(game.elapsed),
-            score: game.score,
-            perfectStreak: game.perfectStreak
+            score: Int(game.score),
+            perfectStreak: Int(game.perfectStreak)
         )
         if SkinPaint.frameKey(skin, state) != birdTextureKey {
             rebuildBirdTextures(state: state)

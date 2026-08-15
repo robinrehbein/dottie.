@@ -38,7 +38,7 @@ class ZoneWindowTest {
         // Genau an dessen Rand muss der Tap ein PERFEKT geben — vorher gab
         // es dort unter PULS nur einen normalen Treffer.
         val spiel = TimingGame()
-        spiel.twistOverride = setOf(TimingGame.Twist.PULSE)
+        spiel.twistOverride = setOf(Twist.PULSE)
         spiel.tap()
 
         var geprueft = 0
@@ -113,7 +113,7 @@ class ZoneWindowTest {
         assertEquals(spiel.effectiveZoneHalf(), spiel.fakeZoneHalf(), 0f)
 
         // Auch mit laufendem PULS über eine ganze Welle hinweg.
-        spiel.twistOverride = setOf(TimingGame.Twist.PULSE, TimingGame.Twist.FAKE)
+        spiel.twistOverride = setOf(Twist.PULSE, Twist.FAKE)
         spiel.tap() // startet den Lauf und setzt die Twists
         repeat(120) {
             spiel.update(1f / 60f)

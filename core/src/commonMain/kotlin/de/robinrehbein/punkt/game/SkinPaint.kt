@@ -50,6 +50,17 @@ enum class SkinId {
 }
 
 /**
+ * Die Gruppen, in die das Skin-Menü die Sammlung gliedert — dieselbe
+ * Einteilung, nach der [SkinId] sortiert ist.
+ *
+ * Sie stand bisher nur im iOS-Menü und war damit eine zweite, stille
+ * Quelle für dieselbe Ordnung. Hier steht sie neben den Skins, die sie
+ * einteilt: Wer eine Familie umsortiert, sieht sofort, dass auch die
+ * Reihenfolge dranhängt.
+ */
+enum class SkinFamily { EINFARBIG, GEMUSTERT, BEWEGT, REAGIEREND, SAISON, GOENNER }
+
+/**
  * Der Lauf-Zustand, aus dem sich bewegte und reagierende Skins speisen.
  * Für Standbilder (Auswahl, Score-Karte) reicht der Standardwert.
  *
@@ -123,6 +134,16 @@ enum class Season(
 
 object SkinPaint {
 
+    /**
+     * Alle Skins in Sammlungs-Reihenfolge.
+     *
+     * `SkinId.entries` sagt dasselbe, ist aber `EnumEntries` — beim
+     * Export nach Objective-C wird daraus kein `NSArray`, sondern ein
+     * Typ, den Swift nur umständlich durchlaufen kann. Diese Liste ist
+     * der Weg, den alle Renderer gehen.
+     */
+    val ORDER: List<SkinId> = SkinId.entries.toList()
+
     /** Kantenlänge des Vogel-Rasters (wie GRID in den Renderern). */
     const val GRID = 13
 
@@ -140,7 +161,7 @@ object SkinPaint {
      * Skin, dessen Farbe an einer anderen Sammlung hinge, wäre nicht mehr
      * für sich allein beschreibbar.
      */
-    val SKY_STAGES = longArrayOf(
+    val SKY_STAGES: List<Long> = listOf(
         0xFF4EC0CA, // 0+  Tag
         0xFF5B9BD5, // 5+  Blau
         0xFF7B6FD0, // 10+ Lila
@@ -473,6 +494,36 @@ object SkinPaint {
 
     /** Wie viele Skins dieser Zähler insgesamt erreichen kann. */
     fun collectableCount(): Int = SkinId.entries.count { countsForCollection(it) }
+
+    /**
+     * Die Gruppe, unter der ein Skin im Menü steht. Die Einteilung folgt
+     * exakt den Blöcken in [SkinId] — sie ist dieselbe Ordnung, nur
+     * benannt.
+     */
+    fun family(id: SkinId): SkinFamily = when (id) {
+        SkinId.KLASSIK, SkinId.MINZE, SkinId.LAVA, SkinId.GOLD,
+        SkinId.FROST, SkinId.SCHATTEN, SkinId.PRISMA -> SkinFamily.EINFARBIG
+
+        SkinId.BIENE, SkinId.MELONE, SkinId.PILZ, SkinId.KOI,
+        SkinId.GALAXIE, SkinId.KARO, SkinId.EI, SkinId.TIGER,
+        SkinId.PINGUIN, SkinId.FUSSBALL, SkinId.DONUT -> SkinFamily.GEMUSTERT
+
+        SkinId.REGENBOGEN, SkinId.AURORA, SkinId.MAGMA, SkinId.NEON,
+        SkinId.CHROM, SkinId.WELLE, SkinId.GEWITTER, SkinId.KONFETTI,
+        SkinId.DISCO, SkinId.HOLO -> SkinFamily.BEWEGT
+
+        SkinId.CHAMAELEON, SkinId.KOMBO, SkinId.TINTE, SkinId.THERMO,
+        SkinId.MEDAILLE, SkinId.TAGESZEIT, SkinId.JAHRESZEIT -> SkinFamily.REAGIEREND
+
+        SkinId.KUERBIS, SkinId.ZUCKERSTANGE, SkinId.HERZ,
+        SkinId.OSTEREI -> SkinFamily.SAISON
+
+        SkinId.DIAMANT, SkinId.PHOENIX, SkinId.ONYX -> SkinFamily.GOENNER
+    }
+
+    /** Skin zu einem gespeicherten Namen, KLASSIK als Fallback. */
+    fun fromName(name: String?): SkinId =
+        SkinId.entries.firstOrNull { it.name == name } ?: SkinId.KLASSIK
 
     // ===== Das Farbwerk =====
 

@@ -1,150 +1,141 @@
-# Architektur: vier Ziele, zweimal dieselbe Logik
+# Architektur: drei Apps, eine Spiellogik
 
-Dieses Dokument beschreibt, wo der Code heute steht, warum die Spiellogik
-doppelt existiert, und was eine Vereinheitlichung mit **Kotlin
-Multiplatform** (KMP) konkret kosten und bringen würde. Es ist eine
-Entscheidungsgrundlage, kein Plan — umgesetzt ist bisher nichts davon.
+Dieses Dokument beschreibt, wo der Code steht, was seit v2.24 geteilt ist
+und was als Nächstes zu teilen wäre.
 
-Stand v2.23: Ausgeliefert wird nativ auf Android (Telefon und Wear OS)
-und iOS. Die Web-Version ist entfallen; wo sie unten noch als Option
-auftaucht, steht das ausdrücklich als erledigt dabei.
+Ausgeliefert wird nativ auf Android (Telefon und Wear OS) und iOS. Eine
+Web-Version gibt es seit v2.23 nicht mehr; ihr letzter Stand liegt im
+Commit `b4ed73f`.
 
 ## Wo der Code steht
 
 | Bereich | Ort | Zeilen | Sprache |
 |---|---|---|---|
-| Spiellogik (geteilt) | `core/src/main/kotlin` | 1257 | Kotlin |
-| Phone-App | `app/src/main` | 4030 | Kotlin (Compose) |
-| Wear-App | `wear/src/main` | 1536 | Kotlin (Wear Compose) |
-| iOS: Engine-Port | `ios/Dottie/Sources/Engine` | 1338 | Swift |
-| iOS: UI und Umfeld | `ios/Dottie/Sources/{UI,Support}` | 2246 | Swift (SpriteKit) |
+| Spiellogik (geteilt) | `core/src/commonMain/kotlin` | 3506 | Kotlin |
+| Phone-App | `app/src/main` | 6157 | Kotlin (Compose) |
+| Wear-App | `wear/src/main` | 2511 | Kotlin (Wear Compose) |
+| iOS: Brücke zu `:core` | `ios/Dottie/Sources/Core` | 536 | Swift |
+| iOS: UI und Umfeld | `ios/Dottie/Sources/{UI,Support}` | 3658 | Swift (SpriteKit) |
 
-`:app` und `:wear` teilen sich `:core` direkt — dort liegen `TimingGame`,
-`DailyChallenge`, `SkinPaint`, `ScenePaint`, `MedalPaint` und `Progress`.
-Zwischen Kotlin und Swift gibt es dagegen keine geteilte Zeile:
-**1338 Zeilen Logik sind von Hand nachgebaut.**
+`:core` ist ein Kotlin-Multiplatform-Modul mit drei Zielen: `jvm()` für
+`:app` und `:wear`, `iosArm64` und `iosSimulatorArm64` für die iPhone-App.
+Dort liegen `TimingGame`, `DailyChallenge`, `SkinPaint`, `ScenePaint`,
+`SoundBank`, `ChipSynth`, `MedalPaint` und `Progress` — **alle drei Apps
+rechnen mit demselben Code.**
 
-Abgesichert ist das seit dem Paritäts-Vertrag in
-[`parity/`](parity/README.md): `:core` erzeugt Soll-Werte, der Port prüft
-sich dagegen. Das *findet* Abweichungen — es *verhindert* sie nicht. Der
-nächste Schritt wäre, sie unmöglich zu machen.
+## Was der Weg dahin war
 
-## Was KMP lösen würde — und was nicht
+Bis v2.23 gab es die Engine zweimal: einmal Kotlin in `:core`, einmal
+Swift unter `ios/Dottie/Sources/Engine` — 2 893 Zeilen von Hand portiert.
+Abgesichert war das über den Paritäts-Vertrag in
+[`parity/`](parity/README.md): `:core` erzeugte Soll-Werte, der Port
+prüfte sich dagegen. Das *fand* Abweichungen; verhindert hat es sie nicht.
 
-**Lösen würde es:** die Engine. `TimingGame`, `DailyChallenge`,
-`SkinPaint`, `MedalPaint` und `ChipSynth` sind reines Kotlin ohne
-Plattform-Anteil — genau der Fall, für den `commonMain` gedacht ist.
+Zwei Schritte haben das aufgelöst:
 
-Der interessanteste Einzelfall ist `ios/…/Engine/KotlinRandom.swift`: 119
-Zeilen, die Kotlins `XorWowRandom` bitgenau nachbauen, damit iPhone und
-Android an demselben Tag dieselbe Daily Challenge spielen. Unter KMP wäre
-diese Datei nicht mehr nötig, sondern **unmöglich falsch**: Es liefe
-überall dieselbe `kotlin.random.Random`.
+**Stufe 1 (v2.23)** — `:core` wurde ein Multiplattform-Modul. Die Quellen
+liegen seither in `src/commonMain/kotlin`, die Tests bleiben JVM-only
+(sie lesen und schreiben Dateien). `:app`, `:wear` und `:sync` merken
+davon nichts: Kotlins Plattform-Regel lässt `androidJvm`-Konsumenten
+`jvm`-Produzenten nutzen.
 
-**Nicht lösen würde es:**
+**Stufe 2 (v2.24)** — iOS linkt `DottieCore.xcframework` aus `:core`, und
+der Swift-Handport ist gelöscht. Was blieb, ist
+`ios/Dottie/Sources/Core/CoreBridge.swift`: die Grenze zwischen den
+Sprachen, und zwar nur die.
+
+## Die Grenze in einer Datei
+
+`CoreBridge.swift` enthält keine Spielregel. Was dort steht, ist
+Übersetzung:
+
+- **Zahlen.** Kotlins `Int` ist Swifts `Int32`, Kotlins `Long` ist
+  `Int64`; die Szene rechnet in `Int` und `CGFloat`.
+- **Farben.** `:core` führt Farben als ARGB in einem `Long`, die Renderer
+  als 0xRRGGBB in `UInt32`.
+- **Namen.** Kotlin/Native exportiert `object X` als `X.shared` und
+  `companion object` als `X.companion`. Erweiterungen holen die
+  Schreibweise zurück, die der Renderer schon vorher benutzt hat.
+- **Aufzählungen.** Kotlin-`enum`s werden Klassen; `switch` geht darauf
+  nicht. Wo der Renderer eine Fallunterscheidung braucht (die acht
+  Requisiten-Formen), steht ein Swift-`enum` daneben.
+
+Dazu zwei Werte, die `:core` bewusst nicht kennt, weil sie keine
+Spielregel sind, sondern deren Eingabe: die Geräte-Uhr und der lokale
+Kalendertag.
+
+### Was `:core` dafür bekommen hat
+
+Die Interop-Reibung ist nicht nur in Swift aufgefangen worden — an ein
+paar Stellen war die Kotlin-Seite schlicht die bessere:
+
+- `GamePhase`, `Twist` und `GameEvent` standen in `TimingGame`
+  verschachtelt. Kotlin/Native flacht verschachtelte Klassen beim Export
+  ab; der Name, den Swift sähe, stünde nirgends im Kotlin-Code. Jetzt
+  stehen sie auf oberster Ebene und heißen in beiden Sprachen gleich.
+- `reseed(seed: Long?)` wurde zu `reseed(seed: Long)` plus
+  `reseedSystem()`: Ein nullbares `Long` käme in Swift als eingepacktes
+  `KotlinLong?` an.
+- `TimingGame` hat einen parameterlosen Konstruktor bekommen, weil
+  Standardwerte nicht exportiert werden.
+- `SkinFamily` — die Menü-Gliederung der 42 Skins — lag vorher nur im
+  iOS-Menü und damit als zweite, stille Quelle für dieselbe Reihenfolge.
+  Jetzt steht sie neben den Skins, die sie einteilt.
+- `ChipSynth.render(voice, rate)` rechnet die Tonhöhen-Varianten, die
+  iOS vorrendert. Android pitcht beim Abspielen (SoundPool) und kommt mit
+  `rate = 1` aus — die Rechnung gehört trotzdem zum Klang, nicht zur
+  Abspielschicht.
+- `Scene.sky` und `SkinPaint.SKY_STAGES` sind `List<Long>` statt
+  `LongArray`: `LongArray` wird zu `KotlinLongArray` und lässt sich in
+  Swift nur umständlich durchlaufen.
+
+Keine dieser Änderungen hat das Verhalten verschoben — die
+Paritäts-Vektoren in `parity/` haben das Zeile für Zeile bestätigt.
+
+## Was noch doppelt ist
 
 - **Die Renderer.** Compose Canvas und SpriteKit zeichnen dieselben
-  Rechtecke mit zwei verschiedenen APIs. Das sind 2246 Zeilen Swift, die
-  bleiben (außer bei Option C).
-- **Die Texte.** `strings.xml` und `Localizable.strings` — zweimal
-  dieselben Sätze. Geteilte Ressourcen gehen mit KMP (Compose Resources,
-  moko-resources), das ist aber ein eigenes Projekt mit eigener
-  Abhängigkeit.
+  Rechtecke mit zwei APIs. Das sind die 3 658 Zeilen unter
+  `ios/Dottie/Sources/{UI,Support}` — der größte verbliebene Block.
+- **Die Texte.** `strings.xml` und `Localizable.strings`, zweimal
+  dieselben Sätze.
 - **Audio, Haptik, Persistenz, Teilen.** SoundPool vs. AVAudioEngine,
-  DataStore vs. UserDefaults. Das ist `expect`/`actual`-Gebiet: die
-  Schnittstelle wird geteilt, die Umsetzung nicht.
+  SharedPreferences vs. UserDefaults. Das ist `expect`/`actual`-Gebiet:
+  Die Schnittstelle ließe sich teilen, die Umsetzung nicht.
+- **Die Wear-Kopien.** `WearDotSkin`, `WearRenderer` und die
+  Android-Wrapper `DotSkin`, `DotScene`, `DotSound` in `:app` sind dünne
+  Compose-Adapter um `:core` — aber sie sind zu zweit.
 
-## Option A — `:core` als KMP-Modul für Android und iOS
+## Stufe 3 — Compose Multiplatform statt SpriteKit
 
-Der naheliegende Schnitt: `:core` bekommt neben dem JVM-Ziel iOS-Ziele
-und wird als Framework in die Xcode-App gelinkt.
-
-**Was zu tun wäre**
-
-1. `core/build.gradle.kts` auf `kotlin("multiplatform")` umstellen, Ziele
-   `jvm()` (für `:app`/`:wear`), `iosArm64`, `iosSimulatorArm64`; Quellen
-   nach `src/commonMain/kotlin` verschieben.
-2. XCFramework-Task ergänzen; `ios/project.yml` um eine Build-Phase, die
-   das Framework baut und linkt.
-3. Die 1338 Zeilen unter `ios/…/Engine` löschen und die Aufrufstellen in
-   `GameScene.swift`, `OverlayNodes.swift`, `PixelArt.swift` und
-   `GameViewController.swift` auf die Framework-Typen umstellen.
-4. `build-ios.yml` um den Gradle-Schritt erweitern.
-
-**Was es kostet**
-
-- **Interop-Reibung.** Kotlin-Typen kommen über Objective-C in Swift an:
-  Enums werden Klassen, `Set<Twist>` wird `NSSet`, das sealed interface
-  `GameEvent` wird eine Klassenhierarchie mit `is`-Prüfungen,
-  Default-Argumente verschwinden. Der Swift-Code wird dadurch nicht
-  hübscher, sondern umständlicher — betroffen sind geschätzt 300–500 der
-  2246 UI-Zeilen.
-- **Build-Zeit auf teuren Runnern.** Der erste Kotlin/Native-Lauf lädt
-  die Konan-Toolchain (~1 GB) und braucht mehrere Minuten; danach greift
-  der Cache. Genau bei diesem Repo tut das weh: Die iOS-CI läuft bewusst
-  selten, und macOS-Minuten kosten das Zehnfache.
-- **Debugging.** Ein Fehler in der Engine wird aus Xcode heraus deutlich
-  unangenehmer zu verfolgen als heute, wo dort lesbarer Swift liegt.
-- **Lokale Entwicklung** bleibt gleich gut — auf einem Mac ist es ein
-  Gradle-Schritt mehr.
-
-**Was es bringt**
-
-- 1338 Zeilen Swift weg, ein ganzer Handport weniger zu pflegen.
-- Die Daily Challenge ist per Konstruktion identisch statt per Test.
-- Neue Spiel-Features landen einmal in Kotlin und sind auf iOS sofort da
-  — heute ist jedes Feature zweimal zu bauen, und beide Seiten müssen
-  sich auch wieder gemeinsam ändern: Als `revive` aus der Engine flog,
-  war das ein Eingriff in `:core` **und** in den Swift-Port.
-
-**Aufwand:** grob ein bis zwei Tage für Setup und Umstellung der
-Aufrufstellen, plus eine CI-Runde zum Geradeziehen.
-
-## Option B — Kotlin/JS für die PWA (hinfällig)
-
-Stand früher hier als denkbarer zweiter Schritt: ein `js(IR)`-Ziel, das
-den JavaScript-Port ersetzt hätte. Abgeraten wurde davon, weil die PWA
-bewusst ohne Build-Tooling auskam und ein Kotlin/JS-Bundle um ein
-Mehrfaches größer gewesen wäre als die 32 KB gzip des Handports.
-
-Mit dem Wegfall der Web-Version in v2.23 hat sich die Frage erledigt.
-Sollte je wieder eine Browser-Fassung entstehen, ist die alte Abwägung im
-Commit `b4ed73f` nachlesbar — samt dem fertigen Handport.
-
-## Option C — Compose Multiplatform statt SpriteKit
-
-Eine Besonderheit dieses Projekts macht die radikale Variante
-überhaupt erst denkbar: **Die Android-App zeichnet alles im Code.** Keine
-Layouts, keine Bild-Assets — `TimingGameScreen.kt`, `GameOverlays.kt` und
+Eine Besonderheit dieses Projekts macht die radikale Variante überhaupt
+erst denkbar: **Die Android-App zeichnet alles im Code.** Keine Layouts,
+keine Bild-Assets — `TimingGameScreen.kt`, `GameOverlays.kt` und
 `PixelButton.kt` malen Rechtecke auf ein Compose-Canvas. Genau das läuft
 mit Compose Multiplatform auch auf iOS (über Skia).
 
 Damit wäre nicht nur die Engine geteilt, sondern der komplette Renderer
-samt Overlays — die 3584 Zeilen unter `ios/` fielen weg, eine UI für
-Phone und iPhone.
+samt Overlays: eine UI für Telefon und iPhone, `CoreBridge.swift`
+überflüssig, `ios/` auf einen Einstiegspunkt geschrumpft.
+
+**Was zu tun wäre**
+
+1. Ein Modul `:ui` mit `kotlin("multiplatform")` und dem
+   Compose-Multiplatform-Plugin; die Zeichen-Ebene aus `:app` dorthin
+   verschieben (Canvas, Overlays, Pixel-Font).
+2. `expect`/`actual` für Audio, Haptik, Persistenz und Benachrichtigungen.
+3. Geteilte Texte (Compose Resources) statt `strings.xml` +
+   `Localizable.strings`.
+4. iOS-Einstieg über `ComposeUIViewController`; `ios/project.yml` linkt
+   ein zweites Framework.
 
 **Kosten:** Die iOS-App wird ein Kotlin/Native-Compose-Build (App-Größe
-plus etwa 8–12 MB für Compose und Skia, spürbar längere CI-Läufe);
-AdMob, Billing und Play Games bleiben Android-only und brauchen
-`expect`/`actual`; Audio, Haptik und Persistenz ebenso. Und: Ein
-fertiger, funktionierender Swift-Port würde weggeworfen.
+plus etwa 8–12 MB für Compose und Skia, spürbar längere CI-Läufe). AdMob,
+Billing und Play Games bleiben Android-only. Der SpriteKit-Renderer wird
+weggeworfen — er ist fertig und stabil, kostet also gerade nichts. Und
+der Umbau fasst die Android-UI an, die heute läuft: Das Risiko liegt
+nicht auf iOS, sondern auf der Seite, die im Store steht.
 
-**Empfehlung:** nur, wenn das Pflegen von zwei UI-Codebasen tatsächlich
-zum Problem wird. Aktuell ist die iOS-UI fertig und stabil — sie kostet
-gerade nichts.
-
-## Empfehlung in einem Satz
-
-Solange iOS ein gelegentlich nachgezogener Port ist, reicht der
-Paritäts-Vertrag in `parity/`; sobald iOS regelmäßig neue Spiel-Features
-bekommen soll, ist **Option A** der richtige Zeitpunkt-Auslöser. Compose
-Multiplatform ist eine Frage für einen größeren Umbau, nicht für den
-nächsten Schritt.
-
-Seit dem Wegfall der Web-Version ist Option A außerdem billiger geworden:
-Es gibt nur noch ein Ziel nachzuziehen statt zwei, und `:core` ist bis
-auf die Testquellen bereits commonMain-tauglich.
-
-Der Auslöser ist also nicht „wir sparen Zeilen", sondern „iOS bekommt
-laufend neue Logik". Bis dahin gilt: Die Vektoren sagen Bescheid, wenn
-die Ports auseinanderlaufen.
+**Empfehlung:** Erst, wenn eine Änderung an der Darstellung regelmäßig
+zweimal gebaut werden muss. Die Engine war der teure Teil der Dopplung,
+und der ist weg.

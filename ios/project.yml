@@ -1,5 +1,10 @@
 # XcodeGen-Projektdefinition — erzeugt Dottie.xcodeproj:
 #   brew install xcodegen && cd ios && xcodegen
+#
+# Vorher muss das Framework mit der Spiellogik gebaut sein:
+#   ./gradlew :core:assembleDottieCoreDebugXCFramework
+# Es entsteht in core/build/XCFrameworks/debug/ und wird von beiden
+# Targets von dort gelinkt (siehe ios/README.md).
 name: Dottie
 options:
   developmentLanguage: en
@@ -14,6 +19,11 @@ targets:
     sources:
       - path: Dottie/Sources
       - path: Dottie/Resources
+    dependencies:
+      # Statisches Framework: Es wird beim Linken einverleibt und muss
+      # weder eingebettet noch signiert werden — deshalb embed: false.
+      - framework: ../core/build/XCFrameworks/debug/DottieCore.xcframework
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.robinrehbein.dottie
@@ -31,20 +41,23 @@ targets:
         - DottieTests
       gatherCoverageData: false
 
-  # Logik-Tests ohne Host-App: Das Bundle uebersetzt die Engine-Quellen
-  # direkt mit, dadurch braucht es weder TEST_HOST noch Signierung und
-  # laeuft im Simulator der CI ohne weitere Einrichtung.
+  # Logik-Tests ohne Host-App: Das Bundle uebersetzt die Bruecke zu
+  # :core direkt mit, dadurch braucht es weder TEST_HOST noch
+  # Signierung und laeuft im Simulator der CI ohne weitere Einrichtung.
   DottieTests:
     type: bundle.unit-test
     platform: iOS
     deploymentTarget: "16.0"
     sources:
       - path: DottieTests
-      - path: Dottie/Sources/Engine
-      # Die Soll-Werte kommen aus :core (Kotlin) und liegen ausserhalb von
-      # ios/ — siehe parity/README.md.
-      - path: ../parity/golden-vectors.txt
+      - path: Dottie/Sources/Core
+      # Die Tests pruefen, ob es zu jedem Namen aus :core einen Text
+      # gibt — dafuer muss die Tabelle im Test-Bundle liegen.
+      - path: Dottie/Resources/en.lproj/Localizable.strings
         buildPhase: resources
+    dependencies:
+      - framework: ../core/build/XCFrameworks/debug/DottieCore.xcframework
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.robinrehbein.dottie.tests

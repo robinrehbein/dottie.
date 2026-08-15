@@ -117,7 +117,7 @@ data class Ground(
  * statt in Grau ausgeblendet zu werden.
  */
 class Scene(
-    val sky: LongArray,
+    val sky: List<Long>,
     val cloud: Long?,
     val ground: Ground?,
     val props: List<Prop>
@@ -235,7 +235,7 @@ object ScenePaint {
      * gewesen, keine Absicherung — deshalb steht der Bestand hier als
      * benannte Ausnahme, und nur die WIESE darf sie benutzen.
      */
-    val LEGACY_ZONE_GREENS = longArrayOf(
+    val LEGACY_ZONE_GREENS: List<Long> = listOf(
         0xFF71C837, // BushColor
         0xFF5AA82C, // BushShadeColor
         0xFF9DE85A, // GrassLight
@@ -250,7 +250,7 @@ object ScenePaint {
      * Umstellung auf ScenePaint sieht, hat sie falsch gemacht.
      */
     private val WIESE = Scene(
-        sky = longArrayOf(
+        sky = listOf(
             0xFF4EC0CA, // 0+  Tag (türkis)
             0xFF5B9BD5, // 5+  Blau
             0xFF7B6FD0, // 10+ Lila
@@ -297,7 +297,7 @@ object ScenePaint {
      * ein Wiesengrün hätte hier den Mindestabstand zur Zielzone gerissen.
      */
     private val WUESTE = Scene(
-        sky = longArrayOf(
+        sky = listOf(
             0xFFA8DCE8, 0xFFF2C46B, 0xFFE8934A, 0xFFC85F3C,
             0xFF8E3B47, 0xFF4A2C4E, 0xFF241C33
         ),
@@ -332,7 +332,7 @@ object ScenePaint {
 
     /** Meer: der Boden ist Wasser, die Narbe darauf ist Schaum. */
     private val MEER = Scene(
-        sky = longArrayOf(
+        sky = listOf(
             0xFF5AD2E8, 0xFF2F9AD4, 0xFF2E5FB8, 0xFFC4707C,
             0xFFE09A4A, 0xFF35447F, 0xFF1B2138
         ),
@@ -368,7 +368,7 @@ object ScenePaint {
 
     /** Berg: Schnee statt Sand, Nadelbäume mit weißer Spitze. */
     private val BERG = Scene(
-        sky = longArrayOf(
+        sky = listOf(
             0xFFA8D8E8, 0xFF6FAFD8, 0xFF4A7FC0, 0xFF8A5A6E,
             0xFFD08A5A, 0xFF3E4A78, 0xFF1E2438
         ),
@@ -407,7 +407,7 @@ object ScenePaint {
      * den das Spiel an dieser Stelle nicht macht.
      */
     private val STADT = Scene(
-        sky = longArrayOf(
+        sky = listOf(
             0xFF9ED4E4, 0xFF5F9BC8, 0xFF7B6B9E, 0xFFC4707E,
             0xFFE8963C, 0xFF3A3F6E, 0xFF1A1A2E
         ),
@@ -447,7 +447,7 @@ object ScenePaint {
      * Boden läge — die Linie bleibt, nur der Boden fehlt.
      */
     private val WELTRAUM = Scene(
-        sky = longArrayOf(
+        sky = listOf(
             // Der Weltraum bleibt dunkel: Der Verlauf laeuft ueber Nebel-
             // Toene bis zu dunklem Wein, nie bis ins Abendrot. Eine helle
             // Stufe sah aus wie ein Sonnenuntergang mit Sternen daneben.
@@ -476,6 +476,12 @@ object ScenePaint {
         )
     )
 
+    /**
+     * Alle Kulissen in Sammlungs-Reihenfolge — der Gegenpart zu
+     * [SkinPaint.ORDER], und aus demselben Grund eine `List`.
+     */
+    val ORDER: List<SceneId> = SceneId.entries.toList()
+
     /** Die komplette Beschreibung einer Kulisse. */
     fun of(id: SceneId): Scene = when (id) {
         SceneId.WIESE -> WIESE
@@ -487,7 +493,7 @@ object ScenePaint {
     }
 
     /** Himmelsfarben einer Kulisse; die Stufe kommt aus [SkinPaint.skyStage]. */
-    fun sky(id: SceneId): LongArray = of(id).sky
+    fun sky(id: SceneId): List<Long> = of(id).sky
 
     /** Himmelsfarbe zu einem Score — der Weg, den alle Renderer gehen. */
     fun skyFor(id: SceneId, score: Int): Long = of(id).sky[SkinPaint.skyStage(score)]

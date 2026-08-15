@@ -1,23 +1,32 @@
 # Paritäts-Vektoren
 
-`golden-vectors.txt` ist der gemeinsame Vertrag zwischen den zwei
-Fassungen der Spiellogik:
+`golden-vectors.txt` hält das Verhalten von `:core` fest: eine Zeile pro
+Wert, erzeugt aus der Engine, eingecheckt und bei jedem Testlauf
+nachgeprüft.
 
-| Fassung | Ort | Rolle |
-|---|---|---|
-| Kotlin | `core/src/main/kotlin/…` | **Quelle der Wahrheit**, erzeugt die Datei; nutzen `:app` und `:wear` |
-| Swift | `ios/Dottie/Sources/Engine/` | Handport, prüft sich dagegen |
+## Wozu die Datei heute da ist
 
-Die Engine existiert zweifach — rund 500 Zeilen je Sprache, von Hand
-portiert. Kotlin-Tests sagen über den Swift-Port nichts aus. Statt
-dieselben Fälle zweimal zu schreiben, schreibt Kotlin einmal auf, was
-herauskommen muss, und der Port prüft sich gegen dieselbe Datei.
+Bis v2.23 war sie ein Vertrag zwischen **zwei** Fassungen der Engine:
+Kotlin in `:core` und ein Swift-Handport unter
+`ios/Dottie/Sources/Engine`. Beide Seiten prüften sich gegen dieselbe
+Datei, weil Kotlin-Tests über den Swift-Port nichts aussagen.
 
-Bis v2.22 hat sich hier auch ein JavaScript-Port (`web/`) geprüft. Er ist
-mit der Konzentration auf die nativen Apps entfallen; sein letzter Stand
-liegt im Commit `b4ed73f`.
+Den Handport gibt es nicht mehr — `:core` ist ein
+Kotlin-Multiplatform-Modul, und die iOS-App linkt es als
+`DottieCore.xcframework`. Damit ist die Datei kein Vertrag zwischen
+Sprachen mehr, sondern ein **Golden-Master-Test für `:core` selbst**: Sie
+zeigt jede Verhaltensänderung als Diff, bevor sie in drei Apps landet.
 
-## Wer prüft was
+Das ist keine Verlegenheitsrolle. Genau in dieser Rolle hat sie zuletzt
+gearbeitet: Als eine Farbrundung von Abschneiden auf kaufmännisches
+Runden umgestellt wurde, verschob das 78 Zeilen um je eine Kanalstufe —
+sichtbar im Diff, statt unbemerkt in vier Apps.
+
+Bis v2.22 hat sich hier zusätzlich ein JavaScript-Port (`web/`) geprüft.
+Er ist mit der Konzentration auf die nativen Apps entfallen; sein letzter
+Stand liegt im Commit `b4ed73f`.
+
+## Was drinsteht
 
 | Abschnitt | Inhalt |
 |---|---|
@@ -29,10 +38,7 @@ liegt im Commit `b4ed73f`.
 | `rng.*` | Kotlins XorWow-Generator Zahl für Zahl |
 | `trace.*` | ganze Läufe, Treffer für Treffer |
 
-Beide Seiten prüfen jeden Abschnitt.
-
-Die Skin-Abschnitte im Einzelnen — sie sind der größte Teil der Datei,
-weil dort auch der größte Teil der Handarbeit steckt:
+Die Skin-Abschnitte im Einzelnen — sie sind der größte Teil der Datei:
 
 - `skin.order`, `skin.grid`, `skin.collectableCount` — Reihenfolge (sie
   ist zugleich der gespeicherte Wert) und der Sammlungsstand, an dem der
@@ -51,37 +57,36 @@ weil dort auch der größte Teil der Handarbeit steckt:
   Saison-Skin wird nur in seinem Monat verdient, gilt danach aber für
   immer; entschieden wird deshalb über die Maske, nie über den Kalender.
 
-Die Kulissen (zweite Sammlung) und die Ziele der Statistik-Seite hängen
-mit denselben Proben daran:
+Die Kulissen und die Ziele der Statistik-Seite hängen mit denselben
+Proben daran:
 
 - `scene.order`, `scene.sky.<ID>`, `scene.cloud.<ID>`, `scene.ground.<ID>`,
   `scene.chips.<ID>`, `scene.prop.<ID>.<k>` — die komplette Datentabelle
   einer Kulisse. Sie fällt beim Ansehen *nicht* auf: Die WÜSTE öffnet
-  erst nach 500 Läufen, der WELTRAUM ganz zuletzt. Ein falscher Wert im
-  Port könnte dort monatelang unbemerkt liegen.
+  erst nach 500 Läufen, der WELTRAUM ganz zuletzt. Ein falscher Wert
+  könnte dort monatelang unbemerkt liegen.
 - `scene.unlocked.N` — dieselben Proben wie bei den Skins, plus eigene
   für die höheren Kulissen-Schwellen (je einmal knapp darunter und genau
   auf der Kante).
 - `progress.probe.N`, `progress.goals.N`, `progress.next.N` — die offenen
   Ziele **in ihrer Reihenfolge**. Das erste Ziel ist das, was im
-  Game-Over steht; eine andere Sortierung wäre auf jeder Plattform ein
-  anderer Satz. Die Proben tragen zusätzlich Monat und Saison-Tage, weil
-  ein Saison-Ziel nur in seinem eigenen Monat auftauchen darf.
+  Game-Over steht; eine andere Sortierung wäre ein anderer Satz. Die
+  Proben tragen zusätzlich Monat und Saison-Tage, weil ein Saison-Ziel
+  nur in seinem eigenen Monat auftauchen darf.
 - `progress.fractions` / `progress.filledBlocks` — die Rastung des
   Balkens an ihren Kanten, inklusive der Werte unter 0 und über 1.
 
-Der wichtigste ist `rng`: `KotlinRandom.swift`
-baut Kotlins Generator bitgenau nach, damit iPhone und Android an
-demselben Tag dieselbe Daily Challenge spielen. Ohne diese Vektoren
-würde ein Fehler darin niemandem auffallen, bis jemand zwei Geräte
-nebeneinanderlegt.
+`rng` bleibt der empfindlichste Abschnitt: An dieser Zahlenfolge hängt,
+dass iPhone und Android an demselben Tag dieselbe Daily Challenge
+spielen. Seit beide `kotlin.random.Random` benutzen, ist das keine
+Nachbau-Frage mehr — die Vektoren halten aber weiter fest, dass sich die
+Folge nicht durch einen Umbau in `:core` verschiebt.
 
 ## Was der Vertrag nicht sieht
 
 Die Vektoren tasten **reine Funktionen** ab: gleiche Eingabe, gleiche
 Ausgabe. Was sie nicht prüfen können, ist, **womit** eine Plattform diese
-Funktionen füttert — und genau dort saß bei einer Durchsicht der Ports
-die einzige echte Abweichung:
+Funktionen füttert — und genau dort sitzt die verbliebene Abweichung:
 
 - Android rechnet einen Lauf dem Tag zu, an dem er **gestartet** ist
   (`ScoreStore.submitRun(score, epochDay, month, year)`), iOS liest die
@@ -91,25 +96,15 @@ die einzige echte Abweichung:
 - Dasselbe bei Uhrzeit und Monat der Skins: Android liest sie einmal je
   Lauf, iOS pro Frame. TAGESZEIT wechselt dort mitten im Lauf die Farbe.
 
-Solche Fälle brauchen Tests **im** Port (oder eine gemeinsame Schicht
-darüber, siehe ARCHITEKTUR.md) — die Vektoren allein finden sie nicht und
-behaupten das auch nicht.
+Solche Fälle bräuchten eine gemeinsame Schicht über der Engine (siehe
+ARCHITEKTUR.md) — die Vektoren allein finden sie nicht und behaupten das
+auch nicht.
 
 ## Ausführen
 
 ```sh
-./gradlew :core:jvmTest          # Kotlin: Datei gegen die Engine prüfen
+./gradlew :core:jvmTest          # Datei gegen die Engine prüfen
 ```
-
-Swift läuft nur auf einem Mac beziehungsweise in der CI:
-
-```sh
-cd ios && xcodegen
-xcodebuild test -project Dottie.xcodeproj -scheme Dottie \
-  -destination 'platform=iOS Simulator,name=iPhone 16'
-```
-
-In GitHub Actions macht das der Workflow **Build iOS**.
 
 ## Ändern
 
@@ -120,9 +115,9 @@ Verhalten von `:core` absichtlich ändert:
 ./gradlew :core:jvmTest -Dparity.update=true
 ```
 
-Der Diff der Datei zeigt dann genau, was sich für den Port ändert. Wer
-`:core` anfasst, sieht damit schwarz auf weiß, was in `ios/` nachzuziehen
-ist — und die Tests dort schlagen so lange fehl, bis es passiert ist.
+Der Diff zeigt dann genau, was sich für alle drei Apps ändert. Ein
+unerwarteter Diff ist die Ansage, dass ein Umbau mehr angefasst hat als
+gedacht.
 
 ## Format
 
@@ -137,35 +132,12 @@ trace.perfect.0 2 1 1 2 -1 - 0.369220 0.395000 1.629999 0 -
 
 Bewusst kein JSON: Jede Sprache soll es ohne Bibliothek lesen können.
 
-## Toleranzen — und warum es sie braucht
-
-Fließkommazahlen stehen mit sechs Nachkommastellen und werden nicht auf
-Gleichheit geprüft:
-
-| Was | Toleranz | Grund |
-|---|---|---|
-| Konstanten, Zonenbreite | `1e-5` | rechnen sich nicht auf, nur Darstellungsrundung |
-| Winkel, Zonenmitte | `5e-3` | summieren sich über einen ganzen Lauf auf |
-| Farben | ±2 pro Kanal, ohne Alpha | Kotlin rechnet Skins in `Float`, der Swift-Port in `CGFloat` |
-
-Farben stehen als ARGB (`0xFFRRGGBB`) in der Datei, verglichen werden
-aber nur Rot, Grün und Blau: Die beiden Seiten stellen sie
-unterschiedlich dar — Kotlin als ARGB-Long (damit `:core` ohne
-Compose-Typen auskommt), Swift als 24-Bit-RGB mit Deckkraft erst an der
-`UIColor`. Alle Werte in `:core` sind vollflächig deckend, es geht also
-nichts verloren.
-
-Der interessante Fall ist die zweite Zeile. Kotlin läuft auf der JVM und
-rechnet jede Fließkomma-Operation einzeln; Swift wird von LLVM übersetzt,
-das `a + b * c` zu einem fused multiply-add zusammenziehen darf. Beides
-ist korrekt, keins ist „falsch" — bitgleich sind sie aber nicht. Über die
-rund 6000 Frames eines Laufs summiert sich das auf: gemessen wurden
-**4·10⁻⁴ Radiant** Abstand am Ende eines 40-Treffer-Laufs, bei sonst
-exakt identischen Zahlen (Score, Treffer, Serie, Twists, Richtung,
-Ketten). Deshalb 5·10⁻³ als Schranke: reichlich Luft für die Drift und
-immer noch fünfzigmal enger als die 0,02 Radiant, die der Punkt pro Frame
-zurücklegt. Ein echter Logikunterschied fällt also weiter auf.
-
-Damit die Drift nur Zahlen und keine *Entscheidungen* verschiebt, tappt
-der Bot tief im Perfekt-Kern und rechnet ohne `sin` — siehe `ParityBot`
-in `core/src/test/`.
+Farben stehen als ARGB (`0xFFRRGGBB`). Fließkommazahlen stehen mit sechs
+Nachkommastellen; verglichen wird mit `1e-5` Toleranz für Konstanten und
+`5e-3` für Werte, die sich über einen Lauf aufsummieren (Winkel,
+Zonenmitte). Die weite Schranke stammt aus der Zeit des Swift-Ports: Die
+JVM rechnet jede Fließkomma-Operation einzeln, LLVM darf `a + b * c` zu
+einem fused multiply-add zusammenziehen — über die rund 6 000 Frames
+eines Laufs waren das gemessen 4·10⁻⁴ Radiant Abstand. Sie bleibt
+stehen, weil sie auch für Kotlin/Native gilt: Dieselbe Engine, auf zwei
+Backends übersetzt, rechnet nicht bitgleich.

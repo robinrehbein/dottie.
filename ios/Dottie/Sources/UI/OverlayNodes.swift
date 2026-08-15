@@ -694,7 +694,7 @@ final class GameOverOverlay: SKNode {
 
         if let goal = goal {
             goalLabel.text = L10n.format(
-                "goal_progress", L10n.text(goal.titleKey), goal.current, goal.target
+                "goal_progress", L10n.text(goal.titleKey), Int(goal.current), Int(goal.target)
             )
             goalBar.fraction = goal.fraction
         }
@@ -895,7 +895,7 @@ final class StatsOverlay: SKNode {
         }
     }
 
-    func refresh(stats: DotSkin.Stats, goals: [Goal]) {
+    func refresh(stats: SkinStats, goals: [Goal]) {
         let values = [
             String(stats.bestScore),
             String(stats.runCount),
@@ -925,7 +925,7 @@ final class StatsOverlay: SKNode {
         for goal in visible {
             let label = PixelLabel(
                 text: L10n.format(
-                    "goal_progress", L10n.text(goal.titleKey), goal.current, goal.target
+                    "goal_progress", L10n.text(goal.titleKey), Int(goal.current), Int(goal.target)
                 ),
                 fontSize: 16,
                 color: .white,
@@ -937,7 +937,7 @@ final class StatsOverlay: SKNode {
             goalNodes.append(label)
 
             let bar = GoalBar(width: sceneSize.width - 80)
-            bar.fraction = goal.fraction
+            bar.fraction = CGFloat(goal.fraction)
             bar.position = CGPoint(x: sceneSize.width / 2, y: y - 18)
             addChild(bar)
             goalNodes.append(bar)
@@ -1248,7 +1248,7 @@ final class SkinOverlay: SKNode {
 
     /// Liefert, was die Berührung bedeutet hat. Nach einem Zug bleibt der
     /// Picker offen — sonst würde jedes Scrollen ihn schließen.
-    func touchEnded(at point: CGPoint, stats: DotSkin.Stats) -> TouchResult {
+    func touchEnded(at point: CGPoint, stats: SkinStats) -> TouchResult {
         if dragged {
             return .scrolled
         }
@@ -1279,7 +1279,7 @@ final class SkinOverlay: SKNode {
     /// Liste wuerde unter dem Finger wegspringen, obwohl der Tipp ganz
     /// oben war.
     func refresh(
-        stats: DotSkin.Stats,
+        stats: SkinStats,
         selected: DotSkin,
         selectedScene: SceneId,
         selectedSound: SoundSetId,

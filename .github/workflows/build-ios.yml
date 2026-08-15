@@ -1,10 +1,10 @@
 name: Build iOS
 
-# Der Lauf ist der einzige Kompilier-Beweis für den Swift-Port — auf
-# einem Linux-Rechner gibt es keine Apple-Toolchain, ein Fehler fiele
-# sonst erst beim Öffnen in Xcode auf. Seit den Paritäts-Tests
-# (parity/README.md) ist er zusätzlich der einzige Ort, an dem geprüft
-# wird, ob der Port noch dieselben Zahlen liefert wie die Kotlin-Engine.
+# Der Lauf ist der einzige Kompilier-Beweis für die iOS-App — auf einem
+# Linux-Rechner gibt es keine Apple-Toolchain, ein Fehler fiele sonst
+# erst beim Öffnen in Xcode auf. Er ist zugleich der einzige Ort, an dem
+# die Spiellogik überhaupt für Apple übersetzt wird: :core ist ein
+# Multiplattform-Modul, und seine Apple-Ziele bauen nur auf einem Mac.
 #
 # Früher war der Trigger bewusst nur manuell, weil macOS-Minuten auf
 # privaten Repos das Zehnfache kosten. Seit das Repo öffentlich ist,
@@ -45,6 +45,26 @@ jobs:
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Die Spiellogik als XCFramework — beide Xcode-Targets linken es
+      # aus core/build/XCFrameworks/debug/ (siehe ios/project.yml). Ohne
+      # diesen Schritt findet xcodebuild das Framework nicht.
+      #
+      # Gradle konfiguriert dabei auch die Android-Module und braucht
+      # dafür den SDK-Pfad; auf den macOS-Runnern steht er in
+      # ANDROID_HOME.
+      - name: Spiellogik als XCFramework bauen
+        run: |
+          if [ -n "$ANDROID_HOME" ]; then
+            echo "sdk.dir=$ANDROID_HOME" > local.properties
+          fi
+          ./gradlew --no-daemon :core:assembleDottieCoreDebugXCFramework
+          ls -la core/build/XCFrameworks/debug
+
       - name: XcodeGen installieren
         run: brew install xcodegen
 
@@ -53,12 +73,12 @@ jobs:
           cd ios
           xcodegen
 
-      # Paritäts-Tests: Der Swift-Port rechnet dieselben Läufe nach, die
-      # :core in parity/golden-vectors.txt hinterlegt hat — inklusive des
-      # XorWow-Generators, an dem die Daily Challenge hängt. Läuft zuerst,
-      # damit ein inhaltlicher Fehler nicht hinter zwei Builds versteckt
-      # ist. Siehe parity/README.md.
-      - name: Paritäts-Tests im Simulator
+      # Brücken-Tests: Seit die Engine aus :core kommt, gibt es nichts
+      # mehr nachzurechnen — geprüft wird, was CoreBridge.swift von Hand
+      # macht (abgeleitete Textschlüssel, Familien, Requisiten-Formen)
+      # und dass das Framework wirklich verlinkt ist. Läuft zuerst, damit
+      # ein inhaltlicher Fehler nicht hinter zwei Builds versteckt ist.
+      - name: Brücken-Tests im Simulator
         run: |
           cd ios
           # Irgendein verfügbares iOS-Simulator-Gerät: Die Namen der Images

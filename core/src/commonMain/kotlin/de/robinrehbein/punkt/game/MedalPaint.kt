@@ -21,6 +21,9 @@ enum class MedalId { BRONZE, SILVER, GOLD, PLATINUM }
 object MedalPaint {
 
     /** Ab welchem Score die Stufe erreicht ist. */
+    /** Die Medaillen von der niedrigsten zur höchsten Schwelle. */
+    val ORDER: List<MedalId> = MedalId.entries.toList()
+
     fun threshold(id: MedalId): Int = when (id) {
         MedalId.BRONZE -> 10
         MedalId.SILVER -> 20

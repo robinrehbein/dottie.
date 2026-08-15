@@ -30,9 +30,9 @@ import java.io.File
 class RendererSourceTest {
 
     /**
-     * Die Renderer, die das Ringband zeichnen. Der Swift-Port steht mit
-     * in der Liste: Er lässt sich hier nicht kompilieren, aber lesen
-     * kann man ihn — und ein Rückfall dort wäre genauso teuer.
+     * Die Renderer, die das Ringband zeichnen. Die SpriteKit-Szene steht
+     * mit in der Liste: Sie lässt sich hier nicht kompilieren, aber
+     * lesen kann man sie — und ein Rückfall dort wäre genauso teuer.
      */
     private val renderer = listOf(
         "app/src/main/java/de/robinrehbein/punkt/ui/screens/TimingGameScreen.kt",

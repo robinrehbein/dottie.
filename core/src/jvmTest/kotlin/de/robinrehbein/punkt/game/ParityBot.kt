@@ -7,9 +7,9 @@ import kotlin.random.Random
  * Ein Bot, der einen Lauf deterministisch durchspielt — die Vorlage für
  * die `trace`-Abschnitte in `parity/golden-vectors.txt`.
  *
- * Der Swift-Port hat denselben Bot (ios/DottieTests/ParityTests.swift).
- * Damit beide Seiten Frame für Frame dasselbe tun, hält er sich an zwei
- * Regeln:
+ * Er hält sich an zwei Regeln, damit derselbe Lauf auf jeder Übersetzung
+ * der Engine Frame für Frame dasselbe tut — die JVM und Kotlin/Native
+ * rechnen Fließkomma nicht bitgleich:
  *
  * 1. **Fester Zeitschritt.** [DT] ist so klein, dass der Punkt nie über
  *    das Tap-Fenster springt: Selbst bei Höchsttempo wandert er pro Frame
@@ -80,7 +80,7 @@ object ParityBot {
         while (out.size < maxHits && frames < MAX_FRAMES) {
             frames++
             game.update(DT)
-            if (game.phase != TimingGame.Phase.RUNNING) break
+            if (game.phase != GamePhase.RUNNING) break
             if (abs(game.relativeToZone()) <= game.zoneHalfWidth * TAP_WINDOW) {
                 game.tap()
                 out.add(snapshot(game))
@@ -96,7 +96,7 @@ object ParityBot {
         var frames = 0
         var angle = game.angle
         var zoneCenter = game.zoneCenter
-        while (game.phase == TimingGame.Phase.RUNNING && frames < MAX_FRAMES) {
+        while (game.phase == GamePhase.RUNNING && frames < MAX_FRAMES) {
             frames++
             angle = game.angle
             zoneCenter = game.zoneCenter
@@ -104,7 +104,7 @@ object ParityBot {
         }
         val framesToDeath = frames
         var settle = 0
-        while (game.phase == TimingGame.Phase.DYING && settle < MAX_FRAMES) {
+        while (game.phase == GamePhase.DYING && settle < MAX_FRAMES) {
             settle++
             game.update(DT)
         }
