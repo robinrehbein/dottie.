@@ -107,6 +107,7 @@ final class GameScene: SKScene {
     private var readyOverlay: ReadyOverlay?
     private var overOverlay: GameOverOverlay?
     private var helpOverlay: HelpOverlay?
+    private var settingsOverlay: SettingsOverlay?
     private var skinOverlay: SkinOverlay?
     private var statsOverlay: StatsOverlay?
 
@@ -281,8 +282,17 @@ final class GameScene: SKScene {
         addChild(over)
         self.overOverlay = over
 
+        let settings = SettingsOverlay(sceneSize: size)
+        settings.zPosition = 300
+        settings.isHidden = true
+        addChild(settings)
+        self.settingsOverlay = settings
+
+        // Die Hilfe liegt über dem Einstellungs-Blatt, weil sie von dort
+        // aus geöffnet wird — sichtbar ist trotzdem immer nur eine von
+        // beiden, das Blatt schließt beim Öffnen der Hilfe.
         let help = HelpOverlay(sceneSize: size)
-        help.zPosition = 300
+        help.zPosition = 310
         help.isHidden = true
         addChild(help)
         self.helpOverlay = help
@@ -564,16 +574,19 @@ final class GameScene: SKScene {
     private func enterReady() {
         hud?.isHidden = true
         overOverlay?.isHidden = true
+        refreshReady()
+        readyOverlay?.isHidden = false
+    }
+
+    /// Nur die Anzeige nachziehen, ohne am Sichtbaren zu rühren.
+    private func refreshReady() {
         let today = DailyChallenge.todayEpochDay()
         readyOverlay?.refresh(
             bestScore: store.bestScore,
             runNumber: store.runCount,
-            soundOn: !store.soundMuted,
-            reminderOn: store.reminderEnabled,
             dailyBest: store.dailyBestFor(epochDay: today),
             dailyStreak: store.dailyStreakPreviewFor(epochDay: today)
         )
-        readyOverlay?.isHidden = false
     }
 
     // MARK: - Welt-Rendering (Port von drawTimingWorld)
@@ -802,6 +815,30 @@ final class GameScene: SKScene {
             help.isHidden = true
             return
         }
+        // Das Einstellungs-Blatt: Eine Zeile schaltet, alles daneben
+        // schließt. Es wertet nur diesen Anfang der Berührung aus, nie ihr
+        // Ende — deshalb kann der Tap, der es geöffnet hat, hier nicht
+        // noch einmal ankommen und keine Zeile auslösen.
+        if let settings = settingsOverlay, !settings.isHidden {
+            guard let row = settings.rowHit(at: location) else {
+                settings.isHidden = true
+                return
+            }
+            switch row {
+            case .sound:
+                store.soundMuted = !store.soundMuted
+                audio.muted = store.soundMuted
+                refreshSettings()
+            case .reminder:
+                toggleReminder()
+            case .help:
+                // Die Hilfe ist selbst vollflächig: Zwei Blätter
+                // übereinander wären nur ein Papierstapel.
+                settings.isHidden = true
+                helpOverlay?.isHidden = false
+            }
+            return
+        }
         // Die Statistik-Seite scrollt nicht: Ein Tap irgendwo schließt sie,
         // wie die Hilfe.
         if let stats = statsOverlay, !stats.isHidden {
@@ -869,12 +906,11 @@ final class GameScene: SKScene {
 
     private func handleButton(_ name: String) {
         switch name {
-        case "btn.sound":
-            store.soundMuted = !store.soundMuted
-            audio.muted = store.soundMuted
-            enterReadyRefreshOnly()
-        case "btn.reminder":
-            toggleReminder()
+        case "btn.settings":
+            // Der Stand steht erst beim Öffnen fest — Ton und Erinnerung
+            // lassen sich auch von außerhalb des Spiels ändern.
+            refreshSettings()
+            settingsOverlay?.isHidden = false
         case "btn.help":
             helpOverlay?.isHidden = false
         case "btn.daily":
@@ -918,7 +954,7 @@ final class GameScene: SKScene {
         if store.reminderEnabled {
             store.reminderEnabled = false
             DailyReminder.cancel()
-            enterReadyRefreshOnly()
+            refreshSettings()
             return
         }
         DailyReminder.requestPermission { [weak self] granted in
@@ -927,19 +963,11 @@ final class GameScene: SKScene {
             if granted {
                 DailyReminder.refresh(store: self.store)
             }
-            self.enterReadyRefreshOnly()
+            self.refreshSettings()
         }
     }
 
-    private func enterReadyRefreshOnly() {
-        let today = DailyChallenge.todayEpochDay()
-        readyOverlay?.refresh(
-            bestScore: store.bestScore,
-            runNumber: store.runCount,
-            soundOn: !store.soundMuted,
-            reminderOn: store.reminderEnabled,
-            dailyBest: store.dailyBestFor(epochDay: today),
-            dailyStreak: store.dailyStreakPreviewFor(epochDay: today)
-        )
+    private func refreshSettings() {
+        settingsOverlay?.refresh(soundOn: !store.soundMuted, reminderOn: store.reminderEnabled)
     }
 }

@@ -67,6 +67,9 @@ enum PixelIconKind {
     case speakerOff
     case bellOn
     case bellOff
+    /// Zahnrad — der einzige Knopf, der noch oben rechts im Startbild
+    /// steht: Ton, Erinnerung und Hilfe liegen dahinter.
+    case gear
 }
 
 /// Blockiger Button mit Treppenkanten, 1:1 aus drawPixelBorder in
@@ -86,6 +89,9 @@ final class PixelButton: SKNode {
     private let iconLayer = SKNode()
     private let iconColor: UIColor
     private let strikeColor: UIColor
+    /// Die Fläche unter dem Motiv: Das Zahnrad braucht sie als Farbe für
+    /// sein Loch — ein echtes Loch kann eine Textur aus Rechtecken nicht.
+    private let holeColor: UIColor
 
     var text: String {
         get { return label.text }
@@ -99,7 +105,8 @@ final class PixelButton: SKNode {
             iconLayer.removeAllChildren()
             if let icon = icon {
                 PixelButton.addIcon(
-                    icon, to: iconLayer, size: size, color: iconColor, strike: strikeColor
+                    icon, to: iconLayer, size: size,
+                    color: iconColor, strike: strikeColor, hole: holeColor
                 )
             }
         }
@@ -123,6 +130,7 @@ final class PixelButton: SKNode {
         self.label = PixelLabel(text: text, fontSize: fontSize, color: textColor, shadow: false)
         self.iconColor = iconColor
         self.strikeColor = strikeColor
+        self.holeColor = background
         super.init()
         self.name = name
 
@@ -135,7 +143,8 @@ final class PixelButton: SKNode {
         self.icon = icon
         if let icon = icon {
             PixelButton.addIcon(
-                icon, to: iconLayer, size: size, color: iconColor, strike: strikeColor
+                icon, to: iconLayer, size: size,
+                color: iconColor, strike: strikeColor, hole: background
             )
         } else {
             addChild(label)
@@ -144,7 +153,7 @@ final class PixelButton: SKNode {
 
     /// Ein Rechteck in Pixel-Koordinaten (Ursprung oben links) auf einen
     /// Knoten legen, dessen Kinder um die Mitte zentriert sind.
-    private static func addRect(
+    static func addRect(
         to node: SKNode,
         buttonSize: CGSize,
         x: CGFloat,
@@ -162,7 +171,10 @@ final class PixelButton: SKNode {
         node.addChild(sprite)
     }
 
-    private static func addSteppedBorder(
+    /// Auch das Einstellungs-Blatt trägt diesen Rahmen — deshalb nicht
+    /// privat: Ein zweiter Treppen-Zeichner wäre eine Kopie, die
+    /// irgendwann anders aussieht als der Knopf daneben.
+    static func addSteppedBorder(
         to node: SKNode,
         size: CGSize,
         color: UIColor,
@@ -200,7 +212,8 @@ final class PixelButton: SKNode {
         to node: SKNode,
         size: CGSize,
         color: UIColor,
-        strike: UIColor
+        strike: UIColor,
+        hole: UIColor
     ) {
         let u = min(size.width, size.height) / 16
         func block(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ c: UIColor) {
@@ -224,6 +237,20 @@ final class PixelButton: SKNode {
             block(4.5, 6, 7, 3.5, color)
             block(3.5, 9.3, 9, 1.6, color)
             block(7.2, 11.2, 1.6, 1.6, color)
+        case .gear:
+            // Koerper, vier gerade und vier schraege Zaehne, dann die
+            // Nabe in der Farbe der Knopffläche. Acht Zaehne statt sechs:
+            // Auf dem 16er-Raster liegen nur gerade Teilungen sauber.
+            block(4.5, 4.5, 7, 7, color)
+            block(6.5, 2.4, 3, 2.3, color)
+            block(6.5, 11.3, 3, 2.3, color)
+            block(2.4, 6.5, 2.3, 3, color)
+            block(11.3, 6.5, 2.3, 3, color)
+            block(3.2, 3.2, 2.1, 2.1, color)
+            block(10.7, 3.2, 2.1, 2.1, color)
+            block(3.2, 10.7, 2.1, 2.1, color)
+            block(10.7, 10.7, 2.1, 2.1, color)
+            block(6.6, 6.6, 2.8, 2.8, hole)
         }
         if icon == .speakerOff || icon == .bellOff {
             // Treppen-Durchstreichung von links oben nach rechts unten
@@ -343,14 +370,14 @@ final class HudOverlay: SKNode {
     }
 }
 
-/// Startscreen: Titel, Rekord, blinkender Hinweis, DAILY/SKINS, Sound, Hilfe.
+/// Startscreen: Titel, Rekord, blinkender Hinweis, DAILY/SKINS/STATS —
+/// und oben rechts das Zahnrad, hinter dem Ton, Erinnerung und Hilfe
+/// liegen.
 final class ReadyOverlay: SKNode {
 
     private let bestLabel: PixelLabel
     private let statsLabel: PixelLabel
     private let runLabel: PixelLabel
-    private let soundButton: PixelButton
-    private let reminderButton: PixelButton
     private var buttons: [PixelButton] = []
 
     init(sceneSize: CGSize, safeTop: CGFloat, safeBottom: CGFloat) {
@@ -360,24 +387,6 @@ final class ReadyOverlay: SKNode {
         bestLabel = PixelLabel(text: "", fontSize: 22, color: .white)
         statsLabel = PixelLabel(text: "", fontSize: 15, color: Palette.dotBody)
         runLabel = PixelLabel(text: "", fontSize: 16, color: UIColor(white: 1, alpha: 0.8))
-        // Icon statt Text, wie am Phone (PixelIconButton in
-        // GameOverlays.kt): 48x48, Sandfläche, 3px Rahmen.
-        soundButton = PixelButton(
-            name: "btn.sound",
-            text: "",
-            size: CGSize(width: 48, height: 48),
-            background: Palette.panelSand,
-            borderWidth: 3,
-            icon: .speakerOn
-        )
-        reminderButton = PixelButton(
-            name: "btn.reminder",
-            text: "",
-            size: CGSize(width: 48, height: 48),
-            background: Palette.panelSand,
-            borderWidth: 3,
-            icon: .bellOff
-        )
         super.init()
 
         // "DOTTIE." ist mit 7 Zeichen schmal genug für die vollen 64pt.
@@ -401,23 +410,19 @@ final class ReadyOverlay: SKNode {
         ])))
         addChild(hint)
 
-        // Ton und Erinnerung nebeneinander oben links, wie am Phone
-        // (die beiden PixelIconButton in GameOverlays.kt, 10dp Abstand).
-        soundButton.position = CGPoint(x: 16 + 24, y: h - safeTop - 40)
-        addChild(soundButton)
-        reminderButton.position = CGPoint(x: 16 + 24 + 48 + 10, y: h - safeTop - 40)
-        addChild(reminderButton)
-
-        let helpButton = PixelButton(
-            name: "btn.help",
-            text: "?",
+        // Ein Zahnrad statt drei Icon-Knöpfen. Es steht da, wo vorher das
+        // "?" stand: Die obere rechte Ecke war schon immer die Ecke der
+        // Nebensachen, und die linke ist damit frei geworden.
+        let settingsButton = PixelButton(
+            name: "btn.settings",
+            text: "",
             size: CGSize(width: 48, height: 48),
             background: Palette.panelSand,
-            fontSize: 24,
-            borderWidth: 3
+            borderWidth: 3,
+            icon: .gear
         )
-        helpButton.position = CGPoint(x: w - 16 - 24, y: h - safeTop - 40)
-        addChild(helpButton)
+        settingsButton.position = CGPoint(x: w - 16 - 24, y: h - safeTop - 40)
+        addChild(settingsButton)
 
         // Drei Knöpfe statt zwei: Die Statistik gehört auf den
         // Startscreen, nicht in ein Untermenü — sie ist der Grund, den
@@ -459,7 +464,7 @@ final class ReadyOverlay: SKNode {
         runLabel.position = CGPoint(x: w / 2, y: safeBottom + 42)
         addChild(runLabel)
 
-        buttons = [soundButton, reminderButton, helpButton, dailyButton, skinsButton, statsButton]
+        buttons = [settingsButton, dailyButton, skinsButton, statsButton]
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -469,16 +474,11 @@ final class ReadyOverlay: SKNode {
     func refresh(
         bestScore: Int,
         runNumber: Int,
-        soundOn: Bool,
-        reminderOn: Bool,
         dailyBest: Int,
         dailyStreak: Int
     ) {
         bestLabel.text = L10n.format("best_score", bestScore)
         bestLabel.isHidden = bestScore <= 0
-
-        soundButton.icon = soundOn ? .speakerOn : .speakerOff
-        reminderButton.icon = reminderOn ? .bellOn : .bellOff
 
         var parts: [String] = []
         if dailyBest > 0 {
@@ -847,6 +847,138 @@ final class HelpOverlay: SKNode {
     }
 
     required init?(coder aDecoder: NSCoder) {
+        return nil
+    }
+}
+
+/// Das Einstellungs-Blatt hinter dem Zahnrad: TON, ERINNERUNG, HILFE.
+///
+/// Drei Schalter, die früher als Icons im Startbild standen und dort
+/// jedes Mal mitgelesen werden mussten, obwohl man sie im Schnitt einmal
+/// im Leben anfasst. Hier sind sie mit Worten beschriftet statt mit
+/// durchgestrichenen Symbolen — auf einem Blatt, das man absichtlich
+/// öffnet, ist Platz für Klartext.
+///
+/// Kein Zurück-Knopf: Der nächste Tap neben einer Zeile schließt, genau
+/// wie bei Hilfe und Statistik, und der Hinweis unten sagt es an.
+///
+/// Zum Tippen: Das Blatt wertet ausschließlich `touchesBegan` aus. Der
+/// Tap, der es öffnet, ist zu diesem Zeitpunkt längst verarbeitet (die
+/// Szene hat ihn am Zahnrad verbraucht und kehrt zurück) — er kann also
+/// keine Zeile mitnehmen, und es braucht dafür auch keine Sperre wie im
+/// Skin-Picker, der bis zum Loslassen zuhört.
+final class SettingsOverlay: SKNode {
+
+    /// Was eine Zeile auslöst. `nil` als Ergebnis von `rowHit` heißt
+    /// "daneben" und damit: schließen.
+    enum Row {
+        case sound
+        case reminder
+        case help
+    }
+
+    private let soundLabel: PixelLabel
+    private let reminderLabel: PixelLabel
+    private var hitAreas: [(row: Row, frame: CGRect)] = []
+
+    private static let rowHeight: CGFloat = 46
+    /// Titelzeile samt Abstand darunter.
+    private static let titleBlock: CGFloat = 52
+    private static let padding: CGFloat = 18
+
+    init(sceneSize: CGSize) {
+        let w = sceneSize.width
+        let h = sceneSize.height
+
+        soundLabel = PixelLabel(text: "", fontSize: 18, color: Palette.textDark, shadow: false)
+        reminderLabel = PixelLabel(text: "", fontSize: 18, color: Palette.textDark, shadow: false)
+        super.init()
+
+        let scrim = SKSpriteNode(
+            color: Palette.outline.withAlphaComponent(0.92),
+            size: CGSize(width: w + 80, height: h + 80)
+        )
+        scrim.position = CGPoint(x: w / 2, y: h / 2)
+        addChild(scrim)
+
+        // Das Blatt: Sandfläche mit demselben Treppenrahmen wie die
+        // Knöpfe. Drei Zeilen brauchen 226 Punkt — auf dem kleinsten
+        // unterstützten Gerät (667 Punkt) bleiben oben und unten je gut
+        // 200 Punkt Luft, ein kompakter Maßsatz wie in der Hilfe erübrigt
+        // sich deshalb.
+        let sheetWidth = min(w - 48, 300)
+        let rowsHeight = SettingsOverlay.rowHeight * 3
+        let sheetHeight = SettingsOverlay.padding * 2 + SettingsOverlay.titleBlock + rowsHeight
+        let centerX = w / 2
+        let centerY = h / 2
+        let sheetSize = CGSize(width: sheetWidth, height: sheetHeight)
+
+        let sheet = SKNode()
+        sheet.position = CGPoint(x: centerX, y: centerY)
+        sheet.addChild(SKSpriteNode(color: Palette.panelSand, size: sheetSize))
+        PixelButton.addSteppedBorder(to: sheet, size: sheetSize, color: Palette.outline, pixelSize: 4)
+        addChild(sheet)
+
+        let sheetTop = centerY + sheetHeight / 2
+        let title = PixelLabel(
+            text: L10n.text("settings"), fontSize: 22,
+            color: Palette.textDark, shadow: false
+        )
+        title.position = CGPoint(x: centerX, y: sheetTop - SettingsOverlay.padding - 14)
+        addChild(title)
+
+        // Die Zeilen von oben nach unten; die Trefferfläche ist jeweils
+        // die volle Blattbreite, nicht nur der Text — ein Schalter, den
+        // man auf den Buchstaben genau treffen muss, ist keiner.
+        let rowsTop = sheetTop - SettingsOverlay.padding - SettingsOverlay.titleBlock
+        var y = rowsTop - SettingsOverlay.rowHeight / 2
+        for (row, label) in [
+            (Row.sound, soundLabel),
+            (Row.reminder, reminderLabel),
+            (Row.help, PixelLabel(
+                text: L10n.text("settings_help"), fontSize: 18,
+                color: Palette.textDark, shadow: false
+            ))
+        ] {
+            label.position = CGPoint(x: centerX, y: y)
+            addChild(label)
+            hitAreas.append((
+                row: row,
+                frame: CGRect(
+                    x: centerX - sheetWidth / 2,
+                    y: y - SettingsOverlay.rowHeight / 2,
+                    width: sheetWidth,
+                    height: SettingsOverlay.rowHeight
+                )
+            ))
+            y -= SettingsOverlay.rowHeight
+        }
+
+        let closeHint = PixelLabel(
+            text: L10n.text("tap_to_close"), fontSize: 14,
+            color: UIColor(white: 1, alpha: 0.6), shadow: false
+        )
+        closeHint.position = CGPoint(x: centerX, y: centerY - sheetHeight / 2 - 30)
+        addChild(closeHint)
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        return nil
+    }
+
+    /// Beschriftungen an den Stand anpassen. Ausgeschrieben statt als
+    /// Zustand eines Symbols: "TON: AUS" lässt keine zwei Lesarten zu,
+    /// ein durchgestrichener Lautsprecher schon.
+    func refresh(soundOn: Bool, reminderOn: Bool) {
+        soundLabel.text = L10n.text(soundOn ? "sound_on" : "sound_off")
+        reminderLabel.text = L10n.text(reminderOn ? "reminder_on" : "reminder_off")
+    }
+
+    /// Welche Zeile getroffen wurde — nil heißt: daneben, also schließen.
+    func rowHit(at point: CGPoint) -> Row? {
+        for area in hitAreas where area.frame.contains(point) {
+            return area.row
+        }
         return nil
     }
 }
