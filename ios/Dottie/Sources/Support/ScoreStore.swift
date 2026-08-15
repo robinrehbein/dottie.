@@ -96,6 +96,19 @@ final class ScoreStore {
         return defaults.integer(forKey: ScoreStore.keyDailyStreak)
     }
 
+    /// Beste je erreichte Daily-Serie — der Wert, an dem PRISMA, KOI,
+    /// AURORA, DISCO und die Kulisse BERG hängen. Die laufende Serie taugt
+    /// dafür nicht: Sie fällt nach einer Lücke auf 1 zurück und würde
+    /// bereits gefeierte Freischaltungen wieder zusperren. Verdient bleibt
+    /// verdient.
+    ///
+    /// Der Vergleich mit `dailyStreak` ist zugleich die Migration: Wer vor
+    /// v2.23 eine Serie aufgebaut hat, hat den Schlüssel noch nicht — dann
+    /// ist die laufende Serie der beste bekannte Wert.
+    var bestDailyStreak: Int {
+        return max(defaults.integer(forKey: ScoreStore.keyBestDailyStreak), dailyStreak)
+    }
+
     /// Tagesbest für einen konkreten Tag — 0, wenn der Tag nicht passt.
     func dailyBestFor(epochDay: Int64) -> Int {
         return dailyDay == epochDay ? dailyBest : 0
@@ -193,7 +206,12 @@ final class ScoreStore {
                 currentStreak: dailyStreak,
                 todayEpochDay: epochDay
             )
+            // Der Bestwert wandert bei jedem Schreiben der Serie mit:
+            // Fällt sie gleich hier auf 1 zurück, bleibt oben stehen, was
+            // einmal erreicht war.
+            let best = max(bestDailyStreak, streak)
             defaults.set(streak, forKey: ScoreStore.keyDailyStreak)
+            defaults.set(best, forKey: ScoreStore.keyBestDailyStreak)
             defaults.set(Int(epochDay), forKey: ScoreStore.keyDailyDay)
             defaults.set(score, forKey: ScoreStore.keyDailyBest)
             return score > 0
@@ -222,7 +240,7 @@ final class ScoreStore {
         return DotSkin.Stats(
             bestScore: bestScore,
             bestPerfectStreak: bestPerfectStreak,
-            bestDailyStreak: dailyStreak,
+            bestDailyStreak: bestDailyStreak,
             runCount: runCount,
             totalScore: totalScore,
             daysPlayed: daysPlayed,
@@ -248,6 +266,9 @@ final class ScoreStore {
     private static let keyDailyBest = "daily_best"
     private static let keyDailyDay = "daily_day"
     private static let keyDailyStreak = "daily_streak"
+    // Bestwert der Daily-Serie (ab v2.23). Bestände ohne diesen Schlüssel
+    // starten mit der laufenden Serie, siehe bestDailyStreak.
+    private static let keyBestDailyStreak = "best_daily_streak"
     private static let keyTotalScore = "total_score"
     private static let keyDaysPlayed = "days_played"
     private static let keyLastPlayedDay = "last_played_day"
