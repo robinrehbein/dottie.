@@ -17,6 +17,7 @@ import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.TimingGame
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
@@ -661,7 +662,7 @@ internal fun DrawScope.drawTrack(
     val segments = 60
     val zoneHalf = game.effectiveZoneHalf()
     for (k in 0 until segments) {
-        val a = k.toFloat() / segments * (2f * Math.PI.toFloat())
+        val a = k.toFloat() / segments * (2f * PI.toFloat())
         val px = cx + cos(a) * radius
         val py = cy + sin(a) * radius
 
@@ -734,7 +735,7 @@ internal fun DrawScope.drawUnlockBurst(
         if (blockSize <= 0f) continue
         val color = (if (ring == 0) DotBody else DotShine).copy(alpha = fade)
         for (k in 0 until sparks) {
-            val a = (k.toFloat() / sparks + ring * 0.025f) * (2f * Math.PI.toFloat())
+            val a = (k.toFloat() / sparks + ring * 0.025f) * (2f * PI.toFloat())
             val px = cx + cos(a) * burstRadius
             val py = cy + sin(a) * burstRadius
             drawRect(

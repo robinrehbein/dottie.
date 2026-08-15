@@ -322,7 +322,7 @@ class GameStore(private val prefs: KeyValueStore) {
         daysPlayed = daysPlayed,
         // Gespeichert wird die Maske, gefragt ist die Anzahl VERSCHIEDENER
         // Monate — deshalb hier die gesetzten Bits zählen.
-        monthsPlayed = Integer.bitCount(monthsPlayedMask),
+        monthsPlayed = monthsPlayedMask.countOneBits(),
         seasonEarned = seasonEarned,
         patronOwned = patronOwned
     )
@@ -466,7 +466,7 @@ class GameStore(private val prefs: KeyValueStore) {
         runCount = maxOf(state.runCount, before.runCount),
         totalScore = maxOf(state.totalScore, before.totalScore),
         daysPlayed = maxOf(state.daysPlayed, before.daysPlayed),
-        monthsPlayed = Integer.bitCount(state.monthsPlayed or before.monthsPlayed),
+        monthsPlayed = (state.monthsPlayed or before.monthsPlayed).countOneBits(),
         seasonEarned = state.seasonEarned or before.seasonEarned,
         // Der Kauf steht nicht im Austauschformat, also gilt hier der
         // lokale Spiegel — sonst fiele ein Gönner-Skin beim Abgleich

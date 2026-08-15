@@ -61,6 +61,7 @@ import de.robinrehbein.punkt.game.SoundSetId
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.components.PixelIcon
 import de.robinrehbein.punkt.ui.components.PixelIconButton
+import de.robinrehbein.punkt.ui.data.deviceHourAndMonth
 import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.banner_twist_chain
 import de.robinrehbein.punkt.ui.resources.banner_twist_fake
@@ -161,7 +162,6 @@ import de.robinrehbein.punkt.ui.world.TrunkColor
 import de.robinrehbein.punkt.ui.world.TrunkShade
 import de.robinrehbein.punkt.ui.world.drawCloud
 import de.robinrehbein.punkt.ui.world.drawPixelCircle
-import java.time.LocalDateTime
 import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -998,8 +998,10 @@ fun SkinOverlay(
     // Uhr und Kalender einmal pro Öffnen ablesen, nicht pro Vorschau:
     // TAGESZEIT und JAHRESZEIT sollen in der Liste ihr heutiges Kleid
     // tragen, aber 42 Zeilen dürfen nicht 42-mal die Systemzeit fragen.
-    val now = remember { LocalDateTime.now() }
-    val preview = remember(now) { SkinState(hour = now.hour, month = now.monthValue) }
+    val preview = remember {
+        val (hour, month) = deviceHourAndMonth()
+        SkinState(hour = hour, month = month)
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()

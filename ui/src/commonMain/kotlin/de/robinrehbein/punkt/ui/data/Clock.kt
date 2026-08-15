@@ -10,3 +10,13 @@ package de.robinrehbein.punkt.ui.data
  * "groessere".
  */
 expect fun epochMillis(): Long
+
+/**
+ * Stunde (0-23) und Kalendermonat (1-12) des Geraets.
+ *
+ * TAGESZEIT und JAHRESZEIT ziehen daraus ihr Kleid — es sind Eingaben
+ * fuer eine Spielregel, keine Spielregel. Deshalb hier und nicht in
+ * `:core`, und deshalb je Plattform eigen: Auf der JVM ist es
+ * `LocalDateTime`, auf iOS `NSCalendar`.
+ */
+expect fun deviceHourAndMonth(): Pair<Int, Int>
