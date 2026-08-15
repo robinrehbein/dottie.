@@ -3,6 +3,7 @@ package de.robinrehbein.punkt.game
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
+import de.robinrehbein.punkt.ui.platform.GameSounds
 import java.io.File
 
 /**
@@ -16,7 +17,7 @@ import java.io.File
  * hörbar sein — mit Nachladen käme die Hörprobe in der Auswahl erst,
  * wenn der Finger längst weg ist.
  */
-class GameAudio(context: Context) {
+class GameAudio(context: Context) : GameSounds {
 
     private val soundPool = SoundPool.Builder()
         .setMaxStreams(4)
@@ -32,14 +33,14 @@ class GameAudio(context: Context) {
     private val soundIds: Map<SoundSetId, Map<String, Int>>
 
     /** Stumm geschaltet? Der Screen hält das mit dem GameStore synchron. */
-    var muted: Boolean = false
+    override var muted: Boolean = false
 
     /**
      * Das gewählte Ton-Set. Der Screen hält es mit dem GameStore
      * synchron; ein noch nicht verdientes Set kommt hier gar nicht an
      * (die Auswahl lässt es nicht antippen).
      */
-    var soundSet: SoundSetId = SoundSetId.KLASSIK
+    override var soundSet: SoundSetId = SoundSetId.KLASSIK
 
     init {
         // Der Cache-Ordner ist versioniert: Ändert sich die Synthese,
@@ -55,19 +56,19 @@ class GameAudio(context: Context) {
         }
     }
 
-    fun start() = play("start")
+    override fun start() = play("start")
 
     /** Treffer-Blip; die Tonhöhe klettert pro 5er-Stufe eine Pentatonik hoch. */
-    fun hit(score: Int) = play("hit", rate = ChipSynth.hitRate(score))
+    override fun hit(score: Int) = play("hit", rate = ChipSynth.hitRate(score))
 
     /** Münz-Sound; jede Serien-Stufe klingt zwei Halbtöne höher. */
-    fun perfect(streak: Int) = play("perfect", rate = ChipSynth.perfectRate(streak))
+    override fun perfect(streak: Int) = play("perfect", rate = ChipSynth.perfectRate(streak))
 
-    fun chain() = play("chain")
-    fun unlock() = play("unlock")
-    fun death() = play("death")
-    fun thud() = play("thud")
-    fun newRecord() = play("record")
+    override fun chain() = play("chain")
+    override fun unlock() = play("unlock")
+    override fun death() = play("death")
+    override fun thud() = play("thud")
+    override fun newRecord() = play("record")
 
     /**
      * Hörprobe für die Auswahl: die Fanfare des angetippten Sets, auch
@@ -75,9 +76,9 @@ class GameAudio(context: Context) {
      * eine Kachel, die man kaufen soll, ohne sie gesehen zu haben — und
      * die Fanfare zeigt vom Set am meisten: Lage, Länge und Anschlag.
      */
-    fun preview(set: SoundSetId) = play("unlock", set = set)
+    override fun preview(set: SoundSetId) = play("unlock", set = set)
 
-    fun release() = soundPool.release()
+    override fun release() = soundPool.release()
 
     private fun play(name: String, rate: Float = 1f, set: SoundSetId = soundSet) {
         if (muted) return

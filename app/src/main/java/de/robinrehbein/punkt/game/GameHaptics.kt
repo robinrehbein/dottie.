@@ -5,12 +5,13 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import de.robinrehbein.punkt.ui.platform.GameFeedback
 
 /**
  * Haptisches Feedback für das Spiel. Jeder Effekt ist bewusst kurz gehalten,
  * damit er das Spielgefühl unterstützt statt zu nerven.
  */
-class GameHaptics(context: Context) {
+class GameHaptics(context: Context) : GameFeedback {
 
     // VibratorManager gibt es erst ab API 31 — auf Android 9-11 (minSdk 28)
     // führt der alte Weg über VIBRATOR_SERVICE. Nullable + as?, damit ein
@@ -27,38 +28,38 @@ class GameHaptics(context: Context) {
     }
 
     /** Kurzer, satter Blip bei einem Treffer in der Zone. */
-    fun score() {
+    override fun score() {
         vibrate(VibrationEffect.createOneShot(28, 140))
     }
 
     /** Doppel-Tick für einen perfekten Treffer. */
-    fun perfect() {
+    override fun perfect() {
         val timings = longArrayOf(0, 20, 40, 35)
         val amplitudes = intArrayOf(0, 120, 0, 220)
         vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
     }
 
     /** Harter Schlag beim Aufprall — der Rage-Moment. */
-    fun death() {
+    override fun death() {
         val timings = longArrayOf(0, 70, 40, 130)
         val amplitudes = intArrayOf(0, 255, 0, 180)
         vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
     }
 
     /** Dumpfer Thud, wenn der Punkt nach dem Aus am Boden aufschlägt. */
-    fun thud() {
+    override fun thud() {
         vibrate(VibrationEffect.createOneShot(50, 90))
     }
 
     /** Aufsteigende Fanfare, wenn ein Twist oder eine neue Stufe freigeschaltet wird. */
-    fun unlock() {
+    override fun unlock() {
         val timings = longArrayOf(0, 25, 45, 25, 45, 25, 45, 90)
         val amplitudes = intArrayOf(0, 90, 0, 140, 0, 200, 0, 255)
         vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
     }
 
     /** Feier-Muster für einen neuen Rekord. */
-    fun newRecord() {
+    override fun newRecord() {
         val timings = longArrayOf(0, 40, 60, 40, 60, 80)
         val amplitudes = intArrayOf(0, 160, 0, 200, 0, 255)
         vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
