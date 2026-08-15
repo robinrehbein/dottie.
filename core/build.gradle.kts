@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 //                            androidJvm-Konsumenten jvm-Produzenten nutzen)
 //   iosArm64              -> iPhone
 //   iosSimulatorArm64     -> Simulator auf Apple-Silicon-Macs und in der CI
+//   iosX64                -> Simulator auf Intel-Macs
 //
 // Bis v2.23 war das ein reines Kotlin-JVM-Modul, und der iOS-Port hat die
 // Spiellogik von Hand in Swift nachgebaut. Der Handport entfällt damit —
@@ -32,8 +33,15 @@ kotlin {
     // (nur auf einem Mac), das Ergebnis landet in
     //   core/build/XCFrameworks/debug/DottieCore.xcframework
     // und wird von ios/project.yml von dort gelinkt.
+    //
+    // iosX64 steht mit in der Liste, obwohl kein aktueller Mac es
+    // braucht: `xcodebuild -destination 'generic/platform=iOS Simulator'`
+    // baut per Vorgabe beide Simulator-Architekturen, und ein Framework
+    // ohne x86_64-Scheibe laesst den Linker mit "symbol(s) not found"
+    // stehen. Die Alternative waere, den Build auf arm64 festzunageln —
+    // dann liefe die entstehende .app aber auf keinem Intel-Mac.
     val xcf = XCFramework("DottieCore")
-    listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+    listOf(iosArm64(), iosSimulatorArm64(), iosX64()).forEach { target ->
         target.binaries.framework {
             baseName = "DottieCore"
             // Statisch: Ein statisches Framework wird beim Linken

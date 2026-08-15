@@ -415,7 +415,7 @@ Ausgeliefert wird auf vier Zielen — Android-Telefon, Wear OS, iPhone und
 Apple Watch (letztere noch nicht) —, aber die Spiellogik gibt es nur
 einmal. `:core` ist ein Kotlin-Multiplatform-Modul: `:app` und `:wear`
 binden die JVM-Variante ein, die iOS-App linkt dasselbe Modul als
-`DottieCore.xcframework`.
+`DottieCore.xcframework` (Gerät und beide Simulator-Architekturen).
 
 Bis v2.23 war die Engine unter `ios/Dottie/Sources/Engine` von Hand nach
 Swift portiert — 2 893 Zeilen, abgesichert über Soll-Werte in

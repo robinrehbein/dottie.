@@ -17,8 +17,9 @@ Commit `b4ed73f`.
 | iOS: Brücke zu `:core` | `ios/Dottie/Sources/Core` | 536 | Swift |
 | iOS: UI und Umfeld | `ios/Dottie/Sources/{UI,Support}` | 3658 | Swift (SpriteKit) |
 
-`:core` ist ein Kotlin-Multiplatform-Modul mit drei Zielen: `jvm()` für
-`:app` und `:wear`, `iosArm64` und `iosSimulatorArm64` für die iPhone-App.
+`:core` ist ein Kotlin-Multiplatform-Modul: `jvm()` für `:app` und
+`:wear`, dazu `iosArm64` (Gerät), `iosSimulatorArm64` und `iosX64`
+(Simulator auf Apple Silicon und Intel).
 Dort liegen `TimingGame`, `DailyChallenge`, `SkinPaint`, `ScenePaint`,
 `SoundBank`, `ChipSynth`, `MedalPaint` und `Progress` — **alle drei Apps
 rechnen mit demselben Code.**
