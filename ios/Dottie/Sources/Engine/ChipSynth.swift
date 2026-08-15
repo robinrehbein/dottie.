@@ -29,20 +29,35 @@ enum ChipSynth {
         decay: Float = 14,
         duty: Float = 0.5
     ) -> [Float] {
-        return render(seconds: seconds, volume: volume, decay: decay) { _ in
+        return render(seconds: seconds, volume: volume, decay: decay, shape: .puls) { _ in
             (freqHz, duty)
         }
     }
 
-    /// Rechteckwelle, deren Frequenz linear von fromHz nach toHz gleitet.
+    /// Dreieckwelle mit fester Frequenz — dieselbe Hüllkurve wie `square`,
+    /// nur eine weichere Form. Keine Pulsbreite: Ein Dreieck hat keine,
+    /// und ein Parameter, den niemand liest, wäre eine Lüge.
+    static func triangle(
+        freqHz: Float,
+        seconds: Float,
+        volume: Float = 0.4,
+        decay: Float = 14
+    ) -> [Float] {
+        return render(seconds: seconds, volume: volume, decay: decay, shape: .dreieck) { _ in
+            (freqHz, 0.5)
+        }
+    }
+
+    /// Welle, deren Frequenz linear von fromHz nach toHz gleitet.
     static func sweep(
         fromHz: Float,
         toHz: Float,
         seconds: Float,
         volume: Float = 0.4,
-        decay: Float = 5
+        decay: Float = 5,
+        wave: SoundBank.Wave = .puls
     ) -> [Float] {
-        return render(seconds: seconds, volume: volume, decay: decay) { progress in
+        return render(seconds: seconds, volume: volume, decay: decay, shape: wave) { progress in
             (fromHz + (toHz - fromHz) * progress, 0.5)
         }
     }
@@ -113,21 +128,29 @@ enum ChipSynth {
         var tones: [Float] = []
         for tone in voice.tones {
             let part: [Float]
-            if tone.fromHz == tone.toHz {
+            if tone.fromHz != tone.toHz {
+                part = sweep(
+                    fromHz: tone.fromHz * rate,
+                    toHz: tone.toHz * rate,
+                    seconds: tone.seconds / rate,
+                    volume: tone.volume,
+                    decay: tone.decay * rate,
+                    wave: tone.wave
+                )
+            } else if tone.wave == .dreieck {
+                part = triangle(
+                    freqHz: tone.fromHz * rate,
+                    seconds: tone.seconds / rate,
+                    volume: tone.volume,
+                    decay: tone.decay * rate
+                )
+            } else {
                 part = square(
                     freqHz: tone.fromHz * rate,
                     seconds: tone.seconds / rate,
                     volume: tone.volume,
                     decay: tone.decay * rate,
                     duty: tone.duty
-                )
-            } else {
-                part = sweep(
-                    fromHz: tone.fromHz * rate,
-                    toHz: tone.toHz * rate,
-                    seconds: tone.seconds / rate,
-                    volume: tone.volume,
-                    decay: tone.decay * rate
                 )
             }
             tones.append(contentsOf: part)
@@ -153,12 +176,15 @@ enum ChipSynth {
 
     // MARK: - Rendering
 
-    /// Rendert eine Rechteckwelle; `voice` liefert pro Fortschritt Frequenz
-    /// und Duty-Cycle.
+    /// Rendert eine Welle; `voice` liefert pro Fortschritt Frequenz und
+    /// Pulsbreite, `shape` die Form. Beide Formen teilen sich Phasenlauf
+    /// und Hüllkurve — nur die eine Zeile, die aus der Phase einen Wert
+    /// macht, unterscheidet sie.
     private static func render(
         seconds: Float,
         volume: Float,
         decay: Float,
+        shape: SoundBank.Wave,
         voice: (Float) -> (Float, Float)
     ) -> [Float] {
         let n = Int(seconds * Float(sampleRate))
@@ -168,7 +194,17 @@ enum ChipSynth {
             let t = Float(i) / Float(sampleRate)
             let progress = n > 1 ? Float(i) / Float(n - 1) : 0
             let (freq, duty) = voice(progress)
-            let wave: Float = phase < duty ? 1 : -1
+            let wave: Float
+            switch shape {
+            case .puls:
+                // Unverändert gegenüber der Fassung vor der Dreieckwelle.
+                wave = phase < duty ? 1 : -1
+            case .dreieck:
+                // Um eine Viertelperiode verschoben, damit der Ton im
+                // Nulldurchgang beginnt und steigt.
+                let q = (phase + 0.25).truncatingRemainder(dividingBy: 1)
+                wave = 1 - 4 * abs(q - 0.5)
+            }
             out[i] = wave * volume * envelope(index: i, total: n, t: t, decay: decay)
             phase += freq / Float(sampleRate)
             if phase >= 1 {

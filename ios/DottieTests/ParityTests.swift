@@ -36,7 +36,7 @@ final class ParityTests: XCTestCase {
     // MARK: - Format
 
     func testVectorVersion() throws {
-        XCTAssertEqual(try vectors.int("version"), 3,
+        XCTAssertEqual(try vectors.int("version"), 4,
                        "Format der Vektor-Datei hat sich geändert")
     }
 
@@ -442,8 +442,9 @@ final class ParityTests: XCTestCase {
                 let toene = Array(row.dropLast())
                 XCTAssertEqual(voice.tones.count, toene.count, "\(key): Zahl der Toene")
                 for (index, wort) in toene.enumerated() where index < voice.tones.count {
-                    let werte = wort.split(separator: ":").map { Float($0) ?? -1 }
-                    XCTAssertEqual(werte.count, 6, "\(key) Ton \(index): sechs Felder")
+                    let felder = wort.split(separator: ":").map(String.init)
+                    XCTAssertEqual(felder.count, 7, "\(key) Ton \(index): sieben Felder")
+                    let werte = felder.map { Float($0) ?? -1 }
                     let tone = voice.tones[index]
                     XCTAssertEqual(tone.fromHz, werte[0], accuracy: eps, "\(key) Ton \(index) fromHz")
                     XCTAssertEqual(tone.toHz, werte[1], accuracy: eps, "\(key) Ton \(index) toHz")
@@ -451,6 +452,10 @@ final class ParityTests: XCTestCase {
                     XCTAssertEqual(tone.volume, werte[3], accuracy: eps, "\(key) Ton \(index) Lautstaerke")
                     XCTAssertEqual(tone.decay, werte[4], accuracy: eps, "\(key) Ton \(index) Abklingen")
                     XCTAssertEqual(tone.duty, werte[5], accuracy: eps, "\(key) Ton \(index) Pulsbreite")
+                    // Die Form steht als Name da, nicht als Zahl: Ein Port,
+                    // der sie nicht kennt, soll hier scheitern und nicht
+                    // stillschweigend Rechteck spielen.
+                    XCTAssertEqual(tone.wave.rawValue, felder[6], "\(key) Ton \(index) Wellenform")
                 }
                 let rausch = row[row.count - 1]
                 if rausch == "-" {
