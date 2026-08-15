@@ -10,8 +10,9 @@ import androidx.core.content.FileProvider
 import de.robinrehbein.punkt.R
 import de.robinrehbein.punkt.game.CardFrame
 import de.robinrehbein.punkt.game.CardStyle
-import de.robinrehbein.punkt.game.DotScene
-import de.robinrehbein.punkt.game.DotSkin
+import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
+import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.SkinStats
@@ -49,14 +50,19 @@ object ScoreCard {
         score: Int,
         bestScore: Int,
         isNewRecord: Boolean,
-        skin: DotSkin,
-        scene: DotScene,
+        skin: SkinId,
+        scene: SceneId,
+        sceneName: String,
+        recordText: String,
         daily: Boolean,
         dailyStreak: Int,
         stats: SkinStats
     ) {
         val bitmap =
-            render(context, score, bestScore, isNewRecord, skin, scene, daily, dailyStreak, stats)
+            render(
+            context, score, bestScore, isNewRecord, skin, scene,
+            sceneName, recordText, daily, dailyStreak, stats
+        )
         val dir = File(context.cacheDir, "share").apply { mkdirs() }
         val file = File(dir, "punkt-score.png")
         file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -85,8 +91,10 @@ object ScoreCard {
         score: Int,
         bestScore: Int,
         isNewRecord: Boolean,
-        skin: DotSkin,
-        scene: DotScene,
+        skin: SkinId,
+        scene: SceneId,
+        sceneName: String,
+        recordText: String,
         daily: Boolean,
         dailyStreak: Int,
         stats: SkinStats
@@ -109,7 +117,7 @@ object ScoreCard {
 
         // Himmel, Wolken und Boden kommen aus der gewaehlten Kulisse —
         // sonst saehe niemand ausser der Besitzerin, welche sie traegt.
-        val kulisse = scene.scene
+        val kulisse = ScenePaint.of(scene)
         paint.color = kulisse.sky[SkinPaint.skyStage(score)].toInt()
         canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), paint)
 
@@ -187,12 +195,12 @@ object ScoreCard {
         // Die Kulisse steht klein neben PUNKTE: Sie ist Teil der
         // Sammlung, aber sie ist nicht die Nachricht der Karte.
         drawShadowed(
-            context.getString(R.string.card_scene, context.getString(scene.titleRes)),
+            context.getString(R.string.card_scene, sceneName),
             cx, H * 0.645f, 34f, Color.WHITE
         )
 
         val recordLine = when {
-            isNewRecord -> context.getString(R.string.new_record)
+            isNewRecord -> recordText
             daily && dailyStreak > 1 -> context.getString(R.string.card_daily_streak, dailyStreak)
             else -> context.getString(R.string.card_record, bestScore)
         }
@@ -510,10 +518,10 @@ object ScoreCard {
         cx: Float,
         cy: Float,
         r: Float,
-        skin: DotSkin,
+        skin: SkinId,
         state: SkinState
     ) {
-        drawPixelCircle(canvas, paint, cx, cy, r) { col, row -> skin.cell(col, row, state).toInt() }
+        drawPixelCircle(canvas, paint, cx, cy, r) { col, row -> SkinPaint.cell(skin, col, row, state).toInt() }
         val u = r * 2f / 13f
         fun cellRect(col: Float, row: Float, cols: Float, rows: Float, color: Int) {
             paint.color = color
@@ -522,10 +530,10 @@ object ScoreCard {
                 cx - r + (col + cols) * u, cy - r + (row + rows) * u, paint
             )
         }
-        cellRect(2.5f, 2.5f, 2f, 2f, skin.shine.toInt())
+        cellRect(2.5f, 2.5f, 2f, 2f, SkinPaint.shine(skin, state).toInt())
         // Kontur nur, wo das Auge auf hellem Körper sonst verschwände
         // (wie im Spiel, siehe drawTimingDot).
-        if (skin.needsEyeOutline) {
+        if (SkinPaint.needsEyeOutline(skin)) {
             cellRect(7f, 3f, 0.5f, 4f, OUTLINE)
             cellRect(7.5f, 2.5f, 3.5f, 0.5f, OUTLINE)
             cellRect(7.5f, 7f, 3.5f, 0.5f, OUTLINE)

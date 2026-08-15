@@ -54,12 +54,20 @@ kotlin {
                 // den Signaturen der Composables, der Konsument muss sie
                 // sehen.
                 api(project(":core"))
-                implementation(compose.runtime)
-                implementation(compose.foundation)
+                api(compose.runtime)
+                api(compose.foundation)
                 implementation(compose.material3)
-                implementation(compose.ui)
+                api(compose.ui)
+                // api statt implementation: :app liest dieselben Texte
+                // (Res.string.…) und braucht die Typen im Klassenpfad.
                 @OptIn(ExperimentalComposeLibrary::class)
-                implementation(compose.components.resources)
+                api(compose.components.resources)
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
             }
         }
     }

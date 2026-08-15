@@ -496,6 +496,18 @@ object SkinPaint {
     fun collectableCount(): Int = SkinId.entries.count { countsForCollection(it) }
 
     /**
+     * Wie viele Skins VERDIENT sind — Saison zählt mit, Gönner nicht.
+     *
+     * An dieser Zahl hängt die "NEUER SKIN FREIGESCHALTET!"-Feier: Ein
+     * Saison-Skin ist Anwesenheit und darf gefeiert werden, ein gekaufter
+     * ist es nicht. [unlockedCount] taugt dafür nicht, weil es
+     * Saison-Skins bewusst nicht mitzählt — es ist der Sammlungsstand,
+     * und der soll im Februar nicht springen, nur weil Februar ist.
+     */
+    fun earnedCount(stats: SkinStats): Int =
+        SkinId.entries.count { !isPatron(it) && isUnlocked(it, stats) }
+
+    /**
      * Die Gruppe, unter der ein Skin im Menü steht. Die Einteilung folgt
      * exakt den Blöcken in [SkinId] — sie ist dieselbe Ordnung, nur
      * benannt.

@@ -1,6 +1,5 @@
 package de.robinrehbein.punkt.ui.screens
 
-import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -24,9 +23,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -43,25 +42,100 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import de.robinrehbein.punkt.R
-import de.robinrehbein.punkt.game.DotScene
-import de.robinrehbein.punkt.game.DotSkin
-import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.Goal
-import de.robinrehbein.punkt.game.MedalTier
+import de.robinrehbein.punkt.game.MedalId
+import de.robinrehbein.punkt.game.MedalPaint
+import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
+import de.robinrehbein.punkt.game.SkinFamily
+import de.robinrehbein.punkt.game.SkinId
+import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
+import de.robinrehbein.punkt.game.SkinStats
+import de.robinrehbein.punkt.game.SoundBank
+import de.robinrehbein.punkt.game.SoundSetId
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.components.PixelIcon
 import de.robinrehbein.punkt.ui.components.PixelIconButton
+import de.robinrehbein.punkt.ui.resources.Res
+import de.robinrehbein.punkt.ui.resources.banner_twist_chain
+import de.robinrehbein.punkt.ui.resources.banner_twist_fake
+import de.robinrehbein.punkt.ui.resources.banner_twist_ghost
+import de.robinrehbein.punkt.ui.resources.banner_twist_drift
+import de.robinrehbein.punkt.ui.resources.banner_twist_pulse
+import de.robinrehbein.punkt.game.Twist
+import de.robinrehbein.punkt.ui.resources.ad_privacy
+import de.robinrehbein.punkt.ui.resources.best_score
+import de.robinrehbein.punkt.ui.resources.daily
+import de.robinrehbein.punkt.ui.resources.game_over
+import de.robinrehbein.punkt.ui.resources.help_line1
+import de.robinrehbein.punkt.ui.resources.help_line2
+import de.robinrehbein.punkt.ui.resources.help_line3
+import de.robinrehbein.punkt.ui.resources.help_line4
+import de.robinrehbein.punkt.ui.resources.help_line5
+import de.robinrehbein.punkt.ui.resources.help_max_twists
+import de.robinrehbein.punkt.ui.resources.help_title
+import de.robinrehbein.punkt.ui.resources.help_twists
+import de.robinrehbein.punkt.ui.resources.leaderboard
+import de.robinrehbein.punkt.ui.resources.medal
+import de.robinrehbein.punkt.ui.resources.medal_next
+import de.robinrehbein.punkt.ui.resources.menu
+import de.robinrehbein.punkt.ui.resources.new_medal
+import de.robinrehbein.punkt.ui.resources.new_record
+import de.robinrehbein.punkt.ui.resources.new_skin_unlocked
+import de.robinrehbein.punkt.ui.resources.patron_owned
+import de.robinrehbein.punkt.ui.resources.patron_pack
+import de.robinrehbein.punkt.ui.resources.patron_pack_skins_only
+import de.robinrehbein.punkt.ui.resources.points_label
+import de.robinrehbein.punkt.ui.resources.record_label
+import de.robinrehbein.punkt.ui.resources.reminder_off
+import de.robinrehbein.punkt.ui.resources.reminder_on
+import de.robinrehbein.punkt.ui.resources.remove_ads
+import de.robinrehbein.punkt.ui.resources.run_number
+import de.robinrehbein.punkt.ui.resources.scenes
+import de.robinrehbein.punkt.ui.resources.share
+import de.robinrehbein.punkt.ui.resources.skin_pass_offer
+import de.robinrehbein.punkt.ui.resources.skin_pass_today
+import de.robinrehbein.punkt.ui.resources.skin_selected
+import de.robinrehbein.punkt.ui.resources.skin_tap_select
+import de.robinrehbein.punkt.ui.resources.skins
+import de.robinrehbein.punkt.ui.resources.sound_off
+import de.robinrehbein.punkt.ui.resources.sound_on
+import de.robinrehbein.punkt.ui.resources.sound_tap_hear
+import de.robinrehbein.punkt.ui.resources.sounds
+import de.robinrehbein.punkt.ui.resources.stats
+import de.robinrehbein.punkt.ui.resources.streak_many
+import de.robinrehbein.punkt.ui.resources.streak_one
+import de.robinrehbein.punkt.ui.resources.tap_retry
+import de.robinrehbein.punkt.ui.resources.tap_to_close
+import de.robinrehbein.punkt.ui.resources.taunts_close
+import de.robinrehbein.punkt.ui.resources.taunts_default
+import de.robinrehbein.punkt.ui.resources.taunts_low
+import de.robinrehbein.punkt.ui.resources.taunts_zero
+import de.robinrehbein.punkt.ui.resources.today_score
+import de.robinrehbein.punkt.ui.resources.twist_chain_text
+import de.robinrehbein.punkt.ui.resources.twist_chain_title
+import de.robinrehbein.punkt.ui.resources.twist_drift_text
+import de.robinrehbein.punkt.ui.resources.twist_drift_title
+import de.robinrehbein.punkt.ui.resources.twist_fake_text
+import de.robinrehbein.punkt.ui.resources.twist_fake_title
+import de.robinrehbein.punkt.ui.resources.twist_ghost_text
+import de.robinrehbein.punkt.ui.resources.twist_ghost_title
+import de.robinrehbein.punkt.ui.resources.twist_pulse_text
+import de.robinrehbein.punkt.ui.resources.twist_pulse_title
+import de.robinrehbein.punkt.ui.text.familyTitle
+import de.robinrehbein.punkt.ui.text.medalName
+import de.robinrehbein.punkt.ui.text.sceneHint
+import de.robinrehbein.punkt.ui.text.sceneTitle
+import de.robinrehbein.punkt.ui.text.skinHint
+import de.robinrehbein.punkt.ui.text.skinTitle
+import de.robinrehbein.punkt.ui.text.soundHint
+import de.robinrehbein.punkt.ui.text.soundTitle
 import de.robinrehbein.punkt.ui.theme.Bytesized
-import de.robinrehbein.punkt.ui.world.GRID
-import de.robinrehbein.punkt.ui.world.drawCloud
-import de.robinrehbein.punkt.ui.world.drawPixelCircle
 import de.robinrehbein.punkt.ui.world.BlockBody
 import de.robinrehbein.punkt.ui.world.BlockCap
 import de.robinrehbein.punkt.ui.world.BlockDark
@@ -73,6 +147,7 @@ import de.robinrehbein.punkt.ui.world.DotBody
 import de.robinrehbein.punkt.ui.world.DotShade
 import de.robinrehbein.punkt.ui.world.DotShine
 import de.robinrehbein.punkt.ui.world.FxState
+import de.robinrehbein.punkt.ui.world.GRID
 import de.robinrehbein.punkt.ui.world.GrassDark
 import de.robinrehbein.punkt.ui.world.GrassLight
 import de.robinrehbein.punkt.ui.world.GroundSand
@@ -84,17 +159,26 @@ import de.robinrehbein.punkt.ui.world.SkyColor
 import de.robinrehbein.punkt.ui.world.TextDark
 import de.robinrehbein.punkt.ui.world.TrunkColor
 import de.robinrehbein.punkt.ui.world.TrunkShade
+import de.robinrehbein.punkt.ui.world.drawCloud
+import de.robinrehbein.punkt.ui.world.drawPixelCircle
 import java.time.LocalDateTime
+import org.jetbrains.compose.resources.stringArrayResource
+import org.jetbrains.compose.resources.stringResource
 
-internal val ScoreShadowStyle = TextStyle(
-    fontFamily = Bytesized,
-    shadow = Shadow(color = OutlineColor, offset = Offset(4f, 4f), blurRadius = 0f)
-)
+/**
+ * Der Score-Stil mit hartem Pixel-Schatten. Als @Composable-Getter, weil
+ * [Bytesized] die Schrift ueber Compose Resources laedt.
+ */
+val ScoreShadowStyle: TextStyle
+    @Composable get() = TextStyle(
+        fontFamily = Bytesized,
+        shadow = Shadow(color = OutlineColor, offset = Offset(4f, 4f), blurRadius = 0f)
+    )
 
 // ===== Overlays =====
 
 @Composable
-internal fun ScoreHud(score: Int, daily: Boolean = false, banner: String = "") {
+fun ScoreHud(score: Int, daily: Boolean = false, banner: String = "") {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -115,7 +199,7 @@ internal fun ScoreHud(score: Int, daily: Boolean = false, banner: String = "") {
             )
             if (daily) {
                 Text(
-                    text = stringResource(R.string.daily),
+                    text = stringResource(Res.string.daily),
                     style = ScoreShadowStyle,
                     fontSize = 18.sp,
                     color = DotBody
@@ -155,7 +239,7 @@ private fun HelpCornerButton(onHelp: () -> Unit, modifier: Modifier = Modifier) 
 }
 
 @Composable
-internal fun ReadyOverlay(
+fun ReadyOverlay(
     bestScore: Int,
     runNumber: Int,
     hint: String,
@@ -216,7 +300,7 @@ internal fun ReadyOverlay(
         ) {
             PixelIconButton(
                 icon = if (soundOn) PixelIcon.SPEAKER_ON else PixelIcon.SPEAKER_OFF,
-                contentDescription = stringResource(if (soundOn) R.string.sound_on else R.string.sound_off),
+                contentDescription = stringResource(if (soundOn) Res.string.sound_on else Res.string.sound_off),
                 onClick = onToggleSound,
                 backgroundColor = PanelSand,
                 borderColor = TextDark,
@@ -228,7 +312,7 @@ internal fun ReadyOverlay(
             // Tägliche Daily-Challenge-Erinnerung (Opt-in, lokal).
             PixelIconButton(
                 icon = if (reminderOn) PixelIcon.BELL_ON else PixelIcon.BELL_OFF,
-                contentDescription = stringResource(if (reminderOn) R.string.reminder_on else R.string.reminder_off),
+                contentDescription = stringResource(if (reminderOn) Res.string.reminder_on else Res.string.reminder_off),
                 onClick = onToggleReminder,
                 backgroundColor = PanelSand,
                 borderColor = TextDark,
@@ -257,7 +341,7 @@ internal fun ReadyOverlay(
             )
             if (bestScore > 0) {
                 Text(
-                    text = stringResource(R.string.best_score, bestScore),
+                    text = stringResource(Res.string.best_score, bestScore),
                     style = ScoreShadowStyle,
                     fontSize = 22.sp,
                     color = Color.White
@@ -300,7 +384,7 @@ internal fun ReadyOverlay(
             // Nur sichtbar, wenn Play Games konfiguriert und angemeldet ist.
             if (leaderboardAvailable) {
                 PixelButton(
-                    text = stringResource(R.string.leaderboard),
+                    text = stringResource(Res.string.leaderboard),
                     onClick = onLeaderboard,
                     backgroundColor = PanelSand,
                     borderColor = TextDark,
@@ -318,7 +402,7 @@ internal fun ReadyOverlay(
             // Reihe auch auf 360-dp-Displays mit Rand steht.
             Row {
                 PixelButton(
-                    text = stringResource(R.string.daily),
+                    text = stringResource(Res.string.daily),
                     onClick = onDaily,
                     backgroundColor = DotBody,
                     borderColor = TextDark,
@@ -329,7 +413,7 @@ internal fun ReadyOverlay(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 PixelButton(
-                    text = stringResource(R.string.skins),
+                    text = stringResource(Res.string.skins),
                     onClick = onSkins,
                     backgroundColor = PanelSand,
                     borderColor = TextDark,
@@ -340,7 +424,7 @@ internal fun ReadyOverlay(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 PixelButton(
-                    text = stringResource(R.string.stats),
+                    text = stringResource(Res.string.stats),
                     onClick = onStats,
                     backgroundColor = PanelSand,
                     borderColor = TextDark,
@@ -354,7 +438,7 @@ internal fun ReadyOverlay(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = listOfNotNull(
-                        if (dailyBest > 0) stringResource(R.string.today_score, dailyBest) else null,
+                        if (dailyBest > 0) stringResource(Res.string.today_score, dailyBest) else null,
                         if (dailyStreak > 0) streakLabel(dailyStreak) else null
                     ).joinToString("  ·  "),
                     style = ScoreShadowStyle,
@@ -365,7 +449,7 @@ internal fun ReadyOverlay(
             if (runNumber > 0) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = stringResource(R.string.run_number, runNumber + 1),
+                    text = stringResource(Res.string.run_number, runNumber + 1),
                     style = ScoreShadowStyle,
                     fontSize = 16.sp,
                     color = Color.White.copy(alpha = 0.8f)
@@ -377,7 +461,7 @@ internal fun ReadyOverlay(
             if (removeAdsPrice != null) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = stringResource(R.string.remove_ads, removeAdsPrice),
+                    text = stringResource(Res.string.remove_ads, removeAdsPrice),
                     style = ScoreShadowStyle,
                     fontSize = 14.sp,
                     color = Color.White.copy(alpha = 0.75f),
@@ -391,7 +475,7 @@ internal fun ReadyOverlay(
             // ihn auf einem Startbildschirm — deshalb klein und blass.
             if (privacyVisible) {
                 Text(
-                    text = stringResource(R.string.ad_privacy),
+                    text = stringResource(Res.string.ad_privacy),
                     style = ScoreShadowStyle,
                     fontSize = 12.sp,
                     color = Color.White.copy(alpha = 0.55f),
@@ -405,7 +489,7 @@ internal fun ReadyOverlay(
 }
 
 @Composable
-internal fun GameOverOverlay(
+fun GameOverOverlay(
     score: Int,
     bestScore: Int,
     isNewRecord: Boolean,
@@ -448,7 +532,7 @@ internal fun GameOverOverlay(
             modifier = Modifier.align(Alignment.Center)
         ) {
             Text(
-                text = stringResource(R.string.game_over),
+                text = stringResource(Res.string.game_over),
                 style = ScoreShadowStyle,
                 fontSize = 48.sp,
                 color = Color(0xFFFF8A3C)
@@ -472,21 +556,21 @@ internal fun GameOverOverlay(
                         }
                         MedalBadge(score = score, modifier = Modifier.scale(pop.value))
                         Spacer(modifier = Modifier.height(4.dp))
-                        val tier = MedalTier.forScore(score)
+                        val tier = MedalPaint.forScore(score)
                         Text(
-                            text = tier?.let { stringResource(it.nameRes) }
-                                ?: stringResource(R.string.medal),
+                            text = tier?.let { medalName(it) }
+                                ?: stringResource(Res.string.medal),
                             fontFamily = Bytesized,
                             fontSize = 12.sp,
                             color = TextDark
                         )
                         // Nahziel: "NOCH 4 BIS GOLD" — gibt jedem Run ein Ziel.
-                        MedalTier.next(score)?.let { next ->
+                        MedalPaint.next(score)?.let { next ->
                             Text(
                                 text = stringResource(
-                                    R.string.medal_next,
-                                    next.threshold - score,
-                                    stringResource(next.nameRes)
+                                    Res.string.medal_next,
+                                    MedalPaint.threshold(next) - score,
+                                    medalName(next)
                                 ),
                                 fontFamily = Bytesized,
                                 fontSize = 10.sp,
@@ -497,7 +581,7 @@ internal fun GameOverOverlay(
                     Spacer(modifier = Modifier.width(20.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = stringResource(R.string.points_label),
+                            text = stringResource(Res.string.points_label),
                             fontFamily = Bytesized,
                             fontSize = 16.sp,
                             color = TextDark
@@ -510,7 +594,7 @@ internal fun GameOverOverlay(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = stringResource(R.string.record_label),
+                            text = stringResource(Res.string.record_label),
                             fontFamily = Bytesized,
                             fontSize = 16.sp,
                             color = if (isNewRecord) RecordRed else TextDark
@@ -528,7 +612,7 @@ internal fun GameOverOverlay(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = if (isNewRecord) stringResource(R.string.new_record) else taunt,
+                text = if (isNewRecord) stringResource(Res.string.new_record) else taunt,
                 style = ScoreShadowStyle,
                 fontSize = 24.sp,
                 color = if (isNewRecord) Color(0xFFFFE95E) else Color.White,
@@ -540,8 +624,8 @@ internal fun GameOverOverlay(
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = listOfNotNull(
-                        stringResource(R.string.daily),
-                        stringResource(R.string.today_score, dailyBest),
+                        stringResource(Res.string.daily),
+                        stringResource(Res.string.today_score, dailyBest),
                         if (dailyStreak > 0) streakLabel(dailyStreak) else null
                     ).joinToString("  ·  "),
                     style = ScoreShadowStyle,
@@ -553,7 +637,7 @@ internal fun GameOverOverlay(
             if (newMedal) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = stringResource(R.string.new_medal),
+                    text = stringResource(Res.string.new_medal),
                     style = ScoreShadowStyle,
                     fontSize = 18.sp,
                     color = Color(0xFFFFE95E)
@@ -563,7 +647,7 @@ internal fun GameOverOverlay(
             if (skinUnlocked) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = stringResource(R.string.new_skin_unlocked),
+                    text = stringResource(Res.string.new_skin_unlocked),
                     style = ScoreShadowStyle,
                     fontSize = 18.sp,
                     color = Color(0xFFFFE95E)
@@ -591,7 +675,7 @@ internal fun GameOverOverlay(
             // kurzer Wut-Tap-Sperre) — der blinkende Hinweis ist die
             // einzige Restart-Affordanz und darf deshalb auffallen.
             Text(
-                text = stringResource(R.string.tap_retry),
+                text = stringResource(Res.string.tap_retry),
                 style = ScoreShadowStyle,
                 fontSize = 26.sp,
                 color = Color.White.copy(alpha = blink)
@@ -601,7 +685,7 @@ internal fun GameOverOverlay(
 
             Row {
                 PixelButton(
-                    text = stringResource(R.string.share),
+                    text = stringResource(Res.string.share),
                     onClick = onShare,
                     backgroundColor = DotBody,
                     borderColor = TextDark,
@@ -612,7 +696,7 @@ internal fun GameOverOverlay(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 PixelButton(
-                    text = stringResource(R.string.menu),
+                    text = stringResource(Res.string.menu),
                     onClick = onMenu,
                     backgroundColor = PanelSand,
                     borderColor = TextDark,
@@ -628,7 +712,7 @@ internal fun GameOverOverlay(
 
 /** Beiger Panel-Hintergrund mit dunklem Pixelrahmen. */
 @Composable
-internal fun PixelPanel(content: @Composable () -> Unit) {
+fun PixelPanel(content: @Composable () -> Unit) {
     Box(contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier.matchParentSize()
@@ -654,8 +738,8 @@ internal fun PixelPanel(content: @Composable () -> Unit) {
  * MedalPaint (:core) — derselben Quelle, aus der sich auch die Uhr
  * bedient.
  */
-internal fun medalColors(tier: MedalTier): Pair<Color, Color> =
-    Color(tier.body) to Color(tier.shade)
+fun medalColors(tier: MedalId): Pair<Color, Color> =
+    Color(MedalPaint.body(tier)) to Color(MedalPaint.shade(tier))
 
 /**
  * Medaille ab 10 Punkten: rotes Band im V, Münze mit geprägtem Stern und
@@ -663,8 +747,8 @@ internal fun medalColors(tier: MedalTier): Pair<Color, Color> =
  * Form als Sand-Silhouette — man sieht, dass es hier etwas zu holen gibt.
  */
 @Composable
-internal fun MedalBadge(score: Int, modifier: Modifier = Modifier) {
-    val tier = MedalTier.forScore(score)
+fun MedalBadge(score: Int, modifier: Modifier = Modifier) {
+    val tier = MedalPaint.forScore(score)
     val (body, shade) = tier?.let { medalColors(it) }
         ?: (Color(0xFFBDB48A) to Color(0xFFA89E74))
     val ribbon = if (tier != null) RecordRed else Color(0xFFBDB48A)
@@ -712,7 +796,7 @@ internal fun MedalBadge(score: Int, modifier: Modifier = Modifier) {
             Size(2f * cu, 2f * cu)
         )
 
-        if (tier == MedalTier.PLATINUM) {
+        if (tier == MedalId.PLATINUM) {
             for ((sc, sr) in listOf(0.2f to 4f, 12.6f to 7f, 10.5f to 0.2f)) {
                 drawRect(
                     DotShine,
@@ -732,7 +816,7 @@ internal fun MedalBadge(score: Int, modifier: Modifier = Modifier) {
  * als Spiel-Tap (Sofort-Neustart!) durchschlägt.
  */
 @Composable
-internal fun HelpOverlay(onClose: () -> Unit) {
+fun HelpOverlay(onClose: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -753,7 +837,7 @@ internal fun HelpOverlay(onClose: () -> Unit) {
 
             Spacer(modifier = Modifier.height(28.dp))
             Text(
-                text = stringResource(R.string.tap_to_close),
+                text = stringResource(Res.string.tap_to_close),
                 fontFamily = Bytesized,
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.6f)
@@ -764,16 +848,16 @@ internal fun HelpOverlay(onClose: () -> Unit) {
 
 @Composable
 private fun StopHelpContent() {
-    HelpHeading(stringResource(R.string.help_title))
-    HelpLine(stringResource(R.string.help_line1))
-    HelpLine(stringResource(R.string.help_line2))
-    HelpLine(stringResource(R.string.help_line3), DotBody)
-    HelpLine(stringResource(R.string.help_line4), DotBody)
-    HelpLine(stringResource(R.string.help_line5))
+    HelpHeading(stringResource(Res.string.help_title))
+    HelpLine(stringResource(Res.string.help_line1))
+    HelpLine(stringResource(Res.string.help_line2))
+    HelpLine(stringResource(Res.string.help_line3), DotBody)
+    HelpLine(stringResource(Res.string.help_line4), DotBody)
+    HelpLine(stringResource(Res.string.help_line5))
 
     Spacer(modifier = Modifier.height(18.dp))
     Text(
-        text = stringResource(R.string.help_twists),
+        text = stringResource(Res.string.help_twists),
         style = ScoreShadowStyle,
         fontSize = 24.sp,
         color = Color(0xFFFF8A3C)
@@ -782,39 +866,39 @@ private fun StopHelpContent() {
 
     TwistHelpRow(
         GrassLight,
-        stringResource(R.string.twist_pulse_title),
-        stringResource(R.string.twist_pulse_text)
+        stringResource(Res.string.twist_pulse_title),
+        stringResource(Res.string.twist_pulse_text)
     )
     TwistHelpRow(
         Color(0xFF5B9BD5),
-        stringResource(R.string.twist_drift_title),
-        stringResource(R.string.twist_drift_text)
+        stringResource(Res.string.twist_drift_title),
+        stringResource(Res.string.twist_drift_text)
     )
     TwistHelpRow(
         CloudColor,
-        stringResource(R.string.twist_ghost_title),
-        stringResource(R.string.twist_ghost_text)
+        stringResource(Res.string.twist_ghost_title),
+        stringResource(Res.string.twist_ghost_text)
     )
     TwistHelpRow(
         Color(0xFFB44FD8),
-        stringResource(R.string.twist_fake_title),
-        stringResource(R.string.twist_fake_text)
+        stringResource(Res.string.twist_fake_title),
+        stringResource(Res.string.twist_fake_text)
     )
     TwistHelpRow(
         Color(0xFFFF8A3C),
-        stringResource(R.string.twist_chain_title),
-        stringResource(R.string.twist_chain_text)
+        stringResource(Res.string.twist_chain_title),
+        stringResource(Res.string.twist_chain_text)
     )
 
     Spacer(modifier = Modifier.height(10.dp))
-    HelpLine(stringResource(R.string.help_max_twists))
+    HelpLine(stringResource(Res.string.help_max_twists))
 }
 
 /** "SERIE: n TAG/TAGE" bzw. "STREAK: n DAY/DAYS", sprachrichtig. */
 @Composable
-internal fun streakLabel(days: Int): String =
-    if (days == 1) stringResource(R.string.streak_one)
-    else stringResource(R.string.streak_many, days)
+fun streakLabel(days: Int): String =
+    if (days == 1) stringResource(Res.string.streak_one)
+    else stringResource(Res.string.streak_many, days)
 
 @Composable
 private fun HelpHeading(text: String) {
@@ -895,18 +979,18 @@ private fun TwistHelpRow(color: Color, title: String, text: String) {
  * Skins. Am Preis und am Produkt ändert sich nichts.
  */
 @Composable
-internal fun SkinOverlay(
-    stats: DotSkin.Stats,
-    selected: DotSkin,
-    onSelect: (DotSkin) -> Unit,
-    selectedScene: DotScene,
-    onSelectScene: (DotScene) -> Unit,
-    selectedSound: DotSound,
-    onSelectSound: (DotSound) -> Unit,
+fun SkinOverlay(
+    stats: SkinStats,
+    selected: SkinId,
+    onSelect: (SkinId) -> Unit,
+    selectedScene: SceneId,
+    onSelectScene: (SceneId) -> Unit,
+    selectedSound: SoundSetId,
+    onSelectSound: (SoundSetId) -> Unit,
     onClose: () -> Unit,
-    skinPass: DotSkin? = null,
+    skinPass: SkinId? = null,
     adOfferReady: Boolean = false,
-    onWatchAdFor: (DotSkin) -> Unit = {},
+    onWatchAdFor: (SkinId) -> Unit = {},
     patronPrice: String? = null,
     adsAlreadyRemoved: Boolean = false,
     onPatron: () -> Unit = {}
@@ -933,7 +1017,7 @@ internal fun SkinOverlay(
                 .padding(vertical = 32.dp)
         ) {
             Text(
-                text = stringResource(R.string.skins),
+                text = stringResource(Res.string.skins),
                 style = ScoreShadowStyle,
                 fontSize = 32.sp,
                 color = Color.White,
@@ -943,9 +1027,9 @@ internal fun SkinOverlay(
             // Die Kulissen stehen ganz oben und vor allen Skin-Familien:
             // Es sind nur sechs, sie wirken auf das ganze Bild, und wer
             // das Menü öffnet, soll sie nicht erst suchen müssen.
-            SkinFamilyHeading(stringResource(R.string.scenes))
-            DotScene.entries.forEach { scene ->
-                val open = scene.isUnlocked(stats)
+            SkinFamilyHeading(stringResource(Res.string.scenes))
+            ScenePaint.ORDER.forEach { scene ->
+                val open = ScenePaint.isUnlocked(scene, stats)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -959,16 +1043,16 @@ internal fun SkinOverlay(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = stringResource(scene.titleRes),
+                            text = sceneTitle(scene),
                             fontFamily = Bytesized,
                             fontSize = 20.sp,
                             color = if (open) Color.White else Color.White.copy(alpha = 0.45f)
                         )
                         Text(
                             text = when {
-                                scene == selectedScene -> stringResource(R.string.skin_selected)
-                                open -> stringResource(R.string.skin_tap_select)
-                                else -> scene.unlockHintRes?.let { stringResource(it) } ?: ""
+                                scene == selectedScene -> stringResource(Res.string.skin_selected)
+                                open -> stringResource(Res.string.skin_tap_select)
+                                else -> sceneHint(scene) ?: ""
                             },
                             fontFamily = Bytesized,
                             fontSize = 14.sp,
@@ -987,9 +1071,9 @@ internal fun SkinOverlay(
             // ganzen Lauf, und die Hörprobe beim Antippen soll nicht
             // hinter 42 Vogel-Zeilen liegen — wer sie hört, will sofort
             // die nächste hören.
-            SkinFamilyHeading(stringResource(R.string.sounds))
-            DotSound.entries.forEach { sound ->
-                val open = sound.isUnlocked(stats)
+            SkinFamilyHeading(stringResource(Res.string.sounds))
+            SoundBank.ORDER.forEach { sound ->
+                val open = SoundBank.isUnlocked(sound, stats)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -1003,16 +1087,16 @@ internal fun SkinOverlay(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = stringResource(sound.titleRes),
+                            text = soundTitle(sound),
                             fontFamily = Bytesized,
                             fontSize = 20.sp,
                             color = if (open) Color.White else Color.White.copy(alpha = 0.45f)
                         )
                         Text(
                             text = when {
-                                sound == selectedSound -> stringResource(R.string.skin_selected)
-                                open -> stringResource(R.string.sound_tap_hear)
-                                else -> sound.unlockHintRes?.let { stringResource(it) } ?: ""
+                                sound == selectedSound -> stringResource(Res.string.skin_selected)
+                                open -> stringResource(Res.string.sound_tap_hear)
+                                else -> soundHint(sound) ?: ""
                             },
                             fontFamily = Bytesized,
                             fontSize = 14.sp,
@@ -1029,26 +1113,26 @@ internal fun SkinOverlay(
             // Bei 42 Skins ist die reine Liste nicht mehr lesbar: Die
             // Familien-Überschrift sagt, wonach die nächsten Zeilen
             // funktionieren — Muster, Zeit, Spielstand, Kauf.
-            var lastFamily: DotSkin.Family? = null
+            var lastFamily: SkinFamily? = null
 
-            DotSkin.entries.forEach { skin ->
-                if (skin.family != lastFamily) {
-                    lastFamily = skin.family
-                    SkinFamilyHeading(stringResource(skin.family.titleRes))
+            SkinPaint.ORDER.forEach { skin ->
+                if (SkinPaint.family(skin) != lastFamily) {
+                    lastFamily = SkinPaint.family(skin)
+                    SkinFamilyHeading(familyTitle(SkinPaint.family(skin)))
                     // Das Gönner-Angebot steht unter seiner Überschrift und
                     // nirgends sonst: Wer die Skins ansieht, ist der einzige,
                     // den es interessiert. Ohne Preis von Google (oder wenn
                     // das Paket schon gehört) bleibt die Zeile weg.
-                    if (skin.family == DotSkin.Family.GOENNER &&
+                    if (SkinPaint.family(skin) == SkinFamily.GOENNER &&
                         (stats.patronOwned || patronPrice != null)
                     ) {
                         Text(
                             text = when {
-                                stats.patronOwned -> stringResource(R.string.patron_owned)
+                                stats.patronOwned -> stringResource(Res.string.patron_owned)
                                 adsAlreadyRemoved -> stringResource(
-                                    R.string.patron_pack_skins_only, patronPrice.orEmpty()
+                                    Res.string.patron_pack_skins_only, patronPrice.orEmpty()
                                 )
-                                else -> stringResource(R.string.patron_pack, patronPrice.orEmpty())
+                                else -> stringResource(Res.string.patron_pack, patronPrice.orEmpty())
                             },
                             fontFamily = Bytesized,
                             fontSize = 15.sp,
@@ -1063,11 +1147,11 @@ internal fun SkinOverlay(
 
                 // "Verdient" und "heute spielbar" bleiben getrennt: Der
                 // Tagespass macht den Skin nutzbar, nicht freigeschaltet.
-                val available = skin.isAvailable(stats, skinPass)
-                val onPass = skin == skinPass && !skin.isUnlocked(stats)
+                val available = SkinPaint.isUnlocked(skin, stats) || skin == skinPass
+                val onPass = skin == skinPass && !SkinPaint.isUnlocked(skin, stats)
                 // Gönner-Skins bleiben vom Tagespass ausgenommen: Ein Spot
                 // darf keinen Kauf ersetzen, auch nicht für einen Tag.
-                val adOffer = !available && adOfferReady && !skin.isPatron
+                val adOffer = !available && adOfferReady && !SkinPaint.isPatron(skin)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -1089,21 +1173,21 @@ internal fun SkinOverlay(
                             centerY = d / 2f,
                             radius = d / 2f,
                             alpha = if (available) 1f else 0.3f
-                        ) { col, row -> Color(skin.cell(col, row, preview)) }
+                        ) { col, row -> Color(SkinPaint.cell(skin, col, row, preview)) }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = stringResource(skin.titleRes),
+                            text = skinTitle(skin),
                             fontFamily = Bytesized,
                             fontSize = 20.sp,
                             color = if (available) Color.White else Color.White.copy(alpha = 0.45f)
                         )
                         Text(
                             text = when {
-                                skin == selected -> stringResource(R.string.skin_selected)
-                                available -> stringResource(R.string.skin_tap_select)
-                                else -> skin.unlockHintRes?.let { stringResource(it) } ?: ""
+                                skin == selected -> stringResource(Res.string.skin_selected)
+                                available -> stringResource(Res.string.skin_tap_select)
+                                else -> skinHint(skin) ?: ""
                             },
                             fontFamily = Bytesized,
                             fontSize = 14.sp,
@@ -1119,8 +1203,8 @@ internal fun SkinOverlay(
                         if (onPass || adOffer) {
                             Text(
                                 text = stringResource(
-                                    if (onPass) R.string.skin_pass_today
-                                    else R.string.skin_pass_offer
+                                    if (onPass) Res.string.skin_pass_today
+                                    else Res.string.skin_pass_offer
                                 ),
                                 fontFamily = Bytesized,
                                 fontSize = 12.sp,
@@ -1133,7 +1217,7 @@ internal fun SkinOverlay(
 
             Spacer(modifier = Modifier.height(20.dp))
             Text(
-                text = stringResource(R.string.tap_to_close),
+                text = stringResource(Res.string.tap_to_close),
                 fontFamily = Bytesized,
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.6f)
@@ -1147,9 +1231,9 @@ internal fun SkinOverlay(
  * und eine Requisite als Silhouette. Mehr passt nicht hinein — und
  * weniger wäre nicht auseinanderzuhalten.
  */
-private fun DrawScope.drawScenePreview(scene: DotScene, alpha: Float) {
+private fun DrawScope.drawScenePreview(scene: SceneId, alpha: Float) {
     val d = size.minDimension
-    val paint = scene.scene
+    val paint = ScenePaint.of(scene)
     val border = d / 12f
     val horizon = d * 0.62f
 
@@ -1206,7 +1290,7 @@ private fun DrawScope.drawScenePreview(scene: DotScene, alpha: Float) {
  * steht hoch, der Amboss bleibt am Boden. Die Zahlen stammen aus :core,
  * damit die PWA dieselbe Kachel zeichnet.
  */
-private fun DrawScope.drawSoundPreview(sound: DotSound, alpha: Float) {
+private fun DrawScope.drawSoundPreview(sound: SoundSetId, alpha: Float) {
     val d = size.minDimension
     val border = d / 12f
     val innen = d - border * 2f
@@ -1220,7 +1304,7 @@ private fun DrawScope.drawSoundPreview(sound: DotSound, alpha: Float) {
     )
     // Dieselbe Sprache wie der Fortschrittsbalken: Sandbett, goldene
     // Blöcke — nur senkrecht, weil hier keine Strecke gemeint ist.
-    val chips = sound.chips
+    val chips = SoundBank.chips(sound)
     val breite = innen / (chips.size * 2f - 1f)
     chips.forEachIndexed { index, anteil ->
         // Auch das tiefste Set bleibt sichtbar: ein Fünftel Mindesthöhe.
@@ -1240,7 +1324,7 @@ private fun DrawScope.drawSoundPreview(sound: DotSound, alpha: Float) {
  * Beide Seiten sind gegliederte Listen im selben Scrim.
  */
 @Composable
-internal fun SkinFamilyHeading(text: String) {
+fun SkinFamilyHeading(text: String) {
     Spacer(modifier = Modifier.height(10.dp))
     Text(
         text = text,
@@ -1251,25 +1335,68 @@ internal fun SkinFamilyHeading(text: String) {
     )
 }
 
+/**
+ * Die Ankuendigungen der Twists, einmal gelesen. Wie [rememberTaunter]:
+ * gebraucht werden sie im Ereignis-Handler, lesbar sind sie nur waehrend
+ * der Zusammensetzung.
+ */
+@Composable
+fun rememberTwistBanners(): (Twist) -> String {
+    val pulse = stringResource(Res.string.banner_twist_pulse)
+    val drift = stringResource(Res.string.banner_twist_drift)
+    val ghost = stringResource(Res.string.banner_twist_ghost)
+    val fake = stringResource(Res.string.banner_twist_fake)
+    val chain = stringResource(Res.string.banner_twist_chain)
+    return remember(pulse, drift, ghost, fake, chain) {
+        { twist ->
+            when (twist) {
+                Twist.PULSE -> pulse
+                Twist.DRIFT -> drift
+                Twist.GHOST -> ghost
+                Twist.FAKE -> fake
+                Twist.CHAIN -> chain
+            }
+        }
+    }
+}
+
 // ===== Spott-Texte für den Rage-Faktor =====
 
-internal fun pickTaunt(
-    context: Context,
-    score: Int,
-    previousBest: Int,
-    isNewRecord: Boolean
-): String {
-    if (isNewRecord) return context.getString(R.string.new_record)
-    val gap = previousBest - score
-    val pool = context.resources.getStringArray(
-        when {
-            score == 0 -> R.array.taunts_zero
-            gap in 1..3 -> R.array.taunts_close
-            score < previousBest / 2 -> R.array.taunts_low
-            else -> R.array.taunts_default
+/**
+ * Liefert eine Funktion, die zu einem Lauf den passenden Spott-Text
+ * waehlt.
+ *
+ * Der Umweg ueber eine zurueckgegebene Funktion hat einen Grund: Der
+ * Text wird im Moment des Todes gebraucht — in einem Ereignis-Handler,
+ * nicht beim Zeichnen. Texte lassen sich aber nur waehrend der
+ * Zusammensetzung lesen. Also werden die vier Listen einmal gelesen und
+ * die Auswahl bleibt eine reine Rechnung.
+ */
+@Composable
+fun rememberTaunter(): (score: Int, previousBest: Int, isNewRecord: Boolean) -> String {
+    val record = stringResource(Res.string.new_record)
+    val zero = stringArrayResource(Res.array.taunts_zero)
+    val close = stringArrayResource(Res.array.taunts_close)
+    val low = stringArrayResource(Res.array.taunts_low)
+    val default = stringArrayResource(Res.array.taunts_default)
+    return remember(record, zero, close, low, default) {
+        { score, previousBest, isNewRecord ->
+            if (isNewRecord) {
+                record
+            } else {
+                val gap = previousBest - score
+                val pool = when {
+                    score == 0 -> zero
+                    gap in 1..3 -> close
+                    score < previousBest / 2 -> low
+                    else -> default
+                }
+                val line = pool[(score + previousBest) % pool.size]
+                // Nur die "knapp daneben"-Zeilen tragen einen
+                // %1$d-Platzhalter. `String.format` gibt es nur auf der
+                // JVM — hier reicht Ersetzen.
+                if (line.contains("%1\$d")) line.replace("%1\$d", gap.toString()) else line
+            }
         }
-    )
-    val line = pool[(score + previousBest) % pool.size]
-    // Nur die "knapp daneben"-Zeilen tragen einen %1$d-Platzhalter.
-    return if (line.contains("%1\$d")) line.format(gap) else line
+    }
 }

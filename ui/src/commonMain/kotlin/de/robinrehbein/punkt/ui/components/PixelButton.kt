@@ -17,22 +17,12 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import de.robinrehbein.punkt.R
-
-/**
- * Bytesized FontFamily for the button text
- */
-private val BytesizedFont = FontFamily(
-    Font(R.font.bytesized_regular, FontWeight.Normal)
-)
+import de.robinrehbein.punkt.ui.theme.Bytesized
 
 /**
  * A pixel art styled button component with retro gaming aesthetics.
@@ -80,7 +70,7 @@ fun PixelButton(
         // Text overlay
         Text(
             text = text,
-            fontFamily = BytesizedFont,
+            fontFamily = Bytesized,
             fontWeight = FontWeight.Normal,
             fontSize = 16.sp,
             color = textColor,
@@ -257,88 +247,5 @@ private fun DrawScope.drawRightSteppedBorder(
             topLeft = Offset(width - stepWidth, y),
             size = Size(stepWidth, stepHeight + 1f) // +1 to avoid gaps
         )
-    }
-}
-
-/**
- * Preview of the PixelArtButton component
- */
-@Preview(showBackground = true)
-@Composable
-private fun PixelArtButtonPreview() {
-    MaterialTheme {
-        Box(
-            modifier = Modifier.padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            PixelButton(
-                text = "START GAME",
-                onClick = { /* Preview action */ }
-            )
-        }
-    }
-}
-
-/**
- * Preview with custom colors
- */
-@Preview(showBackground = true)
-@Composable
-private fun PixelArtButtonCustomColorsPreview() {
-    MaterialTheme {
-        Box(
-            modifier = Modifier.padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            PixelButton(
-                text = "SETTINGS",
-                onClick = { /* Preview action */ },
-                backgroundColor = Color(0xFFFFB4B4), // Light red
-                borderColor = Color(0xFF8B0000), // Dark red
-                textColor = Color(0xFF8B0000)
-            )
-        }
-    }
-}
-
-/**
- * Preview with different sizes
- */
-@Preview(showBackground = true)
-@Composable
-private fun PixelArtButtonSizesPreview() {
-    MaterialTheme {
-        Box(
-            modifier = Modifier.padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            androidx.compose.foundation.layout.Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp)
-            ) {
-                PixelButton(
-                    text = "SMALL",
-                    onClick = { },
-                    width = 120.dp,
-                    height = 40.dp,
-                    borderWidth = 3.dp
-                )
-                
-                PixelButton(
-                    text = "MEDIUM",
-                    onClick = { },
-                    width = 160.dp,
-                    height = 50.dp
-                )
-                
-                PixelButton(
-                    text = "LARGE",
-                    onClick = { },
-                    width = 240.dp,
-                    height = 70.dp,
-                    borderWidth = 5.dp
-                )
-            }
-        }
     }
 }

@@ -32,7 +32,6 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,9 +44,6 @@ import de.robinrehbein.punkt.ads.AdsManager
 import de.robinrehbein.punkt.billing.BillingManager
 import de.robinrehbein.punkt.data.ScoreStore
 import de.robinrehbein.punkt.game.DailyChallenge
-import de.robinrehbein.punkt.game.DotScene
-import de.robinrehbein.punkt.game.DotSkin
-import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameEventChainNext
 import de.robinrehbein.punkt.game.GameEventDied
@@ -60,12 +56,13 @@ import de.robinrehbein.punkt.game.GameHaptics
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.game.Ground
-import de.robinrehbein.punkt.game.MedalTier
+import de.robinrehbein.punkt.game.MedalPaint
 import de.robinrehbein.punkt.game.Progress
 import de.robinrehbein.punkt.game.Prop
 import de.robinrehbein.punkt.game.PropShape
 import de.robinrehbein.punkt.game.RockPart
 import de.robinrehbein.punkt.game.ScenePaint
+import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.TimingGame
@@ -73,10 +70,25 @@ import de.robinrehbein.punkt.game.Twist
 import de.robinrehbein.punkt.notify.DailyReminder
 import de.robinrehbein.punkt.play.Leaderboards
 import de.robinrehbein.punkt.share.ScoreCard
+import de.robinrehbein.punkt.sync.StatsSync
+import de.robinrehbein.punkt.ui.resources.Res
+import de.robinrehbein.punkt.ui.resources.new_record
+import de.robinrehbein.punkt.ui.resources.banner_chain
+import de.robinrehbein.punkt.ui.resources.banner_record
+import de.robinrehbein.punkt.ui.resources.banner_stage
+import de.robinrehbein.punkt.ui.resources.banner_twist_chain
+import de.robinrehbein.punkt.ui.resources.banner_twist_drift
+import de.robinrehbein.punkt.ui.resources.banner_twist_fake
+import de.robinrehbein.punkt.ui.resources.banner_twist_ghost
+import de.robinrehbein.punkt.ui.resources.banner_twist_pulse
+import de.robinrehbein.punkt.ui.resources.perfect_plus
+import de.robinrehbein.punkt.ui.resources.ready_hint
+import de.robinrehbein.punkt.ui.screens.rememberTaunter
+import de.robinrehbein.punkt.ui.text.sceneTitle
+import de.robinrehbein.punkt.ui.screens.rememberTwistBanners
 import de.robinrehbein.punkt.ui.world.CELEBRATE_SECONDS
 import de.robinrehbein.punkt.ui.world.FxState
 import de.robinrehbein.punkt.ui.world.drawTimingWorld
-import de.robinrehbein.punkt.sync.StatsSync
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.math.abs
@@ -86,17 +98,8 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlinx.coroutines.isActive
+import org.jetbrains.compose.resources.stringResource
 
-private fun twistBannerText(context: Context, twist: Twist): String =
-    context.getString(
-        when (twist) {
-            Twist.PULSE -> R.string.banner_twist_pulse
-            Twist.DRIFT -> R.string.banner_twist_drift
-            Twist.GHOST -> R.string.banner_twist_ghost
-            Twist.FAKE -> R.string.banner_twist_fake
-            Twist.CHAIN -> R.string.banner_twist_chain
-        }
-    )
 
 /** Nicht-Compose-Zeitgeber für das Twist-Banner. */
 private class BannerState {
@@ -157,7 +160,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     val audio = remember {
         GameAudio(context).apply {
             muted = store.soundMuted
-            soundSet = store.selectedSound.id
+            soundSet = store.selectedSound
         }
     }
     val game = remember { TimingGame() }
@@ -179,6 +182,15 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     // soll die Goenner-Zeile sofort in ihrer ehrlichen Fassung sehen
     // (siehe SkinOverlay) — nicht erst beim naechsten Start.
     var adsRemoved by remember { mutableStateOf(store.adsRemoved) }
+
+    // Texte, die in Ereignis-Handlern gebraucht werden: Lesen geht nur
+    // waehrend der Zusammensetzung, gebraucht werden sie im Moment eines
+    // Treffers oder des Todes. Also einmal hier, dann als reine Werte.
+    val twistBanners = rememberTwistBanners()
+    val taunter = rememberTaunter()
+    val bannerChainText = stringResource(Res.string.banner_chain)
+    val bannerRecordText = stringResource(Res.string.banner_record)
+    val bannerStageText = stringResource(Res.string.banner_stage)
     val billing = remember {
         BillingManager(
             activity = context as? Activity,
@@ -222,6 +234,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     // Und das Ton-Set als dritte Sammlung — dieselbe Bauart, nur hört
     // man sie, statt sie zu sehen.
     var sound by remember { mutableStateOf(store.selectedSound) }
+
+    // Die Score-Karte zeichnet auf eine Android-Leinwand und kann keine
+    // Texte lesen — Kulissenname und REKORD-Zeile kommen deshalb von
+    // hier (siehe ScoreCard.share).
+    val sceneNameText = sceneTitle(scene)
+    val newRecordText = stringResource(Res.string.new_record)
     // Der per Spot geliehene Skin des heutigen Tages (null = keiner).
     var skinPass by remember {
         mutableStateOf(store.skinPassFor(LocalDate.now().toEpochDay()))
@@ -258,9 +276,9 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     fun refreshSkinPass(today: Long) {
         val pass = store.skinPassFor(today)
         skinPass = pass
-        if (!skin.isAvailable(store.stats(), pass)) {
-            skin = DotSkin.KLASSIK
-            store.selectedSkin = DotSkin.KLASSIK
+        if (!SkinPaint.isUnlocked(skin, store.stats()) && skin != pass) {
+            skin = SkinId.KLASSIK
+            store.selectedSkin = SkinId.KLASSIK
         }
     }
 
@@ -388,12 +406,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             runState.maxPerfect = max(runState.maxPerfect, game.perfectStreak)
                         }
                         is GameEventChainNext -> {
-                            showBanner(context.getString(R.string.banner_chain), 1.2f, priority = 1)
+                            showBanner(bannerChainText, 1.2f, priority = 1)
                             audio.chain()
                         }
                         is GameEventTwistUnlocked -> {
                             twistUnlockedThisFrame = true
-                            showBanner(twistBannerText(context, event.twist), 2.2f, priority = 2)
+                            showBanner(twistBanners(event.twist), 2.2f, priority = 2)
                             fx.celebrateTime = CELEBRATE_SECONDS
                             haptics.unlock()
                             audio.unlock()
@@ -406,11 +424,11 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             fx.celebrateTime = 0f
                             fx.deathTime = 0f
                             val previousBest = store.bestScore
-                            newMedalThisRun = MedalTier.isUpgrade(game.score, previousBest)
+                            newMedalThisRun = MedalPaint.isUpgrade(game.score, previousBest)
                             // Gezählt wird, was VERDIENT ist: Saison zählt
                             // mit, Gönner nie — ein Kauf ist keine Leistung
                             // und darf die Feier nicht auslösen.
-                            val earnedBefore = DotSkin.earnedCount(store.stats())
+                            val earnedBefore = SkinPaint.earnedCount(store.stats())
                             isNewRecord = store.submitRun(
                                 score = game.score,
                                 epochDay = runState.epochDay,
@@ -426,15 +444,15 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                             }
                             leaderboards.submitBest(game.score)
                             skinUnlockedThisRun =
-                                DotSkin.earnedCount(store.stats()) > earnedBefore
+                                SkinPaint.earnedCount(store.stats()) > earnedBefore
                             // Erst zählen, dann zielen: Der Balken im
                             // Game-Over zeigt den Stand NACH diesem Lauf.
                             nextGoal = Progress.nextGoal(
-                                stats = store.stats().toSkinStats(),
+                                stats = store.stats(),
                                 month = runState.month,
                                 seasonDays = store.seasonDaysFor(runState.month, runState.year)
                             )
-                            taunt = pickTaunt(context, game.score, previousBest, isNewRecord)
+                            taunt = taunter(game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
                             runNumber = store.runCount
                             // Jeder beendete Lauf ist ein moeglicher neuer
@@ -473,7 +491,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     bestScore > 0 && game.score > bestScore
                 ) {
                     bannerState.recordCelebrated = true
-                    showBanner(context.getString(R.string.banner_record), 2.2f, priority = 2)
+                    showBanner(bannerRecordText, 2.2f, priority = 2)
                     fx.celebrateTime = CELEBRATE_SECONDS
                     haptics.newRecord()
                     audio.newRecord()
@@ -486,7 +504,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 if (game.phase == GamePhase.RUNNING && stage > bannerState.lastStage) {
                     bannerState.lastStage = stage
                     if (!twistUnlockedThisFrame) {
-                        showBanner(context.getString(R.string.banner_stage), 1.6f, priority = 1)
+                        showBanner(bannerStageText, 1.6f, priority = 1)
                         fx.celebrateTime = CELEBRATE_SECONDS
                         haptics.unlock()
                         audio.unlock()
@@ -525,7 +543,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             frameTick // Frame-Abhängigkeit: erzwingt Neuzeichnen pro Tick.
             // Stunde und Monat kommen aus dem Lauf-Zustand, nicht frisch
             // von der Uhr — sie werden je Lauf einmal abgelesen.
-            drawTimingWorld(game, fx, skin.id, scene.id, runState.hour, runState.month)
+            drawTimingWorld(game, fx, skin, scene, runState.hour, runState.month)
         }
 
         // Positionen relativ zur Bildhöhe: Die Bahn endet spätestens bei
@@ -533,7 +551,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
         // Display, statt auf festen dp-Werten.
         if (showPerfect) {
             Text(
-                text = stringResource(R.string.perfect_plus, perfectPoints),
+                text = stringResource(Res.string.perfect_plus, perfectPoints),
                 style = ScoreShadowStyle,
                 fontSize = 28.sp,
                 color = Color(0xFFFFE95E),
@@ -547,7 +565,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             GamePhase.READY -> ReadyOverlay(
                 bestScore = bestScore,
                 runNumber = runNumber,
-                hint = stringResource(R.string.ready_hint),
+                hint = stringResource(Res.string.ready_hint),
                 dailyBest = dailyBestToday,
                 dailyStreak = dailyStreak,
                 onDaily = {
@@ -568,7 +586,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     val now = LocalDateTime.now()
                     statsSnapshot = store.stats()
                     statsGoals = Progress.nextGoals(
-                        stats = statsSnapshot.toSkinStats(),
+                        stats = statsSnapshot,
                         month = now.monthValue,
                         seasonDays = store.seasonDaysFor(now.monthValue, now.year)
                     )
@@ -640,13 +658,15 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                         isNewRecord = isNewRecord,
                         skin = skin,
                         scene = scene,
+                        sceneName = sceneNameText,
+                        recordText = newRecordText,
                         daily = dailyMode,
                         dailyStreak = dailyStreak,
                         // Rahmen und Beiname hängen am Gesamtstand, nicht
                         // am Lauf — der Stand wird erst beim Tippen auf
                         // TEILEN geholt, damit er den eben gezählten Lauf
                         // sicher enthält.
-                        stats = store.stats().toSkinStats()
+                        stats = store.stats()
                     )
                 },
                 onMenu = {
@@ -691,10 +711,10 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                 onSelectSound = {
                     sound = it
                     store.selectedSound = it
-                    audio.soundSet = it.id
+                    audio.soundSet = it
                     // Die Hörprobe ist der ganze Sinn der Zeile: Ohne sie
                     // waehlt man einen Klang nach seinem Namen.
-                    audio.preview(it.id)
+                    audio.preview(it)
                     // Wie Skin- und Kulissen-Wahl eine Entscheidung: Sie
                     // muss sofort raus, sonst ueberschreibt sie beim
                     // naechsten Abgleich die juengere Wahl der Gegenseite.

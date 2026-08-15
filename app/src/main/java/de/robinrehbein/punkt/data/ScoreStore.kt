@@ -3,10 +3,14 @@ package de.robinrehbein.punkt.data
 import android.content.Context
 import android.content.SharedPreferences
 import de.robinrehbein.punkt.game.DailyChallenge
-import de.robinrehbein.punkt.game.DotScene
-import de.robinrehbein.punkt.game.DotSkin
-import de.robinrehbein.punkt.game.DotSound
+import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.Season
+import de.robinrehbein.punkt.game.SkinId
+import de.robinrehbein.punkt.game.SkinPaint
+import de.robinrehbein.punkt.game.SkinStats
+import de.robinrehbein.punkt.game.SoundBank
+import de.robinrehbein.punkt.game.SoundSetId
 import de.robinrehbein.punkt.game.SyncState
 
 /**
@@ -100,8 +104,8 @@ class ScoreStore(context: Context) {
      * Skin-Wahl der einzige Wert, bei dem nicht "größer", sondern
      * "neuer" gewinnt (siehe SyncState).
      */
-    var selectedSkin: DotSkin
-        get() = DotSkin.fromName(prefs.getString(KEY_SKIN, null))
+    var selectedSkin: SkinId
+        get() = SkinPaint.fromName(prefs.getString(KEY_SKIN, null))
         set(value) {
             prefs.edit()
                 .putString(KEY_SKIN, value.name)
@@ -116,8 +120,8 @@ class ScoreStore(context: Context) {
      * SyncState). Einen Tagespass gibt es hier bewusst nicht — die
      * Kulisse ist der seltene große Wechsel, nicht das Probierstück.
      */
-    var selectedScene: DotScene
-        get() = DotScene.fromName(prefs.getString(KEY_SCENE, null))
+    var selectedScene: SceneId
+        get() = ScenePaint.fromName(prefs.getString(KEY_SCENE, null))
         set(value) {
             prefs.edit()
                 .putString(KEY_SCENE, value.name)
@@ -130,8 +134,8 @@ class ScoreStore(context: Context) {
      * und Kulisse — die dritte Entscheidung, bei der beim Abgleich die
      * neuere gewinnt und nicht die "größere" (siehe SyncState).
      */
-    var selectedSound: DotSound
-        get() = DotSound.fromName(prefs.getString(KEY_SOUND, null))
+    var selectedSound: SoundSetId
+        get() = SoundBank.fromName(prefs.getString(KEY_SOUND, null))
         set(value) {
             prefs.edit()
                 .putString(KEY_SOUND, value.name)
@@ -147,10 +151,10 @@ class ScoreStore(context: Context) {
      * gespeicherten Tag; abgelaufene Pässe werden nicht aufgeräumt,
      * sondern beantworten die Frage einfach mit null.
      */
-    fun skinPassFor(epochDay: Long): DotSkin? {
+    fun skinPassFor(epochDay: Long): SkinId? {
         if (prefs.getLong(KEY_SKIN_PASS_DAY, Long.MIN_VALUE) != epochDay) return null
         val name = prefs.getString(KEY_SKIN_PASS_SKIN, null) ?: return null
-        return DotSkin.entries.firstOrNull { it.name == name }
+        return SkinPaint.ORDER.firstOrNull { it.name == name }
     }
 
     /**
@@ -158,7 +162,7 @@ class ScoreStore(context: Context) {
      * einen anderen Skin ersetzt den alten — der Pass ist zum Probieren
      * da, gesammelt wird weiter über Medaillen.
      */
-    fun grantSkinPass(epochDay: Long, skin: DotSkin) {
+    fun grantSkinPass(epochDay: Long, skin: SkinId) {
         prefs.edit()
             .putLong(KEY_SKIN_PASS_DAY, epochDay)
             .putString(KEY_SKIN_PASS_SKIN, skin.name)
@@ -306,7 +310,7 @@ class ScoreStore(context: Context) {
         }
 
     /** Aktueller Stand gebündelt, für Skin-Freischaltungen. */
-    fun stats(): DotSkin.Stats = DotSkin.Stats(
+    fun stats(): SkinStats = SkinStats(
         bestScore = bestScore,
         bestPerfectStreak = bestPerfectStreak,
         bestDailyStreak = dailyStreak,
@@ -333,9 +337,9 @@ class ScoreStore(context: Context) {
      */
     fun syncState(): SyncState {
         val chosen = selectedSkin
-        val shareSkin = chosen.isUnlocked(stats())
-        val sceneShared = selectedScene.isUnlocked(stats())
-        val soundShared = selectedSound.isUnlocked(stats())
+        val shareSkin = SkinPaint.isUnlocked(chosen, stats())
+        val sceneShared = ScenePaint.isUnlocked(selectedScene, stats())
+        val soundShared = SoundBank.isUnlocked(selectedSound, stats())
         return SyncState(
             bestScore = bestScore,
             runCount = runCount,
@@ -418,10 +422,10 @@ class ScoreStore(context: Context) {
         // von einer älteren Wahl der Uhr weggerissen bekommen.
         if (state.skinChangedAt > prefs.getLong(KEY_SKIN_CHANGED, 0L)) {
             editor.putLong(KEY_SKIN_CHANGED, state.skinChangedAt)
-            val incoming = DotSkin.fromName(state.skin)
+            val incoming = SkinPaint.fromName(state.skin)
             // stats() liest die Werte, die gerade erst geschrieben werden —
             // deshalb hier mit den zusammengeführten Zahlen prüfen.
-            if (incoming.isUnlocked(mergedStats(state, before))) {
+            if (SkinPaint.isUnlocked(incoming, mergedStats(state, before))) {
                 editor.putString(KEY_SKIN, incoming.name)
             }
         }
@@ -429,16 +433,16 @@ class ScoreStore(context: Context) {
         // nur, wenn sie hier auch verdient ist — verdient bleibt verdient.
         if (state.sceneChangedAt > prefs.getLong(KEY_SCENE_CHANGED, 0L)) {
             editor.putLong(KEY_SCENE_CHANGED, state.sceneChangedAt)
-            val incoming = DotScene.fromName(state.scene)
-            if (incoming.isUnlocked(mergedStats(state, before))) {
+            val incoming = ScenePaint.fromName(state.scene)
+            if (ScenePaint.isUnlocked(incoming, mergedStats(state, before))) {
                 editor.putString(KEY_SCENE, incoming.name)
             }
         }
         // Und dieselbe für das Ton-Set.
         if (state.soundChangedAt > prefs.getLong(KEY_SOUND_CHANGED, 0L)) {
             editor.putLong(KEY_SOUND_CHANGED, state.soundChangedAt)
-            val incoming = DotSound.fromName(state.sound)
-            if (incoming.isUnlocked(mergedStats(state, before))) {
+            val incoming = SoundBank.fromName(state.sound)
+            if (SoundBank.isUnlocked(incoming, mergedStats(state, before))) {
                 editor.putString(KEY_SOUND, incoming.name)
             }
         }
@@ -452,7 +456,7 @@ class ScoreStore(context: Context) {
      * geschrieben werden — Skin- und Kulissen-Prüfung liefen sonst gegen
      * den alten Stand und lehnten eine soeben verdiente Wahl ab.
      */
-    private fun mergedStats(state: SyncState, before: SyncState) = DotSkin.Stats(
+    private fun mergedStats(state: SyncState, before: SyncState) = SkinStats(
         bestScore = maxOf(state.bestScore, before.bestScore),
         bestPerfectStreak = maxOf(state.bestPerfectStreak, before.bestPerfectStreak),
         bestDailyStreak = maxOf(state.dailyStreak, before.dailyStreak),

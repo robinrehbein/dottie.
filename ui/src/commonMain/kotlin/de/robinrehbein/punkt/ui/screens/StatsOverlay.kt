@@ -25,21 +25,50 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import de.robinrehbein.punkt.R
-import de.robinrehbein.punkt.game.DotScene
-import de.robinrehbein.punkt.game.DotSkin
-import de.robinrehbein.punkt.game.DotSound
 import de.robinrehbein.punkt.game.Goal
+import de.robinrehbein.punkt.game.MedalId
+import de.robinrehbein.punkt.game.MedalPaint
 import de.robinrehbein.punkt.game.Progress
+import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
+import de.robinrehbein.punkt.game.SkinFamily
+import de.robinrehbein.punkt.game.SkinId
+import de.robinrehbein.punkt.game.SkinPaint
+import de.robinrehbein.punkt.game.SkinStats
+import de.robinrehbein.punkt.game.SoundBank
+import de.robinrehbein.punkt.game.SoundSetId
+import de.robinrehbein.punkt.ui.resources.Res
+import de.robinrehbein.punkt.ui.resources.goal_progress
+import de.robinrehbein.punkt.ui.resources.record_label
+import de.robinrehbein.punkt.ui.resources.scenes
+import de.robinrehbein.punkt.ui.resources.skins
+import de.robinrehbein.punkt.ui.resources.sounds
+import de.robinrehbein.punkt.ui.resources.stats
+import de.robinrehbein.punkt.ui.resources.stats_daily_streak
+import de.robinrehbein.punkt.ui.resources.stats_days
+import de.robinrehbein.punkt.ui.resources.stats_goals
+import de.robinrehbein.punkt.ui.resources.stats_months
+import de.robinrehbein.punkt.ui.resources.stats_perfect
+import de.robinrehbein.punkt.ui.resources.stats_runs
+import de.robinrehbein.punkt.ui.resources.stats_total_score
+import de.robinrehbein.punkt.ui.resources.tap_to_close
+import de.robinrehbein.punkt.ui.text.familyTitle
+import de.robinrehbein.punkt.ui.text.medalName
+import de.robinrehbein.punkt.ui.text.sceneHint
+import de.robinrehbein.punkt.ui.text.sceneTitle
+import de.robinrehbein.punkt.ui.text.skinHint
+import de.robinrehbein.punkt.ui.text.skinTitle
+import de.robinrehbein.punkt.ui.text.soundHint
+import de.robinrehbein.punkt.ui.text.soundTitle
 import de.robinrehbein.punkt.ui.theme.Bytesized
 import de.robinrehbein.punkt.ui.world.DotBody
 import de.robinrehbein.punkt.ui.world.GroundSandShade
 import de.robinrehbein.punkt.ui.world.OutlineColor
 import kotlin.math.max
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Die Statistik-Seite: alle Zähler auf einen Blick und darunter die
@@ -57,8 +86,8 @@ import kotlin.math.max
  * Spiel-Tap durchschlägt).
  */
 @Composable
-internal fun StatsOverlay(
-    stats: DotSkin.Stats,
+fun StatsOverlay(
+    stats: SkinStats,
     goals: List<Goal>,
     onClose: () -> Unit
 ) {
@@ -79,43 +108,43 @@ internal fun StatsOverlay(
                 .padding(vertical = 32.dp)
         ) {
             Text(
-                text = stringResource(R.string.stats),
+                text = stringResource(Res.string.stats),
                 style = ScoreShadowStyle,
                 fontSize = 32.sp,
                 color = Color.White,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            StatRow(stringResource(R.string.record_label), stats.bestScore.toString())
-            StatRow(stringResource(R.string.stats_runs), stats.runCount.toString())
-            StatRow(stringResource(R.string.stats_total_score), stats.totalScore.toString())
-            StatRow(stringResource(R.string.stats_days), stats.daysPlayed.toString())
-            StatRow(stringResource(R.string.stats_months), stats.monthsPlayed.toString())
-            StatRow(stringResource(R.string.stats_perfect), stats.bestPerfectStreak.toString())
-            StatRow(stringResource(R.string.stats_daily_streak), stats.bestDailyStreak.toString())
+            StatRow(stringResource(Res.string.record_label), stats.bestScore.toString())
+            StatRow(stringResource(Res.string.stats_runs), stats.runCount.toString())
+            StatRow(stringResource(Res.string.stats_total_score), stats.totalScore.toString())
+            StatRow(stringResource(Res.string.stats_days), stats.daysPlayed.toString())
+            StatRow(stringResource(Res.string.stats_months), stats.monthsPlayed.toString())
+            StatRow(stringResource(Res.string.stats_perfect), stats.bestPerfectStreak.toString())
+            StatRow(stringResource(Res.string.stats_daily_streak), stats.bestDailyStreak.toString())
             // Alle drei Sammlungen als Stand "12/35": Die Zahl allein
             // sagt nichts, erst das Verhältnis zeigt, wie weit es noch ist.
             StatRow(
-                stringResource(R.string.skins),
-                "${DotSkin.unlockedCount(stats)}/${DotSkin.collectableCount()}"
+                stringResource(Res.string.skins),
+                "${SkinPaint.unlockedCount(stats)}/${SkinPaint.collectableCount()}"
             )
             StatRow(
-                stringResource(R.string.scenes),
-                "${DotScene.unlockedCount(stats)}/${DotScene.entries.size}"
+                stringResource(Res.string.scenes),
+                "${ScenePaint.unlockedCount(stats)}/${ScenePaint.ORDER.size}"
             )
             StatRow(
-                stringResource(R.string.sounds),
-                "${DotSound.unlockedCount(stats)}/${DotSound.entries.size}"
+                stringResource(Res.string.sounds),
+                "${SoundBank.unlockedCount(stats)}/${SoundBank.ORDER.size}"
             )
 
             if (goals.isNotEmpty()) {
-                SkinFamilyHeading(stringResource(R.string.stats_goals))
+                SkinFamilyHeading(stringResource(Res.string.stats_goals))
                 goals.forEach { goal -> GoalRow(goal) }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = stringResource(R.string.tap_to_close),
+                text = stringResource(Res.string.tap_to_close),
                 fontFamily = Bytesized,
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.6f)
@@ -151,7 +180,7 @@ private fun StatRow(label: String, value: String) {
 
 /** Ein Ziel mit Balken: "FUSSBALL 218/300" und darunter der Fortschritt. */
 @Composable
-internal fun GoalRow(goal: Goal) {
+fun GoalRow(goal: Goal) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -170,15 +199,15 @@ internal fun GoalRow(goal: Goal) {
 
 /** "FUSSBALL 218/300" — Name der Belohnung plus Stand auf ihrer Achse. */
 @Composable
-internal fun goalLabel(goal: Goal): String {
+fun goalLabel(goal: Goal): String {
     val skin = goal.skin
     val scene = goal.scene
     val name = when {
-        skin != null -> stringResource(DotSkin.of(skin).titleRes)
-        scene != null -> stringResource(DotScene.of(scene).titleRes)
-        else -> stringResource(DotSound.of(goal.sound!!).titleRes)
+        skin != null -> skinTitle(skin)
+        scene != null -> sceneTitle(scene)
+        else -> soundTitle(goal.sound!!)
     }
-    return stringResource(R.string.goal_progress, name, goal.current, goal.target)
+    return stringResource(Res.string.goal_progress, name, goal.current, goal.target)
 }
 
 /**
@@ -187,7 +216,7 @@ internal fun goalLabel(goal: Goal): String {
  * ein weicher Balken wäre der einzige stufenlose Verlauf im ganzen Spiel.
  */
 @Composable
-internal fun GoalBar(
+fun GoalBar(
     fraction: Float,
     modifier: Modifier = Modifier,
     height: Dp = 12.dp

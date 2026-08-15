@@ -1,20 +1,28 @@
 package de.robinrehbein.punkt.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import de.robinrehbein.punkt.R
+import de.robinrehbein.punkt.ui.resources.Res
+import de.robinrehbein.punkt.ui.resources.bytesized_regular
+import org.jetbrains.compose.resources.Font
 
-// Bytesized Sans FontFamily definition
-val Bytesized = FontFamily(
-    Font(R.font.bytesized, FontWeight.Normal),
-)
+// Die Pixel-Schrift des Spiels. Sie liegt seit v2.24 in
+// ui/src/commonMain/composeResources/font und wird ueber Compose
+// Resources geladen — dieselbe Datei fuer Android und iOS.
+//
+// `FontFamily` ist hier eine @Composable-Funktion (Compose Resources
+// laedt die Datei), deshalb kein `val` auf oberster Ebene: Der Zugriff
+// laeuft ueber [bytesized].
+val Bytesized: FontFamily
+    @Composable get() = FontFamily(Font(Res.font.bytesized_regular, FontWeight.Normal))
 
 // Typography definition using Bytesized Sans
-val Typography = Typography(
+val Typography: Typography
+    @Composable get() = Typography(
     // Display styles (large headings)
     displayLarge = TextStyle(
         fontFamily = Bytesized,
