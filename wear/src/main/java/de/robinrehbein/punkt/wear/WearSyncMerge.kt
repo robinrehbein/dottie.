@@ -1,5 +1,7 @@
 package de.robinrehbein.punkt.wear
 
+import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SyncState
 
 /**
@@ -42,4 +44,27 @@ internal object WearSyncMerge {
         seasonEarned = before.seasonEarned or incoming.seasonEarned,
         patronOwned = patronOwned
     )
+
+    /**
+     * Welche Kulisse applySync übernehmen soll — null heißt: keine, der
+     * bestehende Stand (samt Zeitstempel) bleibt stehen. Gleiche Regel wie
+     * beim Skin: Nur eine WIRKLICH neuere Wahl schlägt die bestehende, und
+     * nur wenn die zusammengeführten Stände sie hergeben.
+     *
+     * Die Uhr wählt selbst nie eine Kulisse (sie spiegelt nur das
+     * Telefon), trotzdem lohnt die Prüfung: Für WELTRAUM ("alle anderen
+     * Kulissen gesammelt") zählen dieselben Achsen wie bei den Skins, und
+     * die Uhr kennt die zusammengeführten Stände hier oft eher als die
+     * eigenen Prefs sie schon zeigen.
+     */
+    fun sceneToAdopt(
+        before: SyncState,
+        incoming: SyncState,
+        patronOwned: Boolean
+    ): SceneId? {
+        if (incoming.sceneChangedAt <= before.sceneChangedAt) return null
+        val merged = skinStats(before, incoming, patronOwned).toSkinStats()
+        val scene = ScenePaint.fromName(incoming.scene)
+        return if (ScenePaint.isUnlocked(scene, merged)) scene else null
+    }
 }

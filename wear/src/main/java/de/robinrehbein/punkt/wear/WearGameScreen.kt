@@ -97,7 +97,8 @@ internal fun WearGameScreen(controller: WearGameController) {
                     game = controller.game,
                     skin = controller.skin,
                     hour = controller.clockHour,
-                    month = controller.clockMonth
+                    month = controller.clockMonth,
+                    scene = controller.scene
                 )
             }
 
