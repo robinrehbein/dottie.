@@ -10,7 +10,6 @@
 "today_score" = "TODAY: %1$d";
 "streak_one" = "STREAK: 1 DAY";
 "streak_many" = "STREAK: %1$d DAYS";
-"run_number" = "RUN #%1$d";
 
 /* Einstellungen — das Blatt hinter dem Zahnrad. Die drei Schalter
    standen frueher als Icons im Startbild; hier tragen sie Klartext. */

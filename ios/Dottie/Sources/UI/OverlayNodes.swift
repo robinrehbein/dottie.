@@ -277,6 +277,64 @@ final class PixelButton: SKNode {
     }
 }
 
+/// Rotes Zähler-Abzeichen an der Ecke eines Knopfes — im Startbild hängt
+/// es am DAILY und trägt die Tage der laufenden Serie.
+///
+/// Es ersetzt die Zeile "HEUTE: 12 · SERIE: 7": Eine Serie ist kein
+/// Messwert, den man liest, sondern ein Besitz, den man nicht verlieren
+/// will. Als Zahl am Knopf steht sie genau dort, wo der nächste Tag
+/// geholt wird — und sie kostet keine eigene Zeile.
+///
+/// Der Kasten wächst mit der Stelligkeit nach links, die rechte Kante
+/// bleibt stehen: Eine dreistellige Serie (ja, die gibt es) schiebt sich
+/// sonst in den Knopf nebenan. Die Position des Knotens ist deshalb die
+/// rechte Kante des Abzeichens, nicht seine Mitte.
+final class PixelBadge: SKNode {
+
+    private let border = SKSpriteNode(color: Palette.outline, size: .zero)
+    private let body = SKSpriteNode(color: Palette.recordRed, size: .zero)
+    private let label = PixelLabel(text: "", fontSize: 15, color: .white, shadow: false)
+
+    private static let height: CGFloat = 20
+    private static let edge: CGFloat = 2
+
+    override init() {
+        super.init()
+        addChild(border)
+        addChild(body)
+        addChild(label)
+        isHidden = true
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        return nil
+    }
+
+    /// Die Serienlänge. Unter 1 verschwindet das Abzeichen ganz — ein
+    /// Abzeichen mit einer Null darauf wäre eine Auszeichnung fürs Nichts.
+    var count: Int = 0 {
+        didSet {
+            isHidden = count < 1
+            guard count >= 1 else {
+                return
+            }
+            let text = String(count)
+            label.text = text
+            let width = max(PixelBadge.height, 10 + 9 * CGFloat(text.count))
+            body.size = CGSize(width: width, height: PixelBadge.height)
+            border.size = CGSize(
+                width: width + PixelBadge.edge * 2,
+                height: PixelBadge.height + PixelBadge.edge * 2
+            )
+            // Alles nach links vom Ursprung: der bleibt die rechte Kante.
+            let center = CGPoint(x: -width / 2, y: 0)
+            body.position = center
+            border.position = center
+            label.position = center
+        }
+    }
+}
+
 /// Der Fortschrittsbalken im Pixel-Look: dunkler Rahmen, Sandbett, gold
 /// gefüllte Blöcke. Der Füllstand rastet auf ganze Blöcke ein
 /// (`Progress.barBlocks`) — ein weicher Balken wäre der einzige
@@ -370,14 +428,22 @@ final class HudOverlay: SKNode {
     }
 }
 
-/// Startscreen: Titel, Rekord, blinkender Hinweis, DAILY/SKINS/STATS —
-/// und oben rechts das Zahnrad, hinter dem Ton, Erinnerung und Hilfe
-/// liegen.
+/// Startscreen in der Fassung "ein Ziel": Titel, REKORD, der blinkende
+/// Hinweis, die Reihe DAILY/SKINS/STATS — und eine einzige Zeile, die
+/// sagt, was als Nächstes fällt.
+///
+/// Vorher standen hier drei Icon-Knöpfe (Ton, Erinnerung, Hilfe), die
+/// Zeile "HEUTE: 12 · SERIE: 7" und "VERSUCH #218". Elf Elemente, von
+/// denen keines beantwortete, warum man jetzt tippen sollte. Die
+/// Schalter liegen seither hinter dem Zahnrad, die Zähler in der
+/// Statistik, die Serie hängt als Abzeichen am DAILY-Knopf — und der
+/// gewonnene Platz trägt das nächste Ziel.
 final class ReadyOverlay: SKNode {
 
     private let bestLabel: PixelLabel
-    private let statsLabel: PixelLabel
-    private let runLabel: PixelLabel
+    private let goalLabel: PixelLabel
+    private let goalBar: GoalBar
+    private let streakBadge = PixelBadge()
     private var buttons: [PixelButton] = []
 
     init(sceneSize: CGSize, safeTop: CGFloat, safeBottom: CGFloat) {
@@ -385,8 +451,12 @@ final class ReadyOverlay: SKNode {
         let h = sceneSize.height
 
         bestLabel = PixelLabel(text: "", fontSize: 22, color: .white)
-        statsLabel = PixelLabel(text: "", fontSize: 15, color: Palette.dotBody)
-        runLabel = PixelLabel(text: "", fontSize: 16, color: UIColor(white: 1, alpha: 0.8))
+        // Eine Zeile, ein Balken — dieselbe Mechanik wie im Game-Over.
+        // 15 Punkt und eine Umbruchbreite, weil die längste Fassung
+        // ("NAECHSTER SKIN: JAHRESZEIT — 2/3 MONATE GESPIELT") auch auf
+        // 375 Punkt Breite noch ganz dastehen muss.
+        goalLabel = PixelLabel(text: "", fontSize: 15, color: .white, maxWidth: w - 40)
+        goalBar = GoalBar(width: min(w - 64, 240))
         super.init()
 
         // "DOTTIE." ist mit 7 Zeichen schmal genug für die vollen 64pt.
@@ -459,10 +529,26 @@ final class ReadyOverlay: SKNode {
         statsButton.position = CGPoint(x: w / 2 + buttonStep, y: buttonY)
         addChild(statsButton)
 
-        statsLabel.position = CGPoint(x: w / 2, y: safeBottom + 66)
-        addChild(statsLabel)
-        runLabel.position = CGPoint(x: w / 2, y: safeBottom + 42)
-        addChild(runLabel)
+        // Das Abzeichen hängt in der oberen rechten Ecke des DAILY-Knopfes.
+        // Seine rechte Kante steht 2 Punkt neben dem Knopf und damit im
+        // 10-Punkt-Zwischenraum zum SKINS-Knopf; wachsen kann es nur nach
+        // links, also über den eigenen Knopf. Es kommt nach allen Knöpfen
+        // in den Baum: Bei gleicher zPosition entscheidet die Reihenfolge,
+        // wer oben liegt.
+        streakBadge.position = CGPoint(
+            x: dailyButton.position.x + buttonSize.width / 2 + 2,
+            y: dailyButton.position.y + buttonSize.height / 2 - 2
+        )
+        addChild(streakBadge)
+
+        // Das nächste Ziel unter der Knopfreihe, wo vorher die Zahlen
+        // standen. 30 Punkt zwischen Zeile und Balken: Bricht die Zeile
+        // auf schmalen Geräten um, wächst sie nach unten in genau diesen
+        // Abstand hinein und stößt trotzdem nicht an den Balken.
+        goalLabel.position = CGPoint(x: w / 2, y: safeBottom + 76)
+        addChild(goalLabel)
+        goalBar.position = CGPoint(x: w / 2, y: safeBottom + 46)
+        addChild(goalBar)
 
         buttons = [settingsButton, dailyButton, skinsButton, statsButton]
     }
@@ -471,27 +557,21 @@ final class ReadyOverlay: SKNode {
         return nil
     }
 
-    func refresh(
-        bestScore: Int,
-        runNumber: Int,
-        dailyBest: Int,
-        dailyStreak: Int
-    ) {
+    /// `goal` ist das nächstliegende offene Ziel; nil heißt "alles
+    /// gesammelt" — dann fällt die Zeile ersatzlos weg, statt einen
+    /// vollen Balken ohne Zweck zu zeigen.
+    func refresh(bestScore: Int, dailyStreak: Int, goal: Goal?) {
         bestLabel.text = L10n.format("best_score", bestScore)
         bestLabel.isHidden = bestScore <= 0
 
-        var parts: [String] = []
-        if dailyBest > 0 {
-            parts.append(L10n.format("today_score", dailyBest))
-        }
-        if dailyStreak > 0 {
-            parts.append(L10n.streakLabel(days: dailyStreak))
-        }
-        statsLabel.text = parts.joined(separator: "  ·  ")
-        statsLabel.isHidden = parts.isEmpty
+        streakBadge.count = dailyStreak
 
-        runLabel.text = L10n.format("run_number", runNumber + 1)
-        runLabel.isHidden = runNumber <= 0
+        if let goal = goal {
+            goalLabel.text = L10n.goalLine(goal)
+            goalBar.fraction = goal.fraction
+        }
+        goalLabel.isHidden = goal == nil
+        goalBar.isHidden = goal == nil
     }
 
     func buttonHit(at point: CGPoint) -> String? {

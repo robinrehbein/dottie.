@@ -578,14 +578,16 @@ final class GameScene: SKScene {
         readyOverlay?.isHidden = false
     }
 
-    /// Nur die Anzeige nachziehen, ohne am Sichtbaren zu rühren.
+    /// Rekord, Serien-Abzeichen und Ziel-Zeile auf den Stand bringen.
+    /// Läuft bei jeder Rückkehr ins Startbild — Serie und Ziel können sich
+    /// im Lauf davor bewegt haben.
     private func refreshReady() {
         let today = DailyChallenge.todayEpochDay()
         readyOverlay?.refresh(
             bestScore: store.bestScore,
-            runNumber: store.runCount,
-            dailyBest: store.dailyBestFor(epochDay: today),
-            dailyStreak: store.dailyStreakPreviewFor(epochDay: today)
+            dailyStreak: store.dailyStreakPreviewFor(epochDay: today),
+            // Dasselbe Ziel wie im Game-Over: das nächstliegende offene.
+            goal: goals(limit: 1).first
         )
     }
 

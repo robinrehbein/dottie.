@@ -9,7 +9,6 @@
 "today_score" = "HEUTE: %1$d";
 "streak_one" = "SERIE: 1 TAG";
 "streak_many" = "SERIE: %1$d TAGE";
-"run_number" = "VERSUCH #%1$d";
 
 /* Einstellungen — das Blatt hinter dem Zahnrad. Die drei Schalter
    standen frueher als Icons im Startbild; hier tragen sie Klartext. */
