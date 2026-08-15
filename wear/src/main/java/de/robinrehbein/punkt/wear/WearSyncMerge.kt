@@ -27,7 +27,12 @@ internal object WearSyncMerge {
     ): WearDotSkin.Stats = WearDotSkin.Stats(
         bestScore = maxOf(before.bestScore, incoming.bestScore),
         bestPerfectStreak = maxOf(before.bestPerfectStreak, incoming.bestPerfectStreak),
-        bestDailyStreak = maxOf(before.dailyStreak, incoming.dailyStreak),
+        // Die Daily-Serie zählt hier mit ihrem BESTWERT, nicht mit dem
+        // laufenden Stand: Der fällt nach einer Lücke auf 1 zurück und
+        // würde einen längst verdienten AURORA wieder wegnehmen. Dass der
+        // Bestwert auch bei einer Gegenseite ohne dieses Feld nie unter
+        // deren laufende Serie rutscht, stellt StatsSync beim Lesen sicher.
+        bestDailyStreak = maxOf(before.bestDailyStreak, incoming.bestDailyStreak),
         runCount = maxOf(before.runCount, incoming.runCount),
         totalScore = maxOf(before.totalScore, incoming.totalScore),
         daysPlayed = maxOf(before.daysPlayed, incoming.daysPlayed),

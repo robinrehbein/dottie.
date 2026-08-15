@@ -34,6 +34,14 @@ private const val KEY_DAILY_BEST = "daily_best"
 private const val KEY_DAILY_DAY = "daily_day"
 private const val KEY_DAILY_STREAK = "daily_streak"
 
+/**
+ * Bestwert der Daily-Serie — der Wert, an dem die Freischaltungen hängen
+ * (PRISMA, KOI, AURORA, DISCO). [KEY_DAILY_STREAK] taugt dafür nicht: Die
+ * laufende Serie fällt nach einer Lücke auf 1 zurück und würde bereits
+ * gefeierte Skins wieder zusperren. Verdient bleibt verdient.
+ */
+private const val KEY_BEST_DAILY_STREAK = "best_daily_streak"
+
 /** Wann der Skin zuletzt bewusst gewechselt wurde — nur für den Abgleich. */
 private const val KEY_SKIN_CHANGED = "skin_changed_at"
 
@@ -261,9 +269,21 @@ internal class WearGameController(context: Context) {
     // ===== Skin-Wahl =====
 
     /**
+     * Beste je erreichte Daily-Serie, wie bestDailyStreak im Phone-Store.
+     * Der Vergleich mit der gespeicherten Serie ist zugleich die
+     * Migration: Wer vor v2.23 eine Serie aufgebaut hat, hat den
+     * Schlüssel noch nicht — dann ist sie der beste bekannte Wert.
+     */
+    private fun bestDailyStreak(): Int = maxOf(
+        prefs.getInt(KEY_BEST_DAILY_STREAK, 0),
+        prefs.getInt(KEY_DAILY_STREAK, 0)
+    )
+
+    /**
      * Alle Stände, aus denen sich Freischaltungen ableiten — wie stats()
-     * im Phone-Store. Für die Daily-Serie zählt der gespeicherte Stand,
-     * nicht die Anzeige-Vorschau (die fällt nach einer Lücke auf 0).
+     * im Phone-Store. Für die Daily-Serie zählt der Bestwert, nicht die
+     * Anzeige-Vorschau (die fällt nach einer Lücke auf 0) und auch nicht
+     * die laufende Serie (die fällt nach einer Lücke auf 1).
      *
      * patronOwned kommt aus dem lokalen Spiegel des Play-Kaufs: Wer das
      * Gönner-Paket gekauft hat, sieht seine Skins auch auf der Uhr — der
@@ -272,7 +292,7 @@ internal class WearGameController(context: Context) {
     private fun skinStats(): WearDotSkin.Stats = WearDotSkin.Stats(
         bestScore = bestScore,
         bestPerfectStreak = bestPerfectStreak,
-        bestDailyStreak = prefs.getInt(KEY_DAILY_STREAK, 0),
+        bestDailyStreak = bestDailyStreak(),
         runCount = prefs.getInt(KEY_RUNS, 0),
         totalScore = prefs.getInt(KEY_TOTAL_SCORE, 0),
         daysPlayed = prefs.getInt(KEY_DAYS_PLAYED, 0),
@@ -366,6 +386,7 @@ internal class WearGameController(context: Context) {
         dailyDay = prefs.getLong(KEY_DAILY_DAY, 0L),
         dailyBest = prefs.getInt(KEY_DAILY_BEST, 0),
         dailyStreak = prefs.getInt(KEY_DAILY_STREAK, 0),
+        bestDailyStreak = bestDailyStreak(),
         totalScore = prefs.getInt(KEY_TOTAL_SCORE, 0),
         daysPlayed = prefs.getInt(KEY_DAYS_PLAYED, 0),
         lastPlayedDay = prefs.getLong(KEY_LAST_PLAYED_DAY, 0L),
@@ -399,6 +420,16 @@ internal class WearGameController(context: Context) {
             editor.putLong(KEY_DAILY_DAY, state.dailyDay)
             editor.putInt(KEY_DAILY_BEST, state.dailyBest)
             editor.putInt(KEY_DAILY_STREAK, state.dailyStreak)
+        }
+        // Getrennt vom Block darüber: Die laufende Serie darf beim
+        // Abgleich auch kleiner werden (eine Lücke reißt sie), der
+        // Bestwert nie. Verglichen wird mit dem ROHEN Wert aus den Prefs:
+        // Ein Bestand ohne den Schlüssel leiht sich seinen Bestwert von
+        // der laufenden Serie — genau die wird hier gerade womöglich
+        // kleiner geschrieben.
+        val bestDaily = maxOf(state.bestDailyStreak, before.bestDailyStreak)
+        if (bestDaily > prefs.getInt(KEY_BEST_DAILY_STREAK, 0)) {
+            editor.putInt(KEY_BEST_DAILY_STREAK, bestDaily)
         }
         if (state.totalScore > before.totalScore) {
             editor.putInt(KEY_TOTAL_SCORE, state.totalScore)
@@ -631,6 +662,10 @@ internal class WearGameController(context: Context) {
             )
             prefs.edit()
                 .putInt(KEY_DAILY_STREAK, streak)
+                // Der Bestwert wandert bei jedem Schreiben der Serie mit —
+                // fällt sie gleich hier auf 1 zurück, bleibt oben stehen,
+                // was einmal erreicht war.
+                .putInt(KEY_BEST_DAILY_STREAK, maxOf(bestDailyStreak(), streak))
                 .putLong(KEY_DAILY_DAY, epochDay)
                 .putInt(KEY_DAILY_BEST, score)
                 .apply()
