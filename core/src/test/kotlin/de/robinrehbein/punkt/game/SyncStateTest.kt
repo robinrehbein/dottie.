@@ -142,6 +142,49 @@ class SyncStateTest {
     }
 
     @Test
+    fun `der Bestwert der Daily-Serie faellt nie`() {
+        // Das Telefon hat 14 Tage am Stück gespielt und dabei AURORA
+        // verdient; jetzt steht es nach einer Lücke wieder bei 1. Die Uhr
+        // kennt nur ihre eigenen drei Tage. Nach dem Abgleich müssen
+        // trotzdem 14 dastehen — sonst sperrt sich AURORA wieder zu.
+        val telefon = phone.copy(dailyDay = 100L, dailyStreak = 1, bestDailyStreak = 14)
+        val uhr = watch.copy(dailyDay = 100L, dailyStreak = 3, bestDailyStreak = 3)
+        assertEquals(14, telefon.mergedWith(uhr).bestDailyStreak)
+        assertEquals(14, uhr.mergedWith(telefon).bestDailyStreak)
+
+        val merged = telefon.mergedWith(uhr)
+        assertEquals(merged, merged.mergedWith(merged))
+        assertEquals(merged, merged.mergedWith(uhr))
+    }
+
+    @Test
+    fun `eine geraeteuebergreifende Serie hebt auch den Bestwert`() {
+        // Gestern auf der Uhr (5 Tage), heute am Telefon (das von gestern
+        // nichts wusste): Zusammen sind es 6 — eine Serie, die keine der
+        // beiden Seiten für sich je gesehen hat. Der Bestwert muss ihr
+        // folgen, sonst hinge er hinter der laufenden Serie zurück.
+        val gesternAufDerUhr = watch.copy(dailyDay = 99L, dailyStreak = 5, bestDailyStreak = 5)
+        val heuteAmTelefon = phone.copy(dailyDay = 100L, dailyStreak = 1, bestDailyStreak = 5)
+
+        val merged = heuteAmTelefon.mergedWith(gesternAufDerUhr)
+        assertEquals(6, merged.dailyStreak)
+        assertEquals(6, merged.bestDailyStreak)
+        assertEquals(merged, gesternAufDerUhr.mergedWith(heuteAmTelefon))
+        // Ein zweiter Durchlauf darf auch den Bestwert nicht weiter hochzaehlen.
+        assertEquals(merged, merged.mergedWith(gesternAufDerUhr))
+    }
+
+    @Test
+    fun `eine alte Gegenseite ohne Bestwert nimmt keinen weg`() {
+        // Vor v2.23 gab es das Feld nicht; eine solche Nachricht kommt mit
+        // 0 an. Der eigene Bestwert darf davon unberührt bleiben.
+        val alt = watch.copy(dailyDay = 100L, dailyStreak = 2, bestDailyStreak = 0)
+        val neu = phone.copy(dailyDay = 100L, dailyStreak = 2, bestDailyStreak = 21)
+        assertEquals(21, neu.mergedWith(alt).bestDailyStreak)
+        assertEquals(21, alt.mergedWith(neu).bestDailyStreak)
+    }
+
+    @Test
     fun `zusammenfuehren ist kommutativ`() {
         assertEquals(phone.mergedWith(watch), watch.mergedWith(phone))
     }

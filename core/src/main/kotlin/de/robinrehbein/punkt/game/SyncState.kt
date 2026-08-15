@@ -26,6 +26,19 @@ data class SyncState(
     val dailyBest: Int = 0,
     val dailyStreak: Int = 0,
     /**
+     * Beste je erreichte Daily-Serie. Anders als [dailyStreak] fällt sie
+     * nie zurück: An ihr hängen die Freischaltungen (PRISMA, KOI, AURORA,
+     * DISCO, Kulisse BERG), und verdient bleibt verdient — eine Lücke im
+     * Kalender darf einen gefeierten Skin nicht wieder zusperren.
+     *
+     * Fehlt das Feld in einer Nachricht, weil die Gegenseite noch eine
+     * ältere App fährt, bleibt es 0. Verloren geht dadurch nichts: Das
+     * Zusammenführen nimmt ohnehin den größeren Wert, und beim Lesen aus
+     * dem Data Layer tritt die dort laufende Serie als Untergrenze ein
+     * (siehe StatsSync).
+     */
+    val bestDailyStreak: Int = 0,
+    /**
      * Summe aller je erspielten Punkte. Wie [runCount] keine echte Summe
      * über beide Geräte — ohne Verlaufswissen ließe sie sich nicht bilden.
      * Das Maximum ist die einzige Wahl, die beim wiederholten
@@ -97,6 +110,11 @@ data class SyncState(
             dailyDay = daily.dailyDay,
             dailyBest = daily.dailyBest,
             dailyStreak = daily.dailyStreak,
+            // Der Bestwert zählt auch die soeben zusammengeführte Serie
+            // mit: Wer gestern auf der Uhr und heute am Telefon gespielt
+            // hat, steht danach bei einer Serie, die keine der beiden
+            // Seiten für sich je gesehen hat.
+            bestDailyStreak = maxOf(bestDailyStreak, other.bestDailyStreak, daily.dailyStreak),
             totalScore = maxOf(totalScore, other.totalScore),
             daysPlayed = maxOf(daysPlayed, other.daysPlayed),
             lastPlayedDay = maxOf(lastPlayedDay, other.lastPlayedDay),
