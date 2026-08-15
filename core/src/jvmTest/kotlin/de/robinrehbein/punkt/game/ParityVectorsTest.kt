@@ -11,7 +11,7 @@ import java.io.File
  * Schlägt dieser Test fehl, hat sich das Verhalten von :core geändert.
  * Das ist erlaubt — dann aber bewusst:
  *
- *     ./gradlew :core:test -Dparity.update=true
+ *     ./gradlew :core:jvmTest -Dparity.update=true
  *
  * schreibt die Datei neu. Der Diff zeigt anschließend genau, was sich für
  * die Ports in ios/ und web/ ändert; sie müssen nachgezogen werden, sonst
@@ -33,12 +33,12 @@ class ParityVectorsTest {
 
         assertTrue(
             "Datei fehlt: ${file.absolutePath} — mit " +
-                "./gradlew :core:test -Dparity.update=true erzeugen",
+                "./gradlew :core:jvmTest -Dparity.update=true erzeugen",
             file.exists()
         )
         assertEquals(
             "Die Kotlin-Engine liefert andere Werte als parity/golden-vectors.txt. " +
-                "Wenn das gewollt ist: ./gradlew :core:test -Dparity.update=true " +
+                "Wenn das gewollt ist: ./gradlew :core:jvmTest -Dparity.update=true " +
                 "und den Port in ios/ nachziehen.",
             file.readText(),
             generated

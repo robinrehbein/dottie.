@@ -98,7 +98,7 @@ behaupten das auch nicht.
 ## Ausführen
 
 ```sh
-./gradlew :core:test          # Kotlin: Datei gegen die Engine prüfen
+./gradlew :core:jvmTest          # Kotlin: Datei gegen die Engine prüfen
 ```
 
 Swift läuft nur auf einem Mac beziehungsweise in der CI:
@@ -117,7 +117,7 @@ Die Datei ist erzeugt und wird nicht von Hand bearbeitet. Wenn sich das
 Verhalten von `:core` absichtlich ändert:
 
 ```sh
-./gradlew :core:test -Dparity.update=true
+./gradlew :core:jvmTest -Dparity.update=true
 ```
 
 Der Diff der Datei zeigt dann genau, was sich für den Port ändert. Wer

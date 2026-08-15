@@ -1,21 +1,54 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
-// Reines Kotlin-JVM-Modul (keine Android-Abhängigkeiten): enthält die
-// Spiellogik, die auch ein künftiges :wear-Modul ohne Android-Kontext
-// wiederverwenden kann.
+// Multiplattform-Modul mit der kompletten Spiellogik — die einzige
+// Quelle der Wahrheit für Regeln, Farben und Freischaltungen.
+//
+// Ziele:
+//   jvm()                 -> :app, :wear und :sync (Android liest die
+//                            JVM-Variante; Kotlins Plattform-Regel lässt
+//                            androidJvm-Konsumenten jvm-Produzenten nutzen)
+//   iosArm64              -> iPhone
+//   iosSimulatorArm64     -> Simulator auf Apple-Silicon-Macs und in der CI
+//
+// Bis v2.23 war das ein reines Kotlin-JVM-Modul, und der iOS-Port hat die
+// Spiellogik von Hand in Swift nachgebaut. Der Handport entfällt damit —
+// siehe ARCHITEKTUR.md.
+//
+// Die Apple-Ziele lassen sich nur auf einem Mac übersetzen. Auf Linux
+// konfiguriert Gradle sie trotzdem; gebaut werden sie dort nicht (siehe
+// kotlin.native.ignoreDisabledTargets in gradle.properties).
 plugins {
-    `java-library`
-    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.multiplatform)
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+kotlin {
+    jvm()
+
+    iosArm64()
+    iosSimulatorArm64()
+
+    sourceSets {
+        val commonMain by getting
+
+        val jvmTest by getting {
+            dependencies {
+                // Die Tests bleiben JVM-only, und zwar bewusst: Sie
+                // erzeugen und lesen parity/golden-vectors.txt, und
+                // Dateizugriff hat in commonMain keine Entsprechung.
+                implementation(libs.junit)
+            }
+        }
+    }
 }
 
-tasks.withType<KotlinCompile>().configureEach {
-    kotlinOptions {
-        jvmTarget = "11"
+// Bytecode-Ziel 11 wie bisher — die Android-Module compilieren ebenfalls
+// gegen 11, ein höherer Wert hier würde sie brechen. Ueber die Tasks
+// gesetzt statt über kotlin { jvm { compilerOptions } }: Letzteres ist in
+// Kotlin 2.0 noch experimentell und meldet das bei jedem Lauf.
+tasks.withType<KotlinJvmCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
     }
 }
 
@@ -31,12 +64,4 @@ tasks.withType<Test>().configureEach {
     // Beim Neuschreiben darf der Task nicht als UP-TO-DATE durchgewunken
     // werden — sonst laeuft er gar nicht erst an.
     outputs.upToDateWhen { parityUpdate != "true" }
-}
-
-dependencies {
-    // Nur zum Testen: Die Skin-Muster (SkinPaint) rechnen hier, also
-    // gehören ihre Tests auch hierher. Die restliche Spiellogik wird
-    // weiterhin aus :app geprüft (TimingGameTest), wo der Test-Stack
-    // ohnehin steht.
-    testImplementation(libs.junit)
 }

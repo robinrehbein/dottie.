@@ -1,7 +1,7 @@
 # Dottie. — Paritäts-Vektoren zwischen der Kotlin-Engine und dem Swift-Port.
 #
 # ERZEUGT — nicht von Hand bearbeiten. Neu schreiben mit:
-#   ./gradlew :core:test -Dparity.update=true
+#   ./gradlew :core:jvmTest -Dparity.update=true
 #
 # Quelle der Wahrheit ist :core. Ändert sich hier eine Zahl, ist das
 # die Ansage an ios/, nachzuziehen — siehe parity/README.md.

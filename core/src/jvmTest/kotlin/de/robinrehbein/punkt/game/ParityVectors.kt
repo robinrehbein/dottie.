@@ -146,7 +146,7 @@ object ParityVectors {
         appendLine("# Dottie. — Paritäts-Vektoren zwischen der Kotlin-Engine und dem Swift-Port.")
         appendLine("#")
         appendLine("# ERZEUGT — nicht von Hand bearbeiten. Neu schreiben mit:")
-        appendLine("#   ./gradlew :core:test -Dparity.update=true")
+        appendLine("#   ./gradlew :core:jvmTest -Dparity.update=true")
         appendLine("#")
         appendLine("# Quelle der Wahrheit ist :core. Ändert sich hier eine Zahl, ist das")
         appendLine("# die Ansage an ios/, nachzuziehen — siehe parity/README.md.")

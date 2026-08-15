@@ -425,9 +425,9 @@ Treffer für Treffer:
 parity/golden-vectors.txt
 ```
 
-Beide Seiten prüfen sich dagegen (`./gradlew :core:test`, `xcodebuild
+Beide Seiten prüfen sich dagegen (`./gradlew :core:jvmTest`, `xcodebuild
 test` in der iOS-CI). Ändert sich `:core` absichtlich, schreibt
-`./gradlew :core:test -Dparity.update=true` die Datei neu — der Diff
+`./gradlew :core:jvmTest -Dparity.update=true` die Datei neu — der Diff
 zeigt dann, was in `ios/` nachzuziehen ist. Alles Weitere in
 [parity/README.md](parity/README.md).
 
