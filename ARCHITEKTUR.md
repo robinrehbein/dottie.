@@ -154,34 +154,50 @@ Sammlungsstand ohne Saison.
 Nutzen hat das bisher nur die Wartung: Solange iOS SpriteKit benutzt,
 laeuft die geteilte Oberflaeche nur auf Android.
 
+### Gebaut: die Plattform-Grenze
+
+Zwischen der geteilten Oberflaeche und dem Geraet stehen jetzt drei
+Schnittstellen in `:ui`:
+
+- **`KeyValueStore`** — vier Leser und ein Schreib-Block. Darueber liegt
+  `GameStore` mit den Spielstands-Regeln: Tages-Serie, Saison-Fenster,
+  Tagespass, Abgleich mit der Uhr. Sie lagen bis dahin doppelt (470
+  Zeilen Kotlin, 269 Zeilen Swift) und waren an einer Stelle schon
+  auseinandergelaufen. Android legt die Schnittstelle auf
+  SharedPreferences, iOS bekommt NSUserDefaults.
+- **`GameSounds`** und **`GameFeedback`** — was klingt und ruettelt,
+  steht in `:core`; hinter der Schnittstelle steht nur, wie es zum
+  Lautsprecher kommt (SoundPool gegen AVAudioEngine).
+- **`epochMillis()`** und **`deviceHourAndMonth()`** als
+  `expect`/`actual`: Kotlins Standardbibliothek hat keine gemeinsame Uhr.
+
+Der iOS-Workflow uebersetzt `:ui` seither auch fuer iOS. Der Schritt hat
+sich sofort bezahlt gemacht: Fuenf Stellen in `commonMain` liefen nur,
+weil das Android-Ziel die JVM-Bibliothek mitbringt (`Integer.bitCount`,
+`Math.PI`, `java.time.LocalDateTime`) — sie waeren sonst erst beim
+iOS-Einstieg aufgefallen.
+
 ### Offen: der Controller und der iOS-Einstieg
 
-`TimingGameScreen` (1 600 Zeilen) ist die letzte Datei der Oberflaeche,
-die in `:app` steckt — und sie ist kein Bildschirm, sondern die
-Verdrahtung. Sie beruehrt neun Android-Dienste: rund 40 Aufrufe an
-`ScoreStore` und 25 an Werbung, Kauf, Bestenlisten, Abgleich,
-Benachrichtigungen und Teilen.
+`TimingGameScreen` (1 600 Zeilen) ist die letzte Datei der Oberflaeche in
+`:app` — und sie ist kein Bildschirm, sondern die Verdrahtung. Nach den
+drei Schnittstellen bleiben 25 Beruehrungspunkte, die wirklich nur
+Android hat: Werbung, Kauf, Bestenlisten, Abgleich mit der Uhr,
+Benachrichtigungs-Berechtigung, Teilen.
 
 Was noch zu tun ist:
 
-1. **Schnittstellen statt Dienste.** Ein `GameStore` fuer die Persistenz
-   (die Regeln — Tagespass, Saison-Fenster, Serien — sind auf beiden
-   Plattformen dieselben und liegen heute doppelt: 470 Zeilen Kotlin in
-   `app/data/ScoreStore.kt`, 269 Zeilen Swift in
-   `ios/.../Support/ScoreStore.swift`), dazu `GameSounds` und
-   `GameFeedback`. Werbung, Kauf, Bestenlisten, Abgleich und Teilen
-   bleiben Android-only und haengen hinter optionalen Rueckrufen, die auf
-   iOS nichts tun.
-2. **`TimingGameScreen` nach `:ui`**, mit diesen Schnittstellen als
-   Parametern; `:app` behaelt eine duenne Schale, die sie fuellt.
-3. **`expect`/`actual`** fuer den Schluessel-Wert-Speicher
-   (SharedPreferences / NSUserDefaults), Audio und Haptik.
-4. **iOS-Einstieg** ueber `ComposeUIViewController` in `iosMain`;
-   `ios/project.yml` linkt ein zweites Framework. Erst dann fallen
+1. **`TimingGameScreen` nach `:ui`**, mit `GameStore`, `GameSounds` und
+   `GameFeedback` als Parametern. Die 25 Android-Punkte haengen an
+   optionalen Rueckrufen, die auf iOS nichts tun; `:app` behaelt eine
+   duenne Schale, die sie fuellt.
+2. **iOS-Umsetzungen** in `iosMain`: `NSUserDefaults` fuer den Speicher,
+   `UIImpactFeedbackGenerator` fuer die Haptik, AVAudioEngine fuer den
+   Klang.
+3. **iOS-Einstieg** ueber `ComposeUIViewController`; `ios/project.yml`
+   linkt ein zweites Framework. Erst dann fallen
    `ios/Dottie/Sources/UI` (2 900 Zeilen SpriteKit) und
-   `CoreBridge.swift` weg. Was in Swift bleiben duerfte, sind die
-   Plattform-Adapter fuer Audio, Haptik und Benachrichtigungen — falls
-   sich AVFoundation aus Kotlin/Native als zu unhandlich erweist.
+   `CoreBridge.swift` weg.
 
 **Kosten:** Die iOS-App wird ein Kotlin/Native-Compose-Build (App-Größe
 plus etwa 8–12 MB für Compose und Skia, spürbar längere CI-Läufe). AdMob,
