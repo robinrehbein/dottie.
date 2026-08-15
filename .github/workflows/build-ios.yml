@@ -10,8 +10,10 @@ name: Build iOS
 # privaten Repos das Zehnfache kosten. Seit das Repo öffentlich ist,
 # entfällt der Grund: Für öffentliche Repositories sind die Läufe
 # kostenlos. Deshalb jetzt automatisch — bei Änderungen am
-# iOS-Verzeichnis, an diesem Workflow und an der Vergleichsgrundlage
-# (parity/ und core/, denn die geben die Soll-Werte vor).
+# iOS-Verzeichnis, an diesem Workflow und an den Modulen, die in den
+# Lauf hineinragen: core/ (die Spiellogik, die als XCFramework gebaut
+# wird), parity/ (die Soll-Werte) und ui/ — das hat eigene Apple-Ziele,
+# und Gradle konfiguriert es beim XCFramework-Bau mit.
 #
 # Die Arbeits-Branches heißen alle claude/** und stehen deshalb wie in
 # build-apk.yml direkt im Push-Trigger; ein zusätzlicher
@@ -25,6 +27,7 @@ on:
       - "ios/**"
       - "parity/**"
       - "core/**"
+      - "ui/**"
       - ".github/workflows/build-ios.yml"
   workflow_dispatch:
 

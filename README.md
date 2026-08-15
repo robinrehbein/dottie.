@@ -496,7 +496,7 @@ Welcher Workflow wann läuft:
 | Workflow | Läuft bei | Prüft |
 |---|---|---|
 | `build-apk.yml` | Push auf `main` und `claude/**` | Kotlin-Tests (`:core` und `:app`), Debug-Build; auf `main` zusätzlich Release-Artefakte |
-| `build-ios.yml` | Push mit Änderungen an `ios/`, `core/`, `parity/`; sonst manuell | XCFramework aus `:core`, Brücken-Tests im Simulator, Device- und Simulator-Build |
+| `build-ios.yml` | Push mit Änderungen an `ios/`, `core/`, `ui/`, `parity/`; sonst manuell | XCFramework aus `:core`, Brücken-Tests im Simulator, Device- und Simulator-Build |
 | `deploy-pages.yml` | Push auf `main` mit Änderungen an `docs/` | veröffentlicht Datenschutzerklärung und `app-ads.txt` |
 
 ## Veröffentlichung
