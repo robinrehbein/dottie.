@@ -266,6 +266,12 @@ Die Regeln:
   Telefon für sich genommen bei 1 stand, weil es von gestern nichts
   wusste. Bei aufeinanderfolgenden Tagen zählt deshalb `gestern + 1`,
   bei einer echten Lücke reißt die Serie wie gewohnt.
+- **Bestwert der Daily-Serie**: eigenes Feld neben der laufenden Serie
+  (ab v2.23), Regel wieder „der höhere gewinnt". An ihm hängen PRISMA,
+  KOI, AURORA, DISCO und die Kulisse BERG — eine Lücke im Kalender darf
+  sie nicht wieder zusperren, und ein auf der Uhr verdienter AURORA soll
+  auch am Telefon offen sein. Fehlt das Feld, weil die Gegenseite eine
+  ältere App fährt, tritt deren laufende Serie als Untergrenze ein.
 
 Der Abgleich läuft nur, solange eine der beiden Apps offen ist — bewusst
 ohne Hintergrunddienst. Beim Öffnen wird geholt, was die Gegenseite
