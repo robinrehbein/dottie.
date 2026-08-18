@@ -269,6 +269,40 @@ fun GameScreen(
 
     LaunchedEffect(Unit) { refreshSkinPass(deviceCalendar().epochDay) }
 
+    // Ein Abgleich mit der Uhr schreibt am Bildschirm vorbei in den
+    // Speicher — die Zustände oben lesen ihn nur beim Erzeugen. Also
+    // alles Angezeigte nachziehen, sobald ein Merge etwas übernommen hat
+    // (GameStore.syncRevision); die Uhr tut am Ende ihres applySync
+    // dasselbe. Ohne das stünden Rekord, Tagesbest, Serie, Skin, Kulisse
+    // und Ton-Set bis zum nächsten Lauf-Ende auf dem alten Stand.
+    LaunchedEffect(store.syncRevision) {
+        // Der erste Durchlauf gehört noch zum Aufbau: Da stehen die Werte
+        // schon frisch aus dem Speicher.
+        if (store.syncRevision == 0) return@LaunchedEffect
+        val now = deviceCalendar()
+        bestScore = store.bestScore
+        dailyBestToday = store.dailyBestFor(now.epochDay)
+        dailyStreak = store.dailyStreakPreviewFor(now.epochDay)
+        scene = store.selectedScene
+        sound = store.selectedSound
+        sounds.soundSet = sound
+        skin = store.selectedSkin
+        // Der Abgleich kann eine hier ungedeckte Wahl hinterlassen (ein
+        // abgelaufener Tagespass zum Beispiel) — refreshSkinPass holt sie
+        // zurück auf KLASSIK.
+        refreshSkinPass(now.epochDay)
+        nextGoal = Progress.nextGoal(
+            stats = store.stats(),
+            month = now.month,
+            seasonDays = store.seasonDaysFor(now.month, now.year)
+        )
+        // Der Rekord kann gerade gewachsen sein. Lief die Live-Feier schon
+        // gegen den alten, kleineren Wert, war sie verfrüht — dann darf
+        // sie noch einmal kommen, sobald der Punkt den echten Rekord
+        // wirklich überholt.
+        if (bestScore >= game.score) bannerState.recordCelebrated = false
+    }
+
     // Vor jedem Lauf-Start: Tag fixieren und die Zufallsquelle passend zum
     // Modus setzen — die Daily bekommt den Tages-Seed, damit jeder Versuch
     // des Tages dieselbe Zonen-Abfolge spielt.
@@ -506,6 +540,10 @@ fun GameScreen(
                     // Vor dem Öffnen nachziehen: Der Startscreen kann seit
                     // dem letzten Lauf einen Tageswechsel gesehen haben.
                     refreshSkinPass(deviceCalendar().epochDay)
+                    // Und der Plattform sagen, dass jetzt der Moment für
+                    // das Tagespass-Angebot ist — sie kann nachladen, was
+                    // beim Start nicht geklappt hat.
+                    hooks.onSkinsOpened()
                     showSkins = true
                 },
                 onStats = {

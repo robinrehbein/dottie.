@@ -96,8 +96,20 @@ class AdsManager(
     private var started = false
     private var consentInformation: ConsentInformation? = null
 
+    /**
+     * Ist das SDK hochgefahren? Ohne das darf nichts geladen werden — und
+     * seit das Nachladen auch aus dem Spiel heraus angestoßen wird
+     * (Game-Over, Skin-Sammlung), ist das nicht mehr allein durch den
+     * Aufrufweg sichergestellt.
+     */
+    private var sdkReady = false
+
     /** Frequenz-Deckel für Interstitials (siehe [InterstitialGate]). */
     private val gate = InterstitialGate { System.currentTimeMillis() }
+
+    /** Bremsen fürs Nachladen, eine je Anzeigenart (siehe [AdLoadRetry]). */
+    private val rewardedRetry = AdLoadRetry { System.currentTimeMillis() }
+    private val interstitialRetry = AdLoadRetry { System.currentTimeMillis() }
 
     /**
      * Einmal beim Start aufrufen. Ohne konfigurierte IDs ein No-op —
@@ -174,8 +186,10 @@ class AdsManager(
                 rewardedReady = false
                 interstitial = null
             } else {
-                loadRewarded()
-                loadInterstitial()
+                // Ueber initializeIfAllowed statt direkt: Wurde die
+                // Einwilligung beim Start verweigert, ist das SDK nie
+                // hochgefahren — dann muss das jetzt zuerst passieren.
+                initializeIfAllowed()
             }
         }
     }
@@ -194,6 +208,7 @@ class AdsManager(
         try {
             status = "SDK startet"
             MobileAds.initialize(activity) {
+                sdkReady = true
                 status = "SDK bereit"
                 loadRewarded()
                 loadInterstitial()
@@ -204,22 +219,51 @@ class AdsManager(
         }
     }
 
+    /**
+     * Darf überhaupt eine Anfrage rausgehen? Die Einwilligung steht hier
+     * bewusst noch einmal, obwohl [initializeIfAllowed] sie schon prüft:
+     * Nachgeladen wird jetzt auch aus dem Spiel heraus, und ein Widerruf
+     * über das Datenschutz-Formular darf nicht durch die Hintertür
+     * wieder Anfragen auslösen.
+     */
+    private fun canLoad(): Boolean = enabled &&
+        activity != null &&
+        sdkReady &&
+        consentInformation?.canRequestAds() == true
+
     // ===== Rewarded: Skin-Tagespass =====
 
+    /**
+     * Anstoß von außen: Vor dem Öffnen der Skin-Sammlung nachsehen, ob
+     * sich inzwischen ein Spot laden lässt. Ohne das bliebe das
+     * Tagespass-Angebot nach einem einzigen fehlgeschlagenen Ladeversuch
+     * — kein Netz beim Start, "no fill" — die ganze Sitzung aus, denn
+     * nachgeladen wurde bisher nur nach einem GEZEIGTEN Spot.
+     */
+    fun ensureRewarded() {
+        loadRewarded()
+    }
+
     private fun loadRewarded() {
-        if (!enabled || activity == null || rewarded != null) return
+        val activity = this.activity ?: return
+        if (!canLoad() || rewarded != null) return
+        // Kein Dauerfeuer: laufende Anfrage nicht verdoppeln, nach einem
+        // Fehlschlag erst nach einer Wartezeit wieder anklopfen.
+        if (!rewardedRetry.shouldStart()) return
         RewardedAd.load(
             activity,
             rewardedId,
             AdRequest.Builder().build(),
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(ad: RewardedAd) {
+                    rewardedRetry.onLoaded()
                     rewarded = ad
                     rewardedReady = true
                     status = "Spot bereit"
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
+                    rewardedRetry.onFailed()
                     rewarded = null
                     rewardedReady = false
                     // "No fill" (Code 3) heisst: alles richtig eingebaut,
@@ -267,17 +311,21 @@ class AdsManager(
     // ===== Interstitial: gelegentlich beim Game-Over =====
 
     private fun loadInterstitial() {
-        if (!enabled || activity == null || interstitial != null) return
+        val activity = this.activity ?: return
+        if (!canLoad() || interstitial != null) return
+        if (!interstitialRetry.shouldStart()) return
         InterstitialAd.load(
             activity,
             interstitialId,
             AdRequest.Builder().build(),
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
+                    interstitialRetry.onLoaded()
                     interstitial = ad
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
+                    interstitialRetry.onFailed()
                     interstitial = null
                     Log.i(TAG, "Interstitial nicht geladen: ${error.message}")
                 }
@@ -291,7 +339,16 @@ class AdsManager(
      */
     fun onGameOver(activity: Activity) {
         if (!enabled) return
+        // Erst nachladen, dann fragen: Ein fehlgeschlagener Ladeversuch
+        // (kein Netz beim Start, "no fill") hielt sonst die ganze Sitzung
+        // an — geladen wurde bisher nur nach einem GEZEIGTEN Spot. Der
+        // Anstoß kostet nichts, wenn schon etwas bereitliegt, und bremst
+        // sich selbst (siehe [AdLoadRetry]).
+        loadInterstitial()
         if (!gate.onDeathShouldShow()) return
+        // Nichts da: Der Ladeversuch von eben läuft noch oder wartet. Das
+        // Zeitfenster des Gates bleibt unangetastet, es wurde ja nichts
+        // gezeigt.
         val ad = interstitial ?: return
         interstitial = null
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {

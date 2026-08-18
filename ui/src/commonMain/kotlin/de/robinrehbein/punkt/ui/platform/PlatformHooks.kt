@@ -30,6 +30,15 @@ class PlatformHooks(
     val rewardedReady: Boolean = false,
 
     /**
+     * Die Skin-Sammlung wird geoeffnet — der Moment, in dem [rewardedReady]
+     * gebraucht wird. Die Plattform darf hier nachladen, was beim Start
+     * nicht geklappt hat (kein Netz, keine Anzeige verfuegbar); ohne
+     * diesen zweiten Anlauf bliebe das Tagespass-Angebot nach einem
+     * einzigen Fehlschlag die ganze Sitzung aus.
+     */
+    val onSkinsOpened: () -> Unit = {},
+
+    /**
      * Spot fuer den Tagespass dieses Skins zeigen. Der Rueckruf kommt
      * NUR bei bestaetigtem Spot — was der Pass dann bedeutet, entscheidet
      * der Bildschirm, nicht die Plattform.
