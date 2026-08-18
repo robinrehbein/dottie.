@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.20.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.22.
 
 ## Checkliste
 
@@ -481,12 +481,14 @@ versteckte Diagnose-Zeile (Abschnitt 4b) nennt beide Produkte getrennt.
 
 **Andere Geräte, andere Plattformen:** Der Kauf hängt am Google-Konto,
 nicht am Gerät. Auf einem Tablet mit demselben Konto stellt ihn dieselbe
-App beim Start selbst wieder her; auf der Uhr gilt dasselbe, sobald die
-Wear-App Play Billing selbst abfragt. **Nicht** übertragbar ist er auf
-iOS: Apple und Google führen getrennte Kassen, ein Kauf im Play Store
-schaltet in der iOS-App nichts frei. Wer beides will, kauft zweimal —
-das ist keine Entscheidung dieses Projekts, sondern die Bauart der
-beiden Stores.
+App beim Start selbst wieder her; auf der Uhr gilt dasselbe bereits:
+`WearPatron` fragt Play Billing selbst und rein lesend ab, ob
+`patron_pack` gekauft ist, und spiegelt das Ergebnis lokal — gekauft wird
+nur am Telefon. **Nicht** übertragbar ist er auf iOS: Apple und Google
+führen getrennte Kassen, ein Kauf im Play Store schaltet in der iOS-App
+nichts frei — dort stehen die drei Gönner-Skins sichtbar, aber fest
+gesperrt (kein Billing auf iOS). Wer beides will, kauft zweimal — das ist
+keine Entscheidung dieses Projekts, sondern die Bauart der beiden Stores.
 
 ### 5. Data-Safety und Anzeigen-Label in der Play Console
 
@@ -551,8 +553,8 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 29` / `versionName
-"2.18"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 33` / `versionName
+"2.22"`. Vor jedem Store-Upload beides anheben und committen.
 
 Achtung: `versionCode 28` wurde bereits zweimal gebaut — einmal mit
 Skins und Himmel-Umlauf (Build 101), einmal zusätzlich mit dem
