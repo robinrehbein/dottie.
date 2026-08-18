@@ -64,9 +64,9 @@ enum SceneId: String, CaseIterable {
 
 /// Die Formen, aus denen Kulissen ihre Requisiten bauen. Jede ist als
 /// Stapel von Rechtecken umgesetzt — der Pixel-Look entsteht aus Blöcken.
-/// Der Fels ist die Ausnahme: Sein Umriss steht als Tabelle in
-/// `ScenePaint.rockParts`, damit ihn drei Ports nicht dreimal von Hand
-/// gleich treffen müssen.
+/// Fels und Laterne sind die Ausnahmen: Ihre Umrisse stehen als
+/// Tabellen in `ScenePaint.rockParts` und `ScenePaint.lanternParts`,
+/// damit die Ports sie nicht jeder von Hand gleich treffen müssen.
 enum PropShape {
     case baum
     case blume
@@ -76,6 +76,7 @@ enum PropShape {
     case nadelbaum
     case hochhaus
     case fels
+    case laterne
 }
 
 enum ScenePaint {
@@ -135,10 +136,12 @@ enum ScenePaint {
     /// Requisiten-Plätze je Kulisse (Bestand: Baum, Blume, Baum, Strauch).
     static let propSlots = 4
 
-    /// Ein Rechteck des Fels-Umrisses, in Vielfachen der Requisiten-Größe.
-    /// `x` ist auf die Mitte bezogen, `y` zählt vom Boden nach oben,
-    /// `tone` wählt aus der Requisiten-Palette: 0 dunkel, 1 Körper, 2 hell.
-    struct RockPart {
+    /// Ein Rechteck einer Requisitenform, die als Tabelle statt als
+    /// Zeichencode vorliegt — Fels (`rockParts`) und Laterne
+    /// (`lanternParts`). `x` ist auf die Mitte bezogen, `y` zählt vom
+    /// Boden nach oben, `tone` wählt aus der Requisiten-Palette:
+    /// 0 dunkel, 1 Körper, 2 hell, 3 Akzent (`Prop.accents[0]`).
+    struct BlockPart {
         let x: CGFloat
         let y: CGFloat
         let w: CGFloat
@@ -149,13 +152,13 @@ enum ScenePaint {
     /// Der Fels als Umriss statt als Stapel (siehe ScenePaint.kt für die
     /// Begründung): unsymmetrische Kante, Kuppe links der Mitte, die obere
     /// linke Fläche als einzige im Licht.
-    static let rockParts: [RockPart] = [
-        RockPart(x: -1.20, y: 0.00, w: 2.40, h: 0.42, tone: 0),
-        RockPart(x: -1.10, y: 0.42, w: 1.45, h: 0.40, tone: 1),
-        RockPart(x: 0.35, y: 0.42, w: 0.75, h: 0.40, tone: 0),
-        RockPart(x: -0.85, y: 0.82, w: 0.70, h: 0.36, tone: 2),
-        RockPart(x: -0.15, y: 0.82, w: 0.55, h: 0.36, tone: 1),
-        RockPart(x: -0.60, y: 1.18, w: 0.50, h: 0.32, tone: 2)
+    static let rockParts: [BlockPart] = [
+        BlockPart(x: -1.20, y: 0.00, w: 2.40, h: 0.42, tone: 0),
+        BlockPart(x: -1.10, y: 0.42, w: 1.45, h: 0.40, tone: 1),
+        BlockPart(x: 0.35, y: 0.42, w: 0.75, h: 0.40, tone: 0),
+        BlockPart(x: -0.85, y: 0.82, w: 0.70, h: 0.36, tone: 2),
+        BlockPart(x: -0.15, y: 0.82, w: 0.55, h: 0.36, tone: 1),
+        BlockPart(x: -0.60, y: 1.18, w: 0.50, h: 0.32, tone: 2)
     ]
 
     /// Breite des Fels-Umrisses in Vielfachen der Requisiten-Größe.
@@ -163,6 +166,35 @@ enum ScenePaint {
 
     /// Höhe des Fels-Umrisses in Vielfachen der Requisiten-Größe.
     static let rockHeight: CGFloat = 1.50
+
+    /// Die Laterne — die vierte Requisite der STADT (siehe ScenePaint.kt
+    /// für die Begründung). Exakt spiegelsymmetrisch: Jedes Stück steht
+    /// mittig, die beiden Sprossen sind Spiegel voneinander, und die
+    /// Lichtkanten sitzen mittig statt links. Ein Fels darf schief sein,
+    /// er ist gewachsen; eine Laterne ist gefertigt.
+    static let lanternParts: [BlockPart] = [
+        BlockPart(x: -0.55, y: 0.00, w: 1.10, h: 0.16, tone: 0),
+        BlockPart(x: -0.42, y: 0.16, w: 0.84, h: 0.14, tone: 0),
+        BlockPart(x: -0.30, y: 0.30, w: 0.60, h: 0.30, tone: 1),
+        BlockPart(x: -0.09, y: 0.30, w: 0.18, h: 0.30, tone: 2),
+        BlockPart(x: -0.16, y: 0.60, w: 0.32, h: 1.70, tone: 1),
+        BlockPart(x: -0.05, y: 0.60, w: 0.10, h: 1.70, tone: 2),
+        BlockPart(x: -0.40, y: 2.30, w: 0.80, h: 0.16, tone: 0),
+        BlockPart(x: -0.13, y: 2.46, w: 0.26, h: 0.30, tone: 1),
+        BlockPart(x: -0.42, y: 2.76, w: 0.84, h: 0.12, tone: 0),
+        BlockPart(x: -0.36, y: 2.88, w: 0.72, h: 0.62, tone: 3),
+        BlockPart(x: -0.19, y: 2.88, w: 0.09, h: 0.62, tone: 0),
+        BlockPart(x: 0.10, y: 2.88, w: 0.09, h: 0.62, tone: 0),
+        BlockPart(x: -0.55, y: 3.50, w: 1.10, h: 0.14, tone: 0),
+        BlockPart(x: -0.38, y: 3.64, w: 0.76, h: 0.16, tone: 0),
+        BlockPart(x: -0.10, y: 3.80, w: 0.20, h: 0.14, tone: 0)
+    ]
+
+    /// Breite der Laterne in Vielfachen der Requisiten-Größe.
+    static let lanternWidth: CGFloat = 1.10
+
+    /// Höhe der Laterne in Vielfachen der Requisiten-Größe.
+    static let lanternHeight: CGFloat = 3.94
 
     /// Mindestabstände im RGB-Raum (siehe ScenePaintTest in :core).
     static let minZoneDistance: CGFloat = 60
@@ -276,8 +308,12 @@ enum ScenePaint {
             Prop(shape: .hochhaus, size: 0.062, sway: 0,
                  dark: 0x3A4C50, body: 0x54686C, light: 0x869A9E,
                  accents: [0xFFD847, 0x7FD8E8]),
-            Prop(shape: .fels, size: 0.026, sway: 0,
-                 dark: 0x4E4A56, body: 0x6A6672, light: 0x8C8894)
+            // Der vierte Platz: eine Laterne statt eines Findlings.
+            // Nur ein Akzent, nicht zwei: Auf einer Straße brennen alle
+            // Laternen in derselben Farbe.
+            Prop(shape: .laterne, size: 0.026, sway: 0,
+                 dark: 0x3A3446, body: 0x4C4560, light: 0x766E8C,
+                 accents: [0xFFD847])
         ]
     )
 

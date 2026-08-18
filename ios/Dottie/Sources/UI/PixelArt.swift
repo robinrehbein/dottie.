@@ -201,8 +201,13 @@ enum PixelArt {
                 drawTower(ctx, cx: cx, groundY: groundY, s: s, cell: cell,
                           dark: dark, body: body, light: light, window: accentColor)
             case .fels:
-                drawRock(ctx, cx: cx, groundY: groundY, s: s, cell: cell,
-                         dark: dark, body: body, light: light)
+                drawBlockParts(ctx, ScenePaint.rockParts, cx: cx, groundY: groundY,
+                               s: s, cell: cell, dark: dark, body: body,
+                               light: light, accent: accentColor)
+            case .laterne:
+                drawBlockParts(ctx, ScenePaint.lanternParts, cx: cx, groundY: groundY,
+                               s: s, cell: cell, dark: dark, body: body,
+                               light: light, accent: accentColor)
             }
         }
     }
@@ -220,6 +225,8 @@ enum PixelArt {
         case .hochhaus: return CGSize(width: s * 0.9 + cell * 4, height: s * 2.4 + cell * 3)
         case .fels: return CGSize(width: s * ScenePaint.rockWidth + cell * 4,
                                   height: s * ScenePaint.rockHeight + cell * 3)
+        case .laterne: return CGSize(width: s * ScenePaint.lanternWidth + cell * 4,
+                                     height: s * ScenePaint.lanternHeight + cell * 3)
         }
     }
 
@@ -434,21 +441,30 @@ enum PixelArt {
         }
     }
 
-    /// Fels: Umriss aus `ScenePaint.rockParts`, unsymmetrisch und mit
-    /// Lichtseite. Erst alle Konturen, dann alle Flächen — sonst schnitte
-    /// die Kontur eines höheren Stücks in die Fläche des darunterliegenden,
-    /// und der Stein bekäme Fugen, die er nicht hat.
-    private static func drawRock(
-        _ ctx: CGContext, cx: CGFloat, groundY: CGFloat, s: CGFloat, cell: CGFloat,
-        dark: UIColor, body: UIColor, light: UIColor
+    /// Formen, die als Tabelle in :core stehen statt als Zeichencode hier —
+    /// Fels (`ScenePaint.rockParts`) und Laterne (`ScenePaint.lanternParts`).
+    /// Der Renderer füllt stumpf Rechtecke; welche, sagt die Tabelle.
+    ///
+    /// Erst alle Konturen, dann alle Flächen — sonst schnitte die Kontur
+    /// eines höheren Stücks in die Fläche des darunterliegenden, und die
+    /// Form bekäme Fugen, die sie nicht hat.
+    private static func drawBlockParts(
+        _ ctx: CGContext, _ parts: [ScenePaint.BlockPart],
+        cx: CGFloat, groundY: CGFloat, s: CGFloat, cell: CGFloat,
+        dark: UIColor, body: UIColor, light: UIColor, accent: UIColor
     ) {
-        let parts = ScenePaint.rockParts
         for p in parts {
             fill(ctx, Palette.outline, cx + p.x * s - cell, groundY - (p.y + p.h) * s - cell,
                  p.w * s + cell * 2, p.h * s + cell * 2)
         }
         for p in parts {
-            let color = p.tone == 0 ? dark : (p.tone == 1 ? body : light)
+            let color: UIColor
+            switch p.tone {
+            case 0: color = dark
+            case 1: color = body
+            case 2: color = light
+            default: color = accent
+            }
             fill(ctx, color, cx + p.x * s, groundY - (p.y + p.h) * s, p.w * s, p.h * s)
         }
     }
