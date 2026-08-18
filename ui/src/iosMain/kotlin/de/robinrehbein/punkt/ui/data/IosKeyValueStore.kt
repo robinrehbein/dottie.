@@ -44,6 +44,10 @@ class IosKeyValueStore(
                 defaults.setBool(value, key)
 
             override fun putString(key: String, value: String) =
+
+    override fun remove(key: String) {
+        defaults.removeObjectForKey(key)
+    }
                 defaults.setObject(value, key)
         }.block()
     }

@@ -14,12 +14,12 @@ import kotlin.math.log2
  * wie die Kulisse — eine verdienbare Fläche und keine Spielregel.
  *
  * Die Klänge sind bewusst Daten und kein Synthese-Code pro Port: [Tone]
- * beschreibt Frequenz, Dauer, Lautstärke, Abklingrate und Pulsbreite,
- * [Noise] den Rauschanteil darüber, und alle vier Ports (Android, Wear,
- * PWA, iOS) werfen dieselbe Tabelle in denselben Baukasten aus
- * [ChipSynth] — Rechteck, Gleitton, Rauschen. Ohne diese Trennung müsste
- * jedes neue Set in vier Sprachen nachgebaut werden, und liefe in vieren
- * auseinander.
+ * beschreibt Frequenz, Dauer, Lautstärke, Abklingrate, Pulsbreite und
+ * Wellenform, [Noise] den Rauschanteil darüber, und alle Ports (Android,
+ * Wear, iOS) werfen dieselbe Tabelle in denselben Baukasten aus
+ * [ChipSynth] — Rechteck, Dreieck, Gleitton, Rauschen. Ohne diese
+ * Trennung müsste jedes neue Set in drei Sprachen nachgebaut werden, und
+ * liefe in dreien auseinander.
  *
  * Alle Zahlen sind Floats in denselben Einheiten wie [ChipSynth]: Hertz,
  * Sekunden, Anteil 0..1 (Lautstärke, Pulsbreite) und Abklingrate pro
@@ -68,9 +68,14 @@ enum class SoundEvent {
  *
  * [duty] ist die Pulsbreite der Rechteckwelle und der eigentliche
  * Charakterregler: 0,5 klingt rund und voll, 0,125 dünn und nasal. Beim
- * Gleitton steht sie immer auf 0,5 — `sweep` kennt keine Pulsbreite, und
- * eine Zahl, die niemand liest, wäre eine Lüge in der Tabelle
- * (SoundSetTest besteht darauf).
+ * Gleitton und beim Dreieck steht sie immer auf 0,5 — beide kennen keine
+ * Pulsbreite, und eine Zahl, die niemand liest, wäre eine Lüge in der
+ * Tabelle (SoundSetTest besteht darauf).
+ *
+ * [wave] ist die Form. Sie steht am Ton und nicht am Set: Ein Set darf
+ * mischen, und der Amboss tut es auch nicht — aber die Glocke braucht
+ * ihre weiche Form bis in den Gleitton des Todes hinein, und das ist
+ * eine Eigenschaft des Tons, nicht der Sammlung.
  */
 data class Tone(
     val fromHz: Float,
@@ -78,7 +83,8 @@ data class Tone(
     val seconds: Float,
     val volume: Float,
     val decay: Float,
-    val duty: Float
+    val duty: Float,
+    val wave: Wave = Wave.PULS
 )
 
 /**
@@ -212,9 +218,15 @@ object SoundBank {
 
     /**
      * Glocke: weich und rund. Alles liegt eine Oktave höher als im
-     * Bestand, jeder Ton steht auf voller Pulsbreite und klingt lange
-     * nach (Abklingrate 2 bis 5 statt 8 bis 20) — statt zu tickern,
+     * Bestand, jeder Ton ist ein Dreieck ([Wave.DREIECK]) und klingt
+     * lange nach (Abklingrate 2 bis 5 statt 8 bis 20) — statt zu tickern,
      * singt das Set.
+     *
+     * Die Form trägt hier mehr als die Tonhöhe. Ein Rechteck in dieser
+     * Lage sticht: Es hat auch die geraden Oberwellen, und die fallen
+     * nur linear ab. Das Dreieck lässt die geraden weg und dämpft den
+     * Rest quadratisch — erst dadurch wird aus „hoher Blip" ein Ton, der
+     * nach Spieluhr klingt statt nach Wecker.
      *
      * Kein einziges Ereignis trägt Rauschen, auch der Tod nicht: Hier
      * zerbricht nichts, hier geht das Licht aus. Der Tod ist deshalb der
@@ -222,35 +234,39 @@ object SoundBank {
      */
     private val GLOCKE = SoundSet(
         mapOf(
-            SoundEvent.START to voice(tone(659f, 0.16f, 0.18f, 5f)),
+            SoundEvent.START to voice(dreieck(659f, 0.16f, 0.18f, 5f)),
             // Der Treffer darf hier ausklingen, statt zu klicken: Bei
             // schnellen Läufen überlappen sich zwei Glocken — genau das
             // macht den Charakter aus.
-            SoundEvent.HIT to voice(tone(988f, 0.2f, 0.26f, 5f)),
+            SoundEvent.HIT to voice(dreieck(988f, 0.2f, 0.26f, 5f)),
             SoundEvent.PERFECT to voice(
-                tone(1319f, 0.14f, 0.24f, 4f),
-                tone(1976f, 0.3f, 0.26f, 3f)
+                dreieck(1319f, 0.14f, 0.24f, 4f),
+                dreieck(1976f, 0.3f, 0.26f, 3f)
             ),
             SoundEvent.CHAIN to voice(
-                tone(1568f, 0.12f, 0.22f, 5f),
-                tone(2093f, 0.18f, 0.22f, 4f)
+                dreieck(1568f, 0.12f, 0.22f, 5f),
+                dreieck(2093f, 0.18f, 0.22f, 4f)
             ),
             // Drei Töne statt vier: Eine Fanfare, die nachklingt, braucht
             // weniger Stufen, sonst verwischen sie ineinander.
             SoundEvent.UNLOCK to voice(
-                tone(784f, 0.14f, 0.2f, 4f),
-                tone(1047f, 0.14f, 0.2f, 4f),
-                tone(1568f, 0.36f, 0.24f, 2.5f)
+                dreieck(784f, 0.14f, 0.2f, 4f),
+                dreieck(1047f, 0.14f, 0.2f, 4f),
+                dreieck(1568f, 0.36f, 0.24f, 2.5f)
             ),
             SoundEvent.RECORD to voice(
-                tone(1047f, 0.16f, 0.22f, 3f),
-                tone(1319f, 0.16f, 0.22f, 3f),
-                tone(2093f, 0.5f, 0.26f, 2f)
+                dreieck(1047f, 0.16f, 0.22f, 3f),
+                dreieck(1319f, 0.16f, 0.22f, 3f),
+                dreieck(2093f, 0.5f, 0.26f, 2f)
             ),
             // Ein langer Gleitton nach unten, ohne Rauschen: Das Set
-            // nimmt dem Tod die Härte, nicht die Länge.
-            SoundEvent.DEATH to voice(glide(932f, 294f, 0.55f, 0.28f, 2.5f)),
-            SoundEvent.THUD to voice(tone(220f, 0.26f, 0.3f, 5f))
+            // nimmt dem Tod die Härte, nicht die Länge. Auch er ist ein
+            // Dreieck — ein Rechteck-Gleitton wäre der eine harte Moment
+            // in einem Set, das sonst keinen hat.
+            SoundEvent.DEATH to voice(
+                glide(932f, 294f, 0.55f, 0.28f, 2.5f, Wave.DREIECK)
+            ),
+            SoundEvent.THUD to voice(dreieck(220f, 0.26f, 0.3f, 5f))
         )
     )
 
@@ -373,14 +389,26 @@ object SoundBank {
         duty: Float = 0.5f
     ) = Tone(hz, hz, seconds, volume, decay, duty)
 
+    /**
+     * Ein Dreieck-Ton fester Höhe — dieselben vier Zahlen, nur die weiche
+     * Form. Ohne Pulsbreite, weil ein Dreieck keine hat.
+     */
+    private fun dreieck(
+        hz: Float,
+        seconds: Float,
+        volume: Float,
+        decay: Float
+    ) = Tone(hz, hz, seconds, volume, decay, 0.5f, Wave.DREIECK)
+
     /** Ein Gleitton; die Pulsbreite steht fest, weil `sweep` keine kennt. */
     private fun glide(
         fromHz: Float,
         toHz: Float,
         seconds: Float,
         volume: Float,
-        decay: Float
-    ) = Tone(fromHz, toHz, seconds, volume, decay, 0.5f)
+        decay: Float,
+        wave: Wave = Wave.PULS
+    ) = Tone(fromHz, toHz, seconds, volume, decay, 0.5f, wave)
 
     private fun voice(vararg tones: Tone, noise: Noise? = null) = Voice(tones.toList(), noise)
 }

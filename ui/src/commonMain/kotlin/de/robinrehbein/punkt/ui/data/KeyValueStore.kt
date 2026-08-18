@@ -35,4 +35,12 @@ interface KeyValueEditor {
     fun putLong(key: String, value: Long)
     fun putBoolean(key: String, value: Boolean)
     fun putString(key: String, value: String)
+
+    /**
+     * Loescht einen Schluessel. Gebraucht fuer Werte, bei denen "nie
+     * gesetzt" etwas anderes bedeutet als der erste Eintrag — beim
+     * Kartenrahmen zum Beispiel heisst kein Wert "nimm die hoechste
+     * verdiente Stufe", nicht "SCHLICHT".
+     */
+    fun remove(key: String)
 }

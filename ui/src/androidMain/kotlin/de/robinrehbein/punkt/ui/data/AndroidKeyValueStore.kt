@@ -32,6 +32,7 @@ class AndroidKeyValueStore(context: Context, name: String = "punkt_scores") : Ke
             override fun putLong(key: String, value: Long) { editor.putLong(key, value) }
             override fun putBoolean(key: String, value: Boolean) { editor.putBoolean(key, value) }
             override fun putString(key: String, value: String) { editor.putString(key, value) }
+            override fun remove(key: String) { editor.remove(key) }
         }.block()
         editor.apply()
     }

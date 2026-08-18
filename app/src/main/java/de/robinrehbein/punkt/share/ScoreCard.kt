@@ -56,12 +56,14 @@ object ScoreCard {
         recordText: String,
         daily: Boolean,
         dailyStreak: Int,
-        stats: SkinStats
+        stats: SkinStats,
+        cardFrame: CardFrame? = null
     ) {
-        val bitmap =
-            render(
-            context, score, bestScore, isNewRecord, skin, scene,
-            sceneName, recordText, daily, dailyStreak, stats
+        // sceneName und recordText kommen von aussen: Die Texte liegen
+        // seit v2.24 in :ui (Compose Resources), die Karte zeichnet nur.
+        val bitmap = render(
+            context, score, bestScore, isNewRecord, skin, scene, sceneName, recordText,
+            daily, dailyStreak, stats, cardFrame
         )
         val dir = File(context.cacheDir, "share").apply { mkdirs() }
         val file = File(dir, "punkt-score.png")
@@ -97,7 +99,13 @@ object ScoreCard {
         recordText: String,
         daily: Boolean,
         dailyStreak: Int,
-        stats: SkinStats
+        stats: SkinStats,
+        /**
+         * Die gewaehlte Rahmenstufe, oder null fuer "die hoechste
+         * verdiente". Der Rueckfall steht in [CardStyle.frame]: Eine
+         * Wahl, die der Spielstand nicht deckt, verliert gegen ihn.
+         */
+        cardFrame: CardFrame? = null
     ): Bitmap {
         val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
@@ -149,7 +157,7 @@ object ScoreCard {
         // Wo die Zeilen sitzen, hängt am Rahmen: Die breiten Stufen
         // schieben den Inhalt nach innen, SCHLICHT nicht. Siehe
         // CardStyle.layout — dort steht auch, warum.
-        val frame = CardStyle.frame(stats)
+        val frame = CardStyle.frame(cardFrame, stats)
         val layout = CardStyle.layout(frame)
         drawShadowed("DOTTIE.", cx, H * layout.title, layout.titleSize, Color.WHITE)
 

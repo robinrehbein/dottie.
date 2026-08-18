@@ -213,4 +213,28 @@
     <string name="stats_daily_streak">DAILY-SERIE</string>
     <string name="stats_goals">NAECHSTE ZIELE</string>
     <string name="goal_progress">%1$s %2$d/%3$d</string>
+
+    <!-- Kartenrahmen und Ziel-Zeilen (aus main, v2.25) -->
+    <string name="frame_doppellinie">DOPPELLINIE</string>
+    <string name="frame_hint_doppellinie">10 SKINS SAMMELN</string>
+    <string name="frame_hint_pracht">30 SKINS SAMMELN</string>
+    <string name="frame_hint_zinnen">20 SKINS SAMMELN</string>
+    <string name="frame_on_card">STEHT AUF DER GETEILTEN KARTE</string>
+    <string name="frame_pracht">PRACHT</string>
+    <string name="frame_schlicht">SCHLICHT</string>
+    <string name="frame_zinnen">ZINNEN</string>
+    <string name="frames">RAHMEN</string>
+    <string name="goal_axis_days">TAGE</string>
+    <string name="goal_axis_months">MONATE</string>
+    <string name="goal_axis_perfect">PERFEKTE IN FOLGE</string>
+    <string name="goal_axis_points">PUNKTE</string>
+    <string name="goal_axis_runs">LAEUFE</string>
+    <string name="goal_axis_scenes">KULISSEN</string>
+    <string name="goal_axis_skins">SKINS</string>
+    <string name="goal_axis_total">PUNKTE INSGESAMT</string>
+    <string name="goal_next_scene">NAECHSTE KULISSE: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_next_skin">NAECHSTER SKIN: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_next_sound">NAECHSTER TON: %1$s — %2$d/%3$d %4$s</string>
+    <string name="help">HILFE</string>
+    <string name="settings">EINSTELLUNGEN</string>
 </resources>

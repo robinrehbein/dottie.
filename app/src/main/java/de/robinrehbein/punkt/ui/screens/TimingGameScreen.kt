@@ -163,10 +163,13 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     recordText = anfrage.recordText,
                     daily = anfrage.daily,
                     dailyStreak = anfrage.dailyStreak,
-                    // Rahmen und Beiname haengen am Gesamtstand, nicht am
+                    // Beiname und Rahmen haengen am Gesamtstand, nicht am
                     // Lauf — der Stand wird erst beim Tippen auf TEILEN
                     // geholt, damit er den eben gezaehlten Lauf enthaelt.
-                    stats = store.stats()
+                    // Wer sich die Rahmenstufe im letzten Lauf verdient
+                    // hat, teilt sie also auch.
+                    stats = store.stats(),
+                    cardFrame = store.selectedCardFrame
                 )
             },
             diagnostics = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n" +

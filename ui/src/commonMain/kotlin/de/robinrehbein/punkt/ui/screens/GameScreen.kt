@@ -174,7 +174,13 @@ fun GameScreen(
     var phase by remember { mutableStateOf(GamePhase.READY) }
     var score by remember { mutableIntStateOf(0) }
     var bestScore by remember { mutableIntStateOf(store.bestScore) }
-    var runNumber by remember { mutableIntStateOf(store.runCount) }
+    // Einstellungs-Overlay hinter dem Zahnrad: Ton, Erinnerung, Hilfe,
+    // Werbe-Kauf und Datenschutz.
+    var showSettings by remember { mutableStateOf(false) }
+    // Der Rahmen der Score-Karte als vierte Sammlung. null heisst "nie
+    // gewaehlt" und ist etwas anderes als SCHLICHT: Ohne Wahl traegt die
+    // Karte automatisch die hoechste verdiente Stufe.
+    var cardFrame by remember { mutableStateOf(store.selectedCardFrame) }
     var isNewRecord by remember { mutableStateOf(false) }
     var taunt by remember { mutableStateOf("") }
     var showPerfect by remember { mutableStateOf(false) }
@@ -246,6 +252,21 @@ fun GameScreen(
     // Zurueckkehren in die App soll er neu ziehen, und im Hintergrund
     // soll kein Listener offen bleiben.
     // Beim Start prüfen, ob die gespeicherte Auswahl heute noch gilt.
+    // Die Ziel-Zeile des Startbildschirms wird beim Eintritt in READY
+    // gerechnet und nicht pro Frame: Sie ändert sich nur durch einen Lauf,
+    // und genau danach steht sie hier wieder an. Der Kalender wird dabei
+    // frisch abgelesen — daran hängt, ob ein Saison-Ziel überhaupt gilt.
+    LaunchedEffect(phase) {
+        if (phase == GamePhase.READY) {
+            val now = deviceCalendar()
+            nextGoal = Progress.nextGoal(
+                stats = store.stats(),
+                month = now.month,
+                seasonDays = store.seasonDaysFor(now.month, now.year)
+            )
+        }
+    }
+
     LaunchedEffect(Unit) { refreshSkinPass(deviceCalendar().epochDay) }
 
     // Vor jedem Lauf-Start: Tag fixieren und die Zufallsquelle passend zum
@@ -364,7 +385,6 @@ fun GameScreen(
                             )
                             taunt = taunter(game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
-                            runNumber = store.runCount
                             // Jeder beendete Lauf ist ein moeglicher neuer
                             // Stand fuer die Uhr. Ohne Aenderung ist der
                             // Aufruf ein No-op.
@@ -474,10 +494,9 @@ fun GameScreen(
         when (phase) {
             GamePhase.READY -> ReadyOverlay(
                 bestScore = bestScore,
-                runNumber = runNumber,
                 hint = stringResource(Res.string.ready_hint),
-                dailyBest = dailyBestToday,
                 dailyStreak = dailyStreak,
+                goal = nextGoal,
                 onDaily = {
                     dailyMode = true
                     prepareRun()
@@ -502,30 +521,7 @@ fun GameScreen(
                     )
                     showStats = true
                 },
-                leaderboardAvailable = hooks.leaderboardAvailable,
-                onLeaderboard = hooks.onShowLeaderboard,
-                onHelp = { showHelp = true },
-                soundOn = soundOn,
-                onToggleSound = {
-                    soundOn = !soundOn
-                    store.soundMuted = !soundOn
-                    sounds.muted = !soundOn
-                },
-                reminderOn = reminderOn,
-                onToggleReminder = {
-                    // Die Plattform sagt, was daraus geworden ist: Lehnt
-                    // jemand die Berechtigung ab, bleibt der Schalter aus.
-                    hooks.setReminder(!reminderOn) { aktiv ->
-                        reminderOn = aktiv
-                        store.reminderEnabled = aktiv
-                    }
-                },
-                // Kein Preis von Google = kein Angebot. Ein Knopf, der
-                // ins Leere greift, ist schlimmer als gar keiner.
-                removeAdsPrice = hooks.removeAdsPrice,
-                onRemoveAds = hooks.onRemoveAds,
-                privacyVisible = hooks.privacyVisible,
-                onPrivacy = hooks.onPrivacy,
+                onSettings = { showSettings = true },
                 diagnostics = if (showDiagnostics) hooks.diagnostics else null,
                 onToggleDiagnostics = { showDiagnostics = !showDiagnostics }
             )
@@ -577,6 +573,37 @@ fun GameScreen(
             )
         }
 
+        if (showSettings) {
+            SettingsOverlay(
+                soundOn = soundOn,
+                onToggleSound = {
+                    soundOn = !soundOn
+                    store.soundMuted = !soundOn
+                    sounds.muted = !soundOn
+                },
+                reminderOn = reminderOn,
+                onToggleReminder = {
+                    // Die Plattform sagt, was daraus geworden ist: Lehnt
+                    // jemand die Berechtigung ab, bleibt der Schalter aus.
+                    hooks.setReminder(!reminderOn) { aktiv ->
+                        reminderOn = aktiv
+                        store.reminderEnabled = aktiv
+                    }
+                },
+                onHelp = {
+                    showSettings = false
+                    showHelp = true
+                },
+                onClose = { showSettings = false },
+                // Kein Preis von Google = kein Angebot. Ein Knopf, der
+                // ins Leere greift, ist schlimmer als gar keiner.
+                removeAdsPrice = hooks.removeAdsPrice,
+                onRemoveAds = hooks.onRemoveAds,
+                privacyVisible = hooks.privacyVisible,
+                onPrivacy = hooks.onPrivacy,
+                reminderSupported = hooks.reminderSupported
+            )
+        }
         if (showHelp) {
             HelpOverlay(onClose = { showHelp = false })
         }
@@ -611,6 +638,15 @@ fun GameScreen(
                     // muss sofort raus, sonst ueberschreibt sie beim
                     // naechsten Abgleich die juengere Wahl der Gegenseite.
                     hooks.onPublishSync()
+                },
+                selectedCardFrame = cardFrame,
+                onSelectCardFrame = { gewaehlt ->
+                    // Der Rahmen ist die einzige Sammlung, die andere
+                    // Leute zu sehen bekommen. Er wird nicht mit der Uhr
+                    // abgeglichen — die hat keine Score-Karte —, deshalb
+                    // faellt hier auch kein onPublishSync an.
+                    cardFrame = gewaehlt
+                    store.selectedCardFrame = gewaehlt
                 },
                 selectedScene = scene,
                 onSelectScene = {

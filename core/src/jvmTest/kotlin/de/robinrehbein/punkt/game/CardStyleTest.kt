@@ -49,6 +49,34 @@ class CardStyleTest {
         Epithet.EINGESPIELT to (::mitLaeufen to 25)
     )
 
+    /**
+     * Ein Spielstand, dessen Sammlung genau auf [ziel] steht.
+     *
+     * Gesucht statt gerechnet: Welcher Skin bei welchem Stand fällt, weiß
+     * allein [SkinPaint]. Eine hier nachgebaute Formel wäre eine zweite
+     * Wahrheit, die beim nächsten neuen Skin still falsch würde — der
+     * Test soll die Rahmen prüfen, nicht die Skin-Schwellen kopieren.
+     */
+    private fun standFuer(ziel: CardFrame): SkinStats {
+        var stufe = 0
+        while (stufe <= 400) {
+            val stand = leer.copy(
+                bestScore = stufe,
+                bestPerfectStreak = stufe / 8,
+                bestDailyStreak = stufe / 6,
+                runCount = stufe * 4,
+                totalScore = stufe * 200,
+                daysPlayed = stufe / 4,
+                // Ein Bit je angefangenem Dutzend Stufen: Die Maske muss
+                // wachsen, nicht bloß größer werden.
+                monthsPlayed = (1 shl ((stufe / 12).coerceAtMost(12))) - 1
+            )
+            if (CardStyle.frame(stand) == ziel) return stand
+            stufe++
+        }
+        throw AssertionError("Kein Spielstand gefunden, der auf $ziel steht")
+    }
+
     private fun mitBestScore(s: SkinStats, v: Int) = s.copy(bestScore = v)
     private fun mitPerfektserie(s: SkinStats, v: Int) = s.copy(bestPerfectStreak = v)
     private fun mitTagesserie(s: SkinStats, v: Int) = s.copy(bestDailyStreak = v)
@@ -90,6 +118,77 @@ class CardStyleTest {
             assertTrue("Stufe faellt bei $n zurueck", jetzt.ordinal >= vorher.ordinal)
             vorher = jetzt
         }
+    }
+
+    @Test
+    fun `ohne Wahl traegt die Karte die hoechste verdiente Stufe`() {
+        // Der wichtigste Fall der ganzen Wahl: Sie darf niemandem etwas
+        // wegnehmen. Wer die Auswahl nie anfasst, bekommt genau das, was
+        // er vorher auch bekam — sonst wäre die Einführung der Wahl für
+        // jeden bestehenden Spielstand ein stiller Rückschritt.
+        CardFrame.entries.forEach { erwartet ->
+            val stand = standFuer(erwartet)
+            assertEquals(erwartet, CardStyle.frame(null, stand))
+            assertEquals(CardStyle.frame(stand), CardStyle.frame(null, stand))
+        }
+    }
+
+    @Test
+    fun `eine verdiente Wahl gewinnt gegen die Vorgabe`() {
+        // Der Sinn der Sache: absteigen dürfen. Wer die Pracht hat, darf
+        // trotzdem schlicht teilen.
+        val voll = alles
+        CardFrame.entries.forEach { gewaehlt ->
+            assertEquals(
+                "$gewaehlt ist verdient und muss gelten",
+                gewaehlt, CardStyle.frame(gewaehlt, voll)
+            )
+        }
+    }
+
+    @Test
+    fun `eine ungedeckte Wahl verliert gegen den Spielstand`() {
+        // Kann beim Abgleich mit einem weiteren Geraet entstehen, dessen
+        // Stand weiter war, oder beim Zuruecklesen eines Backups. Die
+        // Karte darf nie einen Rahmen tragen, den ihr Stand nicht deckt.
+        val nichts = leer
+        assertEquals(CardFrame.SCHLICHT, CardStyle.frame(CardFrame.PRACHT, nichts))
+        assertEquals(CardFrame.SCHLICHT, CardStyle.frame(CardFrame.ZINNEN, nichts))
+
+        val mittig = standFuer(CardFrame.ZINNEN)
+        assertEquals(CardFrame.ZINNEN, CardStyle.frame(CardFrame.PRACHT, mittig))
+        // Was darunter liegt, bleibt aber erlaubt.
+        assertEquals(CardFrame.SCHLICHT, CardStyle.frame(CardFrame.SCHLICHT, mittig))
+    }
+
+    @Test
+    fun `die Stufen bauen aufeinander auf`() {
+        // Anders als Skins und Ton-Sets haengen die Rahmen an einer
+        // einzigen Achse. Wer Stufe drei hat, hat auch Stufe zwei — eine
+        // eigene Schwellenliste je Stufe waere hier eine Luege.
+        CardFrame.entries.forEach { stand ->
+            val stats = standFuer(stand)
+            CardFrame.entries.forEach { frage ->
+                assertEquals(
+                    "bei Stand $stand muss $frage ${if (frage.ordinal <= stand.ordinal) "offen" else "zu"} sein",
+                    frage.ordinal <= stand.ordinal,
+                    CardStyle.isUnlocked(frage, stats)
+                )
+            }
+            assertEquals(stand.ordinal + 1, CardStyle.unlockedCount(stats))
+        }
+    }
+
+    @Test
+    fun `gespeicherte Namen finden zurueck, alles andere ist keine Wahl`() {
+        CardFrame.entries.forEach {
+            assertEquals(it, CardStyle.fromName(it.name))
+        }
+        // Kein Fallback auf die erste Stufe: "unbekannt" heisst "nie
+        // gewaehlt", und das ist etwas anderes als SCHLICHT.
+        assertNull(CardStyle.fromName(null))
+        assertNull(CardStyle.fromName(""))
+        assertNull(CardStyle.fromName("GOLDRAHMEN"))
     }
 
     @Test

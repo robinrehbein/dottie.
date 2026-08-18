@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -41,11 +42,16 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.game.CardFrame
+import de.robinrehbein.punkt.game.CardStyle
 import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.game.MedalId
 import de.robinrehbein.punkt.game.MedalPaint
@@ -58,21 +64,24 @@ import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.SkinStats
 import de.robinrehbein.punkt.game.SoundBank
 import de.robinrehbein.punkt.game.SoundSetId
+import de.robinrehbein.punkt.game.Twist
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.components.PixelIcon
 import de.robinrehbein.punkt.ui.components.PixelIconButton
 import de.robinrehbein.punkt.ui.data.deviceHourAndMonth
 import de.robinrehbein.punkt.ui.resources.Res
+import de.robinrehbein.punkt.ui.resources.ad_privacy
 import de.robinrehbein.punkt.ui.resources.banner_twist_chain
+import de.robinrehbein.punkt.ui.resources.banner_twist_drift
 import de.robinrehbein.punkt.ui.resources.banner_twist_fake
 import de.robinrehbein.punkt.ui.resources.banner_twist_ghost
-import de.robinrehbein.punkt.ui.resources.banner_twist_drift
 import de.robinrehbein.punkt.ui.resources.banner_twist_pulse
-import de.robinrehbein.punkt.game.Twist
-import de.robinrehbein.punkt.ui.resources.ad_privacy
 import de.robinrehbein.punkt.ui.resources.best_score
 import de.robinrehbein.punkt.ui.resources.daily
+import de.robinrehbein.punkt.ui.resources.frame_on_card
+import de.robinrehbein.punkt.ui.resources.frames
 import de.robinrehbein.punkt.ui.resources.game_over
+import de.robinrehbein.punkt.ui.resources.help
 import de.robinrehbein.punkt.ui.resources.help_line1
 import de.robinrehbein.punkt.ui.resources.help_line2
 import de.robinrehbein.punkt.ui.resources.help_line3
@@ -98,6 +107,7 @@ import de.robinrehbein.punkt.ui.resources.reminder_on
 import de.robinrehbein.punkt.ui.resources.remove_ads
 import de.robinrehbein.punkt.ui.resources.run_number
 import de.robinrehbein.punkt.ui.resources.scenes
+import de.robinrehbein.punkt.ui.resources.settings
 import de.robinrehbein.punkt.ui.resources.share
 import de.robinrehbein.punkt.ui.resources.skin_pass_offer
 import de.robinrehbein.punkt.ui.resources.skin_pass_today
@@ -129,6 +139,8 @@ import de.robinrehbein.punkt.ui.resources.twist_ghost_title
 import de.robinrehbein.punkt.ui.resources.twist_pulse_text
 import de.robinrehbein.punkt.ui.resources.twist_pulse_title
 import de.robinrehbein.punkt.ui.text.familyTitle
+import de.robinrehbein.punkt.ui.text.frameHint
+import de.robinrehbein.punkt.ui.text.frameTitle
 import de.robinrehbein.punkt.ui.text.medalName
 import de.robinrehbein.punkt.ui.text.sceneHint
 import de.robinrehbein.punkt.ui.text.sceneTitle
@@ -238,32 +250,30 @@ private fun HelpCornerButton(onHelp: () -> Unit, modifier: Modifier = Modifier) 
     )
 }
 
+/**
+ * Der Startbildschirm. Er zeigt bewusst nur noch acht Dinge: Titel,
+ * Rekord, den blinkenden Hinweis, das Zahnrad, die drei Knöpfe und die
+ * eine Ziel-Zeile.
+ *
+ * Alles, was vorher hier stand und nur selten gebraucht wird, ist
+ * umgezogen: Ton, Erinnerung, Hilfe, Werbe-Kauf und Datenschutz in das
+ * Einstellungs-Overlay hinter dem Zahnrad, die Rangliste in die
+ * Statistik. Die Daily-Serie hängt als Abzeichen am DAILY-Knopf, und
+ * statt Versuchszähler und Tageswerten trägt eine einzige Zeile mit
+ * Balken das nächste Ziel — dieselbe Rechnung wie im Game-Over.
+ */
 @Composable
 fun ReadyOverlay(
     bestScore: Int,
-    runNumber: Int,
     hint: String,
-    dailyBest: Int,
     dailyStreak: Int,
+    // Das nächstliegende offene Ziel — null, wenn alles gesammelt ist.
+    // Dann fällt die Zeile ersatzlos weg: Es gibt nichts mehr zu zeigen.
+    goal: Goal?,
     onDaily: () -> Unit,
     onSkins: () -> Unit,
     onStats: () -> Unit,
-    leaderboardAvailable: Boolean,
-    onLeaderboard: () -> Unit,
-    onHelp: () -> Unit,
-    soundOn: Boolean,
-    onToggleSound: () -> Unit,
-    reminderOn: Boolean,
-    onToggleReminder: () -> Unit,
-    // Kauf-Zeile: nur sichtbar, wenn Werbung läuft UND Google ein
-    // kaufbares Produkt liefert (dann steht hier dessen Preis). Ohne
-    // AdMob-IDs sieht der Startscreen exakt aus wie bisher.
-    removeAdsPrice: String? = null,
-    onRemoveAds: () -> Unit = {},
-    // Widerruf der Werbe-Einwilligung. Google blendet die Zeile selbst
-    // nur dort ein, wo sie nötig ist (im Wesentlichen die EU).
-    privacyVisible: Boolean = false,
-    onPrivacy: () -> Unit = {},
+    onSettings: () -> Unit,
     // Versteckte Diagnose: langer Druck auf den Titel blendet den
     // Klartext-Zustand von Werbung und Kauf ein. Nach aussen sieht
     // "keine Einwilligung" genauso aus wie "keine Anzeige verfuegbar" —
@@ -287,40 +297,21 @@ fun ReadyOverlay(
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
-        HelpCornerButton(
-            onHelp = onHelp,
+        // Ein Zahnrad statt dreier Einzel-Icons: Ton, Erinnerung und Hilfe
+        // sind Einstellungen, keine Spielzüge — sie gehören hinter eine Tür.
+        PixelIconButton(
+            icon = PixelIcon.GEAR,
+            contentDescription = stringResource(Res.string.settings),
+            onClick = onSettings,
+            backgroundColor = PanelSand,
+            borderColor = TextDark,
+            strikeColor = RecordRed,
+            buttonSize = 48.dp,
+            borderWidth = 3.dp,
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(16.dp)
         )
-
-        Row(modifier = Modifier
-            .align(Alignment.TopStart)
-            .padding(16.dp)
-        ) {
-            PixelIconButton(
-                icon = if (soundOn) PixelIcon.SPEAKER_ON else PixelIcon.SPEAKER_OFF,
-                contentDescription = stringResource(if (soundOn) Res.string.sound_on else Res.string.sound_off),
-                onClick = onToggleSound,
-                backgroundColor = PanelSand,
-                borderColor = TextDark,
-                strikeColor = RecordRed,
-                buttonSize = 48.dp,
-                borderWidth = 3.dp
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            // Tägliche Daily-Challenge-Erinnerung (Opt-in, lokal).
-            PixelIconButton(
-                icon = if (reminderOn) PixelIcon.BELL_ON else PixelIcon.BELL_OFF,
-                contentDescription = stringResource(if (reminderOn) Res.string.reminder_on else Res.string.reminder_off),
-                onClick = onToggleReminder,
-                backgroundColor = PanelSand,
-                borderColor = TextDark,
-                strikeColor = RecordRed,
-                buttonSize = 48.dp,
-                borderWidth = 3.dp
-            )
-        }
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -381,36 +372,35 @@ fun ReadyOverlay(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 48.dp)
         ) {
-            // Nur sichtbar, wenn Play Games konfiguriert und angemeldet ist.
-            if (leaderboardAvailable) {
-                PixelButton(
-                    text = stringResource(Res.string.leaderboard),
-                    onClick = onLeaderboard,
-                    backgroundColor = PanelSand,
-                    borderColor = TextDark,
-                    textColor = TextDark,
-                    width = 244.dp,
-                    height = 48.dp,
-                    borderWidth = 3.dp
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-            }
             // Drei Knöpfe statt zwei: Die Statistik gehört auf den
             // Startscreen, nicht in ein Untermenü — sie ist der Grund,
             // den nächsten Lauf zu starten. Dafür sind alle drei etwas
             // schmaler (108 statt 116 dp bei 10 dp Abstand), damit die
             // Reihe auch auf 360-dp-Displays mit Rand steht.
             Row {
-                PixelButton(
-                    text = stringResource(Res.string.daily),
-                    onClick = onDaily,
-                    backgroundColor = DotBody,
-                    borderColor = TextDark,
-                    textColor = TextDark,
-                    width = 108.dp,
-                    height = 52.dp,
-                    borderWidth = 3.dp
-                )
+                // Die laufende Serie hängt als Abzeichen am Knopf, zu dem
+                // sie gehört: Sie ist eine Eigenschaft der Daily, keine
+                // eigene Zeile — und in der Ecke sieht man sie trotzdem.
+                Box {
+                    PixelButton(
+                        text = stringResource(Res.string.daily),
+                        onClick = onDaily,
+                        backgroundColor = DotBody,
+                        borderColor = TextDark,
+                        textColor = TextDark,
+                        width = 108.dp,
+                        height = 52.dp,
+                        borderWidth = 3.dp
+                    )
+                    if (dailyStreak >= 1) {
+                        StreakBadge(
+                            days = dailyStreak,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 5.dp, y = (-5).dp)
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.width(10.dp))
                 PixelButton(
                     text = stringResource(Res.string.skins),
@@ -434,57 +424,56 @@ fun ReadyOverlay(
                     borderWidth = 3.dp
                 )
             }
-            if (dailyBest > 0 || dailyStreak > 0) {
-                Spacer(modifier = Modifier.height(8.dp))
+            // Eine Zeile statt einer Zahlenwand: Wo vorher Tageswert,
+            // Serie und Versuchszähler standen, steht jetzt der eine
+            // Grund, gleich noch einmal zu spielen. Die Achse steht mit
+            // dabei — "MEDAILLE 199/200" allein läse sich als Medaillen.
+            if (goal != null) {
+                Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = listOfNotNull(
-                        if (dailyBest > 0) stringResource(Res.string.today_score, dailyBest) else null,
-                        if (dailyStreak > 0) streakLabel(dailyStreak) else null
-                    ).joinToString("  ·  "),
+                    text = goalHeadline(goal),
                     style = ScoreShadowStyle,
                     fontSize = 15.sp,
-                    color = DotBody
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 24.dp)
                 )
-            }
-            if (runNumber > 0) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = stringResource(Res.string.run_number, runNumber + 1),
-                    style = ScoreShadowStyle,
-                    fontSize = 16.sp,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-            }
-            // Bewusst nur eine kleine Zeile statt eines dritten großen
-            // Knopfs: Der Kauf soll auffindbar sein, aber nicht um
-            // Aufmerksamkeit mit DAILY und SKINS konkurrieren.
-            if (removeAdsPrice != null) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = stringResource(Res.string.remove_ads, removeAdsPrice),
-                    style = ScoreShadowStyle,
-                    fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.75f),
-                    modifier = Modifier
-                        .clickable { onRemoveAds() }
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                )
-            }
-            // Noch eine Spur zurückhaltender als die Kauf-Zeile: Der
-            // Widerruf muss dauerhaft erreichbar sein, aber niemand sucht
-            // ihn auf einem Startbildschirm — deshalb klein und blass.
-            if (privacyVisible) {
-                Text(
-                    text = stringResource(Res.string.ad_privacy),
-                    style = ScoreShadowStyle,
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.55f),
-                    modifier = Modifier
-                        .clickable { onPrivacy() }
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                )
+                Spacer(modifier = Modifier.height(5.dp))
+                GoalBar(fraction = goal.fraction, modifier = Modifier.width(244.dp))
             }
         }
+    }
+}
+
+/**
+ * Das rote Serien-Abzeichen an der Ecke des DAILY-Knopfs: dunkler
+ * Pixelrahmen, roter Kern, die Zahl der Tage. Dreistellige Serien gibt es
+ * praktisch nicht, deshalb reicht ein quadratisches Feld.
+ */
+@Composable
+private fun StreakBadge(days: Int, modifier: Modifier = Modifier) {
+    val cd = streakLabel(days)
+    Box(
+        modifier = modifier
+            .size(24.dp)
+            .semantics { contentDescription = cd },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val border = 3.dp.toPx()
+            drawRect(color = OutlineColor)
+            drawRect(
+                color = RecordRed,
+                topLeft = Offset(border, border),
+                size = Size(size.width - 2 * border, size.height - 2 * border)
+            )
+        }
+        Text(
+            text = days.toString(),
+            fontFamily = Bytesized,
+            fontSize = 13.sp,
+            color = Color.White
+        )
     }
 }
 
@@ -895,6 +884,140 @@ private fun StopHelpContent() {
     HelpLine(stringResource(Res.string.help_max_twists))
 }
 
+// ===== Einstellungen =====
+
+/**
+ * Alles, was der Startbildschirm nicht mehr trägt: Ton, Erinnerung,
+ * Hilfe, der Werbe-Kauf und der Datenschutz-Widerruf.
+ *
+ * Aufbau wie Hilfe, Skins und Statistik: dunkler Scrim, ein Tap
+ * daneben schließt (und wird konsumiert, damit er nicht als Spiel-Tap
+ * durchschlägt). Die Sichtbarkeits-Regeln der beiden unteren Zeilen sind
+ * unverändert die alten — sie stehen nur woanders: [removeAdsPrice] ist
+ * genau dann gesetzt, wenn Werbung läuft UND Google ein kaufbares
+ * Produkt liefert; [privacyVisible] sagt Google selbst.
+ */
+@Composable
+internal fun SettingsOverlay(
+    soundOn: Boolean,
+    onToggleSound: () -> Unit,
+    reminderOn: Boolean,
+    onToggleReminder: () -> Unit,
+    onHelp: () -> Unit,
+    onClose: () -> Unit,
+    removeAdsPrice: String? = null,
+    onRemoveAds: () -> Unit = {},
+    privacyVisible: Boolean = false,
+    onPrivacy: () -> Unit = {},
+    // Ohne Tages-Erinnerung (iOS) faellt die Zeile ganz weg. Ein
+    // Schalter, der nichts schaltet, ist schlimmer als keiner.
+    reminderSupported: Boolean = true
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(OutlineColor.copy(alpha = 0.92f))
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onClose() })
+            }
+            .windowInsetsPadding(WindowInsets.systemBars),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 32.dp)
+        ) {
+            Text(
+                text = stringResource(Res.string.settings),
+                style = ScoreShadowStyle,
+                fontSize = 32.sp,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Die Knöpfe tragen ihren Zustand als Text — dieselbe Angabe,
+            // die vorher als contentDescription am Icon hing.
+            PixelButton(
+                text = stringResource(if (soundOn) Res.string.sound_on else Res.string.sound_off),
+                onClick = onToggleSound,
+                backgroundColor = PanelSand,
+                borderColor = TextDark,
+                textColor = TextDark,
+                width = 244.dp,
+                height = 48.dp,
+                borderWidth = 3.dp
+            )
+            if (reminderSupported) {
+                Spacer(modifier = Modifier.height(12.dp))
+                // Tägliche Daily-Challenge-Erinnerung (Opt-in, lokal).
+                PixelButton(
+                    text = stringResource(
+                        if (reminderOn) Res.string.reminder_on else Res.string.reminder_off
+                    ),
+                    onClick = onToggleReminder,
+                    backgroundColor = PanelSand,
+                    borderColor = TextDark,
+                    textColor = TextDark,
+                    width = 244.dp,
+                    height = 48.dp,
+                    borderWidth = 3.dp
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            PixelButton(
+                text = stringResource(Res.string.help),
+                onClick = onHelp,
+                backgroundColor = PanelSand,
+                borderColor = TextDark,
+                textColor = TextDark,
+                width = 244.dp,
+                height = 48.dp,
+                borderWidth = 3.dp
+            )
+
+            // Bewusst nur eine kleine Zeile statt eines vierten Knopfs:
+            // Der Kauf soll auffindbar sein, aber nicht um Aufmerksamkeit
+            // mit den Schaltern konkurrieren.
+            if (removeAdsPrice != null) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = stringResource(Res.string.remove_ads, removeAdsPrice),
+                    style = ScoreShadowStyle,
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.75f),
+                    modifier = Modifier
+                        .clickable { onRemoveAds() }
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            }
+            // Noch eine Spur zurückhaltender als die Kauf-Zeile: Der
+            // Widerruf muss dauerhaft erreichbar sein, aber niemand sucht
+            // ihn — deshalb klein und blass.
+            if (privacyVisible) {
+                Text(
+                    text = stringResource(Res.string.ad_privacy),
+                    style = ScoreShadowStyle,
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .clickable { onPrivacy() }
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = stringResource(Res.string.tap_to_close),
+                fontFamily = Bytesized,
+                fontSize = 14.sp,
+                color = Color.White.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
 /** "SERIE: n TAG/TAGE" bzw. "STREAK: n DAY/DAYS", sprachrichtig. */
 @Composable
 fun streakLabel(days: Int): String =
@@ -988,6 +1111,8 @@ fun SkinOverlay(
     onSelectScene: (SceneId) -> Unit,
     selectedSound: SoundSetId,
     onSelectSound: (SoundSetId) -> Unit,
+    selectedCardFrame: CardFrame?,
+    onSelectCardFrame: (CardFrame) -> Unit,
     onClose: () -> Unit,
     skinPass: SkinId? = null,
     adOfferReady: Boolean = false,
@@ -1105,6 +1230,53 @@ fun SkinOverlay(
                             fontSize = 14.sp,
                             color = when {
                                 sound == selectedSound -> DotBody
+                                open -> Color.White.copy(alpha = 0.7f)
+                                else -> Color.White.copy(alpha = 0.45f)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Die Rahmen zuletzt unter den drei kleinen Sammlungen: Sie
+            // sind die einzige, die im Spiel selbst nicht vorkommt —
+            // sichtbar wird sie erst auf der geteilten Karte.
+            //
+            // Die angezeigte Wahl ist nie null: Wer nie gewählt hat,
+            // steht auf seiner höchsten verdienten Stufe, und genau die
+            // trägt seine Karte auch.
+            SkinFamilyHeading(stringResource(Res.string.frames))
+            val wirksamerRahmen = CardStyle.frame(selectedCardFrame, stats)
+            CardFrame.entries.forEach { frame ->
+                val open = CardStyle.isUnlocked(frame, stats)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = open) { onSelectCardFrame(frame) }
+                        .padding(horizontal = 48.dp, vertical = 10.dp)
+                ) {
+                    Canvas(modifier = Modifier.size(36.dp)) {
+                        drawCardFramePreview(frame, alpha = if (open) 1f else 0.3f)
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = frameTitle(frame),
+                            fontFamily = Bytesized,
+                            fontSize = 20.sp,
+                            color = if (open) Color.White else Color.White.copy(alpha = 0.45f)
+                        )
+                        Text(
+                            text = when {
+                                frame == wirksamerRahmen -> stringResource(Res.string.skin_selected)
+                                open -> stringResource(Res.string.frame_on_card)
+                                else -> frameHint(frame) ?: ""
+                            },
+                            fontFamily = Bytesized,
+                            fontSize = 14.sp,
+                            color = when {
+                                frame == wirksamerRahmen -> DotBody
                                 open -> Color.White.copy(alpha = 0.7f)
                                 else -> Color.White.copy(alpha = 0.45f)
                             }
@@ -1318,6 +1490,61 @@ private fun DrawScope.drawSoundPreview(sound: SoundSetId, alpha: Float) {
             size = Size(breite, hoehe),
             alpha = alpha
         )
+    }
+}
+
+/**
+ * Vorschau einer Rahmenstufe: eine leere Karte im Seitenverhältnis der
+ * echten, mit genau dem Rahmen, den sie bekäme.
+ *
+ * Bewusst ohne Inhalt — kein Punkt, kein Titel, keine Zahl. Die Kachel
+ * beantwortet eine einzige Frage („wie dick und wie verziert ist der
+ * Rand"), und alles andere darin wäre bei 36 dp ohnehin nur Grieß.
+ */
+private fun DrawScope.drawCardFramePreview(frame: CardFrame, alpha: Float) {
+    val d = size.minDimension
+    // Die Karte ist breiter als hoch; die Kachel ist quadratisch. Also
+    // ein liegendes Rechteck mittig einsetzen, statt zu verzerren.
+    val h = d * 0.72f
+    val top = (d - h) / 2f
+    val staerke = when (frame) {
+        CardFrame.SCHLICHT -> d / 18f
+        CardFrame.DOPPELLINIE -> d / 12f
+        CardFrame.ZINNEN -> d / 8f
+        CardFrame.PRACHT -> d / 6f
+    }
+
+    drawRect(color = OutlineColor, topLeft = Offset(0f, top), size = Size(d, h), alpha = alpha)
+    drawRect(
+        color = PanelSand,
+        topLeft = Offset(staerke, top + staerke),
+        size = Size(d - staerke * 2f, h - staerke * 2f),
+        alpha = alpha
+    )
+    // Ab der zweiten Stufe liegt ein farbiges Band im Rahmen — dasselbe
+    // Erkennungszeichen wie auf der Karte selbst.
+    if (frame != CardFrame.SCHLICHT) {
+        val band = staerke / 3f
+        drawRect(
+            color = DotBody,
+            topLeft = Offset(band, top + band),
+            size = Size(d - band * 2f, h - band * 2f),
+            alpha = alpha,
+            style = Stroke(width = band)
+        )
+    }
+    // Die Prachtstufe bekommt ihre Eckrosetten, sonst sähe sie aus wie
+    // eine bloß dickere Zinnenstufe.
+    if (frame == CardFrame.PRACHT) {
+        val eck = staerke * 0.8f
+        listOf(
+            Offset(0f, top),
+            Offset(d - eck, top),
+            Offset(0f, top + h - eck),
+            Offset(d - eck, top + h - eck)
+        ).forEach {
+            drawRect(color = DotBody, topLeft = it, size = Size(eck, eck), alpha = alpha)
+        }
     }
 }
 

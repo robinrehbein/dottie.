@@ -3,15 +3,21 @@
 
 /* Startscreen */
 "ready_hint" = "STOPPE DEN PUNKT IN DER GRUENEN ZONE";
-"sound_on" = "TON: AN";
-"sound_off" = "TON: AUS";
 "best_score" = "REKORD: %1$d";
 "daily" = "DAILY";
 "skins" = "SKINS";
 "today_score" = "HEUTE: %1$d";
 "streak_one" = "SERIE: 1 TAG";
 "streak_many" = "SERIE: %1$d TAGE";
-"run_number" = "VERSUCH #%1$d";
+
+/* Einstellungen — das Blatt hinter dem Zahnrad. Die drei Schalter
+   standen frueher als Icons im Startbild; hier tragen sie Klartext. */
+"settings" = "EINSTELLUNGEN";
+"sound_on" = "TON: AN";
+"sound_off" = "TON: AUS";
+"reminder_on" = "ERINNERUNG: AN";
+"reminder_off" = "ERINNERUNG: AUS";
+"settings_help" = "HILFE";
 
 /* Lauf / Banner */
 "perfect_plus" = "PERFEKT! +%1$d";
@@ -217,3 +223,21 @@
 "stats_goals" = "NAECHSTE ZIELE";
 /* "FUSSBALL 218/300" — Name der Belohnung plus Stand auf der Achse. */
 "goal_progress" = "%1$@ %2$d/%3$d";
+
+/* Die eine Ziel-Zeile im Startbild — dort steht sie allein und muss
+   deshalb ausgeschrieben sein, inklusive Achse:
+   "NAECHSTER SKIN: MEDAILLE — 199/200 LAEUFE". */
+"goal_next_skin" = "NAECHSTER SKIN";
+"goal_next_scene" = "NAECHSTE KULISSE";
+"goal_next_sound" = "NAECHSTER TON";
+"goal_line" = "%1$@: %2$@ — %3$d/%4$d %5$@";
+"goal_axis_best" = "REKORD-PUNKTE";
+"goal_axis_perfect" = "PERFEKTE IN SERIE";
+"goal_axis_daily_streak" = "TAGE DAILY-SERIE";
+"goal_axis_runs" = "LAEUFE";
+"goal_axis_total" = "PUNKTE INSGESAMT";
+"goal_axis_days" = "TAGE GESPIELT";
+"goal_axis_months" = "MONATE GESPIELT";
+"goal_axis_season" = "TAGE IM MONAT";
+"goal_axis_skins" = "SKINS";
+"goal_axis_scenes" = "KULISSEN";

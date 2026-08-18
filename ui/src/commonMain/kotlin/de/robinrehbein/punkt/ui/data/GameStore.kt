@@ -1,6 +1,8 @@
 package de.robinrehbein.punkt.ui.data
 
 import de.robinrehbein.punkt.game.DailyChallenge
+import de.robinrehbein.punkt.game.CardFrame
+import de.robinrehbein.punkt.game.CardStyle
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.Season
@@ -147,6 +149,27 @@ class GameStore(private val prefs: KeyValueStore) {
             }
         }
 
+    /**
+     * Gewählter Rahmen der Score-Karte — null heißt "nie gewählt", und
+     * das ist etwas anderes als SCHLICHT. Wer nie gewählt hat, bekommt
+     * automatisch seine höchste verdiente Stufe; erst eine Wahl macht
+     * SCHLICHT zu einer Entscheidung statt zu einem Anfangszustand.
+     *
+     * Anders als Skin, Kulisse und Ton-Set wird der Rahmen **nicht** mit
+     * der Uhr abgeglichen und trägt deshalb auch keinen Zeitstempel: Die
+     * Uhr hat keine Score-Karte. Ein Wert, den die Gegenseite nicht
+     * benutzen kann, gehört nicht in den [SyncState] — er wäre nur ein
+     * weiteres Feld, das auseinanderlaufen kann, ohne dass es jemandem
+     * auffällt.
+     */
+    var selectedCardFrame: CardFrame?
+        get() = CardStyle.fromName(prefs.string(KEY_CARD_FRAME))
+        set(value) {
+            prefs.edit {
+                if (value == null) remove(KEY_CARD_FRAME) else putString(KEY_CARD_FRAME, value.name)
+            }
+        }
+
     // ===== Skin-Tagespass (Rewarded) =====
 
     /**
@@ -186,6 +209,19 @@ class GameStore(private val prefs: KeyValueStore) {
     /** Aktuelle Serie an Tagen mit mindestens einem Daily-Lauf. */
     val dailyStreak: Int
         get() = prefs.int(KEY_DAILY_STREAK, 0)
+
+    /**
+     * Beste je erreichte Daily-Serie — der Wert, an dem PRISMA, KOI,
+     * AURORA, DISCO und die Kulisse BERG hängen. Die laufende Serie taugt
+     * dafür nicht: Sie fällt nach einer Lücke auf 1 zurück und würde
+     * bereits gefeierte Freischaltungen wieder zusperren.
+     *
+     * Der Vergleich mit [dailyStreak] ist zugleich die Migration: Wer vor
+     * v2.23 eine Serie aufgebaut hat, hat den Schlüssel noch nicht — dann
+     * ist die laufende Serie der beste bekannte Wert.
+     */
+    val bestDailyStreak: Int
+        get() = maxOf(prefs.int(KEY_BEST_DAILY_STREAK, 0), dailyStreak)
 
     /** Tagesbest für einen konkreten Tag — 0, wenn der Tag nicht passt. */
     fun dailyBestFor(epochDay: Long): Int =
@@ -287,6 +323,10 @@ class GameStore(private val prefs: KeyValueStore) {
             )
             prefs.edit {
                 putInt(KEY_DAILY_STREAK, streak)
+                // Der Bestwert wandert bei jedem Schreiben der Serie mit:
+                // Fällt sie gleich hier auf 1 zurück, bleibt oben stehen,
+                // was einmal erreicht war.
+                putInt(KEY_BEST_DAILY_STREAK, maxOf(bestDailyStreak, streak))
                 putLong(KEY_DAILY_DAY, epochDay)
                 putInt(KEY_DAILY_BEST, score)
             }
@@ -316,7 +356,7 @@ class GameStore(private val prefs: KeyValueStore) {
     fun stats(): SkinStats = SkinStats(
         bestScore = bestScore,
         bestPerfectStreak = bestPerfectStreak,
-        bestDailyStreak = dailyStreak,
+        bestDailyStreak = bestDailyStreak,
         runCount = runCount,
         totalScore = totalScore,
         daysPlayed = daysPlayed,
@@ -350,6 +390,7 @@ class GameStore(private val prefs: KeyValueStore) {
             dailyDay = dailyDay,
             dailyBest = dailyBest,
             dailyStreak = dailyStreak,
+            bestDailyStreak = bestDailyStreak,
             totalScore = totalScore,
             daysPlayed = daysPlayed,
             lastPlayedDay = prefs.long(KEY_LAST_PLAYED_DAY, 0L),
@@ -419,6 +460,16 @@ class GameStore(private val prefs: KeyValueStore) {
             putInt(KEY_DAILY_BEST, state.dailyBest)
             putInt(KEY_DAILY_STREAK, state.dailyStreak)
         }
+        // Der Bestwert steht bewusst außerhalb dieses Blocks: Die aktuelle
+        // Serie darf beim Abgleich auch kleiner werden (eine Lücke reißt
+        // sie), der Bestwert nie. Verglichen wird mit dem ROHEN Wert, nicht
+        // mit dem aus syncState(): Ein Bestand ohne den Schlüssel leiht
+        // sich seinen Bestwert von der laufenden Serie — genau die wird
+        // hier gerade womöglich kleiner geschrieben.
+        val bestDaily = maxOf(state.bestDailyStreak, before.bestDailyStreak)
+        if (bestDaily > prefs.int(KEY_BEST_DAILY_STREAK, 0)) {
+            putInt(KEY_BEST_DAILY_STREAK, bestDaily)
+        }
         // Bewusst gegen den ROHEN Zeitstempel geprüft, nicht gegen den aus
         // syncState(): Wer sich gerade einen Tagespass-Skin ausgesucht
         // hat, teilt diese Wahl zwar nicht mit, soll sie aber auch nicht
@@ -462,7 +513,7 @@ class GameStore(private val prefs: KeyValueStore) {
     private fun mergedStats(state: SyncState, before: SyncState) = SkinStats(
         bestScore = maxOf(state.bestScore, before.bestScore),
         bestPerfectStreak = maxOf(state.bestPerfectStreak, before.bestPerfectStreak),
-        bestDailyStreak = maxOf(state.dailyStreak, before.dailyStreak),
+        bestDailyStreak = maxOf(state.bestDailyStreak, before.bestDailyStreak),
         runCount = maxOf(state.runCount, before.runCount),
         totalScore = maxOf(state.totalScore, before.totalScore),
         daysPlayed = maxOf(state.daysPlayed, before.daysPlayed),
@@ -486,10 +537,14 @@ class GameStore(private val prefs: KeyValueStore) {
         const val KEY_SCENE_CHANGED = "scene_changed_at"
         const val KEY_SOUND = "selected_sound"
         const val KEY_SOUND_CHANGED = "sound_changed_at"
+        const val KEY_CARD_FRAME = "selected_card_frame"
         const val KEY_ADS_REMOVED = "ads_removed"
         const val KEY_DAILY_BEST = "daily_best"
         const val KEY_DAILY_DAY = "daily_day"
         const val KEY_DAILY_STREAK = "daily_streak"
+        // Der Bestwert der Daily-Serie (ab v2.23). Bestände ohne diesen
+        // Schlüssel starten mit der laufenden Serie, siehe bestDailyStreak.
+        const val KEY_BEST_DAILY_STREAK = "best_daily_streak"
         const val KEY_SKIN_CHANGED = "skin_changed_at"
         const val KEY_SKIN_PASS_SKIN = "skin_pass_skin"
         const val KEY_SKIN_PASS_DAY = "skin_pass_day"

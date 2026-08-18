@@ -26,7 +26,7 @@ import kotlin.random.Random
 object ParityVectors {
 
     /** Bei jeder Formatänderung hochzählen. */
-    const val VERSION = 3
+    const val VERSION = 4
 
     /** Seed der Vektoren — irgendein fester Tag, nichts Magisches. */
     private const val SEED = 20240813L
@@ -428,7 +428,11 @@ object ParityVectors {
             "Ton-Sets (SoundBank) — die dritte Sammlung. Jeder Ton steht\n" +
                 "# als Zahlenreihe da, damit kein Port seine eigene Synthese\n" +
                 "# erfindet: fromHz toHz Sekunden Lautstärke Abklingrate\n" +
-                "# Pulsbreite, je Ton ein Wort mit Doppelpunkten getrennt."
+                "# Pulsbreite Wellenform, je Ton ein Wort mit Doppelpunkten\n" +
+                "# getrennt. Die Wellenform steht als Name (PULS, DREIECK)\n" +
+                "# und nicht als Zahl: Ein Port, der sie nicht kennt, soll\n" +
+                "# beim Lesen scheitern und nicht stillschweigend Rechteck\n" +
+                "# spielen, wo ein Dreieck stehen müsste."
         )
         line("sound.order", *SoundSetId.entries.map { it.name }.toTypedArray())
         line("sound.events", *SoundEvent.entries.map { it.name }.toTypedArray())
@@ -443,7 +447,7 @@ object ParityVectors {
                     "sound.voice.${id.name}.${event.name}",
                     voice.tones.joinToString(" ") { t ->
                         listOf(t.fromHz, t.toHz, t.seconds, t.volume, t.decay, t.duty)
-                            .joinToString(":") { f(it) }
+                            .joinToString(":") { f(it) } + ":" + t.wave.name
                     },
                     // Das Rauschen steht am Ende derselben Zeile, damit
                     // ein Port, der es überliest, an der Feldzahl auffällt.

@@ -81,7 +81,7 @@ fun PixelButton(
 }
 
 /** Icon motifs for [PixelIconButton], drawn as blocky shapes on a 16-unit grid. */
-enum class PixelIcon { SPEAKER_ON, SPEAKER_OFF, BELL_ON, BELL_OFF }
+enum class PixelIcon { SPEAKER_ON, SPEAKER_OFF, BELL_ON, BELL_OFF, GEAR }
 
 /**
  * A square pixel art button showing an icon instead of text — same border
@@ -114,12 +114,17 @@ fun PixelIconButton(
                 borderColor = borderColor,
                 borderWidth = borderWidth.toPx()
             )
-            drawPixelIcon(icon, iconColor, strikeColor)
+            drawPixelIcon(icon, iconColor, strikeColor, backgroundColor)
         }
     }
 }
 
-private fun DrawScope.drawPixelIcon(icon: PixelIcon, color: Color, strikeColor: Color) {
+private fun DrawScope.drawPixelIcon(
+    icon: PixelIcon,
+    color: Color,
+    strikeColor: Color,
+    backgroundColor: Color
+) {
     val u = size.minDimension / 16f
     fun block(x: Float, y: Float, w: Float, h: Float, c: Color = color) {
         drawRect(color = c, topLeft = Offset(x * u, y * u), size = Size(w * u, h * u))
@@ -143,6 +148,20 @@ private fun DrawScope.drawPixelIcon(icon: PixelIcon, color: Color, strikeColor: 
             block(4.5f, 6f, 7f, 3.5f)
             block(3.5f, 9.3f, 9f, 1.6f)
             block(7.2f, 11.2f, 1.6f, 1.6f)
+        }
+        PixelIcon.GEAR -> {
+            // Body plus four straight and four diagonal teeth; the hub is
+            // punched back out in the button colour so the ring reads as a gear.
+            block(4.5f, 4.5f, 7f, 7f)
+            block(6.5f, 2.4f, 3f, 2.6f)
+            block(6.5f, 11f, 3f, 2.6f)
+            block(2.4f, 6.5f, 2.6f, 3f)
+            block(11f, 6.5f, 2.6f, 3f)
+            block(3.2f, 3.2f, 2.6f, 2.6f)
+            block(10.2f, 3.2f, 2.6f, 2.6f)
+            block(3.2f, 10.2f, 2.6f, 2.6f)
+            block(10.2f, 10.2f, 2.6f, 2.6f)
+            block(6.6f, 6.6f, 2.8f, 2.8f, backgroundColor)
         }
     }
     if (icon == PixelIcon.SPEAKER_OFF || icon == PixelIcon.BELL_OFF) {

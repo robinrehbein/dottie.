@@ -19,11 +19,11 @@ class WearSyncMergeTest {
     @Test
     fun `Zahlen nehmen das Maximum, egal von welcher Seite`() {
         val uhr = SyncState(
-            bestScore = 42, bestPerfectStreak = 3, dailyStreak = 9,
+            bestScore = 42, bestPerfectStreak = 3, bestDailyStreak = 9,
             runCount = 12, totalScore = 800, daysPlayed = 4
         )
         val telefon = SyncState(
-            bestScore = 17, bestPerfectStreak = 11, dailyStreak = 2,
+            bestScore = 17, bestPerfectStreak = 11, bestDailyStreak = 2,
             runCount = 300, totalScore = 120, daysPlayed = 9
         )
         val merged = WearSyncMerge.skinStats(uhr, telefon, patronOwned = false)
@@ -42,6 +42,29 @@ class WearSyncMergeTest {
         assertEquals(
             WearSyncMerge.skinStats(uhr, telefon, patronOwned = false),
             WearSyncMerge.skinStats(telefon, uhr, patronOwned = false)
+        )
+    }
+
+    /**
+     * Der Kern der Sache: Für die Freischaltungen zählt der Bestwert der
+     * Daily-Serie, nicht die laufende. Sonst nähme ein Abgleich, bei dem
+     * eine Seite gerade nach einer Lücke neu angefangen hat, einen längst
+     * verdienten Skin wieder weg.
+     */
+    @Test
+    fun `Die Daily-Serie zaehlt mit ihrem Bestwert, nicht mit dem laufenden Stand`() {
+        // Auf der Uhr sind einmal 14 Tage am Stück zusammengekommen —
+        // AURORA ist verdient. Jetzt läuft dort eine frische Serie.
+        val uhr = SyncState(dailyStreak = 1, bestDailyStreak = 14)
+        val telefon = SyncState(dailyStreak = 1, bestDailyStreak = 1)
+        val merged = WearSyncMerge.skinStats(uhr, telefon, patronOwned = false)
+        assertEquals(14, merged.bestDailyStreak)
+        assertTrue(WearDotSkin.AURORA.isUnlocked(merged))
+        // Und in der anderen Richtung genauso.
+        assertTrue(
+            WearDotSkin.AURORA.isUnlocked(
+                WearSyncMerge.skinStats(telefon, uhr, patronOwned = false)
+            )
         )
     }
 

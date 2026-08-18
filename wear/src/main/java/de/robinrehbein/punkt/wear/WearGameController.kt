@@ -16,6 +16,8 @@ import de.robinrehbein.punkt.game.GameEventSettled
 import de.robinrehbein.punkt.game.GameEventStarted
 import de.robinrehbein.punkt.game.GameEventTwistUnlocked
 import de.robinrehbein.punkt.game.GamePhase
+import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SoundBank
 import de.robinrehbein.punkt.game.SyncState
@@ -43,8 +45,26 @@ private const val KEY_DAILY_BEST = "daily_best"
 private const val KEY_DAILY_DAY = "daily_day"
 private const val KEY_DAILY_STREAK = "daily_streak"
 
+/**
+ * Bestwert der Daily-Serie — der Wert, an dem die Freischaltungen hängen
+ * (PRISMA, KOI, AURORA, DISCO). [KEY_DAILY_STREAK] taugt dafür nicht: Die
+ * laufende Serie fällt nach einer Lücke auf 1 zurück und würde bereits
+ * gefeierte Skins wieder zusperren. Verdient bleibt verdient.
+ */
+private const val KEY_BEST_DAILY_STREAK = "best_daily_streak"
+
 /** Wann der Skin zuletzt bewusst gewechselt wurde — nur für den Abgleich. */
 private const val KEY_SKIN_CHANGED = "skin_changed_at"
+
+/**
+
+ * Kulissen-Wahl des Telefons, gespiegelt wie der Skin — die Uhr wählt
+ * selbst nie eine Kulisse (siehe README, Abschnitt "Kulissen"), sie zieht
+ * nur die Himmelsfarben aus ScenePaint. Ohne diese beiden Keys bliebe die
+ * Uhr für immer bei WIESE, egal was am Telefon gewählt ist.
+ */
+private const val KEY_SCENE = "selected_scene"
+private const val KEY_SCENE_CHANGED = "scene_changed_at"
 
 /**
  * Das gewählte Ton-Set und wann es gewählt wurde. Die Uhr hat keinen
@@ -147,6 +167,14 @@ internal class WearGameController(context: Context) {
 
     /** Gewählter Punkt-Skin; persistent wie der Rekord. */
     var skin by mutableStateOf(WearDotSkin.fromName(prefs.getString(KEY_SKIN, null)))
+        private set
+
+    /**
+     * Kulisse des Telefons, nur gespiegelt (siehe [KEY_SCENE]). Die Uhr
+     * bietet dafür keinen eigenen Wähler — anders als [skin] gibt es hier
+     * also keine öffentliche Setter-Funktion.
+     */
+    var scene by mutableStateOf(ScenePaint.fromName(prefs.getString(KEY_SCENE, null)))
         private set
 
     /**
@@ -288,9 +316,21 @@ internal class WearGameController(context: Context) {
     // ===== Skin-Wahl =====
 
     /**
+     * Beste je erreichte Daily-Serie, wie bestDailyStreak im Phone-Store.
+     * Der Vergleich mit der gespeicherten Serie ist zugleich die
+     * Migration: Wer vor v2.23 eine Serie aufgebaut hat, hat den
+     * Schlüssel noch nicht — dann ist sie der beste bekannte Wert.
+     */
+    private fun bestDailyStreak(): Int = maxOf(
+        prefs.getInt(KEY_BEST_DAILY_STREAK, 0),
+        prefs.getInt(KEY_DAILY_STREAK, 0)
+    )
+
+    /**
      * Alle Stände, aus denen sich Freischaltungen ableiten — wie stats()
-     * im Phone-Store. Für die Daily-Serie zählt der gespeicherte Stand,
-     * nicht die Anzeige-Vorschau (die fällt nach einer Lücke auf 0).
+     * im Phone-Store. Für die Daily-Serie zählt der Bestwert, nicht die
+     * Anzeige-Vorschau (die fällt nach einer Lücke auf 0) und auch nicht
+     * die laufende Serie (die fällt nach einer Lücke auf 1).
      *
      * patronOwned kommt aus dem lokalen Spiegel des Play-Kaufs: Wer das
      * Gönner-Paket gekauft hat, sieht seine Skins auch auf der Uhr — der
@@ -299,7 +339,7 @@ internal class WearGameController(context: Context) {
     private fun skinStats(): WearDotSkin.Stats = WearDotSkin.Stats(
         bestScore = bestScore,
         bestPerfectStreak = bestPerfectStreak,
-        bestDailyStreak = prefs.getInt(KEY_DAILY_STREAK, 0),
+        bestDailyStreak = bestDailyStreak(),
         runCount = prefs.getInt(KEY_RUNS, 0),
         totalScore = prefs.getInt(KEY_TOTAL_SCORE, 0),
         daysPlayed = prefs.getInt(KEY_DAYS_PLAYED, 0),
@@ -393,6 +433,7 @@ internal class WearGameController(context: Context) {
         dailyDay = prefs.getLong(KEY_DAILY_DAY, 0L),
         dailyBest = prefs.getInt(KEY_DAILY_BEST, 0),
         dailyStreak = prefs.getInt(KEY_DAILY_STREAK, 0),
+        bestDailyStreak = bestDailyStreak(),
         totalScore = prefs.getInt(KEY_TOTAL_SCORE, 0),
         daysPlayed = prefs.getInt(KEY_DAYS_PLAYED, 0),
         lastPlayedDay = prefs.getLong(KEY_LAST_PLAYED_DAY, 0L),
@@ -402,6 +443,12 @@ internal class WearGameController(context: Context) {
         seasonEarned = prefs.getInt(KEY_SEASON_EARNED, 0),
         skin = skin.name,
         skinChangedAt = prefs.getLong(KEY_SKIN_CHANGED, 0L),
+        // Die Uhr wählt nie selbst eine Kulisse — hier steht nur zurück,
+        // was das Telefon zuletzt geschickt hat (siehe applySync). Damit
+        // bleibt SyncState.mergedWith stabil: Ohne dieses Zurückmelden
+        // würde ein Abgleich die Kulisse jedes Mal neu "verlieren".
+        scene = scene.name,
+        sceneChangedAt = prefs.getLong(KEY_SCENE_CHANGED, 0L),
         // Die Uhr wählt das Ton-Set nicht selbst, gibt aber weiter, was
         // sie hat: Sonst hielte sie beim nächsten Abgleich die Wahl des
         // Telefons für neu und würde sie endlos zurückspiegeln.
@@ -431,6 +478,16 @@ internal class WearGameController(context: Context) {
             editor.putLong(KEY_DAILY_DAY, state.dailyDay)
             editor.putInt(KEY_DAILY_BEST, state.dailyBest)
             editor.putInt(KEY_DAILY_STREAK, state.dailyStreak)
+        }
+        // Getrennt vom Block darüber: Die laufende Serie darf beim
+        // Abgleich auch kleiner werden (eine Lücke reißt sie), der
+        // Bestwert nie. Verglichen wird mit dem ROHEN Wert aus den Prefs:
+        // Ein Bestand ohne den Schlüssel leiht sich seinen Bestwert von
+        // der laufenden Serie — genau die wird hier gerade womöglich
+        // kleiner geschrieben.
+        val bestDaily = maxOf(state.bestDailyStreak, before.bestDailyStreak)
+        if (bestDaily > prefs.getInt(KEY_BEST_DAILY_STREAK, 0)) {
+            editor.putInt(KEY_BEST_DAILY_STREAK, bestDaily)
         }
         if (state.totalScore > before.totalScore) {
             editor.putInt(KEY_TOTAL_SCORE, state.totalScore)
@@ -463,6 +520,14 @@ internal class WearGameController(context: Context) {
             // dasselbe. Mit fortgeschriebenem Zeitstempel bliebe die Uhr
             // für immer auf ihrem alten Skin sitzen.
         }
+        // Kulisse nach derselben Neuer-gewinnt-Regel wie der Skin — die
+        // Rechnung steckt in WearSyncMerge, damit sie ohne Prefs testbar
+        // bleibt. null heißt: nichts übernehmen, Zeitstempel bleibt stehen
+        // (siehe WearSyncMerge.sceneToAdopt).
+        WearSyncMerge.sceneToAdopt(before, state, patronOwned)?.let { adopted ->
+            editor.putString(KEY_SCENE, adopted.name)
+            editor.putLong(KEY_SCENE_CHANGED, state.sceneChangedAt)
+        }
         // Das Ton-Set nach derselben Regel wie der Skin: Die neuere Wahl
         // gewinnt, aber nur, wenn sie hier auch verdient ist. Die Uhr
         // leitet das aus den zusammengeführten Zahlen ab und nicht aus
@@ -482,6 +547,7 @@ internal class WearGameController(context: Context) {
         bestScore = prefs.getInt(KEY_BEST, 0)
         bestPerfectStreak = prefs.getInt(KEY_BEST_PERFECT, 0)
         skin = WearDotSkin.fromName(prefs.getString(KEY_SKIN, null))
+        scene = ScenePaint.fromName(prefs.getString(KEY_SCENE, null))
         soundSet = SoundBank.fromName(prefs.getString(KEY_SOUND, null))
         audio.soundSet = soundSet
         refreshDailyDisplay()
@@ -677,6 +743,10 @@ internal class WearGameController(context: Context) {
             )
             prefs.edit()
                 .putInt(KEY_DAILY_STREAK, streak)
+                // Der Bestwert wandert bei jedem Schreiben der Serie mit —
+                // fällt sie gleich hier auf 1 zurück, bleibt oben stehen,
+                // was einmal erreicht war.
+                .putInt(KEY_BEST_DAILY_STREAK, maxOf(bestDailyStreak(), streak))
                 .putLong(KEY_DAILY_DAY, epochDay)
                 .putInt(KEY_DAILY_BEST, score)
                 .apply()
