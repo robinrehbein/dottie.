@@ -22,11 +22,19 @@ die steht in der letzten Spalte.
 
 ## Gebaut, seit diese Liste zuletzt stimmte
 
-Drei Punkte sind von „später" nach „drin" gewandert und stehen deshalb
+Vier Punkte sind von „später" nach „drin" gewandert und stehen deshalb
 nicht mehr unten: die **Ton-Sets** (KLASSIK / GLOCKE / AMBOSS, wählbar
 mit Hörprobe), **Rahmen und Beinamen** der Score-Karte samt eigener
-Auswahl, und die **Dreieckwelle**, ohne die die GLOCKE nur ein hoch
-gestimmter Bestand gewesen wäre.
+Auswahl, die **Dreieckwelle**, ohne die die GLOCKE nur ein hoch
+gestimmter Bestand gewesen wäre, und die **Laterne** auf dem vierten
+Platz der STADT.
+
+Zur Laterne zwei Dinge, die beim Bauen anders lagen als gedacht. Erstens
+kostet eine neue `PropShape` **zwei** Renderer, nicht drei: Die Uhr
+zeichnet nur den Himmel, keine Requisiten. Zweitens löst die Laterne den
+Fels nur an dieser einen Stelle ab — er bleibt an neun weiteren, und im
+WELTRAUM sind alle vier Requisiten Felsen. Ein `ScenePaintTest` nagelt
+beide Zahlen fest.
 
 Damit stehen vier Sammlungen nebeneinander — Skins, Kulissen, Töne,
 Rahmen — und in allen vieren gilt dieselbe Regel: Der Bestand ist die
@@ -41,7 +49,6 @@ erste Stufe und bleibt unangetastet (WIESE, KLASSIK, SCHLICHT).
 | Rahmen auf der Uhr | Der Rahmen ist die einzige der vier Sammlungen, die nicht mit der Uhr abgeglichen wird — sie hat keine Score-Karte (siehe `ScoreStore.selectedCardFrame`). Bekäme sie eine, fehlte der Abgleich. |
 | Eine dritte Wellenform | `ChipSynth` kann Rechteck und Dreieck. Eine Säge fehlt bewusst: Der Chip, dem das Spiel seinen Klang schuldet, hatte keine. Wer sie hinzufügt, sollte erst sagen können, welches Set sie braucht. |
 | Tod-Animationen | Alternativen zum Mario-Hüpfer (Pixel-Explosion, Luft ablassen). Reines Feedback nach dem Lauf, berührt keine Fairness — Dauer und Bodenlinie müssen gleich bleiben, sonst verschiebt sich die Sperre gegen Wut-Taps. |
-| Eigene Requisite für die STADT | Der vierte Requisiten-Platz der STADT trägt einen Fels — auf Asphalt, neben Hochhäusern. Der Umriss ist inzwischen als Stein erkennbar, aber ein Findling auf der Straße bleibt er. Vorschlag: eine Laterne, schmal und hoch, die das Fenstergelb `0xFFFFD847` aufnimmt und die Straße abends mitleuchten lässt. Kostet eine neue `PropShape` samt Zeichenroutine in drei Ports. |
 | Startbildschirm entrümpeln | Vierzehn Elemente, sechs davon untereinander im unteren Drittel. Sechs Entwürfe stehen im Artefakt „Weniger auf dem Startbildschirm"; Empfehlung ist Entwurf B: Einstellungs-Blatt hinter einem Zahnrad, Rangliste und Versuchszähler in die Statistik, und die vier Zahlenzeilen ersetzt durch den vorhandenen `GoalBar` zum nächsten Skin. |
 | Achse in der Ziel-Zeile benennen | `goal_progress` zeigt „MEDAILLE 199/200", ohne zu sagen, was gezählt wird — das liest sich wie Medaillen, sind aber Läufe. Die Wörter existieren bereits als `skin_hint_*` („200 LAEUFE"); die Zeile muss sie nur mitbenutzen statt eine nackte Zahl zu zeigen. |
 

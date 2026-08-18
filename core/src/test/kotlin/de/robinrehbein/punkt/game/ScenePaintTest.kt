@@ -316,6 +316,115 @@ class ScenePaintTest {
     }
 
     @Test
+    fun `die Laterne ist bis auf den Wert spiegelsymmetrisch`() {
+        // Der eigentliche Punkt der Form. Ein Fels darf schief sein, er
+        // ist gewachsen; eine Laterne ist gefertigt, und eine Sprosse
+        // einen Hauch neben der Mitte liest sich sofort als Fehler.
+        //
+        // Der Test prüft das Modell, nicht das Bild: Zu jedem Stück muss
+        // sein Spiegelstück in der Tabelle stehen — gleiche Höhe, gleiche
+        // Breite, gleiche Farblage, an der gespiegelten Stelle. Mittige
+        // Stücke sind ihr eigenes Spiegelstück.
+        val teile = ScenePaint.LANTERN_PARTS
+        teile.forEach { p ->
+            val spiegelX = -(p.x + p.w)
+            assertTrue(
+                "Zu (${p.x}, ${p.y}, ${p.w}, ${p.h}) fehlt das Spiegelstück bei x=$spiegelX",
+                teile.any {
+                    nah(it.x, spiegelX) && nah(it.w, p.w) &&
+                        nah(it.y, p.y) && nah(it.h, p.h) && it.tone == p.tone
+                }
+            )
+        }
+
+        // Und die Gegenprobe zur Hausregel: Die Lichtkanten liegen NICHT
+        // links wie bei Baum, Strauch und Fels, sondern mittig. Eine
+        // einseitige Lichtkante macht ein symmetrisches Bauwerk wieder
+        // schief — sie ist hier bewusst abbestellt, nicht vergessen.
+        teile.filter { it.tone == 2 }.forEach {
+            assertEquals(
+                "Die Lichtkante bei y=${it.y} sitzt nicht mittig",
+                0f, it.x + it.w / 2f, 1e-4f
+            )
+        }
+        assertTrue("Ohne Lichtkante bliebe der Mast eine Fläche", teile.any { it.tone == 2 })
+    }
+
+    @Test
+    fun `die Laterne steht auf ihrer Fussplatte und leuchtet`() {
+        val teile = ScenePaint.LANTERN_PARTS
+
+        teile.forEach {
+            assertTrue("Ein Stück ohne Fläche zeichnet nichts", it.w > 0f && it.h > 0f)
+            assertTrue("Kein Stück darf unter den Boden reichen", it.y >= 0f)
+        }
+
+        // Höhe und Breite müssen die Tabelle abdecken, sonst schneidet
+        // iOS die Textur ab — dort bestimmt LANTERN_WIDTH/HEIGHT die
+        // Texturgröße, und was darüber hinausragt, ist einfach weg.
+        val hoehe = teile.maxOf { it.y + it.h }
+        assertEquals("LANTERN_HEIGHT muss die Tabelle abdecken", ScenePaint.LANTERN_HEIGHT, hoehe, 1e-4f)
+        val breite = teile.maxOf { it.x + it.w } - teile.minOf { it.x }
+        assertEquals("LANTERN_WIDTH muss die Tabelle abdecken", ScenePaint.LANTERN_WIDTH, breite, 1e-4f)
+
+        // Sie steht auf ihrer Fußplatte: Die unterste Lage ist zugleich
+        // die breiteste. Eine Laterne, die auf ihrer Leuchte balanciert,
+        // wäre ein Kronleuchter.
+        val fuss = teile.filter { it.y == 0f }.sumOf { it.w.toDouble() }.toFloat()
+        assertEquals("Die Fußplatte muss LANTERN_WIDTH entsprechen", ScenePaint.LANTERN_WIDTH, fuss, 1e-4f)
+
+        // Und der Grund, warum sie überhaupt existiert: Sie leuchtet.
+        // Genau ein Stück trägt den Akzent — das Glas.
+        assertEquals(
+            "Die Laterne braucht genau ein leuchtendes Stück",
+            1, teile.count { it.tone == 3 }
+        )
+        assertTrue(
+            "Das Glas gehört in die obere Hälfte, nicht an den Mast",
+            teile.first { it.tone == 3 }.y > hoehe / 2f
+        )
+    }
+
+    @Test
+    fun `die Laterne loest den Fels nur in der STADT ab`() {
+        // Der Stein ist tragend: Er kommt in fünf von sechs Kulissen vor,
+        // und im WELTRAUM sind alle vier Requisiten Felsen — das
+        // Asteroidenfeld ist die einzige Kulisse, in der sie treiben
+        // dürfen. Die Laterne ist deshalb eine Ergänzung, kein Ersatz.
+        SceneId.entries.forEach { id ->
+            val laternen = ScenePaint.props(id).count { it.shape == PropShape.LATERNE }
+            if (id == SceneId.STADT) {
+                assertEquals("Die STADT braucht genau eine Laterne", 1, laternen)
+            } else {
+                assertEquals("$id hat keine Straße und braucht keine Laterne", 0, laternen)
+            }
+        }
+
+        val fels = SceneId.entries.sumOf { id ->
+            ScenePaint.props(id).count { it.shape == PropShape.FELS }
+        }
+        assertEquals("Der Fels darf nur an dem einen Platz weichen", 9, fels)
+
+        val laterne = ScenePaint.props(SceneId.STADT).first { it.shape == PropShape.LATERNE }
+        assertEquals("Eine Laterne auf der Straße wankt nicht", 0f, laterne.sway, 0f)
+        // Auf einer Straße brennen alle Laternen in derselben Farbe —
+        // ein zweiter Akzent würde Abwechslung behaupten, wo keine ist.
+        assertEquals(
+            "Die Laterne braucht genau eine Akzentfarbe",
+            1, laterne.accents.size
+        )
+        // Und das Glas trägt kein neues Gelb, sondern das der Fenster.
+        val fenster = ScenePaint.props(SceneId.STADT)
+            .filter { it.shape == PropShape.HOCHHAUS }
+            .flatMap { it.accents }
+            .toSet()
+        assertTrue(
+            "Das Glas muss dasselbe Gelb tragen wie die Hochhausfenster",
+            laterne.accents.first() in fenster
+        )
+    }
+
+    @Test
     fun `die WIESE ist offen, alles andere haengt an Leistung`() {
         val leer = SkinStats(0, 0, 0)
         assertTrue(ScenePaint.isUnlocked(SceneId.WIESE, leer))
@@ -371,6 +480,9 @@ class ScenePaintTest {
         }
         return sqrt(sum)
     }
+
+    /** Float-Vergleich für die Spiegelprobe — Tabellenwerte in 1/100. */
+    private fun nah(a: Float, b: Float) = kotlin.math.abs(a - b) < 1e-4f
 
     private fun hex(color: Long): String = "#" + color.toString(16).uppercase().takeLast(6)
 }

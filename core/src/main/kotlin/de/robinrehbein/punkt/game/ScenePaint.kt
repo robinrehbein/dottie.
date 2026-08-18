@@ -55,15 +55,22 @@ enum class PropShape {
     HOCHHAUS,
 
     /** Fels: unsymmetrischer Umriss mit Lichtseite (siehe ROCK_PARTS). */
-    FELS
+    FELS,
+
+    /** Laterne: schmaler Mast mit leuchtendem Glas (siehe LANTERN_PARTS). */
+    LATERNE
 }
 
 /**
- * Ein Rechteck des Fels-Umrisses, in Vielfachen der Requisiten-Größe.
+ * Ein Rechteck einer Requisitenform, die als Tabelle statt als
+ * Zeichencode vorliegt — bisher der Fels ([ROCK_PARTS]) und die Laterne
+ * ([LANTERN_PARTS]).
+ *
  * [x] ist auf die Mitte bezogen, [y] zählt vom Boden nach oben, [tone]
- * wählt aus der Requisiten-Palette: 0 dunkel, 1 Körper, 2 hell.
+ * wählt aus der Requisiten-Palette: 0 dunkel, 1 Körper, 2 hell,
+ * 3 Akzent (die erste Farbe aus [Prop.accents]).
  */
-data class RockPart(
+data class BlockPart(
     val x: Float,
     val y: Float,
     val w: Float,
@@ -171,13 +178,13 @@ object ScenePaint {
      * drei Ports von Hand gleich treffen müssten. So füllen sie stumpf
      * Rechtecke — dieselbe Arbeitsteilung wie bei den Requisitenfarben.
      */
-    val ROCK_PARTS: List<RockPart> = listOf(
-        RockPart(-1.20f, 0.00f, 2.40f, 0.42f, 0), // Fuß, im Bodenschatten
-        RockPart(-1.10f, 0.42f, 1.45f, 0.40f, 1), // Mittelbau
-        RockPart(0.35f, 0.42f, 0.75f, 0.40f, 0),  // rechte Flanke, Schatten
-        RockPart(-0.85f, 0.82f, 0.70f, 0.36f, 2), // obere linke Fläche, Licht
-        RockPart(-0.15f, 0.82f, 0.55f, 0.36f, 1), // Übergang zur Schattenseite
-        RockPart(-0.60f, 1.18f, 0.50f, 0.32f, 2)  // Kuppe
+    val ROCK_PARTS: List<BlockPart> = listOf(
+        BlockPart(-1.20f, 0.00f, 2.40f, 0.42f, 0), // Fuß, im Bodenschatten
+        BlockPart(-1.10f, 0.42f, 1.45f, 0.40f, 1), // Mittelbau
+        BlockPart(0.35f, 0.42f, 0.75f, 0.40f, 0),  // rechte Flanke, Schatten
+        BlockPart(-0.85f, 0.82f, 0.70f, 0.36f, 2), // obere linke Fläche, Licht
+        BlockPart(-0.15f, 0.82f, 0.55f, 0.36f, 1), // Übergang zur Schattenseite
+        BlockPart(-0.60f, 1.18f, 0.50f, 0.32f, 2)  // Kuppe
     )
 
     /** Breite des Fels-Umrisses in Vielfachen der Requisiten-Größe. */
@@ -185,6 +192,69 @@ object ScenePaint {
 
     /** Höhe des Fels-Umrisses in Vielfachen der Requisiten-Größe. */
     const val ROCK_HEIGHT = 1.50f
+
+    /**
+     * Die Laterne — die vierte Requisite der STADT.
+     *
+     * Ein Findling auf Asphalt bleibt ein Findling, auch mit gutem
+     * Umriss. Die Laterne löst ihn an genau einer Stelle ab; die neun
+     * übrigen Vorkommen von [PropShape.FELS] bleiben unangetastet. Der
+     * WELTRAUM braucht ihn am nötigsten: Dort sind alle vier Requisiten
+     * Felsen, und dort dürfen sie als einzige treiben.
+     *
+     * Drei Regeln haben die Form bestimmt.
+     *
+     * Erstens: **Sie ist spiegelsymmetrisch, und zwar exakt.** Jedes
+     * Stück steht mittig (x = -w/2), die beiden Sprossen sind Spiegel
+     * voneinander. Ein Fels darf schief sein — er ist gewachsen. Eine
+     * Laterne ist gefertigt, und eine Sprosse, die einen Hauch neben der
+     * Mitte sitzt, liest sich sofort als Fehler. Aus demselben Grund
+     * sitzen die beiden Lichtkanten hier mittig statt links: Die
+     * Hausregel "Licht von links oben" gilt für Baum, Strauch und Fels,
+     * aber eine einseitige Lichtkante macht ein symmetrisches Bauwerk
+     * wieder schief.
+     *
+     * Zweitens: **Sie erfindet keine Farbe.** Das Glas trägt den Akzent
+     * der Requisite, und der ist in der STADT dasselbe Fenstergelb, mit
+     * dem die drei Hochhäuser schon leuchten. Der Kulissen-Test, der
+     * jede Farbe gegen Zielzone und Falle prüft, hat nichts Neues zu
+     * prüfen. Das Eisen ist dunkles Violettgrau und nicht Schwarz, weil
+     * die Kontur 0xFF543847 immer der dunkelste Wert einer Requisite
+     * ist — ein Körper, der sie unterbietet, kehrte das Verhältnis um
+     * und ließe die Kontur wie einen Lichtsaum aussehen.
+     *
+     * Drittens: **Sie erfindet kein Zeichenmittel.** Kein Lichtschein,
+     * kein Halo, kein weicher Verlauf. Das Spiel kennt genau ein
+     * Grundelement — den gefüllten Block mit Kontur. Die Laterne
+     * leuchtet, indem ein Block hell ist.
+     */
+    val LANTERN_PARTS: List<BlockPart> = listOf(
+        BlockPart(-0.55f, 0.00f, 1.10f, 0.16f, 0), // Fußplatte, breitester Teil
+        BlockPart(-0.42f, 0.16f, 0.84f, 0.14f, 0), // zweite Stufe
+        BlockPart(-0.30f, 0.30f, 0.60f, 0.30f, 1), // Sockelkragen
+        BlockPart(-0.09f, 0.30f, 0.18f, 0.30f, 2), // dessen Lichtkante, mittig
+        BlockPart(-0.16f, 0.60f, 0.32f, 1.70f, 1), // Mast
+        BlockPart(-0.05f, 0.60f, 0.10f, 1.70f, 2), // Lichtkante des Masts, mittig
+        BlockPart(-0.40f, 2.30f, 0.80f, 0.16f, 0), // Kragen unter der Leuchte
+        BlockPart(-0.13f, 2.46f, 0.26f, 0.30f, 1), // Hals
+        BlockPart(-0.42f, 2.76f, 0.84f, 0.12f, 0), // Sockel der Leuchte
+        BlockPart(-0.36f, 2.88f, 0.72f, 0.62f, 3), // Glas
+        BlockPart(-0.19f, 2.88f, 0.09f, 0.62f, 0), // Sprosse links
+        BlockPart(0.10f, 2.88f, 0.09f, 0.62f, 0),  // Sprosse rechts, Spiegel
+        BlockPart(-0.55f, 3.50f, 1.10f, 0.14f, 0), // Haube, unterer Kranz
+        BlockPart(-0.38f, 3.64f, 0.76f, 0.16f, 0), // Haube, obere Stufe
+        BlockPart(-0.10f, 3.80f, 0.20f, 0.14f, 0)  // Knauf
+    )
+
+    /**
+     * Breite der Laterne in Vielfachen der Requisiten-Größe — halb so
+     * breit wie der Fels (2.40) und zweieinhalbmal so hoch (1.50).
+     * Schmal und hoch, wo der Stein breit und flach ist.
+     */
+    const val LANTERN_WIDTH = 1.10f
+
+    /** Höhe der Laterne in Vielfachen der Requisiten-Größe. */
+    const val LANTERN_HEIGHT = 3.94f
 
     /**
      * Mindestabstand im RGB-Raum, den eine Kulissenfarbe zu Zielzone und
@@ -434,9 +504,16 @@ object ScenePaint {
                 dark = 0xFF3A4C50, body = 0xFF54686C, light = 0xFF869A9E,
                 accents = listOf(0xFFFFD847, 0xFF7FD8E8)
             ),
+            // Der vierte Platz: eine Laterne statt eines Findlings.
+            // Sie steht so still wie die Häuser und trägt als Akzent
+            // dasselbe Fenstergelb, mit dem sie schon leuchten. Nur ein
+            // Akzent, nicht zwei: Auf einer Straße brennen alle Laternen
+            // in derselben Farbe — hier zu wechseln hieße, Abwechslung
+            // zu behaupten, wo Gleichförmigkeit die Wahrheit ist.
             Prop(
-                PropShape.FELS, 0.026f, 0f,
-                dark = 0xFF4E4A56, body = 0xFF6A6672, light = 0xFF8C8894
+                PropShape.LATERNE, 0.026f, 0f,
+                dark = 0xFF3A3446, body = 0xFF4C4560, light = 0xFF766E8C,
+                accents = listOf(0xFFFFD847)
             )
         )
     )

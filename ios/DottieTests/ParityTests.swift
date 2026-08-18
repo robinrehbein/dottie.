@@ -36,7 +36,7 @@ final class ParityTests: XCTestCase {
     // MARK: - Format
 
     func testVectorVersion() throws {
-        XCTAssertEqual(try vectors.int("version"), 4,
+        XCTAssertEqual(try vectors.int("version"), 5,
                        "Format der Vektor-Datei hat sich geändert")
     }
 
@@ -313,9 +313,10 @@ final class ParityTests: XCTestCase {
         XCTAssertEqual(Float(ScenePaint.minSkyStep), try vectors.float("scene.minSkyStep"),
                        accuracy: eps, "Himmels-Schrittweite")
 
-        // Der Fels-Umriss: die einzige Requisitenform, die als Datentabelle
-        // vorliegt statt als Zeichencode. Läuft der Swift-Port davon weg,
-        // verrät das kein Farbwert — nur der Stein sähe anders aus.
+        // Fels und Laterne: die beiden Requisitenformen, die als
+        // Datentabelle vorliegen statt als Zeichencode. Läuft der
+        // Swift-Port davon weg, verrät das kein Farbwert — nur die Form
+        // sähe anders aus.
         let rockSize = try vectors.strings("scene.rockSize")
         XCTAssertEqual(rockSize.count, 2, "scene.rockSize")
         XCTAssertEqual(Float(ScenePaint.rockWidth), Float(rockSize[0]) ?? .nan,
@@ -332,6 +333,24 @@ final class ParityTests: XCTestCase {
             XCTAssertEqual(Float(part.w), Float(row[2]) ?? .nan, accuracy: eps, "Fels \(index): Breite")
             XCTAssertEqual(Float(part.h), Float(row[3]) ?? .nan, accuracy: eps, "Fels \(index): Höhe")
             XCTAssertEqual(String(part.tone), row[4], "Fels \(index): Farblage")
+        }
+
+        let lanternSize = try vectors.strings("scene.lanternSize")
+        XCTAssertEqual(lanternSize.count, 2, "scene.lanternSize")
+        XCTAssertEqual(Float(ScenePaint.lanternWidth), Float(lanternSize[0]) ?? .nan,
+                       accuracy: eps, "Laterne: Breite")
+        XCTAssertEqual(Float(ScenePaint.lanternHeight), Float(lanternSize[1]) ?? .nan,
+                       accuracy: eps, "Laterne: Höhe")
+        XCTAssertFalse(vectors.has("scene.lantern.\(ScenePaint.lanternParts.count)"),
+                       "der Port hat weniger Laternen-Stücke als :core")
+        for (index, part) in ScenePaint.lanternParts.enumerated() {
+            let row = try vectors.strings("scene.lantern.\(index)")
+            XCTAssertEqual(row.count, 5, "scene.lantern.\(index)")
+            XCTAssertEqual(Float(part.x), Float(row[0]) ?? .nan, accuracy: eps, "Laterne \(index): x")
+            XCTAssertEqual(Float(part.y), Float(row[1]) ?? .nan, accuracy: eps, "Laterne \(index): y")
+            XCTAssertEqual(Float(part.w), Float(row[2]) ?? .nan, accuracy: eps, "Laterne \(index): Breite")
+            XCTAssertEqual(Float(part.h), Float(row[3]) ?? .nan, accuracy: eps, "Laterne \(index): Höhe")
+            XCTAssertEqual(String(part.tone), row[4], "Laterne \(index): Farblage")
         }
 
         for id in SceneId.allCases {
@@ -783,6 +802,7 @@ final class ParityTests: XCTestCase {
         case .nadelbaum: return "NADELBAUM"
         case .hochhaus: return "HOCHHAUS"
         case .fels: return "FELS"
+        case .laterne: return "LATERNE"
         }
     }
 
