@@ -160,11 +160,11 @@ im Bild und trotzdem folgenlos — genau darum ist sie die richtige.
 
 Farben, Requisiten und Schwellen liegen in `ScenePaint` (`:core`), analog
 zu `SkinPaint`. Eine Requisite ist dort **Daten, kein Zeichencode**:
-Form, Größe (Anteil der Bildhöhe), Windanteil und Farben. Compose und
-SpriteKit laufen dieselbe Liste zyklisch ab; ohne diese Trennung müsste
-jede neue Kulisse zweimal nachgezeichnet werden und liefe zweimal
-auseinander. Die Uhr nimmt aus `ScenePaint` nur den Himmel — sie hat für
-Requisiten keinen Platz.
+Form, Größe (Anteil der Bildhöhe), Windanteil und Farben. `:ui` läuft
+dieselbe Liste zyklisch ab und zeichnet sie auf Android wie auf iOS;
+ohne diese Trennung müsste jede neue Kulisse mehrfach nachgezeichnet
+werden und liefe auseinander. Die Uhr nimmt aus `ScenePaint` nur den
+Himmel — sie hat für Requisiten keinen Platz.
 
 Zwei Formen gehen noch einen Schritt weiter und stehen **selbst** als
 Tabelle in `:core`: `ROCK_PARTS` und `LANTERN_PARTS`. Die Renderer füllen
@@ -452,38 +452,44 @@ erreichbar bleiben.
 
 ## iOS-App
 
-Unter `ios/` liegt die native iPhone-App: SpriteKit für die Darstellung,
-die Spiellogik aus `:core`. Gebaut über XcodeGen aus `ios/project.yml` —
-Details und Verteilweg in [ios/README.md](ios/README.md).
+Unter `ios/` liegt die native iPhone-App: eine Swift-Hülle (zwei Dateien,
+46 Zeilen) um zwei geteilte Kotlin-Multiplatform-Module — `:core` für die
+Spiellogik, `:ui` für die komplette Compose-Oberfläche, dieselbe, die auch
+Android zeichnet. Gebaut über XcodeGen aus `ios/project.yml` — Details und
+Verteilweg in [ios/README.md](ios/README.md).
 
-## Vier Ziele, eine Spiellogik
+## Vier Ziele, eine Spiellogik, eine Oberfläche
 
 Ausgeliefert wird auf vier Zielen — Android-Telefon, Wear OS, iPhone und
-Apple Watch (letztere noch nicht) —, aber die Spiellogik gibt es nur
-einmal. `:core` ist ein Kotlin-Multiplatform-Modul: `:app` und `:wear`
-binden die JVM-Variante ein, die iOS-App linkt dasselbe Modul als
-`DottieCore.xcframework` (Gerät und beide Simulator-Architekturen).
+Apple Watch (letztere noch nicht) —, aber Spiellogik und Oberfläche gibt
+es jeweils nur einmal. `:core` (Spiellogik) und `:ui` (die komplette
+Compose-Oberfläche außer dem Android/iOS-Controller) sind
+Kotlin-Multiplatform-Module: `:app` und `:wear` binden die JVM- bzw.
+Android-Variante ein, die iOS-App linkt beide als
+`DottieCore.xcframework` und `DottieUi.xcframework` (Gerät und beide
+Simulator-Architekturen).
 
 Bis v2.23 war die Engine unter `ios/Dottie/Sources/Engine` von Hand nach
 Swift portiert — 2 893 Zeilen, abgesichert über Soll-Werte in
-`parity/golden-vectors.txt`. Der Handport ist weg; was blieb, ist
-`ios/Dottie/Sources/Core/CoreBridge.swift`: Zahlen, Farben und Namen an
-der Sprachgrenze übersetzt, keine einzige Spielregel.
+`parity/golden-vectors.txt`. Bis v2.24 zeichnete `ios/Dottie/Sources/UI`
+dieselbe Oberfläche zusätzlich in SpriteKit, verbunden über eine
+Sprachgrenzen-Brücke (`CoreBridge.swift`). Beides ist weg: Die iOS-App
+besteht seit v2.24 nur noch aus zwei Swift-Dateien (App-Lifecycle und
+Einstiegspunkt, 46 Zeilen), der Rest kommt aus `:core` und `:ui`.
 
-Die Vektoren gibt es weiterhin, jetzt als Rückversicherung für `:core`
-selbst: Sie halten Konstanten, Medaillen-Schwellen, Skin- und
+Die Paritäts-Vektoren aus der Handport-Zeit gibt es weiterhin, jetzt als
+Rückversicherung für `:core` selbst statt als Soll-Wert für einen zweiten
+Port: Sie halten Konstanten, Medaillen-Schwellen, Skin- und
 Kulissen-Farben, Ziele, die Zahlenfolge des Zufallsgenerators und zwei
 komplette Läufe fest. `./gradlew :core:jvmTest` prüft dagegen,
 `-Dparity.update=true` schreibt sie neu — der Diff zeigt dann, was sich
-für alle drei Apps geändert hat. Alles Weitere in
+für alle Apps geändert hat. Alles Weitere in
 [parity/README.md](parity/README.md).
 
-Seit v2.24 gibt es daneben `:ui`, ein Compose-Multiplatform-Modul mit der
-kompletten Oberfläche außer dem Controller: Spielwelt, Overlays, Theme
-und die Texte (184 Sätze je Sprache, vorher zweimal im Repo). Genutzt
-wird sie bisher nur von der Android-App; was fehlt, damit auch das iPhone
-sie zeichnet — der Controller und der iOS-Einstieg —, steht mit Aufwand
-und Risiko in [ARCHITEKTUR.md](ARCHITEKTUR.md).
+Details zum Umbau — was vorher doppelt war, wie die Plattform-Grenze
+(Persistenz, Sound, Haptik) heute aussieht und was auf iOS bewusst fehlt
+(Anzeigen, Käufe, Bestenlisten, Teilen) — stehen in
+[ARCHITEKTUR.md](ARCHITEKTUR.md).
 
 ## Wear-OS-Prototyp (experimentell)
 
@@ -505,8 +511,11 @@ die Serie fort, eine Lücke reißt sie). Dazu alle Punkt-Skins mit den
 Freischalt-Bedingungen des Phones (gemeinsames Farbwerk in `:core`) —
 ein Tap auf die kleine Skin-Münze im Startscreen öffnet eine scrollbare
 Liste aller freigeschalteten Skins (Drehkrone schiebt den Cursor Skin für
-Skin weiter, Tap auf eine Zeile wählt direkt). Die Gönner-Skins bleiben
-auf der Uhr gesperrt — dort gibt es kein Billing.
+Skin weiter, Tap auf eine Zeile wählt direkt). Die Gönner-Skins schaltet
+`WearPatron` frei: Die Uhr fragt Play Billing selbst und rein lesend ab,
+ob `patron_pack` gekauft ist — gekauft wird nur am Telefon, die Uhr
+spiegelt lediglich das Ergebnis (`patronOwned`). Ohne Play-Dienste (keine
+Verbindung, seitlich installiert) bleibt es bei gesperrt, ohne Fehlerbild.
 Rekord, Daily-Stand, Skin-Wahl und die Ausdauer-Zähler (Läufe,
 Punktesumme, Tage, Monate, Saison-Fortschritt) werden lokal auf der Uhr
 gespeichert, getrennt vom Telefon-Store — die Uhr schaltet ihre Skins

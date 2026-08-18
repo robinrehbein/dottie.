@@ -1,7 +1,9 @@
-# Architektur: drei Apps, eine Spiellogik
+# Architektur: drei Apps, eine Spiellogik, eine Oberfläche
 
-Dieses Dokument beschreibt, wo der Code steht, was seit v2.24 geteilt ist
-und was als Nächstes zu teilen wäre.
+Dieses Dokument beschreibt, wo der Code steht und wie es dazu kam: Bis
+v2.23 gab es die Spiellogik zweimal, bis v2.24 die Oberfläche zweimal.
+Beides ist jetzt aufgelöst — iOS ist nur noch eine dünne Swift-Hülle
+(App-Lifecycle plus Einstiegspunkt) um zwei Kotlin-Multiplatform-Module.
 
 Ausgeliefert wird nativ auf Android (Telefon und Wear OS) und iOS. Eine
 Web-Version gibt es seit v2.23 nicht mehr; ihr letzter Stand liegt im
@@ -11,12 +13,13 @@ Commit `b4ed73f`.
 
 | Bereich | Ort | Zeilen | Sprache |
 |---|---|---|---|
-| Spiellogik (geteilt) | `core/src/commonMain/kotlin` | 3506 | Kotlin |
-| Oberflaeche (geteilt) | `ui/src/commonMain` | 3234 | Kotlin (Compose Multiplatform) |
-| Phone-App | `app/src/main` | 2871 | Kotlin (Compose) |
-| Wear-App | `wear/src/main` | 2511 | Kotlin (Wear Compose) |
-| iOS: Brücke zu `:core` | `ios/Dottie/Sources/Core` | 551 | Swift |
-| iOS: UI und Umfeld | `ios/Dottie/Sources/{UI,Support}` | 3658 | Swift (SpriteKit) |
+| Spiellogik (geteilt) | `core/src/commonMain/kotlin` | 3748 | Kotlin |
+| Oberfläche (geteilt) | `ui/src/commonMain` | 5087 | Kotlin (Compose Multiplatform) |
+| Oberfläche, Android-Anschluss | `ui/src/androidMain` | 57 | Kotlin |
+| Oberfläche, iOS-Anschluss | `ui/src/iosMain` | 283 | Kotlin |
+| Phone-App (nur noch Verdrahtung: Ads, Billing, Sync, Teilen) | `app/src/main` | 1792 | Kotlin (Compose) |
+| Wear-App | `wear/src/main` | 2612 | Kotlin (Wear Compose) |
+| iOS-Hülle | `ios/Dottie/Sources` | 46 | Swift (UIKit) |
 
 `:core` ist ein Kotlin-Multiplatform-Modul: `jvm()` für `:app` und
 `:wear`, dazu `iosArm64` (Gerät), `iosSimulatorArm64` und `iosX64`
@@ -41,15 +44,19 @@ liegen seither in `src/commonMain/kotlin`, die Tests bleiben JVM-only
 davon nichts: Kotlins Plattform-Regel lässt `androidJvm`-Konsumenten
 `jvm`-Produzenten nutzen.
 
-**Stufe 2 (v2.24)** — iOS linkt `DottieCore.xcframework` aus `:core`, und
-der Swift-Handport ist gelöscht. Was blieb, ist
-`ios/Dottie/Sources/Core/CoreBridge.swift`: die Grenze zwischen den
-Sprachen, und zwar nur die.
+**Stufe 2 (v2.24, Zwischenstand)** — iOS linkt `DottieCore.xcframework`
+aus `:core`, und der Swift-Handport der Engine ist gelöscht. Was zu diesem
+Zeitpunkt blieb, war `ios/Dottie/Sources/Core/CoreBridge.swift`: die
+Grenze zwischen den Sprachen, und zwar nur die — die Darstellung selbst
+zeichnete iOS zu diesem Zeitpunkt noch mit SpriteKit. Stufe 3 (unten) hat
+auch das aufgelöst; `CoreBridge.swift` gibt es seither nicht mehr.
 
-## Die Grenze in einer Datei
+## Die Grenze in einer Datei (historisch, aufgelöst in Stufe 3)
 
-`CoreBridge.swift` enthält keine Spielregel. Was dort steht, ist
-Übersetzung:
+Solange iOS noch SpriteKit für die Darstellung benutzte, enthielt
+`CoreBridge.swift` keine Spielregel. Was dort stand, war Übersetzung —
+festgehalten hier, weil dieselben Übersetzungsprobleme bei jeder
+Kotlin/Native-Anbindung wiederkehren würden:
 
 - **Zahlen.** Kotlins `Int` ist Swifts `Int32`, Kotlins `Long` ist
   `Int64`; die Szene rechnet in `Int` und `CGFloat`.
@@ -96,21 +103,37 @@ paar Stellen war die Kotlin-Seite schlicht die bessere:
 Keine dieser Änderungen hat das Verhalten verschoben — die
 Paritäts-Vektoren in `parity/` haben das Zeile für Zeile bestätigt.
 
-## Was noch doppelt ist
+## Was nach Stufe 2 noch doppelt war — und was daraus wurde
 
-- **Die Renderer.** Compose Canvas und SpriteKit zeichnen dieselben
-  Rechtecke mit zwei APIs. Das sind die 3 658 Zeilen unter
-  `ios/Dottie/Sources/{UI,Support}` — der größte verbliebene Block.
+Zum Zeitpunkt, als nur `:core` geteilt war (Stufe 2), lagen vier Dinge
+noch zweimal im Repo. Stufe 3 (unten) hat drei davon aufgelöst:
+
+- **Die Renderer.** Compose Canvas und SpriteKit zeichneten dieselben
+  Rechtecke mit zwei APIs, 3 658 Zeilen unter
+  `ios/Dottie/Sources/{UI,Support}`. **Aufgelöst (v2.24):** Der
+  SpriteKit-Renderer ist gelöscht, `:ui` zeichnet auf beiden Plattformen.
 - **Die Texte.** `strings.xml` und `Localizable.strings`, zweimal
-  dieselben Sätze.
-- **Audio, Haptik, Persistenz, Teilen.** SoundPool vs. AVAudioEngine,
-  SharedPreferences vs. UserDefaults. Das ist `expect`/`actual`-Gebiet:
-  Die Schnittstelle ließe sich teilen, die Umsetzung nicht.
+  dieselben Sätze. **Aufgelöst (v2.24):** Die `.lproj`-Dateien unter
+  `ios/Dottie/Resources` sind weg, beide Plattformen lesen
+  `ui/src/commonMain/composeResources`.
+- **Audio, Haptik, Persistenz.** SoundPool vs. AVAudioEngine,
+  SharedPreferences vs. UserDefaults. **Aufgelöst (v2.24)** über die drei
+  Plattform-Schnittstellen `KeyValueStore`, `GameSounds`, `GameFeedback`
+  (`ui/src/iosMain`, siehe „Gebaut: die Plattform-Grenze" unten) — die
+  Schnittstelle ist jetzt geteilt, nur die Umsetzung bleibt platform-
+  eigen, wie es `expect`/`actual` vorsieht.
 - **Die Wear-Kopien.** `WearDotSkin`, `WearRenderer` und die
   Android-Wrapper `DotSkin`, `DotScene`, `DotSound` in `:app` sind dünne
-  Compose-Adapter um `:core` — aber sie sind zu zweit.
+  Compose-Adapter um `:core` — aber sie sind zu zweit. **Bleibt offen:**
+  Das war nie Teil von Stufe 3, die iOS betraf; die Wear-App teilt sich
+  weiterhin nur `:core`, keine Oberfläche.
 
-## Stufe 3 — Compose Multiplatform statt SpriteKit
+Was `:ui` bewusst nicht teilt, weil es keine Oberfläche ist, sondern ein
+Vertrieb: Anzeigen, Kauf, Bestenlisten und das Teilen einer Score-Card als
+Bild bleiben Android-only (siehe die Tabelle unter „Gebaut: der
+Controller und der iOS-Einstieg").
+
+## Stufe 3 — Compose Multiplatform statt SpriteKit (v2.24, umgesetzt)
 
 Eine Besonderheit dieses Projekts macht die radikale Variante überhaupt
 erst denkbar: **Die Android-App zeichnet alles im Code.** Keine Layouts,
@@ -151,8 +174,10 @@ Saison zaehlt mit, Kauf nicht". Daran haengt die Freischalt-Feier; es lag
 im geloeschten Wrapper und ist nicht dasselbe wie `unlockedCount`, dem
 Sammlungsstand ohne Saison.
 
-Nutzen hat das bisher nur die Wartung: Solange iOS SpriteKit benutzt,
-laeuft die geteilte Oberflaeche nur auf Android.
+Nutzen hatte das zunächst nur die Wartung: Solange iOS noch SpriteKit
+benutzte, lief die geteilte Oberfläche nur auf Android. Seit Stufe 3
+(unten) zeichnet iOS dieselbe `:ui` — der Nutzen ist jetzt auch der
+gemeinsame Bildschirm selbst.
 
 ### Gebaut: die Plattform-Grenze
 
@@ -177,13 +202,13 @@ weil das Android-Ziel die JVM-Bibliothek mitbringt (`Integer.bitCount`,
 `Math.PI`, `java.time.LocalDateTime`) — sie waeren sonst erst beim
 iOS-Einstieg aufgefallen.
 
-### Offen: der Controller und der iOS-Einstieg
+### Gebaut: der Controller und der iOS-Einstieg (v2.24)
 
-`TimingGameScreen` (1 600 Zeilen) ist die letzte Datei der Oberflaeche in
-`:app` — und sie ist kein Bildschirm, sondern die Verdrahtung. Nach den
-Schnittstellen oben bleiben genau diese Beruehrungspunkte, die wirklich
-nur Android hat. Sie sind hier vollstaendig aufgelistet, damit der Umzug
-nicht noch einmal gesucht werden muss:
+`TimingGameScreen` in `:app` war die letzte Datei der Oberfläche, die kein
+Bildschirm war, sondern Verdrahtung — sie blieb bewusst in `:app`, weil
+genau diese Berührungspunkte wirklich nur Android haben. Die Tabelle hält
+fest, was das war und wie iOS ohne sie auskommt — nicht mehr als Plan,
+sondern als Bestand:
 
 | Was | Wo im Bildschirm | Auf iOS |
 |---|---|---|
@@ -202,28 +227,33 @@ nicht noch einmal gesucht werden muss:
 | `ScoreCard.share(…)` | Game-Over | spaeter UIActivityViewController |
 | `LocalLifecycleOwner` | Start/Stopp des Abgleichs | Compose Multiplatform hat kein Pendant |
 
-**Der Umbau in drei Schritten**
+**So wurde es umgesetzt, in drei Schritten:**
 
-1. Ein `PlatformHooks` in `:ui` mit genau diesen Punkten als Werte und
-   Rueckrufe, alle mit einem Standard, der nichts tut. Der Bildschirm
-   zieht `GameStore`, `GameSounds`, `GameFeedback` und `PlatformHooks`
-   als Parameter und heisst `GameScreen`.
-2. `:app` behaelt eine duenne `TimingGameScreen`-Schale, die die Dienste
-   baut und die Rueckrufe fuellt — die einzige Datei, die noch `Activity`
+1. `PlatformHooks` (`ui/src/commonMain/.../platform/PlatformHooks.kt`)
+   fasst genau diese Punkte als Werte und Rückrufe, alle mit einem
+   Standard, der nichts tut. Der Bildschirm zieht `GameStore`,
+   `GameSounds`, `GameFeedback` und `PlatformHooks` als Parameter und
+   heißt `GameScreen` (`ui/src/commonMain/.../screens/GameScreen.kt`).
+2. `:app` behält eine dünne `TimingGameScreen`-Schale, die die Dienste
+   baut und die Rückrufe füllt — die einzige Datei, die noch `Activity`
    und `LocalLifecycleOwner` kennt.
-3. `iosMain` bekommt `IosSounds` (AVAudioEngine; `ChipSynth` aus `:core`
-   liefert die Samples, wie es der SpriteKit-Port heute schon tut) und
+3. `iosMain` bekam `IosSounds` (AVAudioEngine; `ChipSynth` aus `:core`
+   liefert die Samples, wie es der SpriteKit-Port vorher schon tat) und
    `fun MainViewController() = ComposeUIViewController { GameScreen(…) }`.
-   `ios/project.yml` linkt `DottieUi.xcframework`,
-   `GameViewController.swift` haengt den Controller ein.
+   `ios/project.yml` linkt seither `DottieUi.xcframework`,
+   `GameViewController.swift` hängt den Controller ein — mehr steht dort
+   nicht mehr.
 
-Erst danach fallen `ios/Dottie/Sources/UI` (2 900 Zeilen SpriteKit) und
-`CoreBridge.swift` weg.
+Damit sind `ios/Dottie/Sources/UI` (2 900 Zeilen SpriteKit) und
+`CoreBridge.swift` weggefallen; die iOS-Hülle besteht seither nur noch aus
+`AppDelegate.swift` und `GameViewController.swift` (zusammen 46 Zeilen).
 
-**Kosten:** Die iOS-App wird ein Kotlin/Native-Compose-Build (App-Größe
-plus etwa 8–12 MB für Compose und Skia, spürbar längere CI-Läufe). AdMob,
-Billing und Play Games bleiben Android-only. Der SpriteKit-Renderer wird
-weggeworfen — er ist fertig und stabil, kostet also gerade nichts.
+**Kosten — eingetreten wie erwartet:** Die iOS-App ist jetzt ein
+Kotlin/Native-Compose-Build (größere App, spürbar längere CI-Läufe wegen
+Compose und Skia). AdMob, Billing und Play Games bleiben Android-only,
+siehe Tabelle oben. Der SpriteKit-Renderer wurde verworfen — er war fertig
+und stabil, das Wegwerfen kostete also nichts an Funktion, nur die
+3 658 Zeilen, die ihn gebaut hatten.
 
 **Das eigentliche Risiko** liegt nicht auf iOS, sondern auf der Seite,
 die im Play Store steht: Der Umbau fasst die Android-Oberfläche an, und

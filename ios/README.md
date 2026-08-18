@@ -1,64 +1,69 @@
 # Dottie. für iOS
 
-Die iPhone-App: SpriteKit + UIKit ohne Storyboard für die Darstellung,
-die Spiellogik aus dem geteilten Kotlin-Modul `:core` — dasselbe, mit dem
-die Android-App in `app/` und die Wear-App in `wear/` rechnen.
+Die iPhone-App: eine Swift-Hülle um zwei geteilte Kotlin-Multiplatform-
+Module. `:core` liefert die Spiellogik, `:ui` die komplette Oberfläche —
+dasselbe Compose-Multiplatform-Modul, das auch die Android-App zeichnet.
+Was in Swift bleibt, ist der App-Einstieg: zwei Dateien, 46 Zeilen.
 
 ## Stand der Dinge
 
-Die **Spiellogik kommt aus `:core`** — demselben Kotlin-Modul, mit dem
-auch die Android- und die Wear-App rechnen. Es wird als
-`DottieCore.xcframework` gelinkt; übersetzt wird an genau einer Stelle,
-in `Dottie/Sources/Core/CoreBridge.swift`.
+**Die Spiellogik kommt aus `:core`**, **die Oberfläche aus `:ui`** —
+denselben Kotlin-Modulen, mit denen auch die Android- und die Wear-App
+rechnen bzw. zeichnen. Beide werden als XCFrameworks gelinkt
+(`DottieCore.xcframework`, `DottieUi.xcframework`).
 
 Bis v2.23 lagen unter `Dottie/Sources/Engine` 2 893 Zeilen Swift, die
-dieselbe Logik von Hand nachbauten (`TimingGame`, `SkinPaint`,
-`ScenePaint`, `SoundSet`, `ChipSynth`, `Progress`, `MedalTier`,
-`DailyChallenge` und `KotlinRandom`, das Kotlins XorWow-Generator
-bitgenau nachstellte). Das ist ersatzlos entfallen: Die Daily Challenge
-ist jetzt per Konstruktion auf beiden Plattformen dieselbe, nicht per
-Test.
+dieselbe Spiellogik von Hand nachbauten. Bis v2.24 zeichnete
+`Dottie/Sources/UI` (SpriteKit) dieselbe Oberfläche noch einmal, über eine
+551 Zeilen lange Brücke (`CoreBridge.swift`). Beides ist ersatzlos
+entfallen: Die Oberfläche ist jetzt per Konstruktion auf beiden
+Plattformen dieselbe, nicht per Test oder Handarbeit abgeglichen.
 
-**Was iOS selbst mitbringt:**
+**Was von der iOS-App selbst übrig ist:**
 
-- Darstellung in SpriteKit/UIKit ohne Storyboard: Himmelsstufen,
-  Perlenketten-Bahn mit 60 Segmenten, Pixel-Vogel mit Blickrichtung,
-  Boden mit Grasnarbe, Szenerie mit Parallaxe, Wolken, „DOTTIE."-Titel,
-  Mario-Tod (Freeze → Hüpfer → Kopfüber-Fall), Medaillen, Spott-Texte,
-  REKORD-Banner, Freischalt-Zelebration, Flash + Shake.
-- Klang über AVAudioEngine: `ChipSynth` aus `:core` liefert die Samples,
-  die Tonhöhen-Varianten (Treffer-Pentatonik, Perfekt-Serie) werden
-  vorgerendert statt wie auf Android per SoundPool-Rate gepitcht.
-- Umfeld: Persistenz über UserDefaults, Haptik über
-  UIImpactFeedbackGenerator, Tages-Erinnerung, Texte EN/DE
-  (Localizable.strings), Bytesized-Pixel-Font.
+- `AppDelegate.swift` — klassischer UIKit-Lifecycle ohne Storyboard und
+  ohne Scene-Manifest, für ein Ein-Screen-Spiel der einfachste stabile
+  Weg.
+- `GameViewController.swift` — hängt die Compose-Oberfläche aus `:ui`
+  (`MainViewControllerKt.MainViewController()`) als Kind-View-Controller
+  ein. Mehr steht dort nicht.
+
+Alles andere — Himmel, Bahn, Vogel, Overlays, Skins, Kulissen, Ton-Sets,
+Statistik-Seite, Texte in Englisch und Deutsch — kommt aus `:ui` und ist
+mit Android identisch, weil es derselbe Code ist, der auf Skia statt auf
+dem Android-Canvas zeichnet.
 
 **Inhaltlich gleichauf mit Android:** Classic + Daily, 42 Skins in sechs
 Familien, sechs Kulissen, drei Ton-Sets, Ziele und Statistik-Seite —
-alles aus denselben Tabellen.
+alles aus denselben Tabellen und derselben Oberfläche.
 
-**Bewusst nicht dabei (wie beauftragt):** Teilen/Score-Card,
-Leaderboards/Game Center.
+**Bewusst nicht dabei** — das sind Vertriebs-Anschlüsse, keine
+Oberfläche, und `:ui` teilt sie deshalb nicht: Anzeigen (AdMob), Käufe
+(Play Billing), Bestenlisten (Play Games), die tägliche Erinnerung
+(WorkManager) und das Teilen einer Score-Card als Bild
+(`android.graphics`, Android-only). Details und der Stand der Migration
+stehen in [../ARCHITEKTUR.md](../ARCHITEKTUR.md) unter „Gebaut: der
+Controller und der iOS-Einstieg".
 
 **Kein Billing:** Die drei Gönner-Skins (DIAMANT, PHOENIX, ONYX) stehen im
-Menü, `patronOwned` ist auf iOS aber fest `false` — sie bleiben sichtbar,
-aber gesperrt, bis es einen Kauf gibt.
+Menü, sind auf iOS aber fest gesperrt — sie bleiben sichtbar, weil sie
+Teil der geteilten Oberfläche sind, aber es gibt dort kein Billing, das
+sie freischalten könnte.
 
 ## Build (CI, macOS-Runner)
 
 Lokal gibt es in dieser Repo-Umgebung keine Apple-Toolchain — kompiliert
-wird über GitHub Actions:
+wird über GitHub Actions, Workflow [`build-ios.yml`](../.github/workflows/build-ios.yml):
 
-1. GitHub → **Actions** → Workflow **„Build iOS"** → **„Run workflow"**
-   (Branch wählen). Der Workflow startet auch automatisch bei jedem Push,
-   der `ios/`, `core/` oder `parity/` anfasst.
+1. Läuft automatisch bei jedem Push auf `main` und auf `claude/**`, der
+   `ios/`, `core/`, `ui/` oder `parity/` anfasst; sonst per **Actions →
+   Build iOS → Run workflow**.
 2. Der Lauf macht: `./gradlew :core:assembleDottieCoreDebugXCFramework`
-   (die Spiellogik als Framework — Kotlin/Native baut Apple-Ziele nur auf
-   einem Mac) → `brew install xcodegen` → `cd ios && xcodegen` (erzeugt
-   `Dottie.xcodeproj` aus `project.yml`) → `xcodebuild test`
-   (Brücken-Tests im Simulator, siehe unten) → `xcodebuild` einmal für
-   `generic/platform=iOS` (Device, unsigniert) und einmal für den
-   Simulator.
+   (Spiellogik als Framework) → `./gradlew :ui:assembleDottieUiDebugXCFramework`
+   (Oberfläche als Framework, mit Compose und Skia der langsamste Schritt
+   im Lauf) → `brew install xcodegen` → `cd ios && xcodegen` (erzeugt
+   `Dottie.xcodeproj` aus `project.yml`) → je ein `xcodebuild` für
+   `generic/platform=iOS` (Device, unsigniert) und für den Simulator.
 3. Artefakt: die unsignierte Simulator-`Dottie.app` — auf einem Mac per
    Drag & Drop in den Simulator ziehen oder
    `xcrun simctl install booted Dottie.app`.
@@ -67,33 +72,25 @@ Lokal auf einem Mac:
 
 ```sh
 ./gradlew :core:assembleDottieCoreDebugXCFramework
+./gradlew :ui:assembleDottieUiDebugXCFramework
 brew install xcodegen && cd ios && xcodegen && open Dottie.xcodeproj
 ```
 
-Der erste Schritt ist Pflicht: Ohne das Framework in
-`core/build/XCFrameworks/debug/` findet Xcode `import DottieCore` nicht.
-Nach jeder Änderung an `:core` muss er wiederholt werden.
+Die ersten beiden Schritte sind Pflicht: Ohne die Frameworks in
+`core/build/XCFrameworks/debug/` und `ui/build/XCFrameworks/debug/`
+findet Xcode `import DottieCore` und `import DottieUi` nicht. Nach jeder
+Änderung an `:core` oder `:ui` müssen sie wiederholt werden.
 
-## Tests: die Brücke, nicht die Engine
+## Tests
 
-Die Engine braucht auf dieser Seite keine Tests mehr — sie ist dieselbe,
-die `./gradlew :core:jvmTest` prüft. Was bleibt, ist das, was
-`CoreBridge.swift` von Hand macht und deshalb still auseinanderlaufen
-kann: die aus Kotlin-Namen abgeleiteten Textschlüssel (`SkinId.LAVA` →
-`skin_lava`), die Familien-Gliederung des Skin-Menüs und die Zuordnung
-der Requisiten-Formen. Dazu ein Lauf über die Brücke als Beweis, dass das
-Framework wirklich verlinkt ist.
-
-```sh
-./gradlew :core:assembleDottieCoreDebugXCFramework
-cd ios && xcodegen
-xcodebuild test -project Dottie.xcodeproj -scheme Dottie \
-  -destination 'platform=iOS Simulator,name=iPhone 16'
-```
-
-Es ist ein Logik-Test-Bundle ohne Host-App: Es übersetzt
-`Dottie/Sources/Core` direkt mit und linkt dasselbe Framework wie die
-App — deshalb braucht es keine Signierung.
+Es gibt kein eigenes iOS-Testbundle: Die Spiellogik prüft
+`./gradlew :core:jvmTest`, die Oberfläche `./gradlew :ui:testDebugUnitTest`
+(`:ui` hat kein `jvm()`-Ziel, die Tests in `ui/src/commonTest` laufen über
+die Android-Zielplattform) — beide gelten für alle Plattformen mit, weil
+es nur noch eine Logik und eine Oberfläche gibt. Was auf der iOS-Seite
+bleibt, ist der Beweis, dass die Frameworks wirklich linken; das
+übernimmt der Build-Schritt selbst (`xcodebuild build` schlägt fehl, wenn
+`import DottieCore` oder `import DottieUi` nicht auflöst).
 
 ## Was zum Verteilen noch fehlt
 
@@ -116,22 +113,19 @@ App — deshalb braucht es keine Signierung.
 
 ```
 ios/
-├── project.yml                  # XcodeGen-Definition (Target "Dottie")
+├── project.yml                  # XcodeGen-Definition (Target "Dottie"),
+│                                 # linkt DottieUi.xcframework und
+│                                 # DottieCore.xcframework aus core/ und ui/
 ├── Dottie/
 │   ├── Info.plist               # portrait-only, Font-Registrierung
 │   ├── Sources/
 │   │   ├── AppDelegate.swift    # UIKit-Lifecycle ohne Storyboard
-│   │   ├── GameViewController.swift
-│   │   ├── Core/
-│   │   │   └── CoreBridge.swift # Zahlen, Farben und Namen an der Sprachgrenze
-│   │   ├── Support/             # Store, Audio, Haptik, Farben, L10n
-│   │   └── UI/                  # GameScene, Overlays, Pixel-Texturen
+│   │   └── GameViewController.swift  # haengt die Compose-Oberflaeche aus :ui ein
 │   └── Resources/
 │       ├── Fonts/bytesized_regular.ttf
-│       ├── Assets.xcassets/AppIcon.appiconset/
-│       ├── en.lproj/Localizable.strings
-│       └── de.lproj/Localizable.strings
-├── DottieTests/
-│   └── CoreBridgeTests.swift    # prüft die Brücke, nicht die Engine
+│       └── Assets.xcassets/AppIcon.appiconset/
 └── README.md
 ```
+
+Texte, Pixel-Zeichnung und alle Overlays liegen nicht mehr unter `ios/`,
+sondern in `ui/src/commonMain` — siehe [../ARCHITEKTUR.md](../ARCHITEKTUR.md).
