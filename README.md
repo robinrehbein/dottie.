@@ -148,7 +148,7 @@ Die zweite Sammlung neben den Skins: **sechs Kulissen** — Wiese, Wüste,
 Meer, Berg, Stadt, Weltraum. Eine Kulisse ist alles, was **nicht** über
 Treffer entscheidet: der Himmel in seinen sieben Stufen, die Wolken, die
 Requisiten am Boden (Baum, Blume, Strauch, Kaktus, Welle, Nadelbaum,
-Hochhaus, Fels) und der Bodenstreifen.
+Hochhaus, Fels, Laterne) und der Bodenstreifen.
 
 **Warum die Kulisse verkäuflich ist und die Bahn nicht.** Bahn, Zielzone,
 Perfekt-Kern und Falle sehen in jeder Kulisse exakt gleich aus. Damit ist
@@ -160,10 +160,18 @@ im Bild und trotzdem folgenlos — genau darum ist sie die richtige.
 
 Farben, Requisiten und Schwellen liegen in `ScenePaint` (`:core`), analog
 zu `SkinPaint`. Eine Requisite ist dort **Daten, kein Zeichencode**:
-Form, Größe (Anteil der Bildhöhe), Windanteil und Farben. Alle vier
-Renderer — Compose, Canvas, SpriteKit, Wear — laufen dieselbe Liste
-zyklisch ab; ohne diese Trennung müsste jede neue Kulisse in vier
-Sprachen nachgezeichnet werden und liefe in vieren auseinander.
+Form, Größe (Anteil der Bildhöhe), Windanteil und Farben. Compose und
+SpriteKit laufen dieselbe Liste zyklisch ab; ohne diese Trennung müsste
+jede neue Kulisse zweimal nachgezeichnet werden und liefe zweimal
+auseinander. Die Uhr nimmt aus `ScenePaint` nur den Himmel — sie hat für
+Requisiten keinen Platz.
+
+Zwei Formen gehen noch einen Schritt weiter und stehen **selbst** als
+Tabelle in `:core`: `ROCK_PARTS` und `LANTERN_PARTS`. Die Renderer füllen
+dort stumpf Rechtecke aus `BlockPart`, statt die Silhouette je Port
+nachzubauen — und weil beide Tabellen im Paritäts-Vertrag stehen
+(`scene.rock.*`, `scene.lantern.*`), fällt ein davonlaufender Port auf,
+bevor jemand das Bild vergleicht.
 
 Freigeschaltet wird über je eine eigene Achse, mit bewusst hohen
 Schwellen — eine Kulisse ist der seltene große Wechsel, kein Stufenziel:

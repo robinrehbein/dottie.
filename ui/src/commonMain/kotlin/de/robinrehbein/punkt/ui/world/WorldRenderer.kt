@@ -10,7 +10,7 @@ import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.Ground
 import de.robinrehbein.punkt.game.Prop
 import de.robinrehbein.punkt.game.PropShape
-import de.robinrehbein.punkt.game.RockPart
+import de.robinrehbein.punkt.game.BlockPart
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinId
@@ -164,7 +164,12 @@ internal fun DrawScope.drawProp(
         PropShape.NADELBAUM ->
             drawPixelFir(cx, groundY, s, sway, cell, dark, body, light, stem, stemShade)
         PropShape.HOCHHAUS -> drawPixelTower(cx, groundY, s, cell, dark, body, light, accent)
-        PropShape.FELS -> drawPixelRock(cx, groundY, s, sway, cell, dark, body, light)
+        PropShape.FELS ->
+            drawBlockParts(ScenePaint.ROCK_PARTS, cx, groundY, s, sway, cell,
+                dark, body, light, accent)
+        PropShape.LATERNE ->
+            drawBlockParts(ScenePaint.LANTERN_PARTS, cx, groundY, s, sway, cell,
+                dark, body, light, accent)
     }
 }
 
@@ -568,12 +573,18 @@ internal fun DrawScope.drawPixelTower(
 }
 
 /**
- * Fels: Umriss aus [ScenePaint.ROCK_PARTS], unsymmetrisch und mit
- * Lichtseite. Erst alle Konturen, dann alle Flächen — sonst schnitte die
- * Kontur eines höheren Stücks in die Fläche des darunterliegenden, und
- * der Stein bekäme Fugen, die er nicht hat.
+ * Formen, die als Tabelle in :core stehen statt als Zeichencode hier —
+ * Fels ([ScenePaint.ROCK_PARTS]) und Laterne ([ScenePaint.LANTERN_PARTS]).
+ * Der Renderer füllt stumpf Rechtecke; welche, sagt die Tabelle. Genau
+ * deshalb kann keine der beiden Formen zwischen den Ports auseinander
+ * laufen, ohne dass der Paritäts-Vertrag es meldet.
+ *
+ * Erst alle Konturen, dann alle Flächen — sonst schnitte die Kontur
+ * eines höheren Stücks in die Fläche des darunterliegenden, und die Form
+ * bekäme Fugen, die sie nicht hat.
  */
-internal fun DrawScope.drawPixelRock(
+internal fun DrawScope.drawBlockParts(
+    parts: List<BlockPart>,
     cx: Float,
     groundY: Float,
     s: Float,
@@ -581,11 +592,11 @@ internal fun DrawScope.drawPixelRock(
     cell: Float,
     dark: Color,
     body: Color,
-    light: Color
+    light: Color,
+    accent: Color
 ) {
-    val parts = ScenePaint.ROCK_PARTS
-    fun left(p: RockPart) = cx + sway * (0.15f + 0.25f * p.y) + p.x * s
-    fun top(p: RockPart) = groundY - (p.y + p.h) * s
+    fun left(p: BlockPart) = cx + sway * (0.15f + 0.25f * p.y) + p.x * s
+    fun top(p: BlockPart) = groundY - (p.y + p.h) * s
 
     parts.forEach { p ->
         drawRect(
@@ -599,7 +610,8 @@ internal fun DrawScope.drawPixelRock(
             color = when (p.tone) {
                 0 -> dark
                 1 -> body
-                else -> light
+                2 -> light
+                else -> accent
             },
             topLeft = Offset(left(p), top(p)),
             size = Size(p.w * s, p.h * s)
