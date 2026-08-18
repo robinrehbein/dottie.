@@ -43,7 +43,7 @@ import de.robinrehbein.punkt.game.MedalPaint
 import de.robinrehbein.punkt.game.Progress
 import de.robinrehbein.punkt.game.Prop
 import de.robinrehbein.punkt.game.PropShape
-import de.robinrehbein.punkt.game.RockPart
+import de.robinrehbein.punkt.game.BlockPart
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.SkinPaint
