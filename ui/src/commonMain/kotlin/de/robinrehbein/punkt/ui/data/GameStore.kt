@@ -1,5 +1,8 @@
 package de.robinrehbein.punkt.ui.data
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.CardFrame
 import de.robinrehbein.punkt.game.CardStyle
@@ -370,6 +373,27 @@ class GameStore(private val prefs: KeyValueStore) {
     // ===== Abgleich mit der Uhr =====
 
     /**
+     * Zählt jeden Abgleich, der hier tatsächlich etwas übernommen hat.
+     *
+     * Der Speicher selbst hat keine beobachtbaren Werte: Er liest und
+     * schreibt Preferences, und die Oberfläche kopiert sich beim Aufbau
+     * einmal heraus, was sie anzeigt (siehe GameScreen). Ein Merge kommt
+     * aber von außen — aus dem Data Layer, während der Bildschirm längst
+     * steht — und schreibt an diesen Kopien vorbei. Ohne ein Signal
+     * blieben Rekord, Tagesbest, Serie, Skin, Kulisse und Ton-Set bis zum
+     * nächsten Lauf-Ende stehen, und das Live-Banner "REKORD GEKNACKT!"
+     * verglich gegen einen veralteten Rekord — es konnte also feiern, wo
+     * es nichts zu feiern gab.
+     *
+     * Ein Zähler statt beobachtbarer Einzelwerte: Er kostet ein Feld
+     * statt eines Zwillings je Wert, und die Oberfläche zieht ohnehin
+     * alles in einem Rutsch nach. Die Uhr macht dasselbe von Hand am Ende
+     * von WearGameController.applySync ("Angezeigte Werte nachziehen").
+     */
+    var syncRevision by mutableIntStateOf(0)
+        private set
+
+    /**
      * Der lokale Stand als Austauschformat für den Data Layer.
      *
      * Ein nur geliehener Skin (Tagespass) wird bewusst nicht mitgeteilt:
@@ -501,6 +525,10 @@ class GameStore(private val prefs: KeyValueStore) {
             }
         }
         }
+        // Erst ganz am Ende, wenn alles geschrieben ist: Wer auf den
+        // Zähler hört, liest gleich darauf die Werte — und soll dabei den
+        // vollständigen Stand sehen, nicht einen halben.
+        syncRevision++
         return true
     }
 
