@@ -120,6 +120,7 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             adsEnabled = ads.enabled,
             onRunEnded = { activity?.let { ads.onGameOver(it) } },
             rewardedReady = ads.rewardedReady,
+            onSkinsOpened = { ads.ensureRewarded() },
             onWatchAdFor = { _, onEarned ->
                 activity?.let { ads.showRewarded(it) { onEarned() } }
             },

@@ -540,6 +540,10 @@ fun GameScreen(
                     // Vor dem Öffnen nachziehen: Der Startscreen kann seit
                     // dem letzten Lauf einen Tageswechsel gesehen haben.
                     refreshSkinPass(deviceCalendar().epochDay)
+                    // Und der Plattform sagen, dass jetzt der Moment für
+                    // das Tagespass-Angebot ist — sie kann nachladen, was
+                    // beim Start nicht geklappt hat.
+                    hooks.onSkinsOpened()
                     showSkins = true
                 },
                 onStats = {
