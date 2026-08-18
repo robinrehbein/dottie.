@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
+import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
@@ -119,7 +120,7 @@ internal fun DrawScope.drawWearWorld(
     // In OVER ist der Vogel bereits unten aus dem Bild gefallen
     // (Mario-Hüpfer in der DYING-Phase) — die Bahn bleibt leer, bis der
     // nächste Lauf startet. Am Phone regelt das fx.deathTime genauso.
-    if (game.phase != TimingGame.Phase.OVER && game.isDotVisible) {
+    if (game.phase != GamePhase.OVER && game.isDotVisible) {
         drawWearDot(game, cx, cy, radius, d, skin, hour, month)
     }
 }
@@ -212,7 +213,7 @@ private fun DrawScope.drawWearDot(
     // Gravitation unten aus dem Bild. Ein eigener Zeitgeber ist unnötig —
     // game.elapsed zählt in DYING ab dem Todesmoment.
     var flip = 0f
-    if (game.phase == TimingGame.Phase.DYING) {
+    if (game.phase == GamePhase.DYING) {
         val t = game.elapsed - TimingGame.DEATH_FREEZE_SECONDS
         if (t > 0f) {
             val h = size.height
@@ -280,7 +281,7 @@ private fun DrawScope.drawWearDot(
 
     // Schweif-Skins (Tinte) lassen Nachbilder auf der Bahn zurück; die
     // Positionen werden wie am Phone aus dem Winkel zurückgerechnet.
-    if (skin.hasTrail && game.phase == TimingGame.Phase.RUNNING) {
+    if (skin.hasTrail && game.phase == GamePhase.RUNNING) {
         for (step in SkinPaint.TRAIL_STEPS downTo 1) {
             val a = game.angle - game.direction * step * SkinPaint.TRAIL_SPACING
             drawBird(

@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Die Texte der geteilten Oberflaeche.
+
+  Sie lagen bis v2.24 in app/src/main/res und noch einmal in
+  ios/Dottie/Resources/*.lproj/Localizable.strings — zweimal dieselben
+  Saetze, gepflegt an zwei Orten. Compose Resources macht daraus eine
+  Quelle fuer beide Apps; der Zugriff heisst `Res.string.<name>`.
+
+  Was hier NICHT steht: alles, was nur Android hat — Benachrichtigungen,
+  der Teilen-Text und die Score-Karte. Das bleibt in app/src/main/res.
+-->
+<resources>
+    <string name="ready_hint">STOPPE DEN PUNKT IN DER GRUENEN ZONE</string>
+    <string name="sound_on">TON: AN</string>
+    <string name="sound_off">TON: AUS</string>
+    <string name="reminder_on">ERINNERUNG: AN</string>
+    <string name="reminder_off">ERINNERUNG: AUS</string>
+    <string name="best_score">REKORD: %1$d</string>
+    <string name="leaderboard">RANGLISTE</string>
+    <string name="daily">DAILY</string>
+    <string name="skins">SKINS</string>
+    <string name="today_score">HEUTE: %1$d</string>
+    <string name="streak_one">SERIE: 1 TAG</string>
+    <string name="streak_many">SERIE: %1$d TAGE</string>
+    <string name="run_number">VERSUCH #%1$d</string>
+    <string name="perfect_plus">PERFEKT! +%1$d</string>
+    <string name="banner_chain">NOCH EINE!</string>
+    <string name="banner_record">REKORD GEKNACKT!</string>
+    <string name="banner_stage">NEUE STUFE!</string>
+    <string name="banner_twist_pulse">NEU: PULS-ZONE!</string>
+    <string name="banner_twist_drift">NEU: WANDERNDE ZONE!</string>
+    <string name="banner_twist_ghost">NEU: GEISTER-PUNKT!</string>
+    <string name="banner_twist_fake">NEU: FALLEN-ZONE!</string>
+    <string name="banner_twist_chain">NEU: KETTEN-ZONE!</string>
+    <string name="game_over">GAME OVER</string>
+    <string name="medal">MEDAILLE</string>
+    <string name="medal_bronze">BRONZE</string>
+    <string name="medal_silver">SILBER</string>
+    <string name="medal_gold">GOLD</string>
+    <string name="medal_platinum">PLATIN</string>
+    <string name="medal_next">NOCH %1$d BIS %2$s</string>
+    <string name="new_medal">NEUE MEDAILLE!</string>
+    <string name="points_label">PUNKTE</string>
+    <string name="record_label">REKORD</string>
+    <string name="new_record">NEUER REKORD!</string>
+    <string name="new_skin_unlocked">NEUER SKIN FREIGESCHALTET!</string>
+    <string name="tap_retry">TIPPEN = NOCHMAL</string>
+    <string name="share">TEILEN</string>
+    <string name="menu">MENUE</string>
+    <string name="remove_ads">WERBUNG ENTFERNEN — %1$s</string>
+    <string name="ad_privacy">DATENSCHUTZ-EINSTELLUNGEN</string>
+    <string-array name="taunts_zero">
+        <item>ERNSTHAFT?</item>
+        <item>DAS GING SCHNELL.</item>
+        <item>WAR DAS ABSICHT?</item>
+        <item>AUFWAERMEN ZAEHLT NICHT.</item>
+    </string-array>
+    <string-array name="taunts_close">
+        <item>SO NAH! NUR %1$d GEFEHLT!</item>
+        <item>FAST! NOCH %1$d!</item>
+        <item>AAARGH! %1$d ZU WENIG!</item>
+    </string-array>
+    <string-array name="taunts_low">
+        <item>DAS WAR NIX.</item>
+        <item>DU KANNST MEHR.</item>
+        <item>SCHON VERGESSEN WIE?</item>
+    </string-array>
+    <string-array name="taunts_default">
+        <item>NOCHMAL!</item>
+        <item>GLEICH KLAPPTS!</item>
+        <item>DAS KAM AUS DEM NICHTS.</item>
+        <item>NICHT AUFGEBEN!</item>
+    </string-array>
+    <string name="help_title">SO GEHT STOPP</string>
+    <string name="help_line1">DER PUNKT KREIST VON ALLEIN.</string>
+    <string name="help_line2">TIPPE, WENN ER IN DER GRUENEN ZONE IST — DANEBEN GETIPPT ODER ZONE VERPASST = AUS.</string>
+    <string name="help_line3">HELLE MITTE DER ZONE = PERFEKT: +2 PUNKTE.</string>
+    <string name="help_line4">PERFEKT IN SERIE? +3, +4, BIS ZU +5 PRO TREFFER!</string>
+    <string name="help_line5">MEDAILLEN: BRONZE AB 10, SILBER AB 20, GOLD AB 30, PLATIN AB 40.</string>
+    <string name="help_twists">DIE TWISTS</string>
+    <string name="twist_pulse_title">PULS (AB 5)</string>
+    <string name="twist_pulse_text">DIE ZONE ATMET — WIRD GROESSER UND KLEINER.</string>
+    <string name="twist_drift_title">DRIFT (AB 10)</string>
+    <string name="twist_drift_text">DIE ZONE WANDERT LANGSAM UEBER DIE BAHN.</string>
+    <string name="twist_ghost_title">GEIST (AB 15)</string>
+    <string name="twist_ghost_text">DER PUNKT BLINKT WEG — BAHN IM KOPF BEHALTEN.</string>
+    <string name="twist_fake_title">FALLE (AB 20)</string>
+    <string name="twist_fake_text">VIOLETTE KOEDER-ZONE: NIE HINEINTIPPEN!</string>
+    <string name="twist_chain_title">KETTE (AB 25)</string>
+    <string name="twist_chain_text">ZWEI ZONEN NACHEINANDER — GLEICHE RICHTUNG.</string>
+    <string name="help_max_twists">MAXIMAL ZWEI TWISTS GLEICHZEITIG — ZUFAELLIG GEMISCHT.</string>
+    <string name="tap_to_close">TIPPEN ZUM SCHLIESSEN</string>
+    <string name="skin_selected">AUSGEWAEHLT</string>
+    <string name="skin_tap_select">TIPPEN ZUM WAEHLEN</string>
+    <string name="skin_family_einfarbig">EINFARBIG</string>
+    <string name="skin_family_gemustert">GEMUSTERT</string>
+    <string name="skin_family_bewegt">BEWEGT</string>
+    <string name="skin_family_reagierend">REAGIEREND</string>
+    <string name="skin_family_saison">SAISON</string>
+    <string name="skin_family_goenner">GOENNER</string>
+    <string name="patron_pack">GOENNER-PAKET — %1$s</string>
+    <string name="patron_pack_skins_only">GOENNER-PAKET: DREI SKINS — %1$s</string>
+    <string name="patron_owned">DANKE!</string>
+    <string name="skin_pass_today">HEUTE FREI</string>
+    <string name="skin_pass_offer">HEUTE PER SPOT TESTEN</string>
+    <string name="skin_klassik">KLASSIK</string>
+    <string name="skin_minze">MINZE</string>
+    <string name="skin_lava">LAVA</string>
+    <string name="skin_gold">GOLD</string>
+    <string name="skin_frost">FROST</string>
+    <string name="skin_schatten">SCHATTEN</string>
+    <string name="skin_prisma">PRISMA</string>
+    <string name="skin_hint_minze">REKORD 10 (BRONZE)</string>
+    <string name="skin_hint_lava">REKORD 20 (SILBER)</string>
+    <string name="skin_hint_gold">REKORD 30 (GOLD)</string>
+    <string name="skin_hint_frost">REKORD 40 (PLATIN)</string>
+    <string name="skin_hint_schatten">4 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_prisma">DAILY-SERIE: 3 TAGE</string>
+    <string name="skin_biene">BIENE</string>
+    <string name="skin_melone">MELONE</string>
+    <string name="skin_pilz">FLIEGENPILZ</string>
+    <string name="skin_koi">KOI</string>
+    <string name="skin_galaxie">GALAXIE</string>
+    <string name="skin_karo">KARO</string>
+    <string name="skin_regenbogen">REGENBOGEN</string>
+    <string name="skin_aurora">AURORA</string>
+    <string name="skin_magma">MAGMA</string>
+    <string name="skin_neon">NEON</string>
+    <string name="skin_chrom">CHROM</string>
+    <string name="skin_chamaeleon">CHAMAELEON</string>
+    <string name="skin_kombo">KOMBO</string>
+    <string name="skin_tinte">TINTE</string>
+    <string name="skin_hint_biene">6 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_melone">REKORD 25</string>
+    <string name="skin_hint_pilz">REKORD 35</string>
+    <string name="skin_hint_koi">DAILY-SERIE: 7 TAGE</string>
+    <string name="skin_hint_galaxie">REKORD 50</string>
+    <string name="skin_hint_karo">10 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_regenbogen">ALLE ANDEREN SKINS SAMMELN</string>
+    <string name="skin_hint_aurora">DAILY-SERIE: 14 TAGE</string>
+    <string name="skin_hint_magma">REKORD 60</string>
+    <string name="skin_hint_neon">12 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_chrom">REKORD 45</string>
+    <string name="skin_hint_chamaeleon">REKORD 30</string>
+    <string name="skin_hint_kombo">8 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_tinte">REKORD 55</string>
+    <string name="skin_ei">EI</string>
+    <string name="skin_tiger">TIGER</string>
+    <string name="skin_pinguin">PINGUIN</string>
+    <string name="skin_fussball">FUSSBALL</string>
+    <string name="skin_donut">DONUT</string>
+    <string name="skin_welle">WELLE</string>
+    <string name="skin_gewitter">GEWITTER</string>
+    <string name="skin_konfetti">KONFETTI</string>
+    <string name="skin_disco">DISCO</string>
+    <string name="skin_holo">HOLO</string>
+    <string name="skin_thermo">THERMO</string>
+    <string name="skin_medaille">MEDAILLE</string>
+    <string name="skin_tageszeit">TAGESZEIT</string>
+    <string name="skin_jahreszeit">JAHRESZEIT</string>
+    <string name="skin_kuerbis">KUERBIS</string>
+    <string name="skin_zuckerstange">ZUCKERSTANGE</string>
+    <string name="skin_herz">HERZ</string>
+    <string name="skin_osterei">OSTEREI</string>
+    <string name="skin_diamant">DIAMANT</string>
+    <string name="skin_phoenix">PHOENIX</string>
+    <string name="skin_onyx">ONYX</string>
+    <string name="skin_hint_ei">25 LAEUFE</string>
+    <string name="skin_hint_tiger">100 LAEUFE</string>
+    <string name="skin_hint_pinguin">REKORD 65</string>
+    <string name="skin_hint_fussball">300 LAEUFE</string>
+    <string name="skin_hint_donut">1.000 PUNKTE INSGESAMT</string>
+    <string name="skin_hint_welle">REKORD 70</string>
+    <string name="skin_hint_gewitter">15 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_konfetti">5.000 PUNKTE INSGESAMT</string>
+    <string name="skin_hint_disco">DAILY-SERIE: 21 TAGE</string>
+    <string name="skin_hint_holo">REKORD 80</string>
+    <string name="skin_hint_thermo">REKORD 75</string>
+    <string name="skin_hint_medaille">200 LAEUFE</string>
+    <string name="skin_hint_tageszeit">AN 7 TAGEN GESPIELT</string>
+    <string name="skin_hint_jahreszeit">IN 3 MONATEN GESPIELT</string>
+    <string name="skin_hint_kuerbis">IM OKTOBER AN 5 TAGEN SPIELEN</string>
+    <string name="skin_hint_zuckerstange">IM DEZEMBER AN 5 TAGEN SPIELEN</string>
+    <string name="skin_hint_herz">IM FEBRUAR AN 3 TAGEN SPIELEN</string>
+    <string name="skin_hint_osterei">IM APRIL AN 5 TAGEN SPIELEN</string>
+    <string name="skin_hint_goenner">GOENNER-PAKET</string>
+    <string name="scenes">KULISSEN</string>
+    <string name="scene_wiese">WIESE</string>
+    <string name="scene_wueste">WUESTE</string>
+    <string name="scene_meer">MEER</string>
+    <string name="scene_berg">BERG</string>
+    <string name="scene_stadt">STADT</string>
+    <string name="scene_weltraum">WELTRAUM</string>
+    <string name="scene_hint_wueste">500 LAEUFE</string>
+    <string name="scene_hint_meer">10.000 PUNKTE INSGESAMT</string>
+    <string name="scene_hint_berg">DAILY-SERIE: 30 TAGE</string>
+    <string name="scene_hint_stadt">REKORD 85</string>
+    <string name="scene_hint_weltraum">ALLE ANDEREN KULISSEN SAMMELN</string>
+    <string name="sounds">TOENE</string>
+    <string name="sound_klassik">KLASSIK</string>
+    <string name="sound_glocke">GLOCKE</string>
+    <string name="sound_amboss">AMBOSS</string>
+    <string name="sound_hint_glocke">PERFEKT-SERIE: 20</string>
+    <string name="sound_hint_amboss">25.000 PUNKTE INSGESAMT</string>
+    <string name="sound_tap_hear">ANTIPPEN ZUM HOEREN</string>
+    <string name="stats">STATISTIK</string>
+    <string name="stats_runs">LAEUFE</string>
+    <string name="stats_total_score">PUNKTE INSGESAMT</string>
+    <string name="stats_days">TAGE GESPIELT</string>
+    <string name="stats_months">MONATE GESPIELT</string>
+    <string name="stats_perfect">BESTE PERFEKT-SERIE</string>
+    <string name="stats_daily_streak">DAILY-SERIE</string>
+    <string name="stats_goals">NAECHSTE ZIELE</string>
+    <string name="goal_progress">%1$s %2$d/%3$d</string>
+
+    <!-- Kartenrahmen und Ziel-Zeilen (aus main, v2.25) -->
+    <string name="frame_doppellinie">DOPPELLINIE</string>
+    <string name="frame_hint_doppellinie">10 SKINS SAMMELN</string>
+    <string name="frame_hint_pracht">30 SKINS SAMMELN</string>
+    <string name="frame_hint_zinnen">20 SKINS SAMMELN</string>
+    <string name="frame_on_card">STEHT AUF DER GETEILTEN KARTE</string>
+    <string name="frame_pracht">PRACHT</string>
+    <string name="frame_schlicht">SCHLICHT</string>
+    <string name="frame_zinnen">ZINNEN</string>
+    <string name="frames">RAHMEN</string>
+    <string name="goal_axis_days">TAGE</string>
+    <string name="goal_axis_months">MONATE</string>
+    <string name="goal_axis_perfect">PERFEKTE IN FOLGE</string>
+    <string name="goal_axis_points">PUNKTE</string>
+    <string name="goal_axis_runs">LAEUFE</string>
+    <string name="goal_axis_scenes">KULISSEN</string>
+    <string name="goal_axis_skins">SKINS</string>
+    <string name="goal_axis_total">PUNKTE INSGESAMT</string>
+    <string name="goal_next_scene">NAECHSTE KULISSE: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_next_skin">NAECHSTER SKIN: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_next_sound">NAECHSTER TON: %1$s — %2$d/%3$d %4$s</string>
+    <string name="help">HILFE</string>
+    <string name="settings">EINSTELLUNGEN</string>
+</resources>

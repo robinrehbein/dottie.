@@ -9,12 +9,20 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.robinrehbein.punkt.game.DailyChallenge
+import de.robinrehbein.punkt.game.GameEventDied
+import de.robinrehbein.punkt.game.GameEventHit
+import de.robinrehbein.punkt.game.GameEventPerfectHit
+import de.robinrehbein.punkt.game.GameEventSettled
+import de.robinrehbein.punkt.game.GameEventStarted
+import de.robinrehbein.punkt.game.GameEventTwistUnlocked
+import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SoundBank
 import de.robinrehbein.punkt.game.SyncState
 import de.robinrehbein.punkt.game.TimingGame
+import de.robinrehbein.punkt.game.Twist
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -124,7 +132,7 @@ internal class WearGameController(context: Context) {
     /** Für die Spott-Text-Ressourcen; ApplicationContext leakt nicht. */
     private val appContext = context.applicationContext
 
-    var phase by mutableStateOf(TimingGame.Phase.READY)
+    var phase by mutableStateOf(GamePhase.READY)
         private set
     var score by mutableIntStateOf(0)
         private set
@@ -266,7 +274,7 @@ internal class WearGameController(context: Context) {
     fun tap() {
         // Ein Tap in READY/OVER startet gleich einen Lauf — vorher Tag und
         // Seed für den aktuellen Modus setzen (wie prepareRun am Phone).
-        if (game.phase == TimingGame.Phase.READY || game.phase == TimingGame.Phase.OVER) {
+        if (game.phase == GamePhase.READY || game.phase == GamePhase.OVER) {
             prepareRun()
         }
         game.tap()
@@ -280,7 +288,7 @@ internal class WearGameController(context: Context) {
      */
     private fun prepareRun() {
         runEpochDay = LocalDate.now().toEpochDay()
-        game.reseed(if (dailyMode) DailyChallenge.seedFor(runEpochDay) else null)
+        if (dailyMode) game.reseed(DailyChallenge.seedFor(runEpochDay)) else game.reseedSystem()
     }
 
     /** Schaltet zwischen CLASSIC und DAILY um (READY-/OVER-Overlay). */
@@ -555,26 +563,26 @@ internal class WearGameController(context: Context) {
         var twistUnlockedThisFrame = false
         events.forEach { event ->
             when (event) {
-                TimingGame.GameEvent.Started -> {
+                GameEventStarted -> {
                     lastStage = 0
                     recordCelebrated = false
                     recordBannerTimeLeft = 0f
                     runMaxPerfect = 0
                 }
-                TimingGame.GameEvent.Hit -> {
+                GameEventHit -> {
                     haptics.hit()
                     audio.hit(game.score)
                 }
-                TimingGame.GameEvent.PerfectHit -> {
+                GameEventPerfectHit -> {
                     haptics.perfectHit()
                     audio.perfect(game.perfectStreak)
                     runMaxPerfect = maxOf(runMaxPerfect, game.perfectStreak)
                 }
-                is TimingGame.GameEvent.TwistUnlocked -> {
+                is GameEventTwistUnlocked -> {
                     twistUnlockedThisFrame = true
                     audio.unlock()
                 }
-                TimingGame.GameEvent.Died -> {
+                GameEventDied -> {
                     haptics.died()
                     audio.death()
                     val previousBest = bestScore
@@ -604,7 +612,7 @@ internal class WearGameController(context: Context) {
                     // fuers Telefon. Ohne Aenderung ist das ein No-op.
                     onStateChanged?.invoke()
                 }
-                TimingGame.GameEvent.Settled -> {
+                GameEventSettled -> {
                     // Der Rekord-Jingle lief meist schon live im Lauf; sonst
                     // (z. B. allererster Lauf) kommt er jetzt — wie am Phone.
                     if (isNewRecord && !recordCelebrated) {
@@ -618,7 +626,7 @@ internal class WearGameController(context: Context) {
 
         // Rekord live feiern: In dem Moment, in dem der Lauf den alten
         // Bestwert überholt — nicht erst beim Tod (wie am Phone).
-        if (game.phase == TimingGame.Phase.RUNNING &&
+        if (game.phase == GamePhase.RUNNING &&
             !recordCelebrated && bestScore > 0 && game.score > bestScore
         ) {
             recordCelebrated = true
@@ -630,11 +638,11 @@ internal class WearGameController(context: Context) {
         // gefeiert, sofern nicht gerade ohnehin ein Twist freigeschaltet
         // wurde (dann lief die Fanfare schon).
         val stage = game.score / 5
-        if (game.phase == TimingGame.Phase.RUNNING && stage > lastStage) {
+        if (game.phase == GamePhase.RUNNING && stage > lastStage) {
             lastStage = stage
             if (!twistUnlockedThisFrame) audio.unlock()
         }
-        if (game.phase == TimingGame.Phase.READY) {
+        if (game.phase == GamePhase.READY) {
             lastStage = 0
         }
 
@@ -654,9 +662,9 @@ internal class WearGameController(context: Context) {
         // mit der Composition verloren (sie wird erst beim Schließen
         // gespeichert).
         if (skinPickerOpen) closeSkinPicker()
-        if (game.phase == TimingGame.Phase.RUNNING || game.phase == TimingGame.Phase.DYING) {
+        if (game.phase == GamePhase.RUNNING || game.phase == GamePhase.DYING) {
             game.reset()
-            phase = TimingGame.Phase.READY
+            phase = GamePhase.READY
             score = 0
             recordBannerTimeLeft = 0f
         }

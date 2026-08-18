@@ -1,46 +1,44 @@
 # Dottie. für iOS
 
-Nativer Swift-Port des Spiels (SpriteKit + UIKit, kein Storyboard) —
-parallel zur Android-App in `app/` und der Wear-App in `wear/`.
+Die iPhone-App: SpriteKit + UIKit ohne Storyboard für die Darstellung,
+die Spiellogik aus dem geteilten Kotlin-Modul `:core` — dasselbe, mit dem
+die Android-App in `app/` und die Wear-App in `wear/` rechnen.
 
 ## Stand der Dinge
 
-**Portiert (1:1 zur Android-Logik, gleiche Konstanten, keine eigene Balance):**
+Die **Spiellogik kommt aus `:core`** — demselben Kotlin-Modul, mit dem
+auch die Android- und die Wear-App rechnen. Es wird als
+`DottieCore.xcframework` gelinkt; übersetzt wird an genau einer Stelle,
+in `Dottie/Sources/Core/CoreBridge.swift`.
 
-- `TimingGame` — komplette Engine: Phasen (READY/RUNNING/DYING/OVER),
-  Zielzone mit PERFEKT-Kern und Serien-Bonus (+2 … +5), Twists
-  PULS/DRIFT/GEIST/FALLE/KETTE ab Score 5/10/15/20/25, Schwierigkeit über
-  Treffer, Touch-Latenz-Gnade, Restart-Sperre.
-- `DailyChallenge` — Tages-Seed und Serien-Regeln. Der Seed ist
-  **bit-identisch zu Android**: `KotlinRandom` baut Kotlins
-  XorWow-Generator (inkl. 64 Warmup-Runden, `nextFloat`, `nextBoolean`,
-  `nextInt(bound)`, Fisher-Yates-Shuffle) in Swift nach — dieselbe
-  Tages-Abfolge auf beiden Plattformen.
-- `ChipSynth` — Chiptune-Sounds aus denselben Wellenform-Berechnungen,
-  abgespielt über AVAudioEngine/AVAudioPCMBuffer. Tonhöhen-Varianten
-  (Treffer-Pentatonik, Perfekt-Serie) sind vorgerendert statt per
-  SoundPool-Rate gepitcht — klingt gleich.
-- Look: Himmelsstufen (7 Farben pro 5er-Stufe), Perlenketten-Bahn mit
-  60 Segmenten, Pixel-Vogel mit Blickrichtung, Boden mit Grasnarbe,
-  Szenerie (Bäume/Blumen/Sträucher mit Parallaxe), Wolken, „DOTTIE."-Titel,
-  Mario-Tod (Freeze → Hüpfer → Kopfüber-Fall), Medaillen (10/20/30/40),
-  Spott-Texte, REKORD-Banner, Freischalt-Zelebration, Flash + Shake.
-- Ton-Sets: drei Klangwelten (Klassik, Glocke, Amboss) aus `SoundBank` —
-  Frequenzen, Hüllkurven und Rauschanteile als Daten, `ChipSynth.render`
-  macht daraus Samples. Auswahl im SKINS-Overlay hinter den Kulissen, mit
-  Hörprobe beim Antippen.
-- Kulissen: sechs Sets (Wiese, Wüste, Meer, Berg, Stadt, Weltraum) aus
-  `ScenePaint` — Himmel, Wolken, Requisiten und Boden als Daten, die
-  Texturen entstehen daraus in `PixelArt.propTexture`. Auswahl im
-  SKINS-Overlay über den Skin-Familien, gespeichert wie die Skin-Wahl.
-- Features: Classic + Daily, 42 Skins (gleiche Farben, Muster und
-  Freischalt-Bedingungen wie `:core`; das Menü ist nach Familien
-  gegliedert und scrollt), Sound an/aus (persistiert), Haptik
-  (UIImpactFeedbackGenerator), Persistenz via UserDefaults,
-  Texte EN/DE (Localizable.strings), Bytesized-Pixel-Font.
+Bis v2.23 lagen unter `Dottie/Sources/Engine` 2 893 Zeilen Swift, die
+dieselbe Logik von Hand nachbauten (`TimingGame`, `SkinPaint`,
+`ScenePaint`, `SoundSet`, `ChipSynth`, `Progress`, `MedalTier`,
+`DailyChallenge` und `KotlinRandom`, das Kotlins XorWow-Generator
+bitgenau nachstellte). Das ist ersatzlos entfallen: Die Daily Challenge
+ist jetzt per Konstruktion auf beiden Plattformen dieselbe, nicht per
+Test.
+
+**Was iOS selbst mitbringt:**
+
+- Darstellung in SpriteKit/UIKit ohne Storyboard: Himmelsstufen,
+  Perlenketten-Bahn mit 60 Segmenten, Pixel-Vogel mit Blickrichtung,
+  Boden mit Grasnarbe, Szenerie mit Parallaxe, Wolken, „DOTTIE."-Titel,
+  Mario-Tod (Freeze → Hüpfer → Kopfüber-Fall), Medaillen, Spott-Texte,
+  REKORD-Banner, Freischalt-Zelebration, Flash + Shake.
+- Klang über AVAudioEngine: `ChipSynth` aus `:core` liefert die Samples,
+  die Tonhöhen-Varianten (Treffer-Pentatonik, Perfekt-Serie) werden
+  vorgerendert statt wie auf Android per SoundPool-Rate gepitcht.
+- Umfeld: Persistenz über UserDefaults, Haptik über
+  UIImpactFeedbackGenerator, Tages-Erinnerung, Texte EN/DE
+  (Localizable.strings), Bytesized-Pixel-Font.
+
+**Inhaltlich gleichauf mit Android:** Classic + Daily, 42 Skins in sechs
+Familien, sechs Kulissen, drei Ton-Sets, Ziele und Statistik-Seite —
+alles aus denselben Tabellen.
 
 **Bewusst nicht dabei (wie beauftragt):** Teilen/Score-Card,
-Daily-Reminder-Notification, Leaderboards/Game Center.
+Leaderboards/Game Center.
 
 **Kein Billing:** Die drei Gönner-Skins (DIAMANT, PHOENIX, ONYX) stehen im
 Menü, `patronOwned` ist auf iOS aber fest `false` — sie bleiben sichtbar,
@@ -52,41 +50,50 @@ Lokal gibt es in dieser Repo-Umgebung keine Apple-Toolchain — kompiliert
 wird über GitHub Actions:
 
 1. GitHub → **Actions** → Workflow **„Build iOS"** → **„Run workflow"**
-   (Branch wählen). Der Workflow startet manuell — und automatisch bei
-   Pull Requests, die `ios/`, `core/` oder `parity/` anfassen. Sonst
-   bleibt er aus: macOS-Minuten sind auf privaten Repos 10x teurer als
-   Linux-Minuten.
-2. Der Lauf macht: `brew install xcodegen` → `cd ios && xcodegen`
-   (erzeugt `Dottie.xcodeproj` aus `project.yml`) → `xcodebuild test`
-   (Paritäts-Tests im Simulator, siehe unten) → `xcodebuild` einmal
-   für `generic/platform=iOS` (Device, unsigniert) und einmal für den
+   (Branch wählen). Der Workflow startet auch automatisch bei jedem Push,
+   der `ios/`, `core/` oder `parity/` anfasst.
+2. Der Lauf macht: `./gradlew :core:assembleDottieCoreDebugXCFramework`
+   (die Spiellogik als Framework — Kotlin/Native baut Apple-Ziele nur auf
+   einem Mac) → `brew install xcodegen` → `cd ios && xcodegen` (erzeugt
+   `Dottie.xcodeproj` aus `project.yml`) → `xcodebuild test`
+   (Brücken-Tests im Simulator, siehe unten) → `xcodebuild` einmal für
+   `generic/platform=iOS` (Device, unsigniert) und einmal für den
    Simulator.
 3. Artefakt: die unsignierte Simulator-`Dottie.app` — auf einem Mac per
    Drag & Drop in den Simulator ziehen oder
    `xcrun simctl install booted Dottie.app`.
 
-Lokal auf einem Mac genügt: `brew install xcodegen && cd ios && xcodegen
-&& open Dottie.xcodeproj`.
-
-## Tests: Parität zur Kotlin-Engine
-
-Der Port hatte lange keine Tests — ausgerechnet der Teil, der bit-genau
-stimmen muss (`KotlinRandom`), war damit ungeprüft. Das Target
-**DottieTests** rechnet jetzt gegen `parity/golden-vectors.txt`, eine von
-`:core` erzeugte Datei mit Soll-Werten: Konstanten, Medaillen-Schwellen,
-Skin-Farben, die komplette Zahlenfolge des XorWow-Generators und zwei
-vollständige Läufe, Treffer für Treffer.
+Lokal auf einem Mac:
 
 ```sh
+./gradlew :core:assembleDottieCoreDebugXCFramework
+brew install xcodegen && cd ios && xcodegen && open Dottie.xcodeproj
+```
+
+Der erste Schritt ist Pflicht: Ohne das Framework in
+`core/build/XCFrameworks/debug/` findet Xcode `import DottieCore` nicht.
+Nach jeder Änderung an `:core` muss er wiederholt werden.
+
+## Tests: die Brücke, nicht die Engine
+
+Die Engine braucht auf dieser Seite keine Tests mehr — sie ist dieselbe,
+die `./gradlew :core:jvmTest` prüft. Was bleibt, ist das, was
+`CoreBridge.swift` von Hand macht und deshalb still auseinanderlaufen
+kann: die aus Kotlin-Namen abgeleiteten Textschlüssel (`SkinId.LAVA` →
+`skin_lava`), die Familien-Gliederung des Skin-Menüs und die Zuordnung
+der Requisiten-Formen. Dazu ein Lauf über die Brücke als Beweis, dass das
+Framework wirklich verlinkt ist.
+
+```sh
+./gradlew :core:assembleDottieCoreDebugXCFramework
 cd ios && xcodegen
 xcodebuild test -project Dottie.xcodeproj -scheme Dottie \
   -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
 Es ist ein Logik-Test-Bundle ohne Host-App: Es übersetzt
-`Dottie/Sources/Engine` direkt mit und braucht deshalb keine Signierung.
-Schlagen die Tests nach einer Änderung an `:core` fehl, ist das die
-Ansage, den Port nachzuziehen — Details in `parity/README.md`.
+`Dottie/Sources/Core` direkt mit und linkt dasselbe Framework wie die
+App — deshalb braucht es keine Signierung.
 
 ## Was zum Verteilen noch fehlt
 
@@ -115,13 +122,8 @@ ios/
 │   ├── Sources/
 │   │   ├── AppDelegate.swift    # UIKit-Lifecycle ohne Storyboard
 │   │   ├── GameViewController.swift
-│   │   ├── Engine/              # 1:1-Ports der Kotlin-Logik
-│   │   │   ├── TimingGame.swift
-│   │   │   ├── DailyChallenge.swift
-│   │   │   ├── KotlinRandom.swift   # Kotlins XorWowRandom, bit-identisch
-│   │   │   ├── ChipSynth.swift
-│   │   │   ├── MedalTier.swift
-│   │   │   └── DotSkin.swift
+│   │   ├── Core/
+│   │   │   └── CoreBridge.swift # Zahlen, Farben und Namen an der Sprachgrenze
 │   │   ├── Support/             # Store, Audio, Haptik, Farben, L10n
 │   │   └── UI/                  # GameScene, Overlays, Pixel-Texturen
 │   └── Resources/
@@ -129,5 +131,7 @@ ios/
 │       ├── Assets.xcassets/AppIcon.appiconset/
 │       ├── en.lproj/Localizable.strings
 │       └── de.lproj/Localizable.strings
+├── DottieTests/
+│   └── CoreBridgeTests.swift    # prüft die Brücke, nicht die Engine
 └── README.md
 ```

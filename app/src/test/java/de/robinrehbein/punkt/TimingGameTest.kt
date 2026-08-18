@@ -1,12 +1,21 @@
 package de.robinrehbein.punkt
 
+import de.robinrehbein.punkt.game.GameEvent
+import de.robinrehbein.punkt.game.GameEventChainNext
+import de.robinrehbein.punkt.game.GameEventDied
+import de.robinrehbein.punkt.game.GameEventHit
+import de.robinrehbein.punkt.game.GameEventPerfectHit
+import de.robinrehbein.punkt.game.GameEventSettled
+import de.robinrehbein.punkt.game.GameEventStarted
+import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.TimingGame
+import de.robinrehbein.punkt.game.Twist
+import kotlin.math.abs
+import kotlin.random.Random
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.math.abs
-import kotlin.random.Random
 
 class TimingGameTest {
 
@@ -16,8 +25,8 @@ class TimingGameTest {
             twistOverride = emptySet()
         }
 
-    private fun TimingGame.tick(seconds: Float, step: Float = 1f / 60f): List<TimingGame.GameEvent> {
-        val events = mutableListOf<TimingGame.GameEvent>()
+    private fun TimingGame.tick(seconds: Float, step: Float = 1f / 60f): List<GameEvent> {
+        val events = mutableListOf<GameEvent>()
         var remaining = seconds
         while (remaining > 0f) {
             events += update(minOf(step, remaining))
@@ -32,24 +41,24 @@ class TimingGameTest {
         while (time < maxSeconds) {
             update(1f / 120f)
             time += 1f / 120f
-            if (phase != TimingGame.Phase.RUNNING) return false
+            if (phase != GamePhase.RUNNING) return false
             if (isInZone) return true
         }
         return false
     }
 
-    private fun TimingGame.hitZone(): TimingGame.GameEvent? {
+    private fun TimingGame.hitZone(): GameEvent? {
         if (!runUntilInZone()) return null
         return tap()
     }
 
     /** Simuliert Frames bis in den Perfekt-Kern und tappt dort. */
-    private fun TimingGame.hitPerfect(): TimingGame.GameEvent? {
+    private fun TimingGame.hitPerfect(): GameEvent? {
         var time = 0f
         while (time < 10f) {
             update(1f / 240f)
             time += 1f / 240f
-            if (phase != TimingGame.Phase.RUNNING) return null
+            if (phase != GamePhase.RUNNING) return null
             if (abs(relativeToZone()) <= effectiveZoneHalf() * TimingGame.PERFECT_SHARE) {
                 return tap()
             }
@@ -60,12 +69,12 @@ class TimingGameTest {
     @Test
     fun `starts in ready phase and first tap starts the run`() {
         val game = newGame()
-        assertEquals(TimingGame.Phase.READY, game.phase)
+        assertEquals(GamePhase.READY, game.phase)
 
         val event = game.tap()
 
-        assertEquals(TimingGame.GameEvent.Started, event)
-        assertEquals(TimingGame.Phase.RUNNING, game.phase)
+        assertEquals(GameEventStarted, event)
+        assertEquals(GamePhase.RUNNING, game.phase)
     }
 
     @Test
@@ -77,11 +86,11 @@ class TimingGameTest {
         val event = game.hitZone()
 
         assertTrue(
-            event == TimingGame.GameEvent.Hit || event == TimingGame.GameEvent.PerfectHit
+            event == GameEventHit || event == GameEventPerfectHit
         )
         assertTrue(game.score >= 1)
         assertEquals(-directionBefore, game.direction)
-        assertEquals(TimingGame.Phase.RUNNING, game.phase)
+        assertEquals(GamePhase.RUNNING, game.phase)
     }
 
     @Test
@@ -91,7 +100,7 @@ class TimingGameTest {
 
         val event = game.hitPerfect()
 
-        assertEquals(TimingGame.GameEvent.PerfectHit, event)
+        assertEquals(GameEventPerfectHit, event)
         assertEquals(TimingGame.PERFECT_BASE_SCORE, game.score)
         assertEquals(1, game.perfectStreak)
     }
@@ -105,7 +114,7 @@ class TimingGameTest {
         val expected = listOf(2, 3, 4, 5, 5)
         for ((index, points) in expected.withIndex()) {
             val event = game.hitPerfect()
-            assertEquals("Treffer ${index + 1}", TimingGame.GameEvent.PerfectHit, event)
+            assertEquals("Treffer ${index + 1}", GameEventPerfectHit, event)
             assertEquals("Treffer ${index + 1}", points, game.lastHitPoints)
         }
         assertEquals(expected.sum(), game.score)
@@ -121,7 +130,7 @@ class TimingGameTest {
         game.hitPerfect() // +3, Serie 2
         // hitZone tappt an der Zonenkante — sicher außerhalb des Kerns.
         val normal = game.hitZone()
-        assertEquals(TimingGame.GameEvent.Hit, normal)
+        assertEquals(GameEventHit, normal)
         assertEquals(1, game.lastHitPoints)
         assertEquals(0, game.perfectStreak)
 
@@ -160,8 +169,8 @@ class TimingGameTest {
         // entfernt — ein sofortiger zweiter Tap liegt sicher daneben.
         val event = game.tap()
 
-        assertEquals(TimingGame.GameEvent.Died, event)
-        assertEquals(TimingGame.Phase.DYING, game.phase)
+        assertEquals(GameEventDied, event)
+        assertEquals(GamePhase.DYING, game.phase)
     }
 
     @Test
@@ -171,9 +180,9 @@ class TimingGameTest {
 
         val events = game.tick(8f)
 
-        assertTrue(events.contains(TimingGame.GameEvent.Died))
-        assertTrue(events.contains(TimingGame.GameEvent.Settled))
-        assertEquals(TimingGame.Phase.OVER, game.phase)
+        assertTrue(events.contains(GameEventDied))
+        assertTrue(events.contains(GameEventSettled))
+        assertEquals(GamePhase.OVER, game.phase)
         assertEquals(0, game.score)
     }
 
@@ -184,7 +193,7 @@ class TimingGameTest {
 
         val events = game.update(1f / 60f)
 
-        assertTrue(events.contains(TimingGame.GameEvent.Started))
+        assertTrue(events.contains(GameEventStarted))
     }
 
     @Test
@@ -195,7 +204,7 @@ class TimingGameTest {
             val event = game.hitZone()
             assertTrue(
                 "Zone nicht getroffen",
-                event == TimingGame.GameEvent.Hit || event == TimingGame.GameEvent.PerfectHit
+                event == GameEventHit || event == GameEventPerfectHit
             )
             // Nach jedem Treffer liegt die neue Zone vor dem Punkt,
             // mindestens die Mindestdistanz entfernt (negativ = davor).
@@ -234,20 +243,20 @@ class TimingGameTest {
         game.tap()
         game.tap() // daneben → DYING
         var time = 0f
-        while (game.phase != TimingGame.Phase.OVER && time < 5f) {
+        while (game.phase != GamePhase.OVER && time < 5f) {
             game.update(1f / 60f)
             time += 1f / 60f
         }
-        assertEquals(TimingGame.Phase.OVER, game.phase)
+        assertEquals(GamePhase.OVER, game.phase)
 
         game.tap() // sofortiger Wut-Tap innerhalb der Sperrzeit
-        assertEquals(TimingGame.Phase.OVER, game.phase)
+        assertEquals(GamePhase.OVER, game.phase)
 
         // Nach der Sperre startet ein Tap sofort den nächsten Lauf.
         game.tick(TimingGame.RESTART_LOCK_SECONDS + 0.1f)
         val event = game.tap()
-        assertEquals(TimingGame.GameEvent.Started, event)
-        assertEquals(TimingGame.Phase.RUNNING, game.phase)
+        assertEquals(GameEventStarted, event)
+        assertEquals(GamePhase.RUNNING, game.phase)
         assertEquals(0, game.score)
     }
 
@@ -262,12 +271,12 @@ class TimingGameTest {
         while (game.relativeToZone() <= game.effectiveZoneHalf() && guard++ < 2000) {
             game.update(1f / 240f)
         }
-        assertEquals(TimingGame.Phase.RUNNING, game.phase)
+        assertEquals(GamePhase.RUNNING, game.phase)
 
         val event = game.tap()
 
-        assertEquals(TimingGame.GameEvent.Hit, event)
-        assertEquals(TimingGame.Phase.RUNNING, game.phase)
+        assertEquals(GameEventHit, event)
+        assertEquals(GamePhase.RUNNING, game.phase)
         assertTrue(game.score >= 1)
     }
 
@@ -284,12 +293,12 @@ class TimingGameTest {
         while (game.relativeToZone() <= lateLimit && guard++ < 2000) {
             game.update(1f / 240f)
         }
-        assertEquals(TimingGame.Phase.RUNNING, game.phase)
+        assertEquals(GamePhase.RUNNING, game.phase)
 
         val event = game.tap()
 
-        assertEquals(TimingGame.GameEvent.Died, event)
-        assertEquals(TimingGame.Phase.DYING, game.phase)
+        assertEquals(GameEventDied, event)
+        assertEquals(GamePhase.DYING, game.phase)
     }
 
     @Test
@@ -301,7 +310,7 @@ class TimingGameTest {
             val event = game.hitZone()
             assertTrue(
                 "Zone nicht getroffen",
-                event == TimingGame.GameEvent.Hit || event == TimingGame.GameEvent.PerfectHit
+                event == GameEventHit || event == GameEventPerfectHit
             )
             val rel = game.relativeToZone()
             assertTrue(rel < 0f)
@@ -324,7 +333,7 @@ class TimingGameTest {
 
         game.reset()
 
-        assertEquals(TimingGame.Phase.READY, game.phase)
+        assertEquals(GamePhase.READY, game.phase)
         assertEquals(0, game.score)
         assertEquals(0, game.hits)
         assertEquals(0, game.perfectStreak)
@@ -341,14 +350,14 @@ class TimingGameTest {
     @Test
     fun `pulse twist varies the effective zone width within bounds`() {
         val game = newGame()
-        game.twistOverride = setOf(TimingGame.Twist.PULSE)
+        game.twistOverride = setOf(Twist.PULSE)
         game.tap()
 
         var minSeen = Float.MAX_VALUE
         var maxSeen = 0f
         repeat(120) {
             game.update(1f / 60f)
-            if (game.phase != TimingGame.Phase.RUNNING) return@repeat
+            if (game.phase != GamePhase.RUNNING) return@repeat
             val half = game.effectiveZoneHalf()
             if (half < minSeen) minSeen = half
             if (half > maxSeen) maxSeen = half
@@ -362,7 +371,7 @@ class TimingGameTest {
     @Test
     fun `drift twist moves the zone center`() {
         val game = newGame()
-        game.twistOverride = setOf(TimingGame.Twist.DRIFT)
+        game.twistOverride = setOf(Twist.DRIFT)
         game.tap()
         val centerBefore = game.zoneCenter
 
@@ -377,14 +386,14 @@ class TimingGameTest {
     @Test
     fun `ghost twist blinks the dot while running`() {
         val game = newGame()
-        game.twistOverride = setOf(TimingGame.Twist.GHOST)
+        game.twistOverride = setOf(Twist.GHOST)
         game.tap()
 
         var visibleSeen = false
         var hiddenSeen = false
         repeat(180) {
             game.update(1f / 60f)
-            if (game.phase != TimingGame.Phase.RUNNING) return@repeat
+            if (game.phase != GamePhase.RUNNING) return@repeat
             if (game.isDotVisible) visibleSeen = true else hiddenSeen = true
         }
 
@@ -395,14 +404,14 @@ class TimingGameTest {
     @Test
     fun `dot is always visible outside of running phase`() {
         val game = newGame()
-        game.twistOverride = setOf(TimingGame.Twist.GHOST)
+        game.twistOverride = setOf(Twist.GHOST)
         assertTrue(game.isDotVisible) // READY
     }
 
     @Test
     fun `fake zone spawns between dot and target zone`() {
         val game = newGame()
-        game.twistOverride = setOf(TimingGame.Twist.FAKE)
+        game.twistOverride = setOf(Twist.FAKE)
         game.tap()
 
         if (game.hasFakeZone) {
@@ -417,23 +426,23 @@ class TimingGameTest {
     @Test
     fun `chain twist keeps direction and spawns follow-up zone`() {
         val game = newGame()
-        game.twistOverride = setOf(TimingGame.Twist.CHAIN)
+        game.twistOverride = setOf(Twist.CHAIN)
         game.tap()
         val directionBefore = game.direction
         assertEquals(TimingGame.CHAIN_LENGTH, game.chainRemaining)
 
         val firstHit = game.hitZone()
         assertTrue(
-            firstHit == TimingGame.GameEvent.Hit || firstHit == TimingGame.GameEvent.PerfectHit
+            firstHit == GameEventHit || firstHit == GameEventPerfectHit
         )
         // Kette: Richtung bleibt, die nächste Zone wartet schon.
         assertEquals(directionBefore, game.direction)
         assertEquals(0, game.chainRemaining)
-        assertTrue(game.update(1f / 60f).contains(TimingGame.GameEvent.ChainNext))
+        assertTrue(game.update(1f / 60f).contains(GameEventChainNext))
 
         val secondHit = game.hitZone()
         assertTrue(
-            secondHit == TimingGame.GameEvent.Hit || secondHit == TimingGame.GameEvent.PerfectHit
+            secondHit == GameEventHit || secondHit == GameEventPerfectHit
         )
         // Nach der Kette dreht die Richtung wieder um.
         assertEquals(-directionBefore, game.direction)
@@ -444,7 +453,7 @@ class TimingGameTest {
         val game = TimingGame(random = Random(7)) // ohne Override: echte Auswahl
         game.tap()
 
-        val announced = mutableListOf<TimingGame.Twist>()
+        val announced = mutableListOf<Twist>()
         var time = 0f
         while (game.score < 8 && time < 120f) {
             if (game.isInZone) {
@@ -453,18 +462,18 @@ class TimingGameTest {
                 game.update(1f / 120f)
                 time += 1f / 120f
             }
-            if (game.phase != TimingGame.Phase.RUNNING) break
+            if (game.phase != GamePhase.RUNNING) break
         }
         // Events einsammeln
         // (announce passiert beim Spawn; wir prüfen indirekt über Score-Schwelle)
         assertTrue("Testlauf sollte Score 5 erreichen", game.score >= 5)
 
         // Unlock-Schwellen sind korrekt definiert
-        assertEquals(5, TimingGame.unlockScore(TimingGame.Twist.PULSE))
-        assertEquals(10, TimingGame.unlockScore(TimingGame.Twist.DRIFT))
-        assertEquals(15, TimingGame.unlockScore(TimingGame.Twist.GHOST))
-        assertEquals(20, TimingGame.unlockScore(TimingGame.Twist.FAKE))
-        assertEquals(25, TimingGame.unlockScore(TimingGame.Twist.CHAIN))
+        assertEquals(5, TimingGame.unlockScore(Twist.PULSE))
+        assertEquals(10, TimingGame.unlockScore(Twist.DRIFT))
+        assertEquals(15, TimingGame.unlockScore(Twist.GHOST))
+        assertEquals(20, TimingGame.unlockScore(Twist.FAKE))
+        assertEquals(25, TimingGame.unlockScore(Twist.CHAIN))
     }
 
     @Test
@@ -476,16 +485,16 @@ class TimingGameTest {
             val game = TimingGame(random = Random(seed))
             game.tap()
             var guard = 0
-            while (game.phase == TimingGame.Phase.RUNNING &&
+            while (game.phase == GamePhase.RUNNING &&
                 game.score < 45 && guard++ < 200
             ) {
                 game.hitZone() ?: break
                 assertFalse(
                     "GEIST + FALLE gleichzeitig aktiv (Seed $seed, Score ${game.score})",
-                    game.activeTwists.contains(TimingGame.Twist.GHOST) &&
-                        game.activeTwists.contains(TimingGame.Twist.FAKE)
+                    game.activeTwists.contains(Twist.GHOST) &&
+                        game.activeTwists.contains(Twist.FAKE)
                 )
-                if (game.score >= TimingGame.unlockScore(TimingGame.Twist.FAKE)) {
+                if (game.score >= TimingGame.unlockScore(Twist.FAKE)) {
                     spawnsWithBothUnlocked++
                 }
             }

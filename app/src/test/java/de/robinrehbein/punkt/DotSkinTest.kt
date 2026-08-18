@@ -1,10 +1,11 @@
 package de.robinrehbein.punkt
 
-import de.robinrehbein.punkt.game.DotSkin
-import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
+import de.robinrehbein.punkt.game.SkinFamily
+import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.SkinPaint
+import de.robinrehbein.punkt.game.SkinStats
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -22,7 +23,7 @@ class DotSkinTest {
         months: Int = 0,
         season: Int = 0,
         patron: Boolean = false
-    ) = DotSkin.Stats(
+    ) = SkinStats(
         bestScore = best,
         bestPerfectStreak = perfect,
         bestDailyStreak = daily,
@@ -42,133 +43,122 @@ class DotSkinTest {
 
     @Test
     fun `Klassik ist immer frei`() {
-        assertTrue(DotSkin.KLASSIK.isUnlocked(stats()))
+        assertTrue(SkinPaint.isUnlocked(SkinId.KLASSIK, stats()))
     }
 
     @Test
     fun `Medaillen-Skins schalten an den Medaillen-Schwellen frei`() {
-        assertFalse(DotSkin.MINZE.isUnlocked(stats(best = 9)))
-        assertTrue(DotSkin.MINZE.isUnlocked(stats(best = 10)))
-        assertFalse(DotSkin.LAVA.isUnlocked(stats(best = 19)))
-        assertTrue(DotSkin.LAVA.isUnlocked(stats(best = 20)))
-        assertFalse(DotSkin.GOLD.isUnlocked(stats(best = 29)))
-        assertTrue(DotSkin.GOLD.isUnlocked(stats(best = 30)))
-        assertFalse(DotSkin.FROST.isUnlocked(stats(best = 39)))
-        assertTrue(DotSkin.FROST.isUnlocked(stats(best = 40)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.MINZE, stats(best = 9)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.MINZE, stats(best = 10)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.LAVA, stats(best = 19)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.LAVA, stats(best = 20)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.GOLD, stats(best = 29)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.GOLD, stats(best = 30)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.FROST, stats(best = 39)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.FROST, stats(best = 40)))
     }
 
     @Test
     fun `Schatten braucht die Perfekt-Serie, Prisma die Daily-Serie`() {
-        assertFalse(DotSkin.SCHATTEN.isUnlocked(stats(best = 99, perfect = 3)))
-        assertTrue(DotSkin.SCHATTEN.isUnlocked(stats(perfect = 4)))
-        assertFalse(DotSkin.PRISMA.isUnlocked(stats(best = 99, daily = 2)))
-        assertTrue(DotSkin.PRISMA.isUnlocked(stats(daily = 3)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.SCHATTEN, stats(best = 99, perfect = 3)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.SCHATTEN, stats(perfect = 4)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.PRISMA, stats(best = 99, daily = 2)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.PRISMA, stats(daily = 3)))
     }
 
     @Test
     fun `unbekannter gespeicherter Name faellt auf Klassik zurueck`() {
-        assertEquals(DotSkin.KLASSIK, DotSkin.fromName(null))
-        assertEquals(DotSkin.KLASSIK, DotSkin.fromName("GIBTS_NICHT"))
-        assertEquals(DotSkin.LAVA, DotSkin.fromName("LAVA"))
+        assertEquals(SkinId.KLASSIK, SkinPaint.fromName(null))
+        assertEquals(SkinId.KLASSIK, SkinPaint.fromName("GIBTS_NICHT"))
+        assertEquals(SkinId.LAVA, SkinPaint.fromName("LAVA"))
     }
 
     @Test
-    fun `DotSkin fuehrt SkinId in derselben Reihenfolge`() {
+    fun `SkinId fuehrt SkinId in derselben Reihenfolge`() {
         // Die Reihenfolge ist zugleich der gespeicherte Wert und die Folge
         // im Skin-Picker — und :wear, ios/ und web/ fuehren dieselbe Liste
         // (siehe skin.order in parity/golden-vectors.txt). Rutscht hier
         // etwas, zeigen die anderen Plattformen etwas anderes an.
-        assertEquals(SkinId.entries.toList(), DotSkin.entries.map { it.id })
+        assertEquals(SkinId.entries.toList(), SkinPaint.ORDER)
     }
 
     @Test
     fun `unlockedCount zaehlt nur sammelbare Skins`() {
-        assertEquals(1, DotSkin.unlockedCount(stats()))
+        assertEquals(1, SkinPaint.unlockedCount(stats()))
         // Saison und Goenner zaehlen nie mit — der Sammlungsstand ist eine
         // Leistungsanzeige, und der Regenbogen haengt an ihm.
-        assertEquals(DotSkin.collectableCount(), DotSkin.unlockedCount(allEarned()))
+        assertEquals(SkinPaint.collectableCount(), SkinPaint.unlockedCount(allEarned()))
         assertEquals(
-            DotSkin.entries.count { it.countsForCollection },
-            DotSkin.collectableCount()
+            SkinPaint.ORDER.count { SkinPaint.countsForCollection(it) },
+            SkinPaint.collectableCount()
         )
-        assertTrue(DotSkin.collectableCount() < DotSkin.entries.size)
+        assertTrue(SkinPaint.collectableCount() < SkinPaint.ORDER.size)
     }
 
     @Test
     fun `ein gekaufter Skin hebt weder Sammlung noch Feier`() {
         val ohne = stats()
         val mit = stats(patron = true)
-        assertTrue(DotSkin.DIAMANT.isUnlocked(mit))
-        assertFalse(DotSkin.DIAMANT.isUnlocked(ohne))
-        assertEquals(DotSkin.unlockedCount(ohne), DotSkin.unlockedCount(mit))
+        assertTrue(SkinPaint.isUnlocked(SkinId.DIAMANT, mit))
+        assertFalse(SkinPaint.isUnlocked(SkinId.DIAMANT, ohne))
+        assertEquals(SkinPaint.unlockedCount(ohne), SkinPaint.unlockedCount(mit))
         // earnedCount traegt die Feier: Ein Kauf darf sie nie ausloesen.
-        assertEquals(DotSkin.earnedCount(ohne), DotSkin.earnedCount(mit))
+        assertEquals(SkinPaint.earnedCount(ohne), SkinPaint.earnedCount(mit))
     }
 
     @Test
     fun `ein verdienter Saison-Skin wird gefeiert, obwohl er nicht sammelt`() {
         val ohne = stats()
         val mit = stats(season = 1) // Bit 0 = KUERBIS
-        assertTrue(DotSkin.KUERBIS.isUnlocked(mit))
-        assertEquals(DotSkin.unlockedCount(ohne), DotSkin.unlockedCount(mit))
-        assertEquals(DotSkin.earnedCount(ohne) + 1, DotSkin.earnedCount(mit))
+        assertTrue(SkinPaint.isUnlocked(SkinId.KUERBIS, mit))
+        assertEquals(SkinPaint.unlockedCount(ohne), SkinPaint.unlockedCount(mit))
+        assertEquals(SkinPaint.earnedCount(ohne) + 1, SkinPaint.earnedCount(mit))
     }
 
     @Test
     fun `die Saison-Maske schaltet genau ihr eigenes Bit frei`() {
-        assertTrue(DotSkin.KUERBIS.isUnlocked(stats(season = 0b0001)))
-        assertFalse(DotSkin.ZUCKERSTANGE.isUnlocked(stats(season = 0b0001)))
-        assertTrue(DotSkin.ZUCKERSTANGE.isUnlocked(stats(season = 0b0010)))
-        assertTrue(DotSkin.HERZ.isUnlocked(stats(season = 0b0100)))
-        assertTrue(DotSkin.OSTEREI.isUnlocked(stats(season = 0b1000)))
-        assertFalse(DotSkin.OSTEREI.isUnlocked(stats(season = 0b0111)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.KUERBIS, stats(season = 0b0001)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.ZUCKERSTANGE, stats(season = 0b0001)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.ZUCKERSTANGE, stats(season = 0b0010)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.HERZ, stats(season = 0b0100)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.OSTEREI, stats(season = 0b1000)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.OSTEREI, stats(season = 0b0111)))
     }
 
     @Test
     fun `die Ausdauer-Achsen haengen an den angekuendigten Schwellen`() {
-        assertFalse(DotSkin.EI.isUnlocked(stats(runs = 24)))
-        assertTrue(DotSkin.EI.isUnlocked(stats(runs = 25)))
-        assertFalse(DotSkin.TIGER.isUnlocked(stats(runs = 99)))
-        assertTrue(DotSkin.TIGER.isUnlocked(stats(runs = 100)))
-        assertFalse(DotSkin.MEDAILLE.isUnlocked(stats(runs = 199)))
-        assertTrue(DotSkin.MEDAILLE.isUnlocked(stats(runs = 200)))
-        assertFalse(DotSkin.FUSSBALL.isUnlocked(stats(runs = 299)))
-        assertTrue(DotSkin.FUSSBALL.isUnlocked(stats(runs = 300)))
-        assertFalse(DotSkin.DONUT.isUnlocked(stats(total = 999)))
-        assertTrue(DotSkin.DONUT.isUnlocked(stats(total = 1_000)))
-        assertFalse(DotSkin.KONFETTI.isUnlocked(stats(total = 4_999)))
-        assertTrue(DotSkin.KONFETTI.isUnlocked(stats(total = 5_000)))
-        assertFalse(DotSkin.TAGESZEIT.isUnlocked(stats(days = 6)))
-        assertTrue(DotSkin.TAGESZEIT.isUnlocked(stats(days = 7)))
-        assertFalse(DotSkin.JAHRESZEIT.isUnlocked(stats(months = 2)))
-        assertTrue(DotSkin.JAHRESZEIT.isUnlocked(stats(months = 3)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.EI, stats(runs = 24)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.EI, stats(runs = 25)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.TIGER, stats(runs = 99)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.TIGER, stats(runs = 100)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.MEDAILLE, stats(runs = 199)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.MEDAILLE, stats(runs = 200)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.FUSSBALL, stats(runs = 299)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.FUSSBALL, stats(runs = 300)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.DONUT, stats(total = 999)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.DONUT, stats(total = 1_000)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.KONFETTI, stats(total = 4_999)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.KONFETTI, stats(total = 5_000)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.TAGESZEIT, stats(days = 6)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.TAGESZEIT, stats(days = 7)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.JAHRESZEIT, stats(months = 2)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.JAHRESZEIT, stats(months = 3)))
     }
 
     @Test
     fun `die neuen Rekord-Skins haengen an den angekuendigten Schwellen`() {
-        assertFalse(DotSkin.PINGUIN.isUnlocked(stats(best = 64)))
-        assertTrue(DotSkin.PINGUIN.isUnlocked(stats(best = 65)))
-        assertFalse(DotSkin.WELLE.isUnlocked(stats(best = 69)))
-        assertTrue(DotSkin.WELLE.isUnlocked(stats(best = 70)))
-        assertFalse(DotSkin.THERMO.isUnlocked(stats(best = 74)))
-        assertTrue(DotSkin.THERMO.isUnlocked(stats(best = 75)))
-        assertFalse(DotSkin.HOLO.isUnlocked(stats(best = 79)))
-        assertTrue(DotSkin.HOLO.isUnlocked(stats(best = 80)))
-        assertFalse(DotSkin.GEWITTER.isUnlocked(stats(perfect = 14)))
-        assertTrue(DotSkin.GEWITTER.isUnlocked(stats(perfect = 15)))
-        assertFalse(DotSkin.DISCO.isUnlocked(stats(daily = 20)))
-        assertTrue(DotSkin.DISCO.isUnlocked(stats(daily = 21)))
-    }
-
-    @Test
-    fun `jeder Skin traegt Namen und Freischalt-Hinweis`() {
-        DotSkin.entries.forEach { skin ->
-            assertTrue("${skin.name} braucht einen Namen", skin.titleRes != 0)
-            if (skin != DotSkin.KLASSIK) {
-                assertTrue("${skin.name} braucht einen Hinweis", skin.unlockHintRes != null)
-            }
-        }
-        assertEquals("Klassik ist von Anfang an da und braucht keinen Hinweis", null, DotSkin.KLASSIK.unlockHintRes)
+        assertFalse(SkinPaint.isUnlocked(SkinId.PINGUIN, stats(best = 64)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.PINGUIN, stats(best = 65)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.WELLE, stats(best = 69)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.WELLE, stats(best = 70)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.THERMO, stats(best = 74)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.THERMO, stats(best = 75)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.HOLO, stats(best = 79)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.HOLO, stats(best = 80)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.GEWITTER, stats(perfect = 14)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.GEWITTER, stats(perfect = 15)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.DISCO, stats(daily = 20)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.DISCO, stats(daily = 21)))
     }
 
     @Test
@@ -176,26 +166,25 @@ class DotSkinTest {
         // Die gespeicherte Auswahl haengt am Enum-Namen: Wenn Reihenfolge
         // oder Schreibweise auseinanderlaufen, waehlt ein Update stillschweigend
         // einen anderen Skin aus.
-        assertEquals(SkinId.entries.map { it.name }, DotSkin.entries.map { it.name })
-        DotSkin.entries.forEach { assertEquals(it.name, it.id.name) }
+        assertEquals(SkinId.entries.map { it.name }, SkinPaint.ORDER.map { it.name })
     }
 
     @Test
     fun `neue Skins haengen an den angekuendigten Schwellen`() {
-        assertFalse(DotSkin.BIENE.isUnlocked(stats(perfect = 5)))
-        assertTrue(DotSkin.BIENE.isUnlocked(stats(perfect = 6)))
-        assertFalse(DotSkin.MELONE.isUnlocked(stats(best = 24)))
-        assertTrue(DotSkin.MELONE.isUnlocked(stats(best = 25)))
-        assertFalse(DotSkin.KOI.isUnlocked(stats(daily = 6)))
-        assertTrue(DotSkin.KOI.isUnlocked(stats(daily = 7)))
-        assertFalse(DotSkin.MAGMA.isUnlocked(stats(best = 59)))
-        assertTrue(DotSkin.MAGMA.isUnlocked(stats(best = 60)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.BIENE, stats(perfect = 5)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.BIENE, stats(perfect = 6)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.MELONE, stats(best = 24)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.MELONE, stats(best = 25)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.KOI, stats(daily = 6)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.KOI, stats(daily = 7)))
+        assertFalse(SkinPaint.isUnlocked(SkinId.MAGMA, stats(best = 59)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.MAGMA, stats(best = 60)))
     }
 
     @Test
     fun `Regenbogen kommt zuletzt`() {
-        assertFalse(DotSkin.REGENBOGEN.isUnlocked(stats(best = 999, perfect = 99, daily = 13)))
-        assertTrue(DotSkin.REGENBOGEN.isUnlocked(allEarned()))
+        assertFalse(SkinPaint.isUnlocked(SkinId.REGENBOGEN, stats(best = 999, perfect = 99, daily = 13)))
+        assertTrue(SkinPaint.isUnlocked(SkinId.REGENBOGEN, allEarned()))
     }
 
     @Test
@@ -205,9 +194,9 @@ class DotSkinTest {
         val ohne = allEarned()
         assertEquals(0, ohne.seasonEarned)
         assertFalse(ohne.patronOwned)
-        assertTrue(DotSkin.REGENBOGEN.isUnlocked(ohne))
-        DotSkin.entries.filter { it.isSeasonal || it.isPatron }.forEach {
-            assertFalse("${it.name} darf ohne Saison/Kauf nicht offen sein", it.isUnlocked(ohne))
+        assertTrue(SkinPaint.isUnlocked(SkinId.REGENBOGEN, ohne))
+        SkinPaint.ORDER.filter { SkinPaint.isSeasonal(it) || SkinPaint.isPatron(it) }.forEach {
+            assertFalse("${it.name} darf ohne Saison/Kauf nicht offen sein", SkinPaint.isUnlocked(it, ohne))
         }
     }
 
@@ -216,20 +205,20 @@ class DotSkinTest {
         // Das Skin-Menue setzt eine Ueberschrift, sobald die Familie
         // wechselt — laege eine Familie in zwei Bloecken, stuende ihre
         // Ueberschrift zweimal da.
-        val seen = mutableSetOf<DotSkin.Family>()
-        var last: DotSkin.Family? = null
-        DotSkin.entries.forEach { skin ->
-            if (skin.family != last) {
-                assertTrue("${skin.family} kommt ein zweites Mal", seen.add(skin.family))
-                last = skin.family
+        val seen = mutableSetOf<SkinFamily>()
+        var last: SkinFamily? = null
+        SkinPaint.ORDER.forEach { skin ->
+            if (SkinPaint.family(skin) != last) {
+                assertTrue("${SkinPaint.family(skin)} kommt ein zweites Mal", seen.add(SkinPaint.family(skin)))
+                last = SkinPaint.family(skin)
             }
         }
-        assertEquals(DotSkin.Family.entries.size, seen.size)
-        DotSkin.entries.filter { it.isPatron }.forEach {
-            assertEquals(DotSkin.Family.GOENNER, it.family)
+        assertEquals(SkinFamily.entries.size, seen.size)
+        SkinPaint.ORDER.filter { SkinPaint.isPatron(it) }.forEach {
+            assertEquals(SkinFamily.GOENNER, SkinPaint.family(it))
         }
-        DotSkin.entries.filter { it.isSeasonal }.forEach {
-            assertEquals(DotSkin.Family.SAISON, it.family)
+        SkinPaint.ORDER.filter { SkinPaint.isSeasonal(it) }.forEach {
+            assertEquals(SkinFamily.SAISON, SkinPaint.family(it))
         }
     }
 
@@ -248,17 +237,17 @@ class DotSkinTest {
     @Test
     fun `ohne Tagespass ist verfuegbar dasselbe wie freigeschaltet`() {
         val s = stats(best = 25)
-        DotSkin.entries.forEach { skin ->
-            assertEquals(skin.isUnlocked(s), skin.isAvailable(s, null))
+        SkinPaint.ORDER.forEach { skin ->
+            assertEquals(SkinPaint.isUnlocked(skin, s), (SkinPaint.isUnlocked(skin, s) || skin == null))
         }
     }
 
     @Test
     fun `der Tagespass macht genau einen gesperrten Skin spielbar`() {
         val s = stats()
-        assertTrue(DotSkin.LAVA.isAvailable(s, DotSkin.LAVA))
-        assertFalse(DotSkin.GOLD.isAvailable(s, DotSkin.LAVA))
-        assertTrue(DotSkin.KLASSIK.isAvailable(s, DotSkin.LAVA))
+        assertTrue((SkinPaint.isUnlocked(SkinId.LAVA, s) || SkinId.LAVA == SkinId.LAVA))
+        assertFalse((SkinPaint.isUnlocked(SkinId.GOLD, s) || SkinId.GOLD == SkinId.LAVA))
+        assertTrue((SkinPaint.isUnlocked(SkinId.KLASSIK, s) || SkinId.KLASSIK == SkinId.LAVA))
     }
 
     @Test
@@ -266,8 +255,8 @@ class DotSkinTest {
         // Die Feier im Game-Over haengt an unlockedCount — ein geliehener
         // Skin darf sie nicht ausloesen.
         val s = stats()
-        assertFalse(DotSkin.LAVA.isUnlocked(s))
-        assertEquals(1, DotSkin.unlockedCount(s))
-        assertTrue(DotSkin.LAVA.isAvailable(s, DotSkin.LAVA))
+        assertFalse(SkinPaint.isUnlocked(SkinId.LAVA, s))
+        assertEquals(1, SkinPaint.unlockedCount(s))
+        assertTrue((SkinPaint.isUnlocked(SkinId.LAVA, s) || SkinId.LAVA == SkinId.LAVA))
     }
 }

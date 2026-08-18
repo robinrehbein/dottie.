@@ -28,11 +28,12 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # :core ist ein reines Java-Library-Modul und kennt kein
-      # testDebugUnitTest — ohne den expliziten :core:test liefen seine
-      # Tests (inkl. der Paritaets-Vektoren) in der CI nie mit.
+      # :core ist ein Multiplattform-Modul und kennt kein
+      # testDebugUnitTest — seine Tests heissen jvmTest. Ohne den
+      # expliziten Aufruf liefen sie (inkl. der Paritaets-Vektoren) in der
+      # CI nie mit.
       - name: Run unit tests
-        run: ./gradlew --no-daemon :core:test testDebugUnitTest
+        run: ./gradlew --no-daemon :core:jvmTest testDebugUnitTest
 
       # Auf dem Arbeits-Branch reicht ein Build-Check: Kompiliert alles?
       # Die Debug-APK landet als Workflow-Artefakt (Actions → Run →

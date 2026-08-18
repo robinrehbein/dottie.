@@ -1,7 +1,7 @@
-# Dottie. — Paritäts-Vektoren zwischen der Kotlin-Engine und dem Swift-Port.
+# Dottie. — Paritäts-Vektoren: der Golden-Master der Engine in :core.
 #
 # ERZEUGT — nicht von Hand bearbeiten. Neu schreiben mit:
-#   ./gradlew :core:test -Dparity.update=true
+#   ./gradlew :core:jvmTest -Dparity.update=true
 #
 # Quelle der Wahrheit ist :core. Ändert sich hier eine Zahl, ist das
 # die Ansage an ios/, nachzuziehen — siehe parity/README.md.
@@ -489,8 +489,7 @@ skin.probe.42 0 0 0 0 25000 0 0 0 0
 skin.unlocked.42 3 KLASSIK DONUT KONFETTI
 
 # --- Kulissen (ScenePaint) — die zweite Sammlung. Farben, Boden und
-# Requisiten sind im Swift-Port als Datentabelle nachgebaut, die
-# Freischaltung als Regel.
+# Requisiten stehen als Datentabelle, die Freischaltung als Regel.
 scene.order WIESE WUESTE MEER BERG STADT WELTRAUM
 scene.groundTop 0.880000
 scene.propSlots 4
@@ -701,10 +700,10 @@ sound.unlocked.41 1 KLASSIK
 sound.unlocked.42 2 KLASSIK AMBOSS
 
 # --- Ziele und Fortschrittsbalken (Progress). Die Schwellen stehen
-# damit dreifach im Repo (SkinPaint, ScenePaint, Progress) und
-# im Swift-Port noch einmal — hier wird geprüft, dass alle
-# dasselbe sagen, inklusive Reihenfolge: Das erste Ziel ist
-# das, was Spieler:innen im Game-Over lesen.
+# damit dreifach im Repo (SkinPaint, ScenePaint, Progress) —
+# hier wird geprüft, dass alle dasselbe sagen, inklusive
+# Reihenfolge: Das erste Ziel ist das, was Spieler:innen im
+# Game-Over lesen.
 progress.pageGoals 3
 progress.barBlocks 24
 progress.fractions 0.000000 -0.500000 0.041600 0.041667 0.200000 0.500000 0.999000 1.000000 1.500000
@@ -849,8 +848,8 @@ progress.goals.45 41 SCENE:WELTRAUM|SCENE_COLLECTION|1|5 SKIN:REGENBOGEN|SKIN_CO
 progress.next.45 SCENE:WELTRAUM|SCENE_COLLECTION|1|5 4 0.200000
 
 # --- kotlin.random.Random(seed) — XorWow inklusive 64 Warmup-Runden.
-# Der Swift-Port (KotlinRandom.swift) muss diese Zahlen exakt
-# treffen, sonst spielt iOS eine andere Daily Challenge.
+# An dieser Folge hängt, dass iPhone und Android an demselben
+# Tag dieselbe Daily Challenge spielen.
 rng.seed 20240813
 rng.nextInt 1439094289 1915696309 379714876 2103605879 -428705248 -1122951292 2033479064 -405798249 -1920373681 -481693574 1907034512 -1777557427 -1061243858 -1076885879 744871256 -996288900
 rng.nextFloat 0.335065 0.446033 0.088409 0.489784 0.900184 0.738542 0.473456 0.905518 0.552878 0.887847 0.444016 0.586130 0.752910 0.749268 0.173429 0.768033

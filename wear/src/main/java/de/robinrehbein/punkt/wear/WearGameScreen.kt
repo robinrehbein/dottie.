@@ -28,6 +28,7 @@ import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
+import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.TimingGame
 import kotlinx.coroutines.isActive
@@ -103,7 +104,7 @@ internal fun WearGameScreen(controller: WearGameController) {
             }
 
             when (controller.phase) {
-                TimingGame.Phase.READY -> WearReadyOverlay(
+                GamePhase.READY -> WearReadyOverlay(
                     blinkVisible = blinkVisible,
                     bestScore = controller.bestScore,
                     soundOn = controller.soundOn,
@@ -117,16 +118,16 @@ internal fun WearGameScreen(controller: WearGameController) {
                     month = controller.clockMonth,
                     onOpenSkins = { controller.openSkinPicker() }
                 )
-                TimingGame.Phase.RUNNING, TimingGame.Phase.DYING ->
+                GamePhase.RUNNING, GamePhase.DYING ->
                     WearRunningOverlay(
                         score = controller.score,
                         daily = controller.dailyMode,
                         // Banner nur im Lauf — während der Todes-Animation
                         // gehört die Bühne dem fallenden Vogel.
-                        recordBannerTimeLeft = if (controller.phase == TimingGame.Phase.RUNNING)
+                        recordBannerTimeLeft = if (controller.phase == GamePhase.RUNNING)
                             controller.recordBannerTimeLeft else 0f
                     )
-                TimingGame.Phase.OVER -> WearOverOverlay(
+                GamePhase.OVER -> WearOverOverlay(
                     score = controller.score,
                     bestScore = controller.bestScore,
                     isNewRecord = controller.isNewRecord,

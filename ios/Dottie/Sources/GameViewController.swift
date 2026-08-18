@@ -1,42 +1,26 @@
-import SpriteKit
+import DottieUi
 import UIKit
 
-/// Minimaler UIKit-Host für die SpriteKit-Szene — kein Storyboard.
-/// Portrait-only, Statusbar aus, Home-Indicator gedimmt.
+/// Haengt die geteilte Compose-Oberflaeche in die App.
+///
+/// Bis v2.24 stand hier eine SKView mit einer eigenen SpriteKit-Szene —
+/// 2 900 Zeilen Swift, die dieselbe Oberflaeche bauten, die die
+/// Android-App in Compose zeichnet. Jetzt kommt sie aus `:ui`, und diese
+/// Datei ist nur noch die Klammer darum.
 final class GameViewController: UIViewController {
 
-    private var scenePresented = false
+    private lazy var compose: UIViewController = MainViewControllerKt.MainViewController()
 
-    override func loadView() {
-        view = SKView(frame: UIScreen.main.bounds)
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        addChild(compose)
+        compose.view.frame = view.bounds
+        compose.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(compose.view)
+        compose.didMove(toParent: self)
     }
 
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        // Erst hier stimmen Bounds und Safe-Area — die Szene wird genau
-        // einmal mit der finalen Größe aufgebaut (portrait-only).
-        guard !scenePresented, let skView = view as? SKView,
-              skView.bounds.width > 0, skView.bounds.height > 0 else {
-            return
-        }
-        scenePresented = true
-        let scene = GameScene(size: skView.bounds.size)
-        scene.scaleMode = .resizeFill
-        // Sibling-Reihenfolge respektieren: Die Overlays verlassen sich
-        // bei gleicher zPosition auf die Einfüge-Reihenfolge.
-        skView.ignoresSiblingOrder = false
-        skView.presentScene(scene)
-    }
+    override var prefersStatusBarHidden: Bool { true }
 
-    override var prefersStatusBarHidden: Bool {
-        return true
-    }
-
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-        return .portrait
-    }
-
-    override var prefersHomeIndicatorAutoHidden: Bool {
-        return true
-    }
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .portrait }
 }

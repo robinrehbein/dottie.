@@ -105,6 +105,7 @@ android {
 dependencies {
 
     implementation(project(":core"))
+    implementation(project(":ui"))
     implementation(project(":sync"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

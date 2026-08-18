@@ -1,5 +1,12 @@
 # XcodeGen-Projektdefinition — erzeugt Dottie.xcodeproj:
 #   brew install xcodegen && cd ios && xcodegen
+#
+# Vorher muessen beide Frameworks gebaut sein:
+#   ./gradlew :core:assembleDottieCoreDebugXCFramework
+#   ./gradlew :ui:assembleDottieUiDebugXCFramework
+#
+# DottieUi bringt die komplette Oberflaeche mit (Compose Multiplatform),
+# DottieCore die Spiellogik. Was in Swift bleibt, ist der Einstieg.
 name: Dottie
 options:
   developmentLanguage: en
@@ -14,6 +21,13 @@ targets:
     sources:
       - path: Dottie/Sources
       - path: Dottie/Resources
+    dependencies:
+      # Statische Frameworks: Sie werden beim Linken einverleibt und
+      # muessen weder eingebettet noch signiert werden.
+      - framework: ../ui/build/XCFrameworks/debug/DottieUi.xcframework
+        embed: false
+      - framework: ../core/build/XCFrameworks/debug/DottieCore.xcframework
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.robinrehbein.dottie
@@ -25,30 +39,4 @@ targets:
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        CODE_SIGN_STYLE: Automatic
-    scheme:
-      testTargets:
-        - DottieTests
-      gatherCoverageData: false
-
-  # Logik-Tests ohne Host-App: Das Bundle uebersetzt die Engine-Quellen
-  # direkt mit, dadurch braucht es weder TEST_HOST noch Signierung und
-  # laeuft im Simulator der CI ohne weitere Einrichtung.
-  DottieTests:
-    type: bundle.unit-test
-    platform: iOS
-    deploymentTarget: "16.0"
-    sources:
-      - path: DottieTests
-      - path: Dottie/Sources/Engine
-      # Die Soll-Werte kommen aus :core (Kotlin) und liegen ausserhalb von
-      # ios/ — siehe parity/README.md.
-      - path: ../parity/golden-vectors.txt
-        buildPhase: resources
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: de.robinrehbein.dottie.tests
-        GENERATE_INFOPLIST_FILE: true
-        SWIFT_VERSION: "5.0"
-        TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic

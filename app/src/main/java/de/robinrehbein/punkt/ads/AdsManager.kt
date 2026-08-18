@@ -18,7 +18,8 @@ import com.google.android.ump.ConsentInformation
 import com.google.android.ump.ConsentRequestParameters
 import com.google.android.ump.UserMessagingPlatform
 import de.robinrehbein.punkt.R
-import de.robinrehbein.punkt.data.ScoreStore
+import de.robinrehbein.punkt.ui.data.AndroidKeyValueStore
+import de.robinrehbein.punkt.ui.data.GameStore
 
 /**
  * Alles rund um AdMob an einer Stelle: UMP-Consent, ein Rewarded-Spot
@@ -32,7 +33,7 @@ import de.robinrehbein.punkt.data.ScoreStore
  * Werbung entsteht ausschließlich durch bewusstes Eintragen echter IDs
  * (Anleitung in PUBLISHING.md).
  *
- * Zweite Abschaltung: der Kauf "Werbung entfernen" ([ScoreStore.adsRemoved]).
+ * Zweite Abschaltung: der Kauf "Werbung entfernen" ([GameStore.adsRemoved]).
  *
  * Fehler werden grundsätzlich geschluckt und nur geloggt. Werbung ist
  * Beiwerk — sie darf einen Lauf nie blockieren und erst recht nicht die
@@ -40,7 +41,7 @@ import de.robinrehbein.punkt.data.ScoreStore
  */
 class AdsManager(
     private val activity: Activity?,
-    private val store: ScoreStore
+    private val store: GameStore
 ) {
 
     private val appId: String = activity?.getString(R.string.admob_app_id).orEmpty()

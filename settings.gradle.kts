@@ -22,5 +22,6 @@ dependencyResolutionManagement {
 rootProject.name = "Punkt"
 include(":app")
 include(":core")
+include(":ui")
 include(":wear")
 include(":sync")
