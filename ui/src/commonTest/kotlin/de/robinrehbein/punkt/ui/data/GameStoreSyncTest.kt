@@ -1,5 +1,6 @@
 package de.robinrehbein.punkt.ui.data
 
+import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.SyncState
 import kotlin.test.Test
@@ -90,5 +91,59 @@ class GameStoreSyncTest {
         )
 
         assertEquals(SkinId.MINZE, store.selectedSkin)
+        assertEquals(
+            5_000L,
+            store.syncState().skinChangedAt,
+            "Eine uebernommene Wahl schreibt ihren Zeitstempel fort"
+        )
+    }
+
+    @Test
+    fun `ein abgelehnter Goenner-Skin klopft nach dem Kauf erneut an`() {
+        val store = store()
+        val vonDerUhr = SyncState(skin = SkinId.DIAMANT.name, skinChangedAt = 9_000L)
+
+        store.applySync(vonDerUhr)
+
+        // Der Kauf ist hier noch nicht bekannt — also bleibt die Wahl aus.
+        assertEquals(SkinId.KLASSIK, store.selectedSkin)
+        assertEquals(
+            0L,
+            store.syncState().skinChangedAt,
+            "Ohne Uebernahme darf der Zeitstempel nicht mitwandern"
+        )
+
+        // Play meldet den Gönner-Kauf nach: Jetzt muss dieselbe Wahl
+        // durchgehen. Mit fortgeschriebenem Zeitstempel waere sie fuer
+        // immer verschluckt gewesen.
+        store.patronOwned = true
+        store.applySync(vonDerUhr)
+
+        assertEquals(SkinId.DIAMANT, store.selectedSkin)
+        assertEquals(9_000L, store.syncState().skinChangedAt)
+    }
+
+    @Test
+    fun `eine noch ungedeckte Kulisse kommt spaeter erneut an`() {
+        val store = store()
+        // STADT haengt an Rekord 85 — den kennt hier noch niemand.
+        val vonDerUhr = SyncState(
+            bestScore = 50,
+            scene = SceneId.STADT.name,
+            sceneChangedAt = 7_000L
+        )
+
+        store.applySync(vonDerUhr)
+
+        assertEquals(SceneId.WIESE, store.selectedScene)
+        assertEquals(0L, store.syncState().sceneChangedAt)
+
+        // Der Rekord kommt nach — beim naechsten Abgleich ist die Kulisse
+        // gedeckt und wird uebernommen.
+        store.submitRun(score = 85, epochDay = 20_000L, month = 6, year = 2026)
+        store.applySync(vonDerUhr)
+
+        assertEquals(SceneId.STADT, store.selectedScene)
+        assertEquals(7_000L, store.syncState().sceneChangedAt)
     }
 }

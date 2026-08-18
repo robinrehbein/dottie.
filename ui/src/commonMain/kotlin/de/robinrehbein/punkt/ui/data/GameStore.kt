@@ -447,11 +447,12 @@ class GameStore(private val prefs: KeyValueStore) {
      * Gegenseite — sonst würden sich beide Geräte endlos gegenseitig
      * bestätigen.
      *
-     * Der Skin wird nur übernommen, wenn er hier auch spielbar ist: Die
-     * Uhr kennt ihre eigenen Freischaltungen, und ein dort erspielter
-     * Skin wäre am Telefon sonst plötzlich aktiv, ohne verdient zu sein.
-     * Der Zeitstempel wandert trotzdem mit, damit die Entscheidung nicht
-     * bei jedem Abgleich erneut aufschlägt.
+     * Skin, Kulisse und Ton-Set werden nur übernommen, wenn sie hier auch
+     * spielbar sind: Die Uhr kennt ihre eigenen Freischaltungen, und eine
+     * dort erspielte Wahl wäre am Telefon sonst plötzlich aktiv, ohne
+     * verdient zu sein. Wird nichts übernommen, bleibt auch der
+     * Zeitstempel stehen — die Wahl der Gegenseite darf beim nächsten
+     * Abgleich erneut anklopfen (siehe die Blöcke unten).
      */
     fun applySync(state: SyncState): Boolean {
         val before = syncState()
@@ -499,29 +500,38 @@ class GameStore(private val prefs: KeyValueStore) {
         // hat, teilt diese Wahl zwar nicht mit, soll sie aber auch nicht
         // von einer älteren Wahl der Uhr weggerissen bekommen.
         if (state.skinChangedAt > prefs.long(KEY_SKIN_CHANGED, 0L)) {
-            putLong(KEY_SKIN_CHANGED, state.skinChangedAt)
             val incoming = SkinPaint.fromName(state.skin)
             // stats() liest die Werte, die gerade erst geschrieben werden —
             // deshalb hier mit den zusammengeführten Zahlen prüfen.
             if (SkinPaint.isUnlocked(incoming, mergedStats(state, before))) {
                 putString(KEY_SKIN, incoming.name)
+                putLong(KEY_SKIN_CHANGED, state.skinChangedAt)
             }
+            // Sonst bleibt der Zeitstempel bewusst stehen — dieselbe Regel
+            // wie auf der Uhr (WearGameController.applySync): Ein
+            // Gönner-Skin, von dessen Kauf dieses Gerät noch nichts weiß,
+            // soll beim nächsten Abgleich erneut ankommen. Mit
+            // fortgeschriebenem Zeitstempel wäre die Wahl der Gegenseite
+            // für immer verschluckt — nach einer Neuinstallation hat das
+            // Telefon die Uhr-Wahl genau so dauerhaft geschluckt.
         }
         // Dieselbe Regel für die Kulisse: Die neuere Wahl gewinnt, aber
         // nur, wenn sie hier auch verdient ist — verdient bleibt verdient.
+        // Und wie beim Skin bleibt der Zeitstempel stehen, solange nichts
+        // übernommen wurde.
         if (state.sceneChangedAt > prefs.long(KEY_SCENE_CHANGED, 0L)) {
-            putLong(KEY_SCENE_CHANGED, state.sceneChangedAt)
             val incoming = ScenePaint.fromName(state.scene)
             if (ScenePaint.isUnlocked(incoming, mergedStats(state, before))) {
                 putString(KEY_SCENE, incoming.name)
+                putLong(KEY_SCENE_CHANGED, state.sceneChangedAt)
             }
         }
         // Und dieselbe für das Ton-Set.
         if (state.soundChangedAt > prefs.long(KEY_SOUND_CHANGED, 0L)) {
-            putLong(KEY_SOUND_CHANGED, state.soundChangedAt)
             val incoming = SoundBank.fromName(state.sound)
             if (SoundBank.isUnlocked(incoming, mergedStats(state, before))) {
                 putString(KEY_SOUND, incoming.name)
+                putLong(KEY_SOUND_CHANGED, state.soundChangedAt)
             }
         }
         }
