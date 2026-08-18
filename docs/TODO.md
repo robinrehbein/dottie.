@@ -7,7 +7,7 @@ die steht in der letzten Spalte.
 
 | Punkt | Was genau | Wann |
 |---|---|---|
-| `versionCode` erhöhen | Steht aktuell auf 33 / „2.22" (`app/build.gradle.kts`) und 100007 / „0.2.5-wear" (`wear/build.gradle.kts`). Vor jedem Upload weiterzählen — Play lehnt einen bereits benutzten Code ab. | beim Release |
+| `versionCode` erhöhen | Steht aktuell auf 34 / „2.23" (`app/build.gradle.kts`) und 100008 / „0.2.6-wear" (`wear/build.gradle.kts`). Vor jedem Upload weiterzählen — Play lehnt einen bereits benutzten Code ab. | beim Release |
 | iOS einmal spielen | Gebaut wird **automatisch**: `build-ios.yml` läuft auf einem macOS-Runner bei jedem Push auf `main` oder `claude/**`, der `ios/`, `core/`, `ui/` oder `parity/` anfasst (kein PR-Trigger — das Repo braucht keinen zweiten, siehe Kommentar im Workflow) — seit #54 dieselbe `:ui`, die Android zeichnet, nicht mehr ein separater Port. Was fehlt, ist kein Build, sondern ein Blick: einmal auf einem Gerät spielen und die 42 Skins, das Menü und die Kulissen ansehen. | vor dem iOS-Release |
 | `patron_pack` in der Play Console | Produkt anlegen und aktivieren, siehe PUBLISHING.md Abschnitt 4c. Ohne das sind Diamant, Phönix und Onyx unerreichbar. | beim Release |
 
