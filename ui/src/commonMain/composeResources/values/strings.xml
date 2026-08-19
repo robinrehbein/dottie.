@@ -118,12 +118,14 @@
     <string name="skin_frost">FROST</string>
     <string name="skin_schatten">SHADOW</string>
     <string name="skin_prisma">PRISM</string>
+    <string name="skin_matcha">MATCHA</string>
     <string name="skin_hint_minze">BEST 10 (BRONZE)</string>
     <string name="skin_hint_lava">BEST 20 (SILVER)</string>
     <string name="skin_hint_gold">BEST 30 (GOLD)</string>
     <string name="skin_hint_frost">BEST 40 (PLATINUM)</string>
     <string name="skin_hint_schatten">4 PERFECTS IN A ROW</string>
     <string name="skin_hint_prisma">DAILY STREAK: 3 DAYS</string>
+    <string name="skin_hint_matcha">5 RUNS</string>
     <string name="skin_biene">BEE</string>
     <string name="skin_melone">MELON</string>
     <string name="skin_pilz">TOADSTOOL</string>
@@ -157,6 +159,9 @@
     <string name="skin_pinguin">PENGUIN</string>
     <string name="skin_fussball">FOOTBALL</string>
     <string name="skin_donut">DONUT</string>
+    <string name="skin_toffifee">TOFFIFEE</string>
+    <string name="skin_tennisball">TENNIS BALL</string>
+    <string name="skin_basketball">BASKETBALL</string>
     <string name="skin_welle">WAVE</string>
     <string name="skin_gewitter">STORM</string>
     <string name="skin_konfetti">CONFETTI</string>
@@ -178,6 +183,9 @@
     <string name="skin_hint_pinguin">BEST 65</string>
     <string name="skin_hint_fussball">300 RUNS</string>
     <string name="skin_hint_donut">1,000 POINTS TOTAL</string>
+    <string name="skin_hint_toffifee">100 POINTS TOTAL</string>
+    <string name="skin_hint_tennisball">50 RUNS</string>
+    <string name="skin_hint_basketball">2,500 POINTS TOTAL</string>
     <string name="skin_hint_welle">BEST 70</string>
     <string name="skin_hint_gewitter">15 PERFECTS IN A ROW</string>
     <string name="skin_hint_konfetti">5,000 POINTS TOTAL</string>
@@ -227,7 +235,7 @@
     <string name="frame_hint_kaskade">SPLENDOUR AND EVERY SCENE</string>
     <string name="frame_hint_krone">PEARL BAND AND EVERY SKIN</string>
     <string name="frame_hint_perlenkranz">CASCADE AND EVERY SOUND</string>
-    <string name="frame_hint_pracht">COLLECT 30 SKINS</string>
+    <string name="frame_hint_pracht">COLLECT 33 SKINS</string>
     <string name="frame_hint_zinnen">COLLECT 20 SKINS</string>
     <string name="frame_kaskade">CASCADE</string>
     <string name="frame_krone">CROWN</string>

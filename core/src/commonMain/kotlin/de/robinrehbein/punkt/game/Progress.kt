@@ -113,6 +113,7 @@ object Progress {
         Triple(SkinId.FROST, GoalAxis.BEST_SCORE, 40),
         Triple(SkinId.SCHATTEN, GoalAxis.PERFECT_STREAK, 4),
         Triple(SkinId.PRISMA, GoalAxis.DAILY_STREAK, 3),
+        Triple(SkinId.MATCHA, GoalAxis.RUN_COUNT, 5),
 
         Triple(SkinId.BIENE, GoalAxis.PERFECT_STREAK, 6),
         Triple(SkinId.MELONE, GoalAxis.BEST_SCORE, 25),
@@ -125,6 +126,9 @@ object Progress {
         Triple(SkinId.PINGUIN, GoalAxis.BEST_SCORE, 65),
         Triple(SkinId.FUSSBALL, GoalAxis.RUN_COUNT, 300),
         Triple(SkinId.DONUT, GoalAxis.TOTAL_SCORE, 1_000),
+        Triple(SkinId.TOFFIFEE, GoalAxis.TOTAL_SCORE, 100),
+        Triple(SkinId.TENNISBALL, GoalAxis.RUN_COUNT, 50),
+        Triple(SkinId.BASKETBALL, GoalAxis.TOTAL_SCORE, 2_500),
 
         Triple(SkinId.AURORA, GoalAxis.DAILY_STREAK, 14),
         Triple(SkinId.MAGMA, GoalAxis.BEST_SCORE, 60),

@@ -35,7 +35,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -1308,11 +1311,26 @@ fun SkinOverlay(
 ) {
     // Uhr und Kalender einmal pro Öffnen ablesen, nicht pro Vorschau:
     // TAGESZEIT und JAHRESZEIT sollen in der Liste ihr heutiges Kleid
-    // tragen, aber 42 Zeilen dürfen nicht 42-mal die Systemzeit fragen.
-    val preview = remember {
-        val (hour, month) = deviceHourAndMonth()
-        SkinState(hour = hour, month = month)
+    // tragen, aber 46 Zeilen dürfen nicht 46-mal die Systemzeit fragen.
+    val clock = remember { deviceHourAndMonth() }
+
+    // Bewegte Skins laufen auch in der Liste: eine gemeinsame Uhr für
+    // alle Vorschauen, gerastert auf die Kadenz von frameKey (12 Hz) —
+    // feiner ändert sich kein Vogel, gröber ruckelte er sichtbar. Die
+    // Rasterung sorgt zugleich dafür, dass stehende Skins nicht 60-mal
+    // pro Sekunde umsonst neu gezeichnet werden.
+    var previewElapsed by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) {
+        var startNanos = -1L
+        while (true) {
+            withFrameNanos { now ->
+                if (startNanos < 0) startNanos = now
+                val quantized = ((now - startNanos) / 1_000_000_000f * 12f).toInt() / 12f
+                if (quantized != previewElapsed) previewElapsed = quantized
+            }
+        }
     }
+    val preview = SkinState(elapsed = previewElapsed, hour = clock.first, month = clock.second)
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1523,8 +1541,8 @@ fun SkinOverlay(
                 ) {
                     // Vorschau als echter Vogel statt als Farbfläche: Bei
                     // gemusterten Skins sagt ein einzelner Farbwert nichts
-                    // mehr aus. Bewegte Skins stehen dabei still (Zeitpunkt 0),
-                    // Uhr- und Kalender-Skins zeigen das Kleid von jetzt.
+                    // mehr aus. Bewegte Skins laufen live mit, Uhr- und
+                    // Kalender-Skins zeigen das Kleid von jetzt.
                     Canvas(modifier = Modifier.size(36.dp)) {
                         val d = size.minDimension
                         drawPixelCircle(

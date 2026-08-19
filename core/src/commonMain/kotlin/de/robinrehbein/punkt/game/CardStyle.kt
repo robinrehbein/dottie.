@@ -216,8 +216,13 @@ object CardStyle {
      *
      * Die Liste deckt nur die drei Skin-Stufen ab. Darüber hängt der
      * Rahmen an den anderen Sammlungen — siehe [earns].
+     *
+     * Die oberste Stufe folgt der Sammlungsgröße: Sie liegt bei rund 80 %
+     * der zählbaren Skins (33 von 39). Bliebe sie bei 30, wäre die PRACHT
+     * ein Beifang der Kulissen — wer WÜSTE und MEER öffnet, hätte sie
+     * zwangsläufig schon.
      */
-    val FRAME_STEPS = intArrayOf(10, 20, 30)
+    val FRAME_STEPS = intArrayOf(10, 20, 33)
 
     /**
      * Die höchste Rahmenstufe, die allein die Skin-Sammlung trägt — also
