@@ -222,8 +222,8 @@ sondern als Bestand:
 | `leaderboards.available/connect/show` | READY-Overlay | entfaellt |
 | `leaderboards.submitBest/submitDaily` | Tod | entfaellt |
 | `statsSync.start/stop/publish` | Lebenszyklus, nach jeder Wahl | entfaellt |
-| `DailyReminder.schedule/cancel/needsPermission` | READY-Schalter | spaeter UNUserNotificationCenter |
-| `notifPermission.launch(POST_NOTIFICATIONS)` | READY-Schalter | entfaellt |
+| `DailyReminder.schedule/cancel/needsPermission` | READY-Schalter | `IosReminder` (UNUserNotificationCenter) |
+| `notifPermission.launch(POST_NOTIFICATIONS)` | READY-Schalter | `requestAuthorizationWithOptions` |
 | `ScoreCard.share(…)` | Game-Over | spaeter UIActivityViewController |
 | `LocalLifecycleOwner` | Start/Stopp des Abgleichs | Compose Multiplatform hat kein Pendant |
 
@@ -247,6 +247,25 @@ sondern als Bestand:
 Damit sind `ios/Dottie/Sources/UI` (2 900 Zeilen SpriteKit) und
 `CoreBridge.swift` weggefallen; die iOS-Hülle besteht seither nur noch aus
 `AppDelegate.swift` und `GameViewController.swift` (zusammen 46 Zeilen).
+
+**Nachgereicht: die Tages-Erinnerung.** Die einzige Zeile der Tabelle,
+die kein Store-Anschluss war, sondern nur Betriebssystem — deshalb füllt
+iOS sie inzwischen selbst
+(`ui/src/iosMain/.../platform/IosReminder.kt`). Der Mechanismus ist ein
+anderer als am Telefon: Android lässt abends einen WorkManager-Job
+nachschauen, ob die heutige Daily schon gespielt wurde, und meldet nur
+dann. iOS kennt diesen Hintergrund-Blick nicht, dort steht eine einzige
+wiederholte Anmeldung (`UNCalendarNotificationTrigger`, `repeats = true`,
+18 Uhr wie am Telefon, fester Bezeichner) — sie erinnert deshalb auch an
+einem Tag, an dem schon gespielt wurde, und nennt aus demselben Grund
+keine Serie: Der Inhalt einer wiederholten Anmeldung wird einmal beim
+Planen festgelegt. Die Berechtigung ist wie auf Android die einzige
+Wahrheit für den Schalter — was
+`requestAuthorizationWithOptions` meldet, steht danach im `GameStore`.
+Info.plist und `project.yml` brauchen dafür nichts: Lokale
+Benachrichtigungen kennen keinen Usage-Description-Schlüssel, und das
+Framework kommt wie `AVFAudio` über die Auto-Link-Angaben des
+Kotlin/Native-Frameworks.
 
 **Kosten — eingetreten wie erwartet:** Die iOS-App ist jetzt ein
 Kotlin/Native-Compose-Build (größere App, spürbar längere CI-Läufe wegen
