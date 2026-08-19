@@ -153,9 +153,14 @@ Controller:
   Pixel-Bausteine und der Effekt-Zustand.
 - **Die Overlays** — `GameOverlays`, `StatsOverlay`, `PixelButton`,
   Theme und Typografie.
-- **Die Texte** — 184 Saetze je Sprache in
-  `ui/src/commonMain/composeResources`. In `:app` bleiben 16: die, die
-  nur Android hat (Benachrichtigungen, Teilen-Text, Score-Karte).
+- **Die geteilte Score-Karte** — seit v2.26 auch sie: eine
+  `DrawScope`-Routine (`share/ScoreCardRenderer.kt`), die den Bauplan
+  aus `:core` (`CardPlan`) in ein `ImageBitmap` von 1080 mal 1350 Pixeln
+  ausmalt. Vorher zeichnete sie `android.graphics` in `:app`, und auf
+  dem iPhone gab es sie deshalb nicht.
+- **Die Texte** — die Saetze in `ui/src/commonMain/composeResources`. In
+  `:app` bleibt, was nur Android hat: die Benachrichtigungen und die
+  Store-Schluessel.
 
 Damit sind vier Aufzaehlungen ersatzlos entfallen — `DotSkin`,
 `DotScene`, `DotSound` und `MedalTier` in `:app`. Es waren 55 Zeilen
@@ -222,9 +227,15 @@ sondern als Bestand:
 | `leaderboards.available/connect/show` | READY-Overlay | entfaellt |
 | `leaderboards.submitBest/submitDaily` | Tod | entfaellt |
 | `statsSync.start/stop/publish` | Lebenszyklus, nach jeder Wahl | entfaellt |
+<<<<<<< HEAD
 | `DailyReminder.schedule/cancel/needsPermission` | READY-Schalter | `IosReminder` (UNUserNotificationCenter) |
 | `notifPermission.launch(POST_NOTIFICATIONS)` | READY-Schalter | `requestAuthorizationWithOptions` |
 | `ScoreCard.share(…)` | Game-Over | spaeter UIActivityViewController |
+=======
+| `DailyReminder.schedule/cancel/needsPermission` | READY-Schalter | spaeter UNUserNotificationCenter |
+| `notifPermission.launch(POST_NOTIFICATIONS)` | READY-Schalter | entfaellt |
+| `ScoreCard.share(…)` | Game-Over | seit v2.26 `IosShare` (UIActivityViewController) |
+>>>>>>> worktree-agent-a0b691e19b93ab221
 | `LocalLifecycleOwner` | Start/Stopp des Abgleichs | Compose Multiplatform hat kein Pendant |
 
 **So wurde es umgesetzt, in drei Schritten:**

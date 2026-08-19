@@ -25,6 +25,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.intl.Locale
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,6 +55,7 @@ import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.game.Twist
 import de.robinrehbein.punkt.ui.data.GameStore
 import de.robinrehbein.punkt.ui.data.deviceCalendar
+import de.robinrehbein.punkt.ui.data.deviceHourAndMonth
 import de.robinrehbein.punkt.ui.platform.GameFeedback
 import de.robinrehbein.punkt.ui.platform.GameSounds
 import de.robinrehbein.punkt.ui.platform.PlatformHooks
@@ -61,10 +64,21 @@ import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.banner_chain
 import de.robinrehbein.punkt.ui.resources.banner_record
 import de.robinrehbein.punkt.ui.resources.banner_stage
+import de.robinrehbein.punkt.ui.resources.card_challenge
+import de.robinrehbein.punkt.ui.resources.card_daily
+import de.robinrehbein.punkt.ui.resources.card_daily_streak
+import de.robinrehbein.punkt.ui.resources.card_points
+import de.robinrehbein.punkt.ui.resources.card_record
+import de.robinrehbein.punkt.ui.resources.card_scene
 import de.robinrehbein.punkt.ui.resources.new_record
 import de.robinrehbein.punkt.ui.resources.perfect_plus
 import de.robinrehbein.punkt.ui.resources.ready_hint
+import de.robinrehbein.punkt.ui.resources.share_text
+import de.robinrehbein.punkt.ui.resources.share_text_daily
+import de.robinrehbein.punkt.ui.share.ScoreCardContent
+import de.robinrehbein.punkt.ui.share.renderScoreCard
 import de.robinrehbein.punkt.ui.text.sceneTitle
+import de.robinrehbein.punkt.ui.theme.Bytesized
 import de.robinrehbein.punkt.ui.world.CELEBRATE_SECONDS
 import de.robinrehbein.punkt.ui.world.FxState
 import de.robinrehbein.punkt.ui.world.drawTimingWorld
@@ -199,9 +213,9 @@ fun GameScreen(
     // man sie, statt sie zu sehen.
     var sound by remember { mutableStateOf(store.selectedSound) }
 
-    // Die Score-Karte zeichnet auf eine Android-Leinwand und kann keine
-    // Texte lesen — Kulissenname und REKORD-Zeile kommen deshalb von
-    // hier (siehe ScoreCard.share).
+    // Der Kulissenname und die Rekord-Feier stehen auch auf der geteilten
+    // Karte. Die Karte kennt aber keine Ressourcen — sie bekommt jede
+    // Zeile fertig gereicht (siehe renderScoreCard).
     val sceneNameText = sceneTitle(scene)
     val newRecordText = stringResource(Res.string.new_record)
     // Der per Spot geliehene Skin des heutigen Tages (null = keiner).
@@ -597,51 +611,99 @@ fun GameScreen(
                     daily = dailyMode,
                     banner = if (phase == GamePhase.RUNNING) bannerText else ""
                 )
-            GamePhase.OVER -> GameOverOverlay(
-                score = score,
-                bestScore = bestScore,
-                isNewRecord = isNewRecord,
-                taunt = taunt,
-                daily = dailyMode,
-                dailyBest = dailyBestToday,
-                dailyStreak = dailyStreak,
-                skinUnlocked = skinUnlockedThisRun,
-                newMedal = newMedalThisRun,
-                newTwist = twistToExplain,
-                goal = nextGoal,
-                // Derselbe Rahmen, den auch die geteilte Karte traegt —
-                // dieselbe Regel, dieselbe Tabelle. Sonst haette man von
-                // der Sammlung nur beim Teilen etwas.
-                cardFrame = CardStyle.frame(cardFrame, store.stats()),
-                onShare = hooks.onShare?.let { teilen ->
-                    {
-                        teilen(
-                            ShareRequest(
-                                score = score,
-                                bestScore = bestScore,
-                                isNewRecord = isNewRecord,
-                                daily = dailyMode,
-                                dailyStreak = dailyStreak,
-                                sceneName = sceneNameText,
-                                recordText = newRecordText
+            GamePhase.OVER -> {
+                // Die Texte der geteilten Karte werden hier gelesen und
+                // nicht weiter oben: Sie haengen am Score, und ein
+                // stringResource(…, score) am Kopf des Bildschirms zoege
+                // bei jedem Treffer die ganze Spielflaeche in die
+                // Neuberechnung. Im Game-Over steht die Zahl still.
+                val kartenSchrift = Bytesized
+                val kartenMass = rememberTextMeasurer()
+                val kartenDaily = stringResource(Res.string.card_daily)
+                val kartenPunkte = stringResource(Res.string.card_points)
+                val kartenKulisse = stringResource(Res.string.card_scene, sceneNameText)
+                val kartenAufforderung = stringResource(Res.string.card_challenge)
+                val kartenRekord = when {
+                    isNewRecord -> newRecordText
+                    dailyMode && dailyStreak > 1 ->
+                        stringResource(Res.string.card_daily_streak, dailyStreak)
+                    else -> stringResource(Res.string.card_record, bestScore)
+                }
+                val teilenText =
+                    if (dailyMode) stringResource(Res.string.share_text_daily, score)
+                    else stringResource(Res.string.share_text, score)
+                // Nur der Beiname haengt an der Sprache statt an einer
+                // Ressource: Er steht mit seiner Bedingung in :core, weil
+                // ein Titel ohne sie sinnlos ist (siehe Epithet).
+                val deutsch = Locale.current.language == "de"
+                GameOverOverlay(
+                    score = score,
+                    bestScore = bestScore,
+                    isNewRecord = isNewRecord,
+                    taunt = taunt,
+                    daily = dailyMode,
+                    dailyBest = dailyBestToday,
+                    dailyStreak = dailyStreak,
+                    skinUnlocked = skinUnlockedThisRun,
+                    newMedal = newMedalThisRun,
+                    newTwist = twistToExplain,
+                    goal = nextGoal,
+                    // Derselbe Rahmen, den auch die geteilte Karte traegt —
+                    // dieselbe Regel, dieselbe Tabelle. Sonst haette man von
+                    // der Sammlung nur beim Teilen etwas.
+                    cardFrame = CardStyle.frame(cardFrame, store.stats()),
+                    onShare = hooks.onShare?.let { teilen ->
+                        {
+                            // Beiname und Rahmen haengen am Gesamtstand, nicht
+                            // am Lauf — der Stand wird erst beim Tippen auf
+                            // TEILEN geholt, damit er den eben gezaehlten Lauf
+                            // enthaelt. Wer sich die Rahmenstufe im letzten
+                            // Lauf verdient hat, teilt sie also auch.
+                            val stand = store.stats()
+                            val (stunde, monat) = deviceHourAndMonth()
+                            teilen(
+                                ShareRequest(
+                                    image = renderScoreCard(
+                                        content = ScoreCardContent(
+                                            score = score,
+                                            skin = skin,
+                                            scene = scene,
+                                            frame = CardStyle.frame(cardFrame, stand),
+                                            hour = stunde,
+                                            month = monat,
+                                            dailyLine = if (dailyMode) kartenDaily else null,
+                                            epithet = CardStyle.epithet(stand)?.let {
+                                                CardStyle.label(it, deutsch)
+                                            },
+                                            pointsLine = kartenPunkte,
+                                            sceneLine = kartenKulisse,
+                                            recordLine = kartenRekord,
+                                            recordHighlighted = isNewRecord,
+                                            challengeLine = kartenAufforderung
+                                        ),
+                                        measurer = kartenMass,
+                                        font = kartenSchrift
+                                    ),
+                                    text = teilenText
+                                )
                             )
-                        )
-                    }
-                },
-                onMenu = {
-                    dailyMode = false
-                    game.reset()
-                    // Auch die Effekte zurücksetzen — sonst läuft die
-                    // Sturz-Animation weiter und der Vogel fehlt im
-                    // Startbild, obwohl er dort wieder kreisen soll.
-                    fx.reset()
-                    bannerState.timeLeft = 0f
-                    bannerText = ""
-                    bannerState.lastStage = 0
-                    bannerState.recordCelebrated = false
-                },
-                onHelp = { showHelp = true }
-            )
+                        }
+                    },
+                    onMenu = {
+                        dailyMode = false
+                        game.reset()
+                        // Auch die Effekte zurücksetzen — sonst läuft die
+                        // Sturz-Animation weiter und der Vogel fehlt im
+                        // Startbild, obwohl er dort wieder kreisen soll.
+                        fx.reset()
+                        bannerState.timeLeft = 0f
+                        bannerText = ""
+                        bannerState.lastStage = 0
+                        bannerState.recordCelebrated = false
+                    },
+                    onHelp = { showHelp = true }
+                )
+            }
         }
 
         if (showSettings) {

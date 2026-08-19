@@ -22,6 +22,11 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Das Teilen-Blatt bietet "Bild sichern" an. Ohne diesen Schluessel
+	     beendet iOS die App genau in dem Moment, in dem jemand darauf
+	     tippt — nicht beim Teilen selbst, sondern einen Schritt spaeter. -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>To save your score card to Photos.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>bytesized_regular.ttf</string>

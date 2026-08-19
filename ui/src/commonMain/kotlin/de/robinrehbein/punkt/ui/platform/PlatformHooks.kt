@@ -1,5 +1,6 @@
 package de.robinrehbein.punkt.ui.platform
 
+import androidx.compose.ui.graphics.ImageBitmap
 import de.robinrehbein.punkt.game.SkinId
 
 /**
@@ -12,9 +13,13 @@ import de.robinrehbein.punkt.game.SkinId
  * Werte und Rueckrufe gereicht.
  *
  * Jeder Standard tut nichts. Eine Fassung ohne Store — und das ist die
- * iOS-App — nimmt `PlatformHooks()` und bekommt dieselbe Oberflaeche
- * ohne jede leere Schaltflaeche: Wo ein Preis `null` ist, faellt die
- * Zeile weg; wo `available` falsch ist, der Knopf.
+ * iOS-App — laesst alles weg, was sie nicht hat, und bekommt dieselbe
+ * Oberflaeche ohne jede leere Schaltflaeche: Wo ein Preis `null` ist,
+ * faellt die Zeile weg; wo `available` falsch ist, der Knopf.
+ *
+ * Das Teilen war bis v2.26 in derselben Liste, obwohl es mit einem Store
+ * nichts zu tun hat: Die Score-Karte gab es nur als `android.graphics`.
+ * Seit sie in `:ui` entsteht, fuellen beide Plattformen [onShare].
  */
 class PlatformHooks(
 
@@ -86,7 +91,11 @@ class PlatformHooks(
 
     // ===== Teilen =====
 
-    /** Score-Karte teilen — null = die Plattform kann es nicht. */
+    /**
+     * Die fertige Score-Karte ausliefern — null = die Plattform kann es
+     * nicht. Seit v2.26 kann es jede: Android reicht sie ueber einen
+     * FileProvider an ACTION_SEND, iOS an den UIActivityViewController.
+     */
     val onShare: ((ShareRequest) -> Unit)? = null,
 
     // ===== Diagnose =====
@@ -95,13 +104,18 @@ class PlatformHooks(
     val diagnostics: String? = null
 )
 
-/** Was auf der Score-Karte steht. Die Karte selbst baut die Plattform. */
+/**
+ * Die fertige Score-Karte samt Begleittext.
+ *
+ * Bis v2.26 stand hier stattdessen, WAS auf der Karte stehen sollte
+ * (Score, Rekord, Kulissenname …) — die Karte selbst baute die
+ * Plattform. Das ging nur, solange es eine gab: Android zeichnete sie
+ * mit `android.graphics`, und auf dem iPhone fehlte der TEILEN-Knopf
+ * ganz. Jetzt zeichnet [de.robinrehbein.punkt.ui.share.renderScoreCard]
+ * sie einmal fuer beide, und der Plattform bleibt genau das, was nur sie
+ * kann: sie aus der App herauszureichen.
+ */
 data class ShareRequest(
-    val score: Int,
-    val bestScore: Int,
-    val isNewRecord: Boolean,
-    val daily: Boolean,
-    val dailyStreak: Int,
-    val sceneName: String,
-    val recordText: String
+    val image: ImageBitmap,
+    val text: String
 )

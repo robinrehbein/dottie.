@@ -39,6 +39,22 @@ object MedalPaint {
         MedalId.PLATINUM -> 0xFFE5E4E2
     }
 
+    /**
+     * Das Band, an dem die Münze hängt: links die helle Seite, rechts
+     * die im Schatten. Es ist bei jeder Stufe dasselbe — nur die Münze
+     * wechselt die Farbe.
+     *
+     * Dass die drei Werte hier stehen und nicht im Zeichencode, hat den
+     * bekannten Grund: Die Medaille wird an drei Stellen gezeichnet — im
+     * Game-Over, auf der geteilten Karte und auf der Uhr. Drei Kopien
+     * derselben Farbe laufen auseinander.
+     */
+    const val RIBBON = 0xFFE53935
+    const val RIBBON_SHADE = 0xFFB02A28
+
+    /** Der Glanzpunkt oben links auf der Münze. */
+    const val GLINT = 0xFFFFF3B8
+
     /** Schattenfarbe der Münze (auch die Farbe der Prägung). */
     fun shade(id: MedalId): Long = when (id) {
         MedalId.BRONZE -> 0xFF9C5A1E

@@ -7,8 +7,10 @@
   Saetze, gepflegt an zwei Orten. Compose Resources macht daraus eine
   Quelle fuer beide Apps; der Zugriff heisst `Res.string.<name>`.
 
-  Was hier NICHT steht: alles, was nur Android hat — Benachrichtigungen,
-  der Teilen-Text und die Score-Karte. Das bleibt in app/src/main/res.
+  Was hier NICHT steht: alles, was nur Android hat — die
+  Benachrichtigungen und die Store-Schluessel. Das bleibt in
+  app/src/main/res. Die Texte der Score-Karte standen bis v2.26 auch
+  dort; seit die Karte in :ui gezeichnet wird, stehen sie hier.
 -->
 <resources>
     <string name="ready_hint">STOP THE DOT IN THE GREEN ZONE</string>
@@ -248,4 +250,18 @@
     <string name="goal_next_sound">NEXT SOUND: %1$s — %2$d/%3$d %4$s</string>
     <string name="help">HELP</string>
     <string name="settings">SETTINGS</string>
+
+    <!-- Die geteilte Score-Karte (aus app/src/main/res, v2.26). Sie wird
+         seit dem Umzug in :ui gezeichnet und laeuft damit auch auf dem
+         iPhone; die Texte muessen deshalb hier stehen und nicht in der
+         Android-Schale. -->
+    <string name="card_daily">DAILY CHALLENGE</string>
+    <string name="card_points">POINTS</string>
+    <string name="card_scene">SCENE: %1$s</string>
+    <string name="card_daily_streak">DAILY STREAK: %1$d DAYS</string>
+    <string name="card_record">BEST: %1$d</string>
+    <string name="card_challenge">CAN YOU BEAT IT?</string>
+    <string name="share_text">%1$d points in DOTTIE. — can you beat that?</string>
+    <string name="share_text_daily">Daily Challenge in DOTTIE.: %1$d points — can you beat that?</string>
+    <string name="share_chooser">Share score</string>
 </resources>
