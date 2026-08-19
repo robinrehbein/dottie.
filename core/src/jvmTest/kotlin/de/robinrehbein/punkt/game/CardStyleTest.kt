@@ -52,12 +52,42 @@ class CardStyleTest {
     /**
      * Ein Spielstand, dessen Sammlung genau auf [ziel] steht.
      *
-     * Gesucht statt gerechnet: Welcher Skin bei welchem Stand fällt, weiß
-     * allein [SkinPaint]. Eine hier nachgebaute Formel wäre eine zweite
-     * Wahrheit, die beim nächsten neuen Skin still falsch würde — der
-     * Test soll die Rahmen prüfen, nicht die Skin-Schwellen kopieren.
+     * Die unteren vier Stufen hängen an der Zahl gesammelter Skins und
+     * werden deshalb gesucht statt gerechnet: Welcher Skin bei welchem
+     * Stand fällt, weiß allein [SkinPaint]. Eine hier nachgebaute Formel
+     * wäre eine zweite Wahrheit, die beim nächsten neuen Skin still
+     * falsch würde — der Test soll die Rahmen prüfen, nicht die
+     * Skin-Schwellen kopieren.
+     *
+     * Für die oberen drei geht das nicht: Sie hängen an drei verschiedenen
+     * Sammlungen, und ein Stand, der auf einer Achse wächst, reißt
+     * unterwegs alle drei auf einmal ein. Sie stehen deshalb als
+     * ausgeschriebene Ausnahmen vom vollen Stand — und jede Ausnahme sagt
+     * genau, welche Sammlung ihr noch fehlt. Die Achsen dafür sind mit
+     * Bedacht gewählt: `monthsPlayed` und `daysPlayed` tragen nur Skins,
+     * `bestPerfectStreak` nur Töne (und Skins), `bestScore` auch Kulissen.
      */
-    private fun standFuer(ziel: CardFrame): SkinStats {
+    private fun standFuer(ziel: CardFrame): SkinStats = when (ziel) {
+        // Alle Kulissen, alle Töne, alle Skins.
+        CardFrame.KRONE -> alles
+
+        // Alle Töne — aber der JAHRESZEIT-Skin fehlt, also nicht alle
+        // Skins.
+        CardFrame.PERLENKRANZ -> alles.copy(monthsPlayed = 0)
+
+        // Alle Kulissen — aber die GLOCKE verlangt eine Perfekt-Serie von
+        // 20, also nicht alle Töne.
+        CardFrame.KASKADE -> alles.copy(bestPerfectStreak = 19)
+
+        // Volle Skin-Sammlung, aber die STADT verlangt Rekord 85 — ohne
+        // sie fehlt auch der WELTRAUM, also nicht alle Kulissen.
+        CardFrame.PRACHT -> alles.copy(bestScore = 84)
+
+        else -> gesuchterSkinStand(ziel)
+    }
+
+    /** Der kleinste Stand, dessen Skin-Sammlung genau auf [ziel] steht. */
+    private fun gesuchterSkinStand(ziel: CardFrame): SkinStats {
         var stufe = 0
         while (stufe <= 400) {
             val stand = leer.copy(
@@ -88,8 +118,10 @@ class CardStyleTest {
 
     @Test
     fun `jede Rahmenstufe faellt genau an ihrer Schwelle`() {
+        // Die Skin-Schwellen tragen die unteren vier Stufen; darüber
+        // wechselt die Achse auf Kulissen und Töne.
         assertEquals(3, CardStyle.FRAME_STEPS.size)
-        assertEquals(CardFrame.entries.size, CardStyle.FRAME_STEPS.size + 1)
+        assertEquals(CardFrame.PRACHT.ordinal, CardStyle.FRAME_STEPS.size)
         CardStyle.FRAME_STEPS.forEachIndexed { i, schwelle ->
             assertEquals(
                 "bei $schwelle gesammelten Skins steht Stufe ${i + 1}",
@@ -103,11 +135,82 @@ class CardStyleTest {
     }
 
     @Test
-    fun `ohne Sammlung der schlichte Rand, mit voller Sammlung die Pracht`() {
+    fun `ohne Sammlung der schlichte Rand, mit allen Sammlungen die Krone`() {
         assertEquals(CardFrame.SCHLICHT, CardStyle.frame(0))
         assertEquals(CardFrame.SCHLICHT, CardStyle.frame(leer))
+        // Die Skin-Sammlung allein trägt höchstens die Pracht — alles
+        // darüber verlangt die anderen Sammlungen dazu.
         assertEquals(CardFrame.PRACHT, CardStyle.frame(SkinPaint.collectableCount()))
-        assertEquals(CardFrame.PRACHT, CardStyle.frame(alles))
+        assertEquals(CardFrame.KRONE, CardStyle.frame(alles))
+    }
+
+    @Test
+    fun `die drei obersten Stufen fallen genau mit ihrer Sammlung`() {
+        // Jede hängt an genau einer Sammlung, und jede wird einmal knapp
+        // davor und einmal genau darauf geprüft. Die übrigen Achsen
+        // stehen dabei voll — was fehlt, ist immer nur die eine.
+
+        // KASKADE: die Kulissen. Ohne die STADT (Rekord 85) fehlt auch
+        // der WELTRAUM, der alle anderen verlangt.
+        val ohneKulisse = alles.copy(bestScore = 84, bestPerfectStreak = 19)
+        assertTrue(ScenePaint.unlockedCount(ohneKulisse) < SceneId.entries.size)
+        assertEquals(CardFrame.PRACHT, CardStyle.frame(ohneKulisse))
+        assertEquals(CardFrame.KASKADE, CardStyle.frame(ohneKulisse.copy(bestScore = 85)))
+
+        // PERLENKRANZ: die Töne. Die GLOCKE verlangt eine Perfekt-Serie
+        // von 20.
+        val ohneTon = alles.copy(monthsPlayed = 0, bestPerfectStreak = 19)
+        assertTrue(SoundBank.unlockedCount(ohneTon) < SoundSetId.entries.size)
+        assertEquals(CardFrame.KASKADE, CardStyle.frame(ohneTon))
+        assertEquals(
+            CardFrame.PERLENKRANZ,
+            CardStyle.frame(ohneTon.copy(bestPerfectStreak = 20))
+        )
+
+        // KRONE: die volle Skin-Sammlung. Ohne drei gespielte Monate
+        // fehlt der JAHRESZEIT-Skin — und mit ihm der REGENBOGEN.
+        val ohneSkin = alles.copy(monthsPlayed = 0)
+        assertTrue(SkinPaint.unlockedCount(ohneSkin) < SkinPaint.collectableCount())
+        assertEquals(CardFrame.PERLENKRANZ, CardStyle.frame(ohneSkin))
+        assertEquals(CardFrame.KRONE, CardStyle.frame(alles))
+    }
+
+    @Test
+    fun `eine obere Sammlung ueberspringt keine Stufe darunter`() {
+        // Der Fall, den die Rangfolge entscheiden muss: alle sechs
+        // Kulissen beisammen, aber die Skin-Sammlung noch dünn. Die
+        // Kaskade ist der Schritt NACH der Pracht und kein Seitenweg an
+        // ihr vorbei — sonst hiesse "höchste verdiente Stufe" bei zwei
+        // Spielständen zweierlei.
+        val nurKulissen = SkinStats(
+            bestScore = 85, bestPerfectStreak = 0, bestDailyStreak = 30,
+            runCount = 500, totalScore = 10_000
+        )
+        assertTrue(
+            "alle Kulissen offen",
+            CardStyle.earns(CardFrame.KASKADE, nurKulissen)
+        )
+        assertTrue(
+            "aber keine 30 Skins",
+            !CardStyle.earns(CardFrame.PRACHT, nurKulissen)
+        )
+        assertEquals(
+            CardStyle.frame(SkinPaint.unlockedCount(nurKulissen)),
+            CardStyle.frame(nurKulissen)
+        )
+        assertTrue(
+            "die Kaskade bleibt zu, solange die Pracht fehlt",
+            !CardStyle.isUnlocked(CardFrame.KASKADE, nurKulissen)
+        )
+    }
+
+    @Test
+    fun `zu jeder Stufe gibt es einen Spielstand, der genau auf ihr steht`() {
+        // Die Gegenprobe zur Rangfolge: Keine Stufe ist unerreichbar,
+        // weil die nächste sie im selben Moment mitnähme.
+        CardFrame.entries.forEach { stufe ->
+            assertEquals(stufe, CardStyle.frame(standFuer(stufe)))
+        }
     }
 
     @Test
@@ -152,6 +255,8 @@ class CardStyleTest {
         // Stand weiter war, oder beim Zuruecklesen eines Backups. Die
         // Karte darf nie einen Rahmen tragen, den ihr Stand nicht deckt.
         val nichts = leer
+        assertEquals(CardFrame.SCHLICHT, CardStyle.frame(CardFrame.KRONE, nichts))
+        assertEquals(CardFrame.SCHLICHT, CardStyle.frame(CardFrame.PERLENKRANZ, nichts))
         assertEquals(CardFrame.SCHLICHT, CardStyle.frame(CardFrame.PRACHT, nichts))
         assertEquals(CardFrame.SCHLICHT, CardStyle.frame(CardFrame.ZINNEN, nichts))
 
@@ -388,6 +493,36 @@ class CardStyleTest {
             )
             assertTrue("$it muss den Inhalt nach innen ruecken", andere.title > CardStyle.PLAIN_TITLE)
             assertTrue("$it muss die Aufforderung hochziehen", andere.challenge < CardStyle.PLAIN_CHALLENGE)
+        }
+    }
+
+    @Test
+    fun `je breiter der Rahmen, desto weiter innen sitzt der Inhalt`() {
+        // Der Grund, warum es überhaupt mehr als einen Maßsatz gibt: Ein
+        // Titel, der im Rahmen klemmt, sieht nach Fehler aus. Geprüft
+        // wird deshalb gegen die Breite des Musters und nicht gegen die
+        // Reihenfolge der Stufen.
+        CardFrame.entries.forEach { a ->
+            CardFrame.entries.forEach { b ->
+                if (CardStyle.thickness(a) >= CardStyle.thickness(b)) return@forEach
+                assertTrue(
+                    "$b ist breiter als $a und muss den Titel tiefer setzen",
+                    CardStyle.layout(b).title >= CardStyle.layout(a).title
+                )
+                assertTrue(
+                    "$b ist breiter als $a und muss die Aufforderung hoeher setzen",
+                    CardStyle.layout(b).challenge <= CardStyle.layout(a).challenge
+                )
+            }
+        }
+        // Und das Muster darf nirgends unter die Zeile reichen, die es
+        // freihalten soll: Die Karte ist 225 Felder hoch.
+        CardFrame.entries.forEach {
+            val untenFrei = 225 - CardStyle.thickness(it)
+            assertTrue(
+                "$it: die Aufforderung liegt unter dem Rahmen",
+                CardStyle.layout(it).challenge * 225 < untenFrei
+            )
         }
     }
 }
