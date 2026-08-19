@@ -38,6 +38,16 @@ Kuratierte Ausnahme: GEIST + FALLE erscheinen nie gleichzeitig —
 unsichtbarer Punkt plus tödliche Köder-Zone wäre Zufalls-Tod statt
 Skill. Alle anderen Kombinationen bleiben erlaubt.
 
+Im Lauf kündigt sich ein frisch freigeschalteter Twist nur mit Fanfare
+und Haptik an, ohne Text: Während der Punkt kreist, klebt der Blick am
+Ring — das Banner las dort niemand, und für Stammspieler war es in jedem
+Lauf dasselbe Rauschen. Erklärt wird stattdessen im Game-Over, in einer
+Zeile („NEU IN DIESEM LAUF: FALLE — NIE HINEINTIPPEN") und genau einmal
+je Twist; wer in einem Lauf zwei neue erlebt, bekommt den zweiten beim
+nächsten Tod. Was schon erklärt wurde, merkt sich das Gerät lokal (siehe
+`TwistLessons` in `:ui`) — es ist Didaktik, kein Fortschritt, und wird
+deshalb nicht mit der Uhr abgeglichen.
+
 Dazu: Himmel färbt sich pro 5er-Stufe Richtung Nacht — und wieder
 zurück zum Tag, ein voller Umlauf sind 60 Punkte —, Medaillen ab
 10/20/30/40 Punkten, Spott-Texte beim Tod, Haptik-Feedback, „?"-Button

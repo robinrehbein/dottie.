@@ -28,11 +28,6 @@
     <string name="banner_chain">ONE MORE!</string>
     <string name="banner_record">RECORD BROKEN!</string>
     <string name="banner_stage">NEW STAGE!</string>
-    <string name="banner_twist_pulse">NEW: PULSE ZONE!</string>
-    <string name="banner_twist_drift">NEW: DRIFTING ZONE!</string>
-    <string name="banner_twist_ghost">NEW: GHOST DOT!</string>
-    <string name="banner_twist_fake">NEW: TRAP ZONE!</string>
-    <string name="banner_twist_chain">NEW: CHAIN ZONE!</string>
     <string name="game_over">GAME OVER</string>
     <string name="medal">MEDAL</string>
     <string name="medal_bronze">BRONZE</string>
@@ -45,6 +40,16 @@
     <string name="record_label">BEST</string>
     <string name="new_record">NEW RECORD!</string>
     <string name="new_skin_unlocked">NEW SKIN UNLOCKED!</string>
+    <!--
+      The one-time twist explanation on the game over screen (see
+      TwistLessons): short enough for a single glance — whoever reads it
+      wants to restart. The long sentences live below as twist_*_text.
+    -->
+    <string name="twist_learned_pulse">NEW THIS RUN: PULSE — THE ZONE BREATHES</string>
+    <string name="twist_learned_drift">NEW THIS RUN: DRIFT — THE ZONE WANDERS</string>
+    <string name="twist_learned_ghost">NEW THIS RUN: GHOST — THE DOT BLINKS AWAY</string>
+    <string name="twist_learned_fake">NEW THIS RUN: TRAP — NEVER TAP INTO IT</string>
+    <string name="twist_learned_chain">NEW THIS RUN: CHAIN — TWO ZONES IN A ROW</string>
     <string name="tap_retry">TAP = RETRY</string>
     <string name="share">SHARE</string>
     <string name="menu">MENU</string>

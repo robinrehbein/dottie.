@@ -72,8 +72,14 @@ class TextsTest {
         MedalPaint.ORDER.forEach {
             assertNotNull(Texts.resource(Texts.medalNameKey(it)), "kein Name fuer ${it.name}")
         }
+        // Ein Twist ohne Erklaerung faellt sonst erst dem auf, der ihn
+        // zum ersten Mal freischaltet — und dort steht dann der
+        // Schluessel selbst im Game-Over.
         Twist.entries.forEach {
-            assertNotNull(Texts.resource(Texts.twistBannerKey(it)), "kein Banner fuer ${it.name}")
+            assertNotNull(
+                Texts.resource(Texts.twistLessonKey(it)),
+                "keine Erklaerung fuer ${it.name}"
+            )
         }
     }
 
