@@ -25,8 +25,8 @@ android {
         // beiden Zähler nie.
         // 100005 ging bereits als Build 110 raus (Augen-Kontur), der
         // Uhr-Abgleich bekommt deshalb 100006.
-        versionCode = 100008
-        versionName = "0.2.6-wear"
+        versionCode = 100009
+        versionName = "0.2.7-wear"
     }
 
     signingConfigs {
