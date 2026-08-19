@@ -18,7 +18,6 @@ import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.SkinStats
 import java.io.File
 import java.time.LocalDateTime
-import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -38,11 +37,12 @@ object ScoreCard {
     private const val COLS = 180
     private const val ROWS = 225
 
+    // Die Farben des Rahmens stehen nicht mehr hier, sondern als
+    // Farbrollen in :core (FrameTone) — beide Renderer greifen dieselben
+    // fünf Werte ab. Was hier bleibt, braucht die Schrift der Karte.
     private const val OUTLINE = 0xFF543847.toInt()
     private const val ACCENT = 0xFFFF8A3C.toInt()
     private const val RECORD_YELLOW = 0xFFFFE95E.toInt()
-    private const val INLAY = 0xFF4EC0CA.toInt()
-    private const val PEARL = 0xFFF7F3EE.toInt()
 
     /** Baut die Card, schreibt sie in den Cache und öffnet den Share-Dialog. */
     fun share(
@@ -247,177 +247,29 @@ object ScoreCard {
     // ===== Rahmen =====
 
     /**
-     * Der verdiente Rahmen. Vier Stufen, gestaffelt nach der Größe der
+     * Der verdiente Rahmen. Sieben Stufen, gestaffelt nach der Größe der
      * Sammlung (siehe [CardStyle.frame]) — und jede muss sich schon im
      * Vorschaubild eines Messengers von der vorigen unterscheiden. Deshalb
-     * wächst nicht nur die Breite, sondern es kommen Farbe, Zinnen und
-     * Eckornamente dazu: Zwei Pixel mehr Rand sieht auf 150 Pixel Breite
-     * niemand.
+     * wächst nicht nur die Breite, sondern es kommen Farbe, Zinnen, Perlen
+     * und Eckornamente dazu: Zwei Pixel mehr Rand sieht auf 150 Pixel
+     * Breite niemand.
      *
-     * Gezeichnet wird ausschließlich im Feldraster ([CELL]) — ein Rahmen
-     * mit krummen Kanten wäre der einzige Nicht-Pixel im ganzen Spiel.
+     * Wie die Stufen aussehen, steht seit v2.26 als Tabelle in :core
+     * ([CardStyle.parts]) und nicht mehr hier: Das Game-Over-Panel in :ui
+     * trägt denselben Rahmen, und zwei Renderer, die dieselbe Form je
+     * einmal nachzeichnen, laufen auseinander. Diese Methode füllt nur
+     * noch die Rechtecke, die aus der Tabelle fallen — im Feldraster
+     * ([CELL]), denn ein Rahmen mit krummen Kanten wäre der einzige
+     * Nicht-Pixel im ganzen Spiel.
      */
     private fun drawFrame(canvas: Canvas, paint: Paint, frame: CardFrame) {
-        when (frame) {
-            // Die Kante, mit der jeder anfängt: eine Linie, sonst nichts.
-            // SCHLICHT zeichnet nichts. Der Bestand hatte keinen Rahmen,
-            // und die erste Stufe soll etwas sein, das man verdient hat —
-            // nicht etwas, das allen still dazukommt.
-            CardFrame.SCHLICHT -> Unit
-
-            CardFrame.DOPPELLINIE -> {
-                band(canvas, paint, 0, 2, OUTLINE)
-                band(canvas, paint, 2, 2, ACCENT)
-                band(canvas, paint, 4, 2, OUTLINE)
-                // Ecknieten: drei ineinandergesetzte Quadrate. Sie sind
-                // der Teil, den man im Daumenbild zuerst sieht.
-                cornerBlocks(canvas, paint, 0, 10, OUTLINE)
-                cornerBlocks(canvas, paint, 2, 6, ACCENT)
-                cornerBlocks(canvas, paint, 4, 2, RECORD_YELLOW)
-            }
-
-            CardFrame.ZINNEN -> {
-                band(canvas, paint, 0, 2, OUTLINE)
-                band(canvas, paint, 2, 4, ACCENT)
-                // Zinnenkranz: gelbe Zähne im Farbband, alle sechs Felder.
-                // Sie tragen die Stufe — das breitere Band allein wäre im
-                // Vorschaubild nur ein etwas dickerer Strich.
-                teeth(canvas, paint, 3, 2, 6, RECORD_YELLOW)
-                band(canvas, paint, 6, 2, OUTLINE)
-                band(canvas, paint, 8, 2, RECORD_YELLOW)
-                band(canvas, paint, 10, 2, OUTLINE)
-                cornerBlocks(canvas, paint, 0, 16, OUTLINE)
-                cornerBlocks(canvas, paint, 2, 12, RECORD_YELLOW)
-                cornerBlocks(canvas, paint, 5, 6, OUTLINE)
-                cornerBlocks(canvas, paint, 7, 2, ACCENT)
-            }
-
-            CardFrame.PRACHT -> {
-                band(canvas, paint, 0, 2, OUTLINE)
-                band(canvas, paint, 2, 3, RECORD_YELLOW)
-                band(canvas, paint, 5, 2, OUTLINE)
-                band(canvas, paint, 7, 4, ACCENT)
-                // Dieselben Zinnen, aber perlweiß und eine Lage weiter
-                // innen — nebeneinander gelegt sind die beiden Stufen
-                // dadurch auch dann auseinanderzuhalten, wenn die Breite
-                // im Vorschaubild verlorengeht.
-                teeth(canvas, paint, 8, 2, 6, PEARL)
-                band(canvas, paint, 11, 2, INLAY)
-                band(canvas, paint, 13, 2, OUTLINE)
-                // Eckrosetten: ein eingelegter Rhombus statt der
-                // gestapelten Quadrate der Stufe darunter.
-                cornerBlocks(canvas, paint, 0, 22, OUTLINE)
-                cornerDiamonds(canvas, paint, 1, 20, RECORD_YELLOW)
-                cornerDiamonds(canvas, paint, 6, 10, ACCENT)
-                cornerBlocks(canvas, paint, 9, 4, PEARL)
-            }
-        }
-    }
-
-    /** Ein Rechteck im Feldraster. */
-    private fun block(
-        canvas: Canvas,
-        paint: Paint,
-        col: Int,
-        row: Int,
-        cols: Int,
-        rows: Int,
-        color: Int
-    ) {
-        paint.color = color
-        canvas.drawRect(
-            col * CELL, row * CELL, (col + cols) * CELL, (row + rows) * CELL, paint
-        )
-    }
-
-    /** Ein umlaufendes Band, [inset] Felder vom Blattrand, [thickness] dick. */
-    private fun band(canvas: Canvas, paint: Paint, inset: Int, thickness: Int, color: Int) {
-        val breite = COLS - 2 * inset
-        val hoehe = ROWS - 2 * inset
-        block(canvas, paint, inset, inset, breite, thickness, color)
-        block(canvas, paint, inset, ROWS - inset - thickness, breite, thickness, color)
-        block(canvas, paint, inset, inset, thickness, hoehe, color)
-        block(canvas, paint, COLS - inset - thickness, inset, thickness, hoehe, color)
-    }
-
-    /**
-     * Zähne auf allen vier Kanten, im Takt [step]. Gezählt wird von beiden
-     * Enden zur Mitte, damit die Reihe an jeder Ecke gleich anfängt — von
-     * links nach rechts durchgezählt bliebe an einer Kante ein Rest übrig.
-     */
-    private fun teeth(
-        canvas: Canvas,
-        paint: Paint,
-        inset: Int,
-        size: Int,
-        step: Int,
-        color: Int
-    ) {
-        var k = 0
-        while (inset + k * step + size <= COLS - inset) {
-            val col = inset + k * step
-            block(canvas, paint, col, inset, size, size, color)
-            block(canvas, paint, COLS - col - size, inset, size, size, color)
-            block(canvas, paint, col, ROWS - inset - size, size, size, color)
-            block(canvas, paint, COLS - col - size, ROWS - inset - size, size, size, color)
-            k++
-        }
-        k = 0
-        while (inset + k * step + size <= ROWS - inset) {
-            val row = inset + k * step
-            block(canvas, paint, inset, row, size, size, color)
-            block(canvas, paint, inset, ROWS - row - size, size, size, color)
-            block(canvas, paint, COLS - inset - size, row, size, size, color)
-            block(canvas, paint, COLS - inset - size, ROWS - row - size, size, size, color)
-            k++
-        }
-    }
-
-    /** Dasselbe Quadrat in allen vier Ecken. */
-    private fun cornerBlocks(
-        canvas: Canvas,
-        paint: Paint,
-        inset: Int,
-        size: Int,
-        color: Int
-    ) {
-        for (col in intArrayOf(inset, COLS - inset - size)) {
-            for (row in intArrayOf(inset, ROWS - inset - size)) {
-                block(canvas, paint, col, row, size, size, color)
-            }
-        }
-    }
-
-    /** Dasselbe für den Rhombus der Prachtstufe. */
-    private fun cornerDiamonds(
-        canvas: Canvas,
-        paint: Paint,
-        inset: Int,
-        size: Int,
-        color: Int
-    ) {
-        for (col in intArrayOf(inset, COLS - inset - size)) {
-            for (row in intArrayOf(inset, ROWS - inset - size)) {
-                diamond(canvas, paint, col, row, size, color)
-            }
-        }
-    }
-
-    /** Ein Rhombus aus Zeilen — die einzige Form, die der Rahmen nicht rechteckig baut. */
-    private fun diamond(
-        canvas: Canvas,
-        paint: Paint,
-        col: Int,
-        row: Int,
-        size: Int,
-        color: Int
-    ) {
-        val mitte = size / 2
-        for (r in 0 until size) {
-            // Von der nächstgelegenen Kante nach innen gezählt: Die Zeile
-            // wächst bis zur Mitte und schrumpft wieder.
-            val halb = min(min(r, size - 1 - r) + 1, mitte)
-            block(canvas, paint, col + mitte - halb, row + r, 2 * halb, 1, color)
+        CardStyle.frameRects(frame, COLS, ROWS).forEach { r ->
+            paint.color = r.tone.argb.toInt()
+            canvas.drawRect(
+                r.col * CELL, r.row * CELL,
+                (r.col + r.cols) * CELL, (r.row + r.rows) * CELL,
+                paint
+            )
         }
     }
 
