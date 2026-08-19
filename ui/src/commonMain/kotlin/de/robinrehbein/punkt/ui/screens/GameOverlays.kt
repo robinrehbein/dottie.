@@ -311,7 +311,7 @@ fun ReadyOverlay(
             // Schatten und Glanzkante geben ihm dieselbe Tiefe wie dem Titel;
             // beim Drücken sinkt es sichtbar in den Schatten.
             PixelIconButton(
-                icon = PixelIcon.GEAR,
+                icon = PixelIcon.SLIDERS,
                 contentDescription = stringResource(Res.string.settings),
                 onClick = onSettings,
                 backgroundColor = PanelSand,

@@ -118,7 +118,7 @@ aus der Play Console stehen (Anleitung in PUBLISHING.md). Die
 Store-Feature-Grafik liegt generiert unter `store/feature-graphic.png`.
 
 Ab v2.11 gibt es zusätzlich eine optionale **tägliche Erinnerung** an
-die Daily Challenge (Opt-in in den Einstellungen hinter dem Zahnrad,
+die Daily Challenge (Opt-in in den Einstellungen hinter dem Regler-Knopf,
 komplett lokal per WorkManager, ab Android 13 hinter der
 Notification-Permission).
 
@@ -328,7 +328,7 @@ Zeile „HEUTE … · SERIE …", der Versuchszähler, die Kauf-Zeile und die
 Datenschutz-Zeile — vierzehn Dinge, von denen genau eines zählt: der
 nächste Lauf. Seit v2.23 sind es acht:
 
-- **Zahnrad oben rechts** öffnet die **Einstellungen** — ein Overlay im
+- **Regler-Knopf oben rechts** (drei Schieber) öffnet die **Einstellungen** — ein Overlay im
   Stil der übrigen (dunkler Scrim, Tap daneben schließt): TON AN/AUS,
   ERINNERUNG AN/AUS, HILFE, darunter klein die Kauf-Zeile „Werbung
   entfernen" und der Datenschutz-Widerruf. Beide Zeilen erscheinen unter
