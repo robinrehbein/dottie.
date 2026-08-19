@@ -89,7 +89,7 @@ paar Stellen war die Kotlin-Seite schlicht die bessere:
   `KotlinLong?` an.
 - `TimingGame` hat einen parameterlosen Konstruktor bekommen, weil
   Standardwerte nicht exportiert werden.
-- `SkinFamily` — die Menü-Gliederung der 42 Skins — lag vorher nur im
+- `SkinFamily` — die Menü-Gliederung der 46 Skins — lag vorher nur im
   iOS-Menü und damit als zweite, stille Quelle für dieselbe Reihenfolge.
   Jetzt steht sie neben den Skins, die sie einteilt.
 - `ChipSynth.render(voice, rate)` rechnet die Tonhöhen-Varianten, die

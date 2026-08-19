@@ -8,7 +8,7 @@ die steht in der letzten Spalte.
 | Punkt | Was genau | Wann |
 |---|---|---|
 | `versionCode` erhöhen | Steht aktuell auf 34 / „2.23" (`app/build.gradle.kts`) und 100008 / „0.2.6-wear" (`wear/build.gradle.kts`). Vor jedem Upload weiterzählen — Play lehnt einen bereits benutzten Code ab. | beim Release |
-| iOS einmal spielen | Gebaut wird **automatisch**: `build-ios.yml` läuft auf einem macOS-Runner bei jedem Push auf `main` oder `claude/**`, der `ios/`, `core/`, `ui/` oder `parity/` anfasst (kein PR-Trigger — das Repo braucht keinen zweiten, siehe Kommentar im Workflow) — seit #54 dieselbe `:ui`, die Android zeichnet, nicht mehr ein separater Port. Was fehlt, ist kein Build, sondern ein Blick: einmal auf einem Gerät spielen und die 42 Skins, das Menü und die Kulissen ansehen. | vor dem iOS-Release |
+| iOS einmal spielen | Gebaut wird **automatisch**: `build-ios.yml` läuft auf einem macOS-Runner bei jedem Push auf `main` oder `claude/**`, der `ios/`, `core/`, `ui/` oder `parity/` anfasst (kein PR-Trigger — das Repo braucht keinen zweiten, siehe Kommentar im Workflow) — seit #54 dieselbe `:ui`, die Android zeichnet, nicht mehr ein separater Port. Was fehlt, ist kein Build, sondern ein Blick: einmal auf einem Gerät spielen und die 46 Skins, das Menü und die Kulissen ansehen. | vor dem iOS-Release |
 | `patron_pack` in der Play Console | Produkt anlegen und aktivieren, siehe PUBLISHING.md Abschnitt 4c. Ohne das sind Diamant, Phönix und Onyx unerreichbar. | beim Release |
 
 ## Entscheidungen, die noch offen sind
@@ -51,7 +51,7 @@ erste Stufe und bleibt unangetastet (WIESE, KLASSIK, SCHLICHT).
 
 | Punkt | Kurz |
 |---|---|
-| Schweif als eigene Ebene | Heute hängt der Schweif am Skin (TINTE, PHÖNIX). Als unabhängiger, kombinierbarer Modifikator wird daraus eine zweite Sammlung — 42 Skins × N Schweife, und die Zeichenroutine existiert bereits (`TRAIL_STEPS`, `TRAIL_SPACING`). |
+| Schweif als eigene Ebene | Heute hängt der Schweif am Skin (TINTE, PHÖNIX). Als unabhängiger, kombinierbarer Modifikator wird daraus eine zweite Sammlung — 46 Skins × N Schweife, und die Zeichenroutine existiert bereits (`TRAIL_STEPS`, `TRAIL_SPACING`). |
 | Beinamen im Paritäts-Vertrag | **Halb erledigt.** Der Rahmen steht jetzt in `parity/golden-vectors.txt` (Muster, Breite, Maße, Freischaltung): Das Game-Over-Panel in `:ui` trägt ihn, also ist er auf jeder Plattform sichtbar, und der Vertrag deckt, was auf allen Plattformen sichtbar wird. Der **Beiname** steht weiterhin nicht drin — er erscheint nur auf der gerenderten Score-Karte (`ScoreCard.kt`, `android.graphics`), und die ist Android-allein. Sobald iOS eine Karte teilt, gehört er hinein, sonst driften die Titel auseinander. |
 | Rahmen auf der Uhr | Der Rahmen ist die einzige der vier Sammlungen, die nicht mit der Uhr abgeglichen wird — sie hat keine Score-Karte (siehe `GameStore.selectedCardFrame` in `:ui`, vormals `ScoreStore`). Bekäme sie eine, fehlte der Abgleich. |
 | Eine dritte Wellenform | `ChipSynth` kann Rechteck und Dreieck. Eine Säge fehlt bewusst: Der Chip, dem das Spiel seinen Klang schuldet, hatte keine. Wer sie hinzufügt, sollte erst sagen können, welches Set sie braucht. |

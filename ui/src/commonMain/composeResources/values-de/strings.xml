@@ -116,12 +116,14 @@
     <string name="skin_frost">FROST</string>
     <string name="skin_schatten">SCHATTEN</string>
     <string name="skin_prisma">PRISMA</string>
+    <string name="skin_matcha">MATCHA</string>
     <string name="skin_hint_minze">REKORD 10 (BRONZE)</string>
     <string name="skin_hint_lava">REKORD 20 (SILBER)</string>
     <string name="skin_hint_gold">REKORD 30 (GOLD)</string>
     <string name="skin_hint_frost">REKORD 40 (PLATIN)</string>
     <string name="skin_hint_schatten">4 PERFEKTE IN SERIE</string>
     <string name="skin_hint_prisma">DAILY-SERIE: 3 TAGE</string>
+    <string name="skin_hint_matcha">5 LAEUFE</string>
     <string name="skin_biene">BIENE</string>
     <string name="skin_melone">MELONE</string>
     <string name="skin_pilz">FLIEGENPILZ</string>
@@ -155,6 +157,9 @@
     <string name="skin_pinguin">PINGUIN</string>
     <string name="skin_fussball">FUSSBALL</string>
     <string name="skin_donut">DONUT</string>
+    <string name="skin_toffifee">TOFFIFEE</string>
+    <string name="skin_tennisball">TENNISBALL</string>
+    <string name="skin_basketball">BASKETBALL</string>
     <string name="skin_welle">WELLE</string>
     <string name="skin_gewitter">GEWITTER</string>
     <string name="skin_konfetti">KONFETTI</string>
@@ -176,6 +181,9 @@
     <string name="skin_hint_pinguin">REKORD 65</string>
     <string name="skin_hint_fussball">300 LAEUFE</string>
     <string name="skin_hint_donut">1.000 PUNKTE INSGESAMT</string>
+    <string name="skin_hint_toffifee">100 PUNKTE INSGESAMT</string>
+    <string name="skin_hint_tennisball">50 LAEUFE</string>
+    <string name="skin_hint_basketball">2.500 PUNKTE INSGESAMT</string>
     <string name="skin_hint_welle">REKORD 70</string>
     <string name="skin_hint_gewitter">15 PERFEKTE IN SERIE</string>
     <string name="skin_hint_konfetti">5.000 PUNKTE INSGESAMT</string>
@@ -225,7 +233,7 @@
     <string name="frame_hint_kaskade">PRACHT UND ALLE KULISSEN</string>
     <string name="frame_hint_krone">PERLENKRANZ UND ALLE SKINS</string>
     <string name="frame_hint_perlenkranz">KASKADE UND ALLE TOENE</string>
-    <string name="frame_hint_pracht">30 SKINS SAMMELN</string>
+    <string name="frame_hint_pracht">33 SKINS SAMMELN</string>
     <string name="frame_hint_zinnen">20 SKINS SAMMELN</string>
     <string name="frame_kaskade">KASKADE</string>
     <string name="frame_krone">KRONE</string>

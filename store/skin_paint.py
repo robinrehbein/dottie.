@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Das Farbwerk aller 42 Punkt-Skins — Portierung von
-`core/src/main/kotlin/de/robinrehbein/punkt/game/SkinPaint.kt`.
+`core/src/commonMain/kotlin/de/robinrehbein/punkt/game/SkinPaint.kt`.
 
 Die Store-Generatoren zeichnen die Skins damit exakt so, wie das Spiel
 sie zeichnet: [cell] liefert fuer jedes Feld des 13x13-Rasters denselben
@@ -120,9 +120,10 @@ HEAT_SCORE = 40
 
 FAMILIES = [
     ("EINFARBIG", ["KLASSIK", "MINZE", "LAVA", "GOLD", "FROST", "SCHATTEN",
-                   "PRISMA"]),
+                   "PRISMA", "MATCHA"]),
     ("GEMUSTERT", ["BIENE", "MELONE", "PILZ", "KOI", "GALAXIE", "KARO",
-                   "EI", "TIGER", "PINGUIN", "FUSSBALL", "DONUT"]),
+                   "EI", "TIGER", "PINGUIN", "FUSSBALL", "DONUT",
+                   "TOFFIFEE", "TENNISBALL", "BASKETBALL"]),
     ("BEWEGT", ["REGENBOGEN", "AURORA", "MAGMA", "NEON", "CHROM",
                 "WELLE", "GEWITTER", "KONFETTI", "DISCO", "HOLO"]),
     ("REAGIEREND", ["CHAMAELEON", "KOMBO", "TINTE",
@@ -152,13 +153,15 @@ PATRON = ("DIAMANT", "PHOENIX", "ONYX")
 BODY = {
     "KLASSIK": 0xFFFFD847, "MINZE": 0xFF4BE38C, "LAVA": 0xFFFF5A36,
     "GOLD": 0xFFFFC400, "FROST": 0xFF8FD8FF, "SCHATTEN": 0xFF6B4F8A,
-    "PRISMA": 0xFFFF6FD8, "BIENE": 0xFFFFD847, "MELONE": 0xFFF0555C,
+    "PRISMA": 0xFFFF6FD8, "MATCHA": 0xFF9DBB61, "BIENE": 0xFFFFD847,
+    "MELONE": 0xFFF0555C,
     "PILZ": 0xFFE8452F, "KOI": 0xFFF7F3EE, "GALAXIE": 0xFF4E3C86,
     "KARO": 0xFF4EC0CA, "REGENBOGEN": 0xFFFF6FD8, "AURORA": 0xFF3FE0A8,
     "MAGMA": 0xFF3A2431, "NEON": 0xFF241E33, "CHROM": 0xFFE6EAF2,
     "CHAMAELEON": 0xFF8FD8DE, "KOMBO": 0xFFFFD847, "TINTE": 0xFF2A46A8,
     "EI": 0xFFFFE58F, "TIGER": 0xFFFF8A2B, "PINGUIN": 0xFF2E3440,
-    "FUSSBALL": 0xFFF7F3EE, "DONUT": 0xFFFF7FBF, "WELLE": 0xFF2E86D8,
+    "FUSSBALL": 0xFFF7F3EE, "DONUT": 0xFFFF7FBF, "TOFFIFEE": 0xFFB5793E,
+    "TENNISBALL": 0xFFCCE62E, "BASKETBALL": 0xFFE8722C, "WELLE": 0xFF2E86D8,
     "GEWITTER": 0xFF4A5568, "KONFETTI": 0xFFF7F3EE, "DISCO": 0xFFC3CBD9,
     "HOLO": 0xFF7FD8E8, "THERMO": 0xFFFFD847, "MEDAILLE": 0xFFC0C0C0,
     "TAGESZEIT": 0xFF8FD8FF, "JAHRESZEIT": 0xFFFFC93C, "KUERBIS": 0xFFF5821F,
@@ -169,13 +172,15 @@ BODY = {
 SHADE = {
     "KLASSIK": 0xFFF5A623, "MINZE": 0xFF2BA55E, "LAVA": 0xFFC22F12,
     "GOLD": 0xFFCC8F00, "FROST": 0xFF4FA3D8, "SCHATTEN": 0xFF43315C,
-    "PRISMA": 0xFFC93BAA, "BIENE": 0xFF3A2C33, "MELONE": 0xFF74BF2E,
+    "PRISMA": 0xFFC93BAA, "MATCHA": 0xFF6E8B3D, "BIENE": 0xFF3A2C33,
+    "MELONE": 0xFF74BF2E,
     "PILZ": 0xFFC2301F, "KOI": 0xFFE8452F, "GALAXIE": 0xFF231A3F,
     "KARO": 0xFF2E8E98, "REGENBOGEN": 0xFF7A3BC9, "AURORA": 0xFF2A7F8E,
     "MAGMA": 0xFFC22F12, "NEON": 0xFF181328, "CHROM": 0xFF5B6478,
     "CHAMAELEON": 0xFF3F9BA5, "KOMBO": 0xFFE0A400, "TINTE": 0xFF1F3A8A,
     "EI": 0xFFE8B92E, "TIGER": 0xFF2A1F1C, "PINGUIN": 0xFF1B1F28,
-    "FUSSBALL": 0xFF2A2C33, "DONUT": 0xFFC08A47, "WELLE": 0xFF1F5FA8,
+    "FUSSBALL": 0xFF2A2C33, "DONUT": 0xFFC08A47, "TOFFIFEE": 0xFF7E4F23,
+    "TENNISBALL": 0xFF93AC1F, "BASKETBALL": 0xFFAD4C1B, "WELLE": 0xFF1F5FA8,
     "GEWITTER": 0xFF2F3644, "KONFETTI": 0xFFFF5A36, "DISCO": 0xFF8892A6,
     "HOLO": 0xFFC93BAA, "THERMO": 0xFFE0A400, "MEDAILLE": 0xFF8F8F9C,
     "TAGESZEIT": 0xFF3D4A8C, "JAHRESZEIT": 0xFFE09218, "KUERBIS": 0xFFC25E10,
@@ -186,13 +191,15 @@ SHADE = {
 _SHINE = {
     "KLASSIK": 0xFFFFF3B8, "MINZE": 0xFFC8FFE0, "LAVA": 0xFFFFC9A3,
     "GOLD": 0xFFFFF7CC, "FROST": 0xFFE8F9FF, "SCHATTEN": 0xFFCBB8E8,
-    "PRISMA": 0xFFB8F3FF, "BIENE": 0xFFFFF3B8, "MELONE": 0xFFFFD3D6,
+    "PRISMA": 0xFFB8F3FF, "MATCHA": 0xFFE2F0BF, "BIENE": 0xFFFFF3B8,
+    "MELONE": 0xFFFFD3D6,
     "PILZ": 0xFFFFD9C9, "KOI": 0xFFFFFFFF, "GALAXIE": 0xFFFFF3B8,
     "KARO": 0xFFFFFFFF, "REGENBOGEN": 0xFFFFFFFF, "AURORA": 0xFFE8F9FF,
     "MAGMA": 0xFFFFD847, "CHROM": 0xFFFFFFFF, "CHAMAELEON": 0xFFFFFFFF,
     "KOMBO": 0xFFFFF3B8, "TINTE": 0xFFA8C0FF, "EI": 0xFFFFFFFF,
     "TIGER": 0xFFFFE0B8, "PINGUIN": 0xFFFFFFFF, "FUSSBALL": 0xFFFFFFFF,
-    "DONUT": 0xFFFFFFFF, "WELLE": 0xFFFFFFFF, "GEWITTER": 0xFFFFF3B8,
+    "DONUT": 0xFFFFFFFF, "TOFFIFEE": 0xFFEBD2AB, "TENNISBALL": 0xFFF2FFAD,
+    "BASKETBALL": 0xFFFFC291, "WELLE": 0xFFFFFFFF, "GEWITTER": 0xFFFFF3B8,
     "KONFETTI": 0xFFFFFFFF, "DISCO": 0xFFFFFFFF, "HOLO": 0xFFFFFFFF,
     "THERMO": 0xFFFFFFFF, "MEDAILLE": 0xFFFFFFFF, "TAGESZEIT": 0xFFFFFFFF,
     "JAHRESZEIT": 0xFFFFFFFF, "KUERBIS": 0xFFFFE0B8, "ZUCKERSTANGE": 0xFFFFFFFF,
@@ -387,6 +394,24 @@ def _is_ball_patch(col, row):
         (1, 4), (2, 4), (2, 3), (10, 9), (9, 10), (3, 11))
 
 
+def _is_tennis_seam(col, row):
+    """Die beiden Bogen-Naehte des TENNISBALL — Kreise weit ausserhalb."""
+    dy = F(row - 6)
+    left = fsqrt(F(col + 5.5) * F(col + 5.5) + dy * dy)
+    right = fsqrt(F(col - 17.5) * F(col - 17.5) + dy * dy)
+    return abs(left - F(9.75)) < F(0.65) or abs(right - F(9.75)) < F(0.65)
+
+
+def _is_basketball_seam(col, row):
+    """Kreuznaht plus zwei Seitenboegen des BASKETBALL."""
+    if col == 6 or row == 6:
+        return True
+    dy = F(row - 6)
+    left = fsqrt(F(col + 6.5) * F(col + 6.5) + dy * dy)
+    right = fsqrt(F(col - 18.5) * F(col - 18.5) + dy * dy)
+    return abs(left - F(8.9)) < F(0.5) or abs(right - F(8.9)) < F(0.5)
+
+
 def _is_sprinkle(col, row):
     return (col, row) in (
         (3, 2), (5, 1), (8, 2), (4, 4), (9, 4), (6, 3), (10, 5), (2, 4))
@@ -475,7 +500,7 @@ def cell(skin, col, row, state=DEFAULT_STATE):
     t = state.elapsed
 
     if skin in ("KLASSIK", "MINZE", "LAVA", "GOLD", "FROST", "SCHATTEN",
-                "PRISMA", "TINTE"):
+                "PRISMA", "MATCHA", "TINTE"):
         return _shaded(col, row, BODY[skin], SHADE[skin])
 
     if skin == "BIENE":
@@ -608,6 +633,30 @@ def cell(skin, col, row, state=DEFAULT_STATE):
         if _is_sprinkle(col, row):
             return SPRINKLE_COLORS[_imod(col + row, len(SPRINKLE_COLORS))]
         return _shaded(col, row, 0xFFFF7FBF, 0xFFE04E9C)
+
+    if skin == "TOFFIFEE":
+        # Der Karamellbecher von oben: heller Rand, Schokofuellung,
+        # Haselnuss-Kuppe in der Mitte.
+        dx = col - MID
+        dy = row - MID
+        d = fsqrt(dx * dx + dy * dy)
+        if d < F(1.2):
+            return 0xFF8A5E33
+        if d < F(2.5):
+            return 0xFF5A3A22
+        if d < F(3.8):
+            return 0xFFD9A45C
+        return _shaded(col, row, 0xFFB5793E, 0xFF7E4F23)
+
+    if skin == "TENNISBALL":
+        if _is_tennis_seam(col, row):
+            return 0xFFF7F3EE
+        return _shaded(col, row, 0xFFCCE62E, 0xFF93AC1F)
+
+    if skin == "BASKETBALL":
+        if _is_basketball_seam(col, row):
+            return 0xFF4A2410
+        return _shaded(col, row, 0xFFE8722C, 0xFFAD4C1B)
 
     # ===== Bewegt =====
 
