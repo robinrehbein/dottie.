@@ -4,15 +4,9 @@
      Reihenfolge — neue Strings bitte immer in beiden ergänzen. -->
 <resources>
     <string name="app_name" translatable="false">Dottie.</string>
-    <string name="share_text">%1$d points in DOTTIE. — can you beat that?</string>
-    <string name="share_text_daily">Daily Challenge in DOTTIE.: %1$d points — can you beat that?</string>
-    <string name="share_chooser">Share score</string>
-    <string name="card_daily">DAILY CHALLENGE</string>
-    <string name="card_points">POINTS</string>
-    <string name="card_scene">SCENE: %1$s</string>
-    <string name="card_daily_streak">DAILY STREAK: %1$d DAYS</string>
-    <string name="card_record">BEST: %1$d</string>
-    <string name="card_challenge">CAN YOU BEAT IT?</string>
+    <!-- Die Texte der Score-Karte (card_*, share_*) stehen seit v2.26 in
+         ui/src/commonMain/composeResources: Die Karte wird dort
+         gezeichnet und laeuft damit auch auf dem iPhone. -->
     <string name="notif_channel_name">Daily Challenge reminder</string>
     <string name="notif_channel_desc">Reminds you once a day of the Daily Challenge.</string>
     <string name="notif_title">Your Daily Challenge is waiting!</string>

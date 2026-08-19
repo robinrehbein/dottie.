@@ -2,15 +2,8 @@
 <!-- Deutsche Texte — Default (Englisch) liegt in values/strings.xml.
      Beide Dateien führen dieselben Keys in derselben Reihenfolge. -->
 <resources>
-    <string name="share_text">%1$d Punkte in DOTTIE. — schaffst du mehr?</string>
-    <string name="share_text_daily">Daily Challenge in DOTTIE.: %1$d Punkte — schaffst du mehr?</string>
-    <string name="share_chooser">Score teilen</string>
-    <string name="card_daily">DAILY-CHALLENGE</string>
-    <string name="card_points">PUNKTE</string>
-    <string name="card_scene">KULISSE: %1$s</string>
-    <string name="card_daily_streak">DAILY-SERIE: %1$d TAGE</string>
-    <string name="card_record">REKORD: %1$d</string>
-    <string name="card_challenge">SCHAFFST DU MEHR?</string>
+    <!-- Die Texte der Score-Karte (card_*, share_*) stehen seit v2.26 in
+         ui/src/commonMain/composeResources. -->
     <string name="notif_channel_name">Daily-Challenge-Erinnerung</string>
     <string name="notif_channel_desc">Erinnert einmal am Tag an die Daily Challenge.</string>
     <string name="notif_title">Deine Daily Challenge wartet!</string>
