@@ -15,6 +15,7 @@ import de.robinrehbein.punkt.game.SkinStats
 import de.robinrehbein.punkt.game.SoundBank
 import de.robinrehbein.punkt.game.SoundSetId
 import de.robinrehbein.punkt.game.SyncState
+import de.robinrehbein.punkt.game.Twist
 
 /**
  * Persistiert Highscore, Daily-Challenge-Stand, Bestleistungen und den
@@ -196,6 +197,43 @@ class GameStore(private val prefs: KeyValueStore) {
         prefs.edit {
                 putLong(KEY_SKIN_PASS_DAY, epochDay)
                 putString(KEY_SKIN_PASS_SKIN, skin.name)
+        }
+    }
+
+    // ===== Twist-Erklaerungen =====
+
+    /**
+     * Die Twists, die im Game-Over schon einmal erklaert wurden — als
+     * Namen, siehe [TwistLessons].
+     *
+     * Bewusst NICHT im [SyncState]: Das ist Didaktik, kein Fortschritt.
+     * Wer die Falle am Telefon erklaert bekommen hat, verliert nichts,
+     * wenn die Uhr sie noch einmal erklaert — der Austausch waere nur ein
+     * weiteres Feld, das auseinanderlaufen kann, ohne dass es jemandem
+     * nuetzt.
+     */
+    val explainedTwists: Set<String>
+        get() = TwistLessons.decode(prefs.string(KEY_TWISTS_EXPLAINED))
+
+    /**
+     * Der Twist, den dieser Lauf erklaeren soll — null, wenn er nichts
+     * Neues gebracht hat. Die Daily zaehlt dabei wie jeder andere Lauf:
+     * Auch dort ist die Falle beim ersten Mal neu.
+     */
+    fun twistToExplain(unlockedThisRun: List<Twist>): Twist? =
+        TwistLessons.next(unlockedThisRun, explainedTwists)
+
+    /**
+     * Merkt sich einen erklaerten Twist. Geschrieben wird an den
+     * gespeicherten Stand ANGEHAENGT, statt ihn aus der Aufzaehlung neu
+     * zu bauen: Ein Name, den diese Version nicht kennt (ein Twist aus
+     * einer neueren), soll ein Downgrade ueberleben.
+     */
+    fun markTwistExplained(twist: Twist) {
+        val known = explainedTwists
+        if (twist.name in known) return
+        prefs.edit {
+            putString(KEY_TWISTS_EXPLAINED, TwistLessons.encode(known + twist.name))
         }
     }
 
@@ -597,5 +635,8 @@ class GameStore(private val prefs: KeyValueStore) {
         const val KEY_SEASON_LAST_DAY = "season_last_day"
         const val KEY_SEASON_EARNED = "season_earned"
         const val KEY_PATRON = "patron_owned"
+        // Die schon erklaerten Twists als Namensliste ("FAKE,CHAIN"),
+        // siehe TwistLessons. Rein lokal — kein Fortschritt, nur Didaktik.
+        const val KEY_TWISTS_EXPLAINED = "twists_explained"
     }
 }

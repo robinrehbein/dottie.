@@ -89,7 +89,13 @@ object Texts {
 
     fun medalNameKey(id: MedalId): String = "medal_" + id.name.lowercase()
 
-    fun twistBannerKey(twist: Twist): String = "banner_twist_" + twist.name.lowercase()
+    /**
+     * Die kurze Erklaerung eines Twists fuer das Game-Over. Nicht zu
+     * verwechseln mit `twist_*_text`, dem ausfuehrlichen Satz in der
+     * Hilfe: Diese Zeile steht neben einer Punktzahl, die gerade jemanden
+     * geaergert hat, und muss in einem Blick gelesen sein.
+     */
+    fun twistLessonKey(twist: Twist): String = "twist_learned_" + twist.name.lowercase()
 }
 
 /**
@@ -135,4 +141,4 @@ fun frameTitle(id: CardFrame): String = textFor(Texts.frameTitleKey(id))
 fun frameHint(id: CardFrame): String? = textForOrNull(Texts.frameHintKey(id))
 
 @Composable
-fun twistBanner(twist: Twist): String = textFor(Texts.twistBannerKey(twist))
+fun twistLesson(twist: Twist): String = textFor(Texts.twistLessonKey(twist))

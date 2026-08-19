@@ -2,6 +2,7 @@
 
 package de.robinrehbein.punkt.ui.text
 
+import de.robinrehbein.punkt.game.CardFrame
 import de.robinrehbein.punkt.game.MedalPaint
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinFamily
@@ -64,6 +65,22 @@ class TextsTest {
         }
     }
 
+    /**
+     * Ein Rahmen ohne Hinweis waere die schlimmste Zeile im Menue: Man
+     * saehe eine gesperrte Stufe und nirgends, was sie kostet.
+     */
+    @Test
+    fun `jeder Kartenrahmen hat Namen und Hinweis`() {
+        CardFrame.entries.forEach { frame ->
+            assertNotNull(Texts.resource(Texts.frameTitleKey(frame)), "kein Name fuer ${frame.name}")
+            Texts.frameHintKey(frame)?.let {
+                assertNotNull(Texts.resource(it), "kein Hinweis fuer ${frame.name}")
+            }
+        }
+        // SCHLICHT ist der Bestand und braucht als einziger keinen.
+        assertNull(Texts.frameHintKey(CardFrame.SCHLICHT))
+    }
+
     @Test
     fun `jede Familie, jede Medaille und jeder Twist hat einen Text`() {
         SkinFamily.entries.forEach {
@@ -72,8 +89,14 @@ class TextsTest {
         MedalPaint.ORDER.forEach {
             assertNotNull(Texts.resource(Texts.medalNameKey(it)), "kein Name fuer ${it.name}")
         }
+        // Ein Twist ohne Erklaerung faellt sonst erst dem auf, der ihn
+        // zum ersten Mal freischaltet — und dort steht dann der
+        // Schluessel selbst im Game-Over.
         Twist.entries.forEach {
-            assertNotNull(Texts.resource(Texts.twistBannerKey(it)), "kein Banner fuer ${it.name}")
+            assertNotNull(
+                Texts.resource(Texts.twistLessonKey(it)),
+                "keine Erklaerung fuer ${it.name}"
+            )
         }
     }
 
