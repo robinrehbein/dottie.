@@ -854,8 +854,10 @@ fun MedalBadge(score: Int, modifier: Modifier = Modifier) {
     val tier = MedalPaint.forScore(score)
     val (body, shade) = tier?.let { medalColors(it) }
         ?: (Color(0xFFBDB48A) to Color(0xFFA89E74))
-    val ribbon = if (tier != null) RecordRed else Color(0xFFBDB48A)
-    val ribbonDark = if (tier != null) Color(0xFFB02A28) else Color(0xFFA89E74)
+    // Bandfarben aus MedalPaint — dieselbe Quelle, aus der sich seit dem
+    // Umzug der Karte auch die geteilte Medaille bedient.
+    val ribbon = if (tier != null) Color(MedalPaint.RIBBON) else Color(0xFFBDB48A)
+    val ribbonDark = if (tier != null) Color(MedalPaint.RIBBON_SHADE) else Color(0xFFA89E74)
 
     Canvas(modifier = modifier.size(72.dp)) {
         val u = size.minDimension / 16f
@@ -894,7 +896,7 @@ fun MedalBadge(score: Int, modifier: Modifier = Modifier) {
         emboss(3.5f, 5.5f, 2f, 2f)
         emboss(7.5f, 5.5f, 2f, 2f)
         drawRect(
-            if (tier != null) DotShine else Color(0xFFEFE7C0),
+            if (tier != null) Color(MedalPaint.GLINT) else Color(0xFFEFE7C0),
             Offset(coinCx - coinR + 2.5f * cu, coinCy - coinR + 2.5f * cu),
             Size(2f * cu, 2f * cu)
         )
