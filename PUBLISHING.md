@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.26.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.27.
 
 ## Checkliste
 
@@ -553,8 +553,8 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 35` / `versionName
-"2.26"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 36` / `versionName
+"2.27"`. Vor jedem Store-Upload beides anheben und committen.
 
 Achtung: `versionCode 28` wurde bereits zweimal gebaut — einmal mit
 Skins und Himmel-Umlauf (Build 101), einmal zusätzlich mit dem
