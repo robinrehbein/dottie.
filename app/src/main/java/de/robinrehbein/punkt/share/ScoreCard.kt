@@ -176,15 +176,25 @@ object ScoreCard {
             // Der Beiname bekommt ein dunkles Schild statt nur einen
             // Schatten: In dieser Höhe stehen die Wolken, und heller Text
             // auf heller Wolke ist genau die Stelle, an der eine geteilte
-            // Karte unleserlich wird.
+            // Karte unleserlich wird. Bytesized läuft mit den Großbuchstaben
+            // bis 2/16 UNTER die Baseline — der Text sitzt darum optisch
+            // 2 Zellen höher, als die Baseline verrät. Die Box selbst rückt
+            // 2 Zellen weiter nach unten, weil sie sonst vom Schatten des
+            // Titels "DOTTIE." gestreift wird. Die Ecken sind angeschrägt,
+            // die Treppen-Form, die auch die Overlays tragen — dafür drei
+            // Rechtecke statt eines nackten, ohne die Wolke dahinter zu
+            // übermalen.
             val label = CardStyle.label(titel, isGerman(context))
             text.textSize = 52f
-            val halb = raster(text.measureText(label) / 2f + CELL * 4)
-            val oben = raster(subline - CELL * 8)
+            val halb = raster(text.measureText(label) / 2f + CELL * 5)
+            val oben = raster(subline - CELL * 6)
+            val unten = oben + CELL * 10
             paint.color = OUTLINE
-            canvas.drawRect(cx - halb, oben, cx + halb, oben + CELL * 10, paint)
+            canvas.drawRect(cx - halb + CELL, oben, cx + halb - CELL, unten, paint)
+            canvas.drawRect(cx - halb, oben + CELL, cx - halb + CELL, unten - CELL, paint)
+            canvas.drawRect(cx + halb - CELL, oben + CELL, cx + halb, unten - CELL, paint)
             text.color = RECORD_YELLOW
-            canvas.drawText(label, cx, oben + CELL * 8, text)
+            canvas.drawText(label, cx, oben + CELL * 6, text)
         }
 
         // Punkt im gewählten Skin, mittig über dem Score. Uhr und Kalender
