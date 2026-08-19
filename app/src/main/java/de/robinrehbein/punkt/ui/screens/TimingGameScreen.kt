@@ -26,6 +26,9 @@ import de.robinrehbein.punkt.sync.StatsSync
 import de.robinrehbein.punkt.ui.data.AndroidKeyValueStore
 import de.robinrehbein.punkt.ui.data.GameStore
 import de.robinrehbein.punkt.ui.platform.PlatformHooks
+import de.robinrehbein.punkt.ui.resources.Res
+import de.robinrehbein.punkt.ui.resources.share_chooser
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Die Android-Schale um [GameScreen].
@@ -44,6 +47,10 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val activity = context as? Activity
     val store = remember { GameStore(AndroidKeyValueStore(context)) }
+    // Der Titel des Share-Dialogs steht seit v2.26 bei den anderen
+    // Karten-Texten in :ui — gelesen wird er hier, weil nur Android
+    // ueberhaupt einen Chooser hat.
+    val chooserTitle = stringResource(Res.string.share_chooser)
     val sounds = remember { GameAudio(context) }
     val feedback = remember { GameHaptics(context) }
 
@@ -152,26 +159,11 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
                     }
                 }
             },
+            // Gezeichnet ist die Karte da schon (in :ui, fuer beide
+            // Plattformen) — hier bleibt nur, was wirklich nur Android
+            // kann: PNG in den Cache, FileProvider, ACTION_SEND.
             onShare = { anfrage ->
-                ScoreCard.share(
-                    context = context,
-                    score = anfrage.score,
-                    bestScore = anfrage.bestScore,
-                    isNewRecord = anfrage.isNewRecord,
-                    skin = store.selectedSkin,
-                    scene = store.selectedScene,
-                    sceneName = anfrage.sceneName,
-                    recordText = anfrage.recordText,
-                    daily = anfrage.daily,
-                    dailyStreak = anfrage.dailyStreak,
-                    // Beiname und Rahmen haengen am Gesamtstand, nicht am
-                    // Lauf — der Stand wird erst beim Tippen auf TEILEN
-                    // geholt, damit er den eben gezaehlten Lauf enthaelt.
-                    // Wer sich die Rahmenstufe im letzten Lauf verdient
-                    // hat, teilt sie also auch.
-                    stats = store.stats(),
-                    cardFrame = store.selectedCardFrame
-                )
+                ScoreCard.share(context, anfrage.image, anfrage.text, chooserTitle)
             },
             diagnostics = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n" +
                 "WERBUNG: ${ads.status}\n" +

@@ -35,15 +35,24 @@ dem Android-Canvas zeichnet.
 
 **Inhaltlich gleichauf mit Android:** Classic + Daily, 42 Skins in sechs
 Familien, sechs Kulissen, drei Ton-Sets, Ziele und Statistik-Seite —
-alles aus denselben Tabellen und derselben Oberfläche.
+alles aus denselben Tabellen und derselben Oberfläche. Dazu die tägliche
+Erinnerung an die Daily Challenge: Opt-in über dieselbe Zeile im
+Einstellungs-Blatt, abends um 18 Uhr wie am Telefon, gebaut auf
+`UNUserNotificationCenter`
+(`ui/src/iosMain/.../platform/IosReminder.kt`). Weil iOS keinen
+Hintergrund-Job kennt, der abends nachschaut, erinnert sie auch an einem
+Tag, an dem die Daily schon gespielt wurde — der Unterschied ist in der
+Datei und in [../ARCHITEKTUR.md](../ARCHITEKTUR.md) begründet. Ein
+Eintrag in `Info.plist` oder `project.yml` ist dafür nicht nötig: Lokale
+Benachrichtigungen kennen keinen Usage-Description-Schlüssel, die
+Berechtigung wird zur Laufzeit erfragt.
 
 **Bewusst nicht dabei** — das sind Vertriebs-Anschlüsse, keine
 Oberfläche, und `:ui` teilt sie deshalb nicht: Anzeigen (AdMob), Käufe
-(Play Billing), Bestenlisten (Play Games), die tägliche Erinnerung
-(WorkManager) und das Teilen einer Score-Card als Bild
-(`android.graphics`, Android-only). Details und der Stand der Migration
-stehen in [../ARCHITEKTUR.md](../ARCHITEKTUR.md) unter „Gebaut: der
-Controller und der iOS-Einstieg".
+(Play Billing), Bestenlisten (Play Games) und das Teilen einer Score-Card
+als Bild (`android.graphics`, Android-only). Details und der Stand der
+Migration stehen in [../ARCHITEKTUR.md](../ARCHITEKTUR.md) unter „Gebaut:
+der Controller und der iOS-Einstieg".
 
 **Kein Billing:** Die drei Gönner-Skins (DIAMANT, PHOENIX, ONYX) stehen im
 Menü, sind auf iOS aber fest gesperrt — sie bleiben sichtbar, weil sie

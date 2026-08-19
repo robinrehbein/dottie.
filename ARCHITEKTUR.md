@@ -153,9 +153,14 @@ Controller:
   Pixel-Bausteine und der Effekt-Zustand.
 - **Die Overlays** — `GameOverlays`, `StatsOverlay`, `PixelButton`,
   Theme und Typografie.
-- **Die Texte** — 184 Saetze je Sprache in
-  `ui/src/commonMain/composeResources`. In `:app` bleiben 16: die, die
-  nur Android hat (Benachrichtigungen, Teilen-Text, Score-Karte).
+- **Die geteilte Score-Karte** — seit v2.26 auch sie: eine
+  `DrawScope`-Routine (`share/ScoreCardRenderer.kt`), die den Bauplan
+  aus `:core` (`CardPlan`) in ein `ImageBitmap` von 1080 mal 1350 Pixeln
+  ausmalt. Vorher zeichnete sie `android.graphics` in `:app`, und auf
+  dem iPhone gab es sie deshalb nicht.
+- **Die Texte** — die Saetze in `ui/src/commonMain/composeResources`. In
+  `:app` bleibt, was nur Android hat: die Benachrichtigungen und die
+  Store-Schluessel.
 
 Damit sind vier Aufzaehlungen ersatzlos entfallen — `DotSkin`,
 `DotScene`, `DotSound` und `MedalTier` in `:app`. Es waren 55 Zeilen
@@ -222,9 +227,15 @@ sondern als Bestand:
 | `leaderboards.available/connect/show` | READY-Overlay | entfaellt |
 | `leaderboards.submitBest/submitDaily` | Tod | entfaellt |
 | `statsSync.start/stop/publish` | Lebenszyklus, nach jeder Wahl | entfaellt |
+<<<<<<< HEAD
+| `DailyReminder.schedule/cancel/needsPermission` | READY-Schalter | `IosReminder` (UNUserNotificationCenter) |
+| `notifPermission.launch(POST_NOTIFICATIONS)` | READY-Schalter | `requestAuthorizationWithOptions` |
+| `ScoreCard.share(…)` | Game-Over | spaeter UIActivityViewController |
+=======
 | `DailyReminder.schedule/cancel/needsPermission` | READY-Schalter | spaeter UNUserNotificationCenter |
 | `notifPermission.launch(POST_NOTIFICATIONS)` | READY-Schalter | entfaellt |
-| `ScoreCard.share(…)` | Game-Over | spaeter UIActivityViewController |
+| `ScoreCard.share(…)` | Game-Over | seit v2.26 `IosShare` (UIActivityViewController) |
+>>>>>>> worktree-agent-a0b691e19b93ab221
 | `LocalLifecycleOwner` | Start/Stopp des Abgleichs | Compose Multiplatform hat kein Pendant |
 
 **So wurde es umgesetzt, in drei Schritten:**
@@ -247,6 +258,25 @@ sondern als Bestand:
 Damit sind `ios/Dottie/Sources/UI` (2 900 Zeilen SpriteKit) und
 `CoreBridge.swift` weggefallen; die iOS-Hülle besteht seither nur noch aus
 `AppDelegate.swift` und `GameViewController.swift` (zusammen 46 Zeilen).
+
+**Nachgereicht: die Tages-Erinnerung.** Die einzige Zeile der Tabelle,
+die kein Store-Anschluss war, sondern nur Betriebssystem — deshalb füllt
+iOS sie inzwischen selbst
+(`ui/src/iosMain/.../platform/IosReminder.kt`). Der Mechanismus ist ein
+anderer als am Telefon: Android lässt abends einen WorkManager-Job
+nachschauen, ob die heutige Daily schon gespielt wurde, und meldet nur
+dann. iOS kennt diesen Hintergrund-Blick nicht, dort steht eine einzige
+wiederholte Anmeldung (`UNCalendarNotificationTrigger`, `repeats = true`,
+18 Uhr wie am Telefon, fester Bezeichner) — sie erinnert deshalb auch an
+einem Tag, an dem schon gespielt wurde, und nennt aus demselben Grund
+keine Serie: Der Inhalt einer wiederholten Anmeldung wird einmal beim
+Planen festgelegt. Die Berechtigung ist wie auf Android die einzige
+Wahrheit für den Schalter — was
+`requestAuthorizationWithOptions` meldet, steht danach im `GameStore`.
+Info.plist und `project.yml` brauchen dafür nichts: Lokale
+Benachrichtigungen kennen keinen Usage-Description-Schlüssel, und das
+Framework kommt wie `AVFAudio` über die Auto-Link-Angaben des
+Kotlin/Native-Frameworks.
 
 **Kosten — eingetreten wie erwartet:** Die iOS-App ist jetzt ein
 Kotlin/Native-Compose-Build (größere App, spürbar längere CI-Läufe wegen
