@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.CardFrame
 import de.robinrehbein.punkt.game.CardStyle
+import de.robinrehbein.punkt.game.FrameTone
 import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.game.MedalId
 import de.robinrehbein.punkt.game.MedalPaint
@@ -1562,11 +1563,17 @@ private fun DrawScope.drawCardFramePreview(frame: CardFrame, alpha: Float) {
     // ein liegendes Rechteck mittig einsetzen, statt zu verzerren.
     val h = d * 0.72f
     val top = (d - h) / 2f
+    // Bewusst kräftiger als auf der echten Karte: Auf 36 dp wäre der
+    // wahre Anteil (15 von 180 Feldern) ein Haar. Die Reihenfolge
+    // stimmt trotzdem — jede Stufe ist breiter als die darunter.
     val staerke = when (frame) {
         CardFrame.SCHLICHT -> d / 18f
         CardFrame.DOPPELLINIE -> d / 12f
         CardFrame.ZINNEN -> d / 8f
         CardFrame.PRACHT -> d / 6f
+        CardFrame.KASKADE -> d / 5.5f
+        CardFrame.PERLENKRANZ -> d / 5f
+        CardFrame.KRONE -> d / 4.5f
     }
 
     drawRect(color = OutlineColor, topLeft = Offset(0f, top), size = Size(d, h), alpha = alpha)
@@ -1588,9 +1595,18 @@ private fun DrawScope.drawCardFramePreview(frame: CardFrame, alpha: Float) {
             style = Stroke(width = band)
         )
     }
-    // Die Prachtstufe bekommt ihre Eckrosetten, sonst sähe sie aus wie
-    // eine bloß dickere Zinnenstufe.
-    if (frame == CardFrame.PRACHT) {
+    // Ab der Prachtstufe kommen Eckornamente dazu, sonst sähen die
+    // oberen vier Stufen alle aus wie eine bloß dickere Zinnenstufe.
+    // Die Farbe unterscheidet sie: Gold für die Pracht, danach das
+    // Kennzeichen der jeweiligen Sammlung.
+    val eckFarbe = when (frame) {
+        CardFrame.PRACHT -> DotBody
+        CardFrame.KASKADE -> Color(FrameTone.INLAY.argb)
+        CardFrame.PERLENKRANZ -> Color(FrameTone.PEARL.argb)
+        CardFrame.KRONE -> Color(FrameTone.GOLD.argb)
+        else -> null
+    }
+    if (eckFarbe != null) {
         val eck = staerke * 0.8f
         listOf(
             Offset(0f, top),
@@ -1598,7 +1614,7 @@ private fun DrawScope.drawCardFramePreview(frame: CardFrame, alpha: Float) {
             Offset(0f, top + h - eck),
             Offset(d - eck, top + h - eck)
         ).forEach {
-            drawRect(color = DotBody, topLeft = it, size = Size(eck, eck), alpha = alpha)
+            drawRect(color = eckFarbe, topLeft = it, size = Size(eck, eck), alpha = alpha)
         }
     }
 }

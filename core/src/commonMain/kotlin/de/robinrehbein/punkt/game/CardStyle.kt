@@ -23,6 +23,10 @@ import kotlin.math.min
  * Karte (`android.graphics`) und das Game-Over-Panel in `:ui`, das auf
  * Android wie auf iOS läuft. Eine Form, die jeder für sich nachzeichnet,
  * läuft auseinander.
+ *
+ * Die Reihenfolge der Einträge IST die Rangfolge. Wer nichts gewählt hat,
+ * trägt den letzten Eintrag, dessen Bedingung — und die aller Stufen
+ * darunter — erfüllt ist (siehe [CardStyle.frame]).
  */
 enum class CardFrame {
     /** Eine einzelne dunkle Kante — der Stand, mit dem jeder anfängt. */
@@ -35,7 +39,28 @@ enum class CardFrame {
     ZINNEN,
 
     /** Vier Lagen, eingelegte Farben und Eckrosetten. */
-    PRACHT
+    PRACHT,
+
+    /**
+     * Die Kulissen-Stufe: türkises Band mit einer Treppe aus perlweißen
+     * Blöcken, die sich nach innen hocharbeitet — der Horizont der sechs
+     * Kulissen als Muster. Ecken als gestufte Pyramide.
+     */
+    KASKADE,
+
+    /**
+     * Die Ton-Stufe: zwei Reihen runder Perlen, die im weißen und im
+     * orangen Band um die Karte laufen — was man hört, wird hier zu einer
+     * Kette aus Kugeln.
+     */
+    PERLENKRANZ,
+
+    /**
+     * Der Abschluss: goldene Zinnenzacken außen, eine Perlenreihe im
+     * türkisen Band darunter, ein oranger Sockel und Eckrosetten aus
+     * Gold und Perlmutt. Wer sie trägt, hat alle drei Sammlungen voll.
+     */
+    KRONE
 }
 
 /**
@@ -75,6 +100,9 @@ enum class FrameShape {
     /** Quadratische Zähne im Takt auf allen vier Kanten. */
     ZAEHNE,
 
+    /** Dasselbe im selben Takt, aber als runde Perle statt als Quadrat. */
+    PERLEN,
+
     /** Dasselbe Quadrat in allen vier Ecken. */
     ECKBLOCK,
 
@@ -93,9 +121,9 @@ enum class FrameShape {
  * ein Balken oder unsichtbar.
  *
  * [inset] ist der Abstand vom Blattrand, [size] die Bandstärke bzw. die
- * Kantenlänge der Form, [step] der Takt der Zahnreihen und [phase] deren
- * Versatz — zwei Reihen mit gleichem Takt und verschiedenem Versatz
- * ergeben eine Treppe.
+ * Kantenlänge der Form, [step] der Takt der Zahn- und Perlenreihen und
+ * [phase] deren Versatz — zwei Reihen mit gleichem Takt und
+ * verschiedenem Versatz ergeben die Treppe der [CardFrame.KASKADE].
  */
 data class FramePart(
     val shape: FrameShape,
@@ -185,10 +213,17 @@ object CardStyle {
      * Gezählt wird mit [SkinPaint.unlockedCount], also ohne Saison- und
      * Gönner-Skins: Ein gekaufter Rahmen wäre etwas anderes als ein
      * verdienter, und die Saison-Skins hängen am Kalender statt am Spiel.
+     *
+     * Die Liste deckt nur die drei Skin-Stufen ab. Darüber hängt der
+     * Rahmen an den anderen Sammlungen — siehe [earns].
      */
     val FRAME_STEPS = intArrayOf(10, 20, 30)
 
-    /** Die höchste Rahmenstufe zu einem Sammlungsstand. */
+    /**
+     * Die höchste Rahmenstufe, die allein die Skin-Sammlung trägt — also
+     * höchstens [CardFrame.PRACHT]. Alles darüber hängt an Kulissen und
+     * Tönen und braucht deshalb den ganzen Spielstand.
+     */
     fun frame(collected: Int): CardFrame {
         var stufe = 0
         FRAME_STEPS.forEach { if (collected >= it) stufe++ }
@@ -196,19 +231,61 @@ object CardStyle {
     }
 
     /**
+     * Die eigene Bedingung einer Stufe — ohne die Stufen darunter.
+     *
+     * Die ersten vier hängen an der Skin-Sammlung, weil das die größte
+     * ist und in dichten Schritten wächst. Darüber wechselt die Achse:
+     * Die Kulissen sind sechs, die Ton-Sets drei, und beide fallen selten
+     * — eine vierte, fünfte, sechste Skin-Schwelle wäre nur mehr
+     * desselben gewesen. Der Abschluss verlangt die volle Skin-Sammlung
+     * und trägt damit (über [frame], das alle Stufen darunter mitprüft)
+     * alle drei Sammlungen auf einmal.
+     *
+     * Was hier NICHT steht, ist genauso wichtig: keine Bedingung auf
+     * Rekord, Serie oder Laufzahl. Der Rahmen hängt an der Sammlung, der
+     * Beiname an der Leistung — siehe [Epithet].
+     */
+    fun earns(frame: CardFrame, stats: SkinStats): Boolean = when (frame) {
+        CardFrame.SCHLICHT -> true
+        CardFrame.DOPPELLINIE -> SkinPaint.unlockedCount(stats) >= FRAME_STEPS[0]
+        CardFrame.ZINNEN -> SkinPaint.unlockedCount(stats) >= FRAME_STEPS[1]
+        CardFrame.PRACHT -> SkinPaint.unlockedCount(stats) >= FRAME_STEPS[2]
+        CardFrame.KASKADE -> ScenePaint.unlockedCount(stats) == SceneId.entries.size
+        CardFrame.PERLENKRANZ -> SoundBank.unlockedCount(stats) == SoundSetId.entries.size
+        CardFrame.KRONE -> SkinPaint.unlockedCount(stats) == SkinPaint.collectableCount()
+    }
+
+    /**
      * Die höchste verdiente Rahmenstufe zu einem Spielstand — die
      * Vorgabe, solange niemand etwas anderes gewählt hat.
+     *
+     * Gelesen wird von unten nach oben, und beim ersten Loch ist Schluss:
+     * Eine Stufe steht erst, wenn sie UND alles darunter verdient ist.
+     * Damit bleibt wahr, was der Rahmen erzählt — die Stufen bauen
+     * aufeinander auf, obwohl die oberen an anderen Sammlungen hängen als
+     * die unteren. Wer alle sechs Kulissen hat, aber erst zwölf Skins,
+     * trägt die Doppellinie und nicht die Kaskade: Die Kaskade ist der
+     * Schritt NACH der Pracht, nicht ein Seitenweg an ihr vorbei.
      */
-    fun frame(stats: SkinStats): CardFrame = frame(SkinPaint.unlockedCount(stats))
+    fun frame(stats: SkinStats): CardFrame {
+        var hoechste = CardFrame.SCHLICHT
+        for (stufe in CardFrame.entries) {
+            if (!earns(stufe, stats)) break
+            hoechste = stufe
+        }
+        return hoechste
+    }
 
     /**
      * Ist diese Stufe verdient? [CardFrame.SCHLICHT] immer — er ist der
      * Bestand und damit kein Fund, sondern der Ausgangspunkt.
      *
-     * Dass die Stufen aufeinander aufbauen, macht die Frage einfacher als
-     * bei Skins oder Ton-Sets: Wer die dritte Stufe hat, hat auch die
-     * zweite. Eine eigene Schwellenliste je Stufe wäre hier eine Lüge
-     * über die Sammlung.
+     * Anders als bei Skins, Kulissen und Ton-Sets reicht dafür ein
+     * Vergleich: Weil [frame] beim ersten Loch abbricht, ist alles
+     * unterhalb der höchsten Stufe offen und alles darüber zu. Jede
+     * Stufe hat zwar ihre eigene Bedingung ([earns]) — aber eine, die
+     * für sich erfüllt ist und deren Vorgänger fehlt, ist eben nicht
+     * verdient, sondern vorgemerkt.
      */
     fun isUnlocked(frame: CardFrame, stats: SkinStats): Boolean =
         frame.ordinal <= frame(stats).ordinal
@@ -265,8 +342,10 @@ object CardStyle {
      * das Absicht war. Erst die zweite Stufe darf anders aussehen — dann
      * hat sie jemand verdient.
      *
-     * Die übrigen drei rücken den Inhalt nach innen, weil ihre Rahmen
-     * bis zu 90 Pixel breit sind.
+     * Die übrigen rücken den Inhalt nach innen, weil ihre Rahmen 36 bis
+     * 102 Pixel breit sind. Zwei Maßsätze reichen dafür nicht: Die drei
+     * obersten Stufen sind noch einmal breiter als die Pracht, und bei
+     * ihnen läge die Aufforderung sonst unter dem unteren Band.
      */
     fun layout(frame: CardFrame): CardLayout = when (frame) {
         CardFrame.SCHLICHT -> CardLayout(
@@ -278,7 +357,7 @@ object CardStyle {
             dotRadius = PLAIN_DOT_RADIUS,
             challenge = PLAIN_CHALLENGE
         )
-        else -> CardLayout(
+        CardFrame.DOPPELLINIE, CardFrame.ZINNEN, CardFrame.PRACHT -> CardLayout(
             title = 0.155f,
             titleSize = 120f,
             subline = 0.205f,
@@ -286,6 +365,15 @@ object CardStyle {
             dot = 0.345f,
             dotRadius = 105f,
             challenge = 0.92f
+        )
+        else -> CardLayout(
+            title = 0.175f,
+            titleSize = 112f,
+            subline = 0.22f,
+            sublineSize = 50f,
+            dot = 0.355f,
+            dotRadius = 100f,
+            challenge = 0.90f
         )
     }
 
@@ -357,9 +445,67 @@ object CardStyle {
             FramePart(FrameShape.ECKRAUTE, 1, 20, FrameTone.GOLD),
             FramePart(FrameShape.ECKRAUTE, 6, 10, FrameTone.ACCENT),
             FramePart(FrameShape.ECKBLOCK, 9, 4, FrameTone.PEARL)
+        ),
+
+        // Die Kulissen-Stufe. Ihr Kennzeichen ist die Treppe: drei
+        // Perlenreihen im selben Takt, jede zwei Felder weiter innen und
+        // drei Felder versetzt. Das Muster steigt dadurch um die ganze
+        // Karte herum — dieselbe Treppe, mit der das Spiel auch Fels und
+        // Wolke baut, nur einmal um das Blatt gelegt.
+        CardFrame.KASKADE to listOf(
+            FramePart(FrameShape.BAND, 0, 2, FrameTone.OUTLINE),
+            FramePart(FrameShape.BAND, 2, 6, FrameTone.INLAY),
+            FramePart(FrameShape.ZAEHNE, 2, 2, FrameTone.PEARL, step = 9),
+            FramePart(FrameShape.ZAEHNE, 4, 2, FrameTone.PEARL, step = 9, phase = 3),
+            FramePart(FrameShape.ZAEHNE, 6, 2, FrameTone.PEARL, step = 9, phase = 6),
+            FramePart(FrameShape.BAND, 8, 2, FrameTone.OUTLINE),
+            FramePart(FrameShape.BAND, 10, 4, FrameTone.GOLD),
+            FramePart(FrameShape.BAND, 14, 2, FrameTone.OUTLINE),
+            // Die Ecke wiederholt die Treppe als Pyramide: vier Quadrate
+            // ineinander statt der Rosette der Pracht.
+            FramePart(FrameShape.ECKBLOCK, 0, 20, FrameTone.OUTLINE),
+            FramePart(FrameShape.ECKBLOCK, 2, 16, FrameTone.PEARL),
+            FramePart(FrameShape.ECKBLOCK, 5, 10, FrameTone.INLAY),
+            FramePart(FrameShape.ECKBLOCK, 8, 4, FrameTone.GOLD)
+        ),
+
+        // Die Ton-Stufe. Zwei Perlenreihen statt der Zinnen: außen große
+        // goldene Perlen im weißen Band, innen kleine weiße im orangen —
+        // versetzt, damit die beiden Reihen einander nicht spiegeln.
+        CardFrame.PERLENKRANZ to listOf(
+            FramePart(FrameShape.BAND, 0, 2, FrameTone.OUTLINE),
+            FramePart(FrameShape.BAND, 2, 6, FrameTone.PEARL),
+            FramePart(FrameShape.PERLEN, 2, 6, FrameTone.GOLD, step = 8),
+            FramePart(FrameShape.BAND, 8, 2, FrameTone.OUTLINE),
+            FramePart(FrameShape.BAND, 10, 5, FrameTone.ACCENT),
+            FramePart(FrameShape.PERLEN, 10, 4, FrameTone.PEARL, step = 6, phase = 3),
+            FramePart(FrameShape.BAND, 15, 2, FrameTone.OUTLINE),
+            FramePart(FrameShape.ECKBLOCK, 0, 20, FrameTone.OUTLINE),
+            FramePart(FrameShape.ECKRAUTE, 1, 18, FrameTone.PEARL),
+            FramePart(FrameShape.ECKRAUTE, 5, 10, FrameTone.GOLD),
+            FramePart(FrameShape.ECKBLOCK, 8, 4, FrameTone.ACCENT)
+        ),
+
+        // Der Abschluss. Er zitiert alle drei Stufen unter sich: die
+        // Zinnen (hier als dunkle Zacken im Gold, wie ein Kronenrand),
+        // die Perlen der Ton-Stufe und die Rosetten der Pracht. Nichts
+        // Neues also — die Krone ist die Summe, nicht die Ausnahme.
+        CardFrame.KRONE to listOf(
+            FramePart(FrameShape.BAND, 0, 2, FrameTone.OUTLINE),
+            FramePart(FrameShape.BAND, 2, 4, FrameTone.GOLD),
+            FramePart(FrameShape.ZAEHNE, 2, 2, FrameTone.OUTLINE, step = 6),
+            FramePart(FrameShape.BAND, 6, 2, FrameTone.OUTLINE),
+            FramePart(FrameShape.BAND, 8, 4, FrameTone.INLAY),
+            FramePart(FrameShape.PERLEN, 8, 4, FrameTone.PEARL, step = 6, phase = 3),
+            FramePart(FrameShape.BAND, 12, 4, FrameTone.ACCENT),
+            FramePart(FrameShape.BAND, 16, 2, FrameTone.OUTLINE),
+            FramePart(FrameShape.ECKBLOCK, 0, 24, FrameTone.OUTLINE),
+            FramePart(FrameShape.ECKRAUTE, 1, 22, FrameTone.GOLD),
+            FramePart(FrameShape.ECKBLOCK, 5, 14, FrameTone.ACCENT),
+            FramePart(FrameShape.ECKRAUTE, 6, 12, FrameTone.PEARL),
+            FramePart(FrameShape.ECKBLOCK, 10, 4, FrameTone.GOLD)
         )
     )
-
 
     /** Das Muster einer Stufe. */
     fun parts(frame: CardFrame): List<FramePart> = PARTS.getValue(frame)
@@ -391,6 +537,7 @@ object CardStyle {
             when (part.shape) {
                 FrameShape.BAND -> band(out, cols, rows, part)
                 FrameShape.ZAEHNE -> takt(out, cols, rows, part, rund = false)
+                FrameShape.PERLEN -> takt(out, cols, rows, part, rund = true)
                 FrameShape.ECKBLOCK -> ecken(out, cols, rows, part, rund = false)
                 FrameShape.ECKRAUTE -> ecken(out, cols, rows, part, rund = true)
             }
@@ -411,7 +558,7 @@ object CardStyle {
     }
 
     /**
-     * Zähne auf allen vier Kanten, im Takt [FramePart.step].
+     * Zähne oder Perlen auf allen vier Kanten, im Takt [FramePart.step].
      * Gezählt wird von beiden Enden zur Mitte, damit die Reihe an jeder
      * Ecke gleich anfängt — von links nach rechts durchgezählt bliebe an
      * einer Kante ein Rest übrig.

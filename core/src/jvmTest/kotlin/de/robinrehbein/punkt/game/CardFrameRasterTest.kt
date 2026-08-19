@@ -10,10 +10,10 @@ import kotlin.math.min
  * verändert hat.
  *
  * Bis v2.25 stand das Muster als Zeichencode in `ScoreCard.kt`
- * (`android.graphics`, Android-allein). Damit das Game-Over-Panel in :ui
- * denselben Rahmen tragen kann, steht es jetzt als Tabelle in
- * [CardStyle] — und für so einen Umzug gilt dieselbe Regel wie bei den
- * Kulissen: Wer ihn sieht, hat ihn falsch gemacht.
+ * (`android.graphics`, Android-allein). Seit das Game-Over-Panel in :ui
+ * denselben Rahmen trägt, steht es als Tabelle in [CardStyle] — und für
+ * so einen Umzug gilt dieselbe Regel wie bei den Kulissen: Wer ihn sieht,
+ * hat ihn falsch gemacht.
  *
  * Geprüft wird deshalb nicht "dieselben Aufrufe", sondern "dasselbe
  * Bild": Beide Fassungen malen in ein Feld von 180 mal 225 Feldern — den
@@ -265,11 +265,11 @@ class CardFrameRasterTest {
     }
 
     @Test
-    fun `Zaehne bleiben in ihrem Band`() {
+    fun `Zaehne und Perlen bleiben in ihrem Band`() {
         CardFrame.entries.forEach { frame ->
             val baender = CardStyle.parts(frame).filter { it.shape == FrameShape.BAND }
             CardStyle.parts(frame)
-                .filter { it.shape == FrameShape.ZAEHNE }
+                .filter { it.shape == FrameShape.ZAEHNE || it.shape == FrameShape.PERLEN }
                 .forEach { reihe ->
                     assertTrue("$frame: eine Reihe ohne Takt", reihe.step > reihe.size)
                     val passt = baender.any {
@@ -289,8 +289,8 @@ class CardFrameRasterTest {
         // anderes Seitenverhältnis. Die Tabelle rechnet deshalb in
         // Feldern: Bei halber Feldzahl muss derselbe Rahmen
         // herauskommen, nur eben auf weniger Feldern.
-        val klein = neuesBlatt(CardFrame.PRACHT, cols = 90, rows = 60)
-        val dick = CardStyle.thickness(CardFrame.PRACHT)
+        val klein = neuesBlatt(CardFrame.KRONE, cols = 90, rows = 60)
+        val dick = CardStyle.thickness(CardFrame.KRONE)
         // Aussenkante rundum dunkel, Mitte frei.
         assertEquals(FrameTone.OUTLINE.argb, klein.felder[0])
         assertEquals(FrameTone.OUTLINE.argb, klein.felder[89])

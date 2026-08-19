@@ -2,6 +2,7 @@
 
 package de.robinrehbein.punkt.ui.text
 
+import de.robinrehbein.punkt.game.CardFrame
 import de.robinrehbein.punkt.game.MedalPaint
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinFamily
@@ -62,6 +63,22 @@ class TextsTest {
                 assertNotNull(Texts.resource(it), "kein Hinweis fuer ${sound.name}")
             }
         }
+    }
+
+    /**
+     * Ein Rahmen ohne Hinweis waere die schlimmste Zeile im Menue: Man
+     * saehe eine gesperrte Stufe und nirgends, was sie kostet.
+     */
+    @Test
+    fun `jeder Kartenrahmen hat Namen und Hinweis`() {
+        CardFrame.entries.forEach { frame ->
+            assertNotNull(Texts.resource(Texts.frameTitleKey(frame)), "kein Name fuer ${frame.name}")
+            Texts.frameHintKey(frame)?.let {
+                assertNotNull(Texts.resource(it), "kein Hinweis fuer ${frame.name}")
+            }
+        }
+        // SCHLICHT ist der Bestand und braucht als einziger keinen.
+        assertNull(Texts.frameHintKey(CardFrame.SCHLICHT))
     }
 
     @Test

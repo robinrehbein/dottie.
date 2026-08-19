@@ -120,7 +120,28 @@ object ParityVectors {
         SkinStats(0, 19, 0),
         SkinStats(0, 20, 0),
         SkinStats(0, 0, 0, totalScore = 24_999),
-        SkinStats(0, 0, 0, totalScore = 25_000)
+        SkinStats(0, 0, 0, totalScore = 25_000),
+        // Die Kartenrahmen (CardStyle) sind die vierte Sammlung und die
+        // einzige, die auf den anderen aufbaut: Ihre oberen drei Stufen
+        // verlangen alle Kulissen, alle Töne und alle Skins. So weit
+        // reicht keine Probe darüber — diese vier tun es, je eine knapp
+        // unter einer der drei Vollständigkeiten und eine darüber.
+        SkinStats(
+            bestScore = 84, bestPerfectStreak = 19, bestDailyStreak = 30,
+            runCount = 500, totalScore = 25_000, daysPlayed = 7, monthsPlayed = 3
+        ),
+        SkinStats(
+            bestScore = 85, bestPerfectStreak = 19, bestDailyStreak = 30,
+            runCount = 500, totalScore = 25_000, daysPlayed = 7, monthsPlayed = 3
+        ),
+        SkinStats(
+            bestScore = 85, bestPerfectStreak = 20, bestDailyStreak = 30,
+            runCount = 500, totalScore = 25_000, daysPlayed = 7, monthsPlayed = 0
+        ),
+        SkinStats(
+            bestScore = 85, bestPerfectStreak = 20, bestDailyStreak = 30,
+            runCount = 500, totalScore = 25_000, daysPlayed = 7, monthsPlayed = 3
+        )
     )
 
     /**
