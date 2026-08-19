@@ -74,7 +74,7 @@ GROUND_TOP = int(H * 0.88)
 #
 # Bewegte und reagierende Skins SIND ihr Verlauf: THERMO ist bei Score 0
 # hellblau wie FROST, MEDAILLE ist ohne Medaille zinnfarben, KOMBO ohne
-# Serie grau. Eine Galerie, die alle 42 im Ruhezustand zeigt, zeigt
+# Serie grau. Eine Galerie, die alle 46 im Ruhezustand zeigt, zeigt
 # deshalb weniger Vielfalt, als das Spiel hat — dreimal Hellblau,
 # zweimal Gelb, dreimal Grau. Also bekommt jeder Skin hier den Moment,
 # der ihn ausmacht. Erfunden ist daran nichts: Jeder Zustand ist im Lauf
@@ -425,7 +425,7 @@ def daily(lang):
 
 # ===== 04: Das Skin-Menue, wie es seit v2.20 aussieht =====
 #
-# Bei 42 Skins ist die reine Liste nicht mehr lesbar; das Menue gliedert
+# Bei 46 Skins ist die reine Liste nicht mehr lesbar; das Menue gliedert
 # sie deshalb nach Familien (SkinOverlay in GameOverlays.kt). Das Motiv
 # zeigt den Anfang der Liste in echten Groessen — die letzte Zeile laeuft
 # unten aus dem Bild, weil die Liste genau das tut: sie geht weiter.
@@ -494,7 +494,7 @@ def skin_menu(lang):
     return s
 
 
-# ===== 05: Die Galerie — alle 42 Skins auf einen Blick =====
+# ===== 05: Die Galerie — alle 46 Skins auf einen Blick =====
 #
 # Das staerkste Argument dieses Updates und deshalb ein eigenes Motiv.
 # Gegliedert wie das Menue, damit die Zahl nicht nur gross, sondern auch
@@ -509,9 +509,9 @@ def gallery(lang):
     s.ground()
     s.scenery()
     if lang == "de":
-        caption(s, "42 SKINS", "EIN PUNKT, VIELE KLEIDER", y1=96, y2=200)
+        caption(s, "46 SKINS", "EIN PUNKT, VIELE KLEIDER", y1=96, y2=200)
     else:
-        caption(s, "42 SKINS", "ONE DOT, EVERY LOOK", y1=96, y2=200)
+        caption(s, "46 SKINS", "ONE DOT, EVERY LOOK", y1=96, y2=200)
 
     # Acht Reihen und sechs Ueberschriften muessen zwischen Caption und
     # Baumkronen passen — deshalb sitzen die Vogel enger als sonst.

@@ -138,7 +138,7 @@ class ProgressTest {
             }
             geprueft++
         }
-        assertEquals("alle Zahlen-Ziele geprüft", 39, geprueft)
+        assertEquals("alle Zahlen-Ziele geprüft", 43, geprueft)
     }
 
     @Test

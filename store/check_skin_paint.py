@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Prueft `store/skin_paint.py` Feld fuer Feld gegen die Kotlin-Quelle.
 
-Die Store-Grafiken behaupten, 42 echte Skins zu zeigen. Damit das keine
+Die Store-Grafiken behaupten, 46 echte Skins zu zeigen. Damit das keine
 Behauptung bleibt, wird die Python-Portierung gegen einen Abzug aus
-`core/.../SkinPaint.kt` gehalten: alle 42 Skins, alle 169 Rasterfelder,
+`core/.../SkinPaint.kt` gehalten: alle 46 Skins, alle 169 Rasterfelder,
 in vier Zustaenden (Ruhe, drei gemischte Laeufe). Ein einziger
 abweichender Farbwert laesst den Lauf scheitern.
 
@@ -27,7 +27,7 @@ import skin_paint as sp  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCE = os.path.join(
-    REPO, "core/src/main/kotlin/de/robinrehbein/punkt/game/SkinPaint.kt")
+    REPO, "core/src/commonMain/kotlin/de/robinrehbein/punkt/game/SkinPaint.kt")
 
 # Vier Zustaende: Ruhe plus drei, die Uhr, Kalender, Score und Serie
 # gleichzeitig aus der Standardstellung schieben.

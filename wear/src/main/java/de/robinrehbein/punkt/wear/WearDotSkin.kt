@@ -34,6 +34,7 @@ internal enum class WearDotSkin(val id: SkinId) {
     FROST(SkinId.FROST),
     SCHATTEN(SkinId.SCHATTEN),
     PRISMA(SkinId.PRISMA),
+    MATCHA(SkinId.MATCHA),
 
     // Gemustert
     BIENE(SkinId.BIENE),
@@ -47,6 +48,9 @@ internal enum class WearDotSkin(val id: SkinId) {
     PINGUIN(SkinId.PINGUIN),
     FUSSBALL(SkinId.FUSSBALL),
     DONUT(SkinId.DONUT),
+    TOFFIFEE(SkinId.TOFFIFEE),
+    TENNISBALL(SkinId.TENNISBALL),
+    BASKETBALL(SkinId.BASKETBALL),
 
     // Bewegt
     REGENBOGEN(SkinId.REGENBOGEN),

@@ -28,11 +28,12 @@ import kotlin.math.sqrt
  */
 enum class SkinId {
     // Einfarbig
-    KLASSIK, MINZE, LAVA, GOLD, FROST, SCHATTEN, PRISMA,
+    KLASSIK, MINZE, LAVA, GOLD, FROST, SCHATTEN, PRISMA, MATCHA,
 
     // Gemustert
     BIENE, MELONE, PILZ, KOI, GALAXIE, KARO,
     EI, TIGER, PINGUIN, FUSSBALL, DONUT,
+    TOFFIFEE, TENNISBALL, BASKETBALL,
 
     // Bewegt (Zeit)
     REGENBOGEN, AURORA, MAGMA, NEON, CHROM,
@@ -206,6 +207,7 @@ object SkinPaint {
         SkinId.FROST -> 0xFF8FD8FF
         SkinId.SCHATTEN -> 0xFF6B4F8A
         SkinId.PRISMA -> 0xFFFF6FD8
+        SkinId.MATCHA -> 0xFF9DBB61
         SkinId.BIENE -> 0xFFFFD847
         SkinId.MELONE -> 0xFFF0555C
         SkinId.PILZ -> 0xFFE8452F
@@ -225,6 +227,9 @@ object SkinPaint {
         SkinId.PINGUIN -> 0xFF2E3440
         SkinId.FUSSBALL -> 0xFFF7F3EE
         SkinId.DONUT -> 0xFFFF7FBF
+        SkinId.TOFFIFEE -> 0xFFB5793E
+        SkinId.TENNISBALL -> 0xFFCCE62E
+        SkinId.BASKETBALL -> 0xFFE8722C
         SkinId.WELLE -> 0xFF2E86D8
         SkinId.GEWITTER -> 0xFF4A5568
         SkinId.KONFETTI -> 0xFFF7F3EE
@@ -251,6 +256,7 @@ object SkinPaint {
         SkinId.FROST -> 0xFF4FA3D8
         SkinId.SCHATTEN -> 0xFF43315C
         SkinId.PRISMA -> 0xFFC93BAA
+        SkinId.MATCHA -> 0xFF6E8B3D
         SkinId.BIENE -> 0xFF3A2C33
         SkinId.MELONE -> 0xFF74BF2E
         SkinId.PILZ -> 0xFFC2301F
@@ -270,6 +276,9 @@ object SkinPaint {
         SkinId.PINGUIN -> 0xFF1B1F28
         SkinId.FUSSBALL -> 0xFF2A2C33
         SkinId.DONUT -> 0xFFC08A47
+        SkinId.TOFFIFEE -> 0xFF7E4F23
+        SkinId.TENNISBALL -> 0xFF93AC1F
+        SkinId.BASKETBALL -> 0xFFAD4C1B
         SkinId.WELLE -> 0xFF1F5FA8
         SkinId.GEWITTER -> 0xFF2F3644
         SkinId.KONFETTI -> 0xFFFF5A36
@@ -297,6 +306,7 @@ object SkinPaint {
         SkinId.FROST -> 0xFFE8F9FF
         SkinId.SCHATTEN -> 0xFFCBB8E8
         SkinId.PRISMA -> 0xFFB8F3FF
+        SkinId.MATCHA -> 0xFFE2F0BF
         SkinId.BIENE -> 0xFFFFF3B8
         SkinId.MELONE -> 0xFFFFD3D6
         SkinId.PILZ -> 0xFFFFD9C9
@@ -316,6 +326,9 @@ object SkinPaint {
         SkinId.PINGUIN -> 0xFFFFFFFF
         SkinId.FUSSBALL -> 0xFFFFFFFF
         SkinId.DONUT -> 0xFFFFFFFF
+        SkinId.TOFFIFEE -> 0xFFEBD2AB
+        SkinId.TENNISBALL -> 0xFFF2FFAD
+        SkinId.BASKETBALL -> 0xFFFFC291
         SkinId.WELLE -> 0xFFFFFFFF
         SkinId.GEWITTER -> 0xFFFFF3B8
         SkinId.KONFETTI -> 0xFFFFFFFF
@@ -451,11 +464,15 @@ object SkinPaint {
         // Ausdauer statt Können: Diese Achsen wachsen mit jedem Lauf, auch
         // mit den schlechten. Ohne sie hängen fast alle Skins am Rekord,
         // und wer bei 25 stehenbleibt, sammelt nie wieder etwas.
+        SkinId.MATCHA -> stats.runCount >= 5
         SkinId.EI -> stats.runCount >= 25
+        SkinId.TENNISBALL -> stats.runCount >= 50
         SkinId.TIGER -> stats.runCount >= 100
         SkinId.MEDAILLE -> stats.runCount >= 200
         SkinId.FUSSBALL -> stats.runCount >= 300
+        SkinId.TOFFIFEE -> stats.totalScore >= 100
         SkinId.DONUT -> stats.totalScore >= 1_000
+        SkinId.BASKETBALL -> stats.totalScore >= 2_500
         SkinId.KONFETTI -> stats.totalScore >= 5_000
         SkinId.TAGESZEIT -> stats.daysPlayed >= 7
         SkinId.JAHRESZEIT -> stats.monthsPlayed >= 3
@@ -514,11 +531,13 @@ object SkinPaint {
      */
     fun family(id: SkinId): SkinFamily = when (id) {
         SkinId.KLASSIK, SkinId.MINZE, SkinId.LAVA, SkinId.GOLD,
-        SkinId.FROST, SkinId.SCHATTEN, SkinId.PRISMA -> SkinFamily.EINFARBIG
+        SkinId.FROST, SkinId.SCHATTEN, SkinId.PRISMA,
+        SkinId.MATCHA -> SkinFamily.EINFARBIG
 
         SkinId.BIENE, SkinId.MELONE, SkinId.PILZ, SkinId.KOI,
         SkinId.GALAXIE, SkinId.KARO, SkinId.EI, SkinId.TIGER,
-        SkinId.PINGUIN, SkinId.FUSSBALL, SkinId.DONUT -> SkinFamily.GEMUSTERT
+        SkinId.PINGUIN, SkinId.FUSSBALL, SkinId.DONUT, SkinId.TOFFIFEE,
+        SkinId.TENNISBALL, SkinId.BASKETBALL -> SkinFamily.GEMUSTERT
 
         SkinId.REGENBOGEN, SkinId.AURORA, SkinId.MAGMA, SkinId.NEON,
         SkinId.CHROM, SkinId.WELLE, SkinId.GEWITTER, SkinId.KONFETTI,
@@ -548,7 +567,8 @@ object SkinPaint {
         val t = state.elapsed
         return when (id) {
             SkinId.KLASSIK, SkinId.MINZE, SkinId.LAVA, SkinId.GOLD,
-            SkinId.FROST, SkinId.SCHATTEN, SkinId.PRISMA, SkinId.TINTE ->
+            SkinId.FROST, SkinId.SCHATTEN, SkinId.PRISMA, SkinId.MATCHA,
+            SkinId.TINTE ->
                 shaded(col, row, body(id), shade(id))
 
             SkinId.BIENE ->
@@ -672,6 +692,28 @@ object SkinPaint {
                     else -> shaded(col, row, 0xFFFF7FBF, 0xFFE04E9C)
                 }
             }
+
+            SkinId.TOFFIFEE -> {
+                // Der Karamellbecher von oben: heller Rand, Schokofüllung,
+                // Haselnuss-Kuppe in der Mitte.
+                val dx = col - MID
+                val dy = row - MID
+                val d = sqrt(dx * dx + dy * dy)
+                when {
+                    d < 1.2f -> 0xFF8A5E33
+                    d < 2.5f -> 0xFF5A3A22
+                    d < 3.8f -> 0xFFD9A45C
+                    else -> shaded(col, row, 0xFFB5793E, 0xFF7E4F23)
+                }
+            }
+
+            SkinId.TENNISBALL ->
+                if (isTennisSeam(col, row)) 0xFFF7F3EE
+                else shaded(col, row, 0xFFCCE62E, 0xFF93AC1F)
+
+            SkinId.BASKETBALL ->
+                if (isBasketballSeam(col, row)) 0xFF4A2410
+                else shaded(col, row, 0xFFE8722C, 0xFFAD4C1B)
 
             // ===== Bewegt =====
 
@@ -874,6 +916,27 @@ object SkinPaint {
             (col == 7 && row == 7) || (col == 6 && row == 8) ||
             (col == 1 && row == 4) || (col == 2 && row == 4) || (col == 2 && row == 3) ||
             (col == 10 && row == 9) || (col == 9 && row == 10) || (col == 3 && row == 11)
+
+    /**
+     * Die beiden Bogen-Nähte des TENNISBALL: Kreisränder, deren Zentren
+     * weit links und rechts außerhalb des Rasters liegen — so biegen
+     * sich die Nähte wie am echten Ball.
+     */
+    private fun isTennisSeam(col: Int, row: Int): Boolean {
+        val dy = (row - 6).toFloat()
+        val left = sqrt((col + 5.5f) * (col + 5.5f) + dy * dy)
+        val right = sqrt((col - 17.5f) * (col - 17.5f) + dy * dy)
+        return abs(left - 9.75f) < 0.65f || abs(right - 9.75f) < 0.65f
+    }
+
+    /** Kreuznaht plus zwei Seitenbögen des BASKETBALL. */
+    private fun isBasketballSeam(col: Int, row: Int): Boolean {
+        if (col == 6 || row == 6) return true
+        val dy = (row - 6).toFloat()
+        val left = sqrt((col + 6.5f) * (col + 6.5f) + dy * dy)
+        val right = sqrt((col - 18.5f) * (col - 18.5f) + dy * dy)
+        return abs(left - 8.9f) < 0.5f || abs(right - 8.9f) < 0.5f
+    }
 
     private fun isSprinkle(col: Int, row: Int): Boolean =
         (col == 3 && row == 2) || (col == 5 && row == 1) || (col == 8 && row == 2) ||
