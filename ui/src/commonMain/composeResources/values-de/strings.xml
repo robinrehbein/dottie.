@@ -28,11 +28,6 @@
     <string name="banner_chain">NOCH EINE!</string>
     <string name="banner_record">REKORD GEKNACKT!</string>
     <string name="banner_stage">NEUE STUFE!</string>
-    <string name="banner_twist_pulse">NEU: PULS-ZONE!</string>
-    <string name="banner_twist_drift">NEU: WANDERNDE ZONE!</string>
-    <string name="banner_twist_ghost">NEU: GEISTER-PUNKT!</string>
-    <string name="banner_twist_fake">NEU: FALLEN-ZONE!</string>
-    <string name="banner_twist_chain">NEU: KETTEN-ZONE!</string>
     <string name="game_over">GAME OVER</string>
     <string name="medal">MEDAILLE</string>
     <string name="medal_bronze">BRONZE</string>
@@ -45,6 +40,16 @@
     <string name="record_label">REKORD</string>
     <string name="new_record">NEUER REKORD!</string>
     <string name="new_skin_unlocked">NEUER SKIN FREIGESCHALTET!</string>
+    <!--
+      Die einmalige Twist-Erklaerung im Game-Over (siehe TwistLessons):
+      kurz genug fuer einen Blick, denn hier will jemand neu starten. Die
+      langen Saetze der Hilfe stehen weiter unten als twist_*_text.
+    -->
+    <string name="twist_learned_pulse">NEU IN DIESEM LAUF: PULS — DIE ZONE ATMET</string>
+    <string name="twist_learned_drift">NEU IN DIESEM LAUF: DRIFT — DIE ZONE WANDERT</string>
+    <string name="twist_learned_ghost">NEU IN DIESEM LAUF: GEIST — DER PUNKT BLINKT WEG</string>
+    <string name="twist_learned_fake">NEU IN DIESEM LAUF: FALLE — NIE HINEINTIPPEN</string>
+    <string name="twist_learned_chain">NEU IN DIESEM LAUF: KETTE — ZWEI ZONEN NACHEINANDER</string>
     <string name="tap_retry">TIPPEN = NOCHMAL</string>
     <string name="share">TEILEN</string>
     <string name="menu">MENUE</string>

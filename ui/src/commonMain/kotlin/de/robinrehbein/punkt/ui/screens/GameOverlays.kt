@@ -71,11 +71,6 @@ import de.robinrehbein.punkt.ui.components.PixelIconButton
 import de.robinrehbein.punkt.ui.data.deviceHourAndMonth
 import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.ad_privacy
-import de.robinrehbein.punkt.ui.resources.banner_twist_chain
-import de.robinrehbein.punkt.ui.resources.banner_twist_drift
-import de.robinrehbein.punkt.ui.resources.banner_twist_fake
-import de.robinrehbein.punkt.ui.resources.banner_twist_ghost
-import de.robinrehbein.punkt.ui.resources.banner_twist_pulse
 import de.robinrehbein.punkt.ui.resources.best_score
 import de.robinrehbein.punkt.ui.resources.daily
 import de.robinrehbein.punkt.ui.resources.frame_on_card
@@ -148,6 +143,7 @@ import de.robinrehbein.punkt.ui.text.skinHint
 import de.robinrehbein.punkt.ui.text.skinTitle
 import de.robinrehbein.punkt.ui.text.soundHint
 import de.robinrehbein.punkt.ui.text.soundTitle
+import de.robinrehbein.punkt.ui.text.twistLesson
 import de.robinrehbein.punkt.ui.theme.Bytesized
 import de.robinrehbein.punkt.ui.world.BlockBody
 import de.robinrehbein.punkt.ui.world.BlockCap
@@ -159,6 +155,7 @@ import de.robinrehbein.punkt.ui.world.CloudColor
 import de.robinrehbein.punkt.ui.world.DotBody
 import de.robinrehbein.punkt.ui.world.DotShade
 import de.robinrehbein.punkt.ui.world.DotShine
+import de.robinrehbein.punkt.ui.world.FakeZoneColor
 import de.robinrehbein.punkt.ui.world.FxState
 import de.robinrehbein.punkt.ui.world.GRID
 import de.robinrehbein.punkt.ui.world.GrassDark
@@ -488,6 +485,12 @@ fun GameOverOverlay(
     dailyStreak: Int,
     skinUnlocked: Boolean,
     newMedal: Boolean,
+    /**
+     * Der Twist, den dieser Lauf freigeschaltet hat und der noch nie
+     * erklärt wurde — null, wenn es nichts zu erklären gibt (siehe
+     * TwistLessons). Höchstens einer je Game-Over.
+     */
+    newTwist: Twist?,
     // Das nächstliegende offene Ziel — null, wenn alles gesammelt ist.
     goal: Goal?,
     /** null = diese Plattform kann nicht teilen; dann faellt der Knopf weg. */
@@ -644,6 +647,21 @@ fun GameOverOverlay(
                 )
             }
 
+            // Die Twist-Erklärung sitzt UNTER den Feier-Zeilen und ÜBER
+            // dem Ziel-Balken, und das ist der Platz, der den bestehenden
+            // Rhythmus am wenigsten stört: Darüber steht, wie der Lauf
+            // war — Spott oder Rekord, Daily-Stand, Medaille, Skin. Das
+            // ist ein zusammenhängender Block aus Ergebnis und Belohnung,
+            // und eine Lehrzeile mittendrin (oder gar über dem Spott)
+            // würde den Blick vom Ergebnis wegziehen, das man nach dem
+            // Tod zuerst sucht. Darunter steht, was als Nächstes kommt —
+            // dorthin gehört auch der neue Twist, denn er ist keine
+            // Belohnung, sondern eine Ansage für den nächsten Versuch.
+            if (newTwist != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+                TwistLessonShield(newTwist)
+            }
+
             // Das nächste Ziel: eine Zeile, ein Balken, mehr nicht. Hier
             // stirbt gerade jemand und will neu starten — der Fortschritt
             // soll ihn dabei anschieben, nicht aufhalten.
@@ -697,6 +715,45 @@ fun GameOverOverlay(
                 )
             }
         }
+    }
+}
+
+/**
+ * Die einmalige Twist-Erklärung: dunkles Pflaumen-Schild, gelber Text.
+ * Dieselben zwei Farben, aus denen im Game-Over ohnehin alles gebaut ist
+ * — der Pixelrahmen der Punkte-Tafel und die Feier-Zeilen darunter.
+ *
+ * Das Farbquadrat gibt es nur bei der FALLE, und es steht VOR der Zeile
+ * statt mitten im Satz: Genauso zeigt die Hilfe ihre Twists (siehe
+ * [TwistHelpRow]), und die Stelle hängt an keiner Wortstellung, die sich
+ * zwischen Deutsch und Englisch verschiebt. Die Warnung hängt damit an
+ * der Farbe, nicht am Wort "violett" — und wer die Zone im nächsten Lauf
+ * sieht, erkennt sie wieder.
+ */
+@Composable
+private fun TwistLessonShield(twist: Twist) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
+            .background(OutlineColor)
+            .padding(horizontal = 12.dp, vertical = 7.dp)
+    ) {
+        if (twist == Twist.FAKE) {
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .background(FakeZoneColor)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        Text(
+            text = twistLesson(twist),
+            fontFamily = Bytesized,
+            fontSize = 14.sp,
+            color = Color(0xFFFFE95E),
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -1563,31 +1620,6 @@ fun SkinFamilyHeading(text: String) {
         color = Color(0xFFFF8A3C),
         modifier = Modifier.padding(bottom = 2.dp)
     )
-}
-
-/**
- * Die Ankuendigungen der Twists, einmal gelesen. Wie [rememberTaunter]:
- * gebraucht werden sie im Ereignis-Handler, lesbar sind sie nur waehrend
- * der Zusammensetzung.
- */
-@Composable
-fun rememberTwistBanners(): (Twist) -> String {
-    val pulse = stringResource(Res.string.banner_twist_pulse)
-    val drift = stringResource(Res.string.banner_twist_drift)
-    val ghost = stringResource(Res.string.banner_twist_ghost)
-    val fake = stringResource(Res.string.banner_twist_fake)
-    val chain = stringResource(Res.string.banner_twist_chain)
-    return remember(pulse, drift, ghost, fake, chain) {
-        { twist ->
-            when (twist) {
-                Twist.PULSE -> pulse
-                Twist.DRIFT -> drift
-                Twist.GHOST -> ghost
-                Twist.FAKE -> fake
-                Twist.CHAIN -> chain
-            }
-        }
-    }
 }
 
 // ===== Spott-Texte für den Rage-Faktor =====

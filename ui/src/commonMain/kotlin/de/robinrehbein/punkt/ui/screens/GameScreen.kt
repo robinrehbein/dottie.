@@ -60,11 +60,6 @@ import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.banner_chain
 import de.robinrehbein.punkt.ui.resources.banner_record
 import de.robinrehbein.punkt.ui.resources.banner_stage
-import de.robinrehbein.punkt.ui.resources.banner_twist_chain
-import de.robinrehbein.punkt.ui.resources.banner_twist_drift
-import de.robinrehbein.punkt.ui.resources.banner_twist_fake
-import de.robinrehbein.punkt.ui.resources.banner_twist_ghost
-import de.robinrehbein.punkt.ui.resources.banner_twist_pulse
 import de.robinrehbein.punkt.ui.resources.new_record
 import de.robinrehbein.punkt.ui.resources.perfect_plus
 import de.robinrehbein.punkt.ui.resources.ready_hint
@@ -82,7 +77,7 @@ import kotlinx.coroutines.isActive
 import org.jetbrains.compose.resources.stringResource
 
 
-/** Nicht-Compose-Zeitgeber für das Twist-Banner. */
+/** Nicht-Compose-Zeitgeber für die Banner im Lauf. */
 private class BannerState {
     var timeLeft = 0f
 
@@ -110,6 +105,13 @@ private class RunState {
 
     /** Höchste Perfekt-Serie dieses Laufs, für die Bestleistung. */
     var maxPerfect = 0
+
+    /**
+     * Die Twists, die dieser Lauf freigeschaltet hat — in der Reihenfolge,
+     * in der sie kamen. Daraus sucht sich das Game-Over den einen aus, der
+     * erklärt wird (siehe TwistLessons).
+     */
+    val unlockedTwists = mutableListOf<Twist>()
 
     /**
      * Uhr und Kalender einmal je Lauf ablesen. Bewusst nicht pro Frame:
@@ -165,7 +167,6 @@ fun GameScreen(
     // Texte, die in Ereignis-Handlern gebraucht werden: Lesen geht nur
     // waehrend der Zusammensetzung, gebraucht werden sie im Moment eines
     // Treffers oder des Todes. Also einmal hier, dann als reine Werte.
-    val twistBanners = rememberTwistBanners()
     val taunter = rememberTaunter()
     val bannerChainText = stringResource(Res.string.banner_chain)
     val bannerRecordText = stringResource(Res.string.banner_record)
@@ -221,6 +222,10 @@ fun GameScreen(
     var showDiagnostics by remember { mutableStateOf(false) }
     var skinUnlockedThisRun by remember { mutableStateOf(false) }
     var newMedalThisRun by remember { mutableStateOf(false) }
+    // Der Twist, den dieses Game-Over erklärt — null, wenn der Lauf
+    // nichts Neues gebracht hat oder alles Neue schon einmal erklärt
+    // wurde. Gefüllt beim Tod, siehe GameEventDied.
+    var twistToExplain by remember { mutableStateOf<Twist?>(null) }
     var dailyBestToday by remember {
         mutableIntStateOf(store.dailyBestFor(deviceCalendar().epochDay))
     }
@@ -317,7 +322,7 @@ fun GameScreen(
         if (dailyMode) game.reseed(DailyChallenge.seedFor(today)) else game.reseedSystem()
     }
 
-    // Banner mit Priorität: Ein wichtigeres Banner (Twist-Ankündigung)
+    // Banner mit Priorität: Ein wichtigeres Banner ("REKORD GEKNACKT!")
     // wird nicht von einem beiläufigen ("NOCH EINE!") überschrieben.
     fun showBanner(text: String, seconds: Float, priority: Int) {
         if (bannerState.timeLeft > 0f && bannerState.priority > priority) return
@@ -355,8 +360,10 @@ fun GameScreen(
                             bannerState.timeLeft = 0f
                             bannerText = ""
                             runState.maxPerfect = 0
+                            runState.unlockedTwists.clear()
                             skinUnlockedThisRun = false
                             newMedalThisRun = false
+                            twistToExplain = null
                             fx.deathTime = -1f
                             sounds.start()
                         }
@@ -376,7 +383,16 @@ fun GameScreen(
                         }
                         is GameEventTwistUnlocked -> {
                             twistUnlockedThisFrame = true
-                            showBanner(twistBanners(event.twist), 2.2f, priority = 2)
+                            // Kein Text mehr mitten im Lauf: Während der
+                            // Punkt kreist, klebt der Blick am Ring —
+                            // gelesen hat das Banner niemand, und für
+                            // Stammspieler war es in jedem Lauf dasselbe
+                            // Rauschen. Erklärt wird jetzt im Game-Over,
+                            // einmal je Twist (siehe TwistLessons).
+                            // Fanfare, Haptik und Konfetti bleiben: Die
+                            // brauchen keinen Blick, sie sagen "da war
+                            // gerade was" — und genau das stimmt.
+                            runState.unlockedTwists.add(event.twist)
                             fx.celebrateTime = CELEBRATE_SECONDS
                             feedback.unlock()
                             sounds.unlock()
@@ -419,6 +435,14 @@ fun GameScreen(
                             )
                             taunt = taunter(game.score, previousBest, isNewRecord)
                             bestScore = store.bestScore
+                            // Einer je Tod, einmal je Twist: der erste in
+                            // diesem Lauf freigeschaltete Twist, den noch
+                            // nie jemand erklärt bekommen hat. Der Rest
+                            // wartet auf die nächsten Tode — das Game-Over
+                            // bleibt ruhig. Die Daily zählt dabei wie
+                            // jeder andere Lauf.
+                            twistToExplain = store.twistToExplain(runState.unlockedTwists)
+                            twistToExplain?.let { store.markTwistExplained(it) }
                             // Jeder beendete Lauf ist ein moeglicher neuer
                             // Stand fuer die Uhr. Ohne Aenderung ist der
                             // Aufruf ein No-op.
@@ -462,8 +486,11 @@ fun GameScreen(
                 }
 
                 // Stufen-Feedback: jede 5er-Stufe färbt den Himmel um — das
-                // wird gefeiert, sofern nicht ohnehin gerade ein Twist-Banner
-                // die große Bühne bekommt.
+                // wird gefeiert, sofern nicht ohnehin gerade eine
+                // Twist-Freischaltung dieselbe Fanfare gespielt hat. Die
+                // fallen zwangsläufig zusammen (Twists kommen bei 5, 10,
+                // 15, 20, 25), und zweimal Konfetti in einem Frame ist
+                // keine doppelte Feier, sondern ein Fehler.
                 val stage = game.score / 5
                 if (game.phase == GamePhase.RUNNING && stage > bannerState.lastStage) {
                     bannerState.lastStage = stage
@@ -579,6 +606,7 @@ fun GameScreen(
                 dailyStreak = dailyStreak,
                 skinUnlocked = skinUnlockedThisRun,
                 newMedal = newMedalThisRun,
+                newTwist = twistToExplain,
                 goal = nextGoal,
                 onShare = hooks.onShare?.let { teilen ->
                     {
