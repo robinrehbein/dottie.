@@ -86,7 +86,7 @@ fun PixelButton(
 }
 
 /** Icon motifs for [PixelIconButton], drawn as blocky shapes on a 16-unit grid. */
-enum class PixelIcon { SPEAKER_ON, SPEAKER_OFF, BELL_ON, BELL_OFF, GEAR }
+enum class PixelIcon { SPEAKER_ON, SPEAKER_OFF, BELL_ON, BELL_OFF, SLIDERS }
 
 /**
  * A square pixel art button showing an icon instead of text — same border
@@ -187,19 +187,16 @@ private fun DrawScope.drawPixelIcon(
             block(3.5f, 9.3f, 9f, 1.6f)
             block(7.2f, 11.2f, 1.6f, 1.6f)
         }
-        PixelIcon.GEAR -> {
-            // Body plus four straight and four diagonal teeth; the hub is
-            // punched back out in the button colour so the ring reads as a gear.
-            block(4.5f, 4.5f, 7f, 7f)
-            block(6.5f, 2.4f, 3f, 2.6f)
-            block(6.5f, 11f, 3f, 2.6f)
-            block(2.4f, 6.5f, 2.6f, 3f)
-            block(11f, 6.5f, 2.6f, 3f)
-            block(3.2f, 3.2f, 2.6f, 2.6f)
-            block(10.2f, 3.2f, 2.6f, 2.6f)
-            block(3.2f, 10.2f, 2.6f, 2.6f)
-            block(10.2f, 10.2f, 2.6f, 2.6f)
-            block(6.6f, 6.6f, 2.8f, 2.8f, backgroundColor)
+        PixelIcon.SLIDERS -> {
+            // Three sliders with staggered knobs — the settings icon.
+            // Deliberately not a gear: at 48 dp the gear's teeth blur into
+            // a blob, while three bars with knobs stay unmistakable.
+            block(3f, 4f, 10f, 1.5f)
+            block(3f, 7.25f, 10f, 1.5f)
+            block(3f, 10.5f, 10f, 1.5f)
+            block(9.2f, 3.1f, 2.6f, 3.3f)
+            block(4.8f, 6.35f, 2.6f, 3.3f)
+            block(9.8f, 9.6f, 2.6f, 3.3f)
         }
     }
     if (icon == PixelIcon.SPEAKER_OFF || icon == PixelIcon.BELL_OFF) {

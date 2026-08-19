@@ -29,7 +29,7 @@ mit Hörprobe), **Rahmen und Beinamen** der Score-Karte samt eigener
 Auswahl, die **Dreieckwelle**, ohne die die GLOCKE nur ein hoch
 gestimmter Bestand gewesen wäre, die **Laterne** auf dem vierten
 Platz der STADT, und der **entrümpelte Startbildschirm** (#53, Entwurf B):
-Zahnrad statt sechs einzelner Zeilen, Einstellungen in einem eigenen
+Regler-Knopf statt sechs einzelner Zeilen, Einstellungen in einem eigenen
 Overlay, Rangliste und Versuchszähler in die Statistik verschoben, die
 Daily-Serie als Abzeichen am DAILY-Knopf statt als eigene Zeile, und die
 vier Zahlenzeilen ersetzt durch eine Ziel-Zeile mit `GoalBar` zum
