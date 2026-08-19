@@ -26,7 +26,7 @@ import kotlin.random.Random
 object ParityVectors {
 
     /** Bei jeder Formatänderung hochzählen. */
-    const val VERSION = 5
+    const val VERSION = 6
 
     /** Seed der Vektoren — irgendein fester Tag, nichts Magisches. */
     private const val SEED = 20240813L
@@ -123,6 +123,30 @@ object ParityVectors {
         SkinStats(0, 0, 0, totalScore = 25_000)
     )
 
+    /**
+     * Felder, an denen das Rahmenmuster abgetastet wird — auf einem Blatt
+     * von 180 mal 225 Feldern, also der Score-Karte in ihrem Raster.
+     *
+     * Die Auswahl ist kein Zufall: eine Diagonale in die Ecke hinein
+     * (dort liegen die Ornamente), ein Querschnitt durch die obere Kante
+     * (dort liegen die Bänder), sechs Felder nebeneinander in der
+     * Zahnreihe (dort liegt ihr Takt) und ein Querschnitt durch die
+     * linke Kante samt gegenüberliegender Ecke (dort fällt auf, wenn ein
+     * Renderer nur eine Seite spiegelt).
+     */
+    private val FRAME_CELLS = listOf(
+        0 to 0, 3 to 3, 9 to 9, 17 to 17,
+        90 to 0, 90 to 2, 90 to 4, 90 to 6, 90 to 8,
+        90 to 10, 90 to 12, 90 to 14, 90 to 16, 90 to 18,
+        91 to 3, 92 to 3, 93 to 3, 94 to 3, 95 to 3, 96 to 3,
+        0 to 112, 3 to 112, 9 to 112, 17 to 112,
+        179 to 224, 176 to 221
+    )
+
+    /** Kartenbreite und -höhe in Feldern (1080 mal 1350 Pixel zu je 6). */
+    private const val CARD_COLS = 180
+    private const val CARD_ROWS = 225
+
     fun build(): String {
         val out = StringBuilder()
         out.header()
@@ -132,6 +156,7 @@ object ParityVectors {
         out.skins()
         out.scenes()
         out.sounds()
+        out.frames()
         out.progress()
         out.rng()
         out.traces()
@@ -477,6 +502,91 @@ object ParityVectors {
             )
         }
         appendLine()
+    }
+
+    private fun StringBuilder.frames() {
+        section(
+            "Kartenrahmen (CardStyle) — die vierte Sammlung.\n" +
+                "#\n" +
+                "# Sie standen bis v2.25 bewusst NICHT hier: Der Rahmen war nur\n" +
+                "# auf der geteilten Score-Karte zu sehen, und die rendert allein\n" +
+                "# Android. Seit das Game-Over-Panel in :ui denselben Rahmen\n" +
+                "# trägt, gilt das nicht mehr — er ist auf jeder Plattform\n" +
+                "# sichtbar, also gehört er in den Vertrag. Der Beiname bleibt\n" +
+                "# draußen: Er steht weiterhin nur auf der Karte.\n" +
+                "#\n" +
+                "# Das Muster steht als Tabelle und nicht als Zeichencode, damit\n" +
+                "# die Renderer stumpf Rechtecke füllen: shape inset size tone\n" +
+                "# step phase, alles in Feldern. Wer die Tabelle liest, muss die\n" +
+                "# Formen selbst ausrollen — deshalb steht darunter zusätzlich\n" +
+                "# das fertige Bild an abgetasteten Feldern."
+        )
+        line("frame.order", *CardFrame.entries.map { it.name }.toTypedArray())
+        line("frame.steps", *CardStyle.FRAME_STEPS.map { it.toString() }.toTypedArray())
+        FrameTone.entries.forEach { line("frame.tone.${it.name}", argb(it.argb)) }
+        line("frame.cardSize", CARD_COLS.toString(), CARD_ROWS.toString())
+        line(
+            "frame.cells",
+            *FRAME_CELLS.map { "${it.first},${it.second}" }.toTypedArray()
+        )
+
+        CardFrame.entries.forEach { frame ->
+            line("frame.thickness.${frame.name}", CardStyle.thickness(frame).toString())
+            val layout = CardStyle.layout(frame)
+            line(
+                "frame.layout.${frame.name}",
+                f(layout.title), f(layout.titleSize),
+                f(layout.subline), f(layout.sublineSize),
+                f(layout.dot), f(layout.dotRadius),
+                f(layout.challenge)
+            )
+            CardStyle.parts(frame).forEachIndexed { index, part ->
+                line(
+                    "frame.part.${frame.name}.$index",
+                    part.shape.name,
+                    part.inset.toString(),
+                    part.size.toString(),
+                    part.tone.name,
+                    part.step.toString(),
+                    part.phase.toString()
+                )
+            }
+            line("frame.raster.${frame.name}", *raster(frame))
+        }
+        appendLine()
+
+        section("Freischaltung der Rahmen — dieselben Proben wie bei den Skins.")
+        UNLOCK_PROBES.forEachIndexed { index, stats ->
+            val open = CardFrame.entries.filter { CardStyle.isUnlocked(it, stats) }
+            line(
+                "frame.unlocked.$index",
+                CardStyle.frame(stats).name,
+                CardStyle.unlockedCount(stats).toString(),
+                *open.map { it.name }.toTypedArray()
+            )
+        }
+        appendLine()
+    }
+
+    /**
+     * Das ausgerollte Muster an den Feldern aus [FRAME_CELLS] — die
+     * Gegenprobe zur Tabelle. Eine Farbrolle je Feld, "-" heißt "hier
+     * liegt kein Rahmen".
+     */
+    private fun raster(frame: CardFrame): Array<String> {
+        val blatt = arrayOfNulls<FrameTone>(CARD_COLS * CARD_ROWS)
+        CardStyle.frameRects(frame, CARD_COLS, CARD_ROWS).forEach { r ->
+            for (row in r.row until r.row + r.rows) {
+                if (row !in 0 until CARD_ROWS) continue
+                for (col in r.col until r.col + r.cols) {
+                    if (col !in 0 until CARD_COLS) continue
+                    blatt[row * CARD_COLS + col] = r.tone
+                }
+            }
+        }
+        return FRAME_CELLS
+            .map { (col, row) -> blatt[row * CARD_COLS + col]?.name ?: "-" }
+            .toTypedArray()
     }
 
     private fun StringBuilder.progress() {

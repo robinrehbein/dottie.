@@ -174,6 +174,7 @@ import de.robinrehbein.punkt.ui.world.TrunkColor
 import de.robinrehbein.punkt.ui.world.TrunkShade
 import de.robinrehbein.punkt.ui.world.drawCloud
 import de.robinrehbein.punkt.ui.world.drawPixelCircle
+import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -493,7 +494,13 @@ fun GameOverOverlay(
     /** null = diese Plattform kann nicht teilen; dann faellt der Knopf weg. */
     onShare: (() -> Unit)?,
     onMenu: () -> Unit,
-    onHelp: () -> Unit
+    onHelp: () -> Unit,
+    /**
+     * Der Rahmen um die Punkte-Box — der, den auch die geteilte Karte
+     * traegt. Die Vorgabe ist der Bestand: Wer diese Zeile nicht setzt,
+     * bekommt das Panel von vorher.
+     */
+    cardFrame: CardFrame = CardFrame.SCHLICHT
 ) {
     val blink by rememberInfiniteTransition(label = "overBlink").animateFloat(
         initialValue = 1f,
@@ -530,7 +537,7 @@ fun GameOverOverlay(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            PixelPanel {
+            PixelPanel(frame = cardFrame) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         // Medaille ploppt mit kleinem Überschwinger ein.
@@ -700,24 +707,72 @@ fun GameOverOverlay(
     }
 }
 
-/** Beiger Panel-Hintergrund mit dunklem Pixelrahmen. */
+/**
+ * Wie groß ein Rahmenfeld auf dem Panel ist.
+ *
+ * Die Karte rechnet mit 6 Pixeln je Feld auf 180 Feldern Breite; das
+ * Panel ist gut ein Sechstel so breit, also ist auch sein Feld gut ein
+ * Sechstel so groß. Genau deshalb steht das Muster in Feldern und nicht
+ * in Pixeln (siehe [FramePart]): Dieselbe Tabelle trägt beide Größen,
+ * und der Rahmen um das Panel hat dieselben Verhältnisse wie der auf der
+ * geteilten Karte.
+ */
+private val PANEL_FRAME_CELL = 1.5.dp
+
+/**
+ * Beiger Panel-Hintergrund mit dunklem Pixelrahmen — und, ab der zweiten
+ * Rahmenstufe, mit dem Rahmen der Spielerin darum.
+ *
+ * Dass der gewählte Rahmen hier auftaucht und nicht nur auf der geteilten
+ * Karte, ist der Sinn der Sache: Sonst hätte man von einer ganzen
+ * Sammlung nur beim Teilen etwas. [CardFrame.SCHLICHT] bleibt dabei
+ * unangetastet der Treppenrahmen des Bestands — dieselbe Regel wie bei
+ * der WIESE und bei [CardStyle.layout]: Wer nichts gesammelt hat, sieht
+ * genau das, was er vorher sah.
+ */
 @Composable
-fun PixelPanel(content: @Composable () -> Unit) {
+fun PixelPanel(frame: CardFrame = CardFrame.SCHLICHT, content: @Composable () -> Unit) {
+    // Der Bestand hat 4 dp Rand; die verzierten Stufen so viele Felder,
+    // wie ihr Muster tief ist.
+    val rand = if (frame == CardFrame.SCHLICHT) 4.dp
+    else PANEL_FRAME_CELL * CardStyle.thickness(frame)
     Box(contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier.matchParentSize()
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val border = 4.dp.toPx()
+                val border = rand.toPx()
                 drawRect(color = OutlineColor)
                 drawRect(
                     color = PanelSand,
                     topLeft = Offset(border, border),
                     size = Size(size.width - 2 * border, size.height - 2 * border)
                 )
+                if (frame == CardFrame.SCHLICHT) return@Canvas
+                // Wie viele Felder auf das Panel passen — und dann die
+                // Feldgröße noch einmal darauf gerechnet, damit die
+                // letzte Spalte bündig an der Kante endet statt einen
+                // halben Rest offen zu lassen.
+                val zelle = PANEL_FRAME_CELL.toPx()
+                val spalten = (size.width / zelle).roundToInt().coerceAtLeast(1)
+                val zeilen = (size.height / zelle).roundToInt().coerceAtLeast(1)
+                val breite = size.width / spalten
+                val hoehe = size.height / zeilen
+                CardStyle.frameRects(frame, spalten, zeilen).forEach { r ->
+                    drawRect(
+                        color = Color(r.tone.argb),
+                        topLeft = Offset(r.col * breite, r.row * hoehe),
+                        size = Size(r.cols * breite, r.rows * hoehe)
+                    )
+                }
             }
         }
-        Box(modifier = Modifier.padding(horizontal = 32.dp, vertical = 24.dp)) {
+        Box(
+            modifier = Modifier.padding(
+                horizontal = (rand + 6.dp).coerceAtLeast(32.dp),
+                vertical = (rand + 6.dp).coerceAtLeast(24.dp)
+            )
+        ) {
             content()
         }
     }

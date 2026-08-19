@@ -28,6 +28,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.game.CardStyle
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.GameEventChainNext
 import de.robinrehbein.punkt.game.GameEventDied
@@ -580,6 +581,10 @@ fun GameScreen(
                 skinUnlocked = skinUnlockedThisRun,
                 newMedal = newMedalThisRun,
                 goal = nextGoal,
+                // Derselbe Rahmen, den auch die geteilte Karte traegt —
+                // dieselbe Regel, dieselbe Tabelle. Sonst haette man von
+                // der Sammlung nur beim Teilen etwas.
+                cardFrame = CardStyle.frame(cardFrame, store.stats()),
                 onShare = hooks.onShare?.let { teilen ->
                     {
                         teilen(

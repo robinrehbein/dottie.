@@ -219,7 +219,7 @@
     <string name="frame_hint_doppellinie">10 SKINS SAMMELN</string>
     <string name="frame_hint_pracht">30 SKINS SAMMELN</string>
     <string name="frame_hint_zinnen">20 SKINS SAMMELN</string>
-    <string name="frame_on_card">STEHT AUF DER GETEILTEN KARTE</string>
+    <string name="frame_on_card">STEHT AUF KARTE UND GAME-OVER</string>
     <string name="frame_pracht">PRACHT</string>
     <string name="frame_schlicht">SCHLICHT</string>
     <string name="frame_zinnen">ZINNEN</string>

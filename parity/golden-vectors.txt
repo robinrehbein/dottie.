@@ -6,7 +6,7 @@
 # Quelle der Wahrheit ist :core. Ändert sich hier eine Zahl, ist das
 # die Ansage an ios/, nachzuziehen — siehe parity/README.md.
 
-version 5
+version 6
 
 # --- Konstanten der Engine (TimingGame). Namen wie in Kotlin.
 const.MAX_DELTA 0.033333
@@ -698,6 +698,114 @@ sound.unlocked.39 1 KLASSIK
 sound.unlocked.40 2 KLASSIK GLOCKE
 sound.unlocked.41 1 KLASSIK
 sound.unlocked.42 2 KLASSIK AMBOSS
+
+# --- Kartenrahmen (CardStyle) — die vierte Sammlung.
+#
+# Sie standen bis v2.25 bewusst NICHT hier: Der Rahmen war nur
+# auf der geteilten Score-Karte zu sehen, und die rendert allein
+# Android. Seit das Game-Over-Panel in :ui denselben Rahmen
+# trägt, gilt das nicht mehr — er ist auf jeder Plattform
+# sichtbar, also gehört er in den Vertrag. Der Beiname bleibt
+# draußen: Er steht weiterhin nur auf der Karte.
+#
+# Das Muster steht als Tabelle und nicht als Zeichencode, damit
+# die Renderer stumpf Rechtecke füllen: shape inset size tone
+# step phase, alles in Feldern. Wer die Tabelle liest, muss die
+# Formen selbst ausrollen — deshalb steht darunter zusätzlich
+# das fertige Bild an abgetasteten Feldern.
+frame.order SCHLICHT DOPPELLINIE ZINNEN PRACHT
+frame.steps 10 20 30
+frame.tone.OUTLINE 0xFF543847
+frame.tone.ACCENT 0xFFFF8A3C
+frame.tone.GOLD 0xFFFFE95E
+frame.tone.INLAY 0xFF4EC0CA
+frame.tone.PEARL 0xFFF7F3EE
+frame.cardSize 180 225
+frame.cells 0,0 3,3 9,9 17,17 90,0 90,2 90,4 90,6 90,8 90,10 90,12 90,14 90,16 90,18 91,3 92,3 93,3 94,3 95,3 96,3 0,112 3,112 9,112 17,112 179,224 176,221
+frame.thickness.SCHLICHT 0
+frame.layout.SCHLICHT 0.140000 130.000000 0.200000 56.000000 0.320000 110.000000 0.945000
+frame.raster.SCHLICHT - - - - - - - - - - - - - - - - - - - - - - - - - -
+frame.thickness.DOPPELLINIE 6
+frame.layout.DOPPELLINIE 0.155000 120.000000 0.205000 52.000000 0.345000 105.000000 0.920000
+frame.part.DOPPELLINIE.0 BAND 0 2 OUTLINE 0 0
+frame.part.DOPPELLINIE.1 BAND 2 2 ACCENT 0 0
+frame.part.DOPPELLINIE.2 BAND 4 2 OUTLINE 0 0
+frame.part.DOPPELLINIE.3 ECKBLOCK 0 10 OUTLINE 0 0
+frame.part.DOPPELLINIE.4 ECKBLOCK 2 6 ACCENT 0 0
+frame.part.DOPPELLINIE.5 ECKBLOCK 4 2 GOLD 0 0
+frame.raster.DOPPELLINIE OUTLINE ACCENT OUTLINE - OUTLINE ACCENT OUTLINE - - - - - - - ACCENT ACCENT ACCENT ACCENT ACCENT ACCENT OUTLINE ACCENT - - OUTLINE ACCENT
+frame.thickness.ZINNEN 12
+frame.layout.ZINNEN 0.155000 120.000000 0.205000 52.000000 0.345000 105.000000 0.920000
+frame.part.ZINNEN.0 BAND 0 2 OUTLINE 0 0
+frame.part.ZINNEN.1 BAND 2 4 ACCENT 0 0
+frame.part.ZINNEN.2 ZAEHNE 3 2 GOLD 6 0
+frame.part.ZINNEN.3 BAND 6 2 OUTLINE 0 0
+frame.part.ZINNEN.4 BAND 8 2 GOLD 0 0
+frame.part.ZINNEN.5 BAND 10 2 OUTLINE 0 0
+frame.part.ZINNEN.6 ECKBLOCK 0 16 OUTLINE 0 0
+frame.part.ZINNEN.7 ECKBLOCK 2 12 GOLD 0 0
+frame.part.ZINNEN.8 ECKBLOCK 5 6 OUTLINE 0 0
+frame.part.ZINNEN.9 ECKBLOCK 7 2 ACCENT 0 0
+frame.raster.ZINNEN OUTLINE GOLD OUTLINE - OUTLINE ACCENT ACCENT OUTLINE GOLD OUTLINE - - - - GOLD GOLD GOLD GOLD ACCENT ACCENT OUTLINE GOLD GOLD - OUTLINE GOLD
+frame.thickness.PRACHT 15
+frame.layout.PRACHT 0.155000 120.000000 0.205000 52.000000 0.345000 105.000000 0.920000
+frame.part.PRACHT.0 BAND 0 2 OUTLINE 0 0
+frame.part.PRACHT.1 BAND 2 3 GOLD 0 0
+frame.part.PRACHT.2 BAND 5 2 OUTLINE 0 0
+frame.part.PRACHT.3 BAND 7 4 ACCENT 0 0
+frame.part.PRACHT.4 ZAEHNE 8 2 PEARL 6 0
+frame.part.PRACHT.5 BAND 11 2 INLAY 0 0
+frame.part.PRACHT.6 BAND 13 2 OUTLINE 0 0
+frame.part.PRACHT.7 ECKBLOCK 0 22 OUTLINE 0 0
+frame.part.PRACHT.8 ECKRAUTE 1 20 GOLD 0 0
+frame.part.PRACHT.9 ECKRAUTE 6 10 ACCENT 0 0
+frame.part.PRACHT.10 ECKBLOCK 9 4 PEARL 0 0
+frame.raster.PRACHT OUTLINE OUTLINE PEARL OUTLINE OUTLINE GOLD GOLD OUTLINE ACCENT ACCENT INLAY OUTLINE - - GOLD GOLD GOLD GOLD GOLD GOLD OUTLINE GOLD ACCENT - OUTLINE OUTLINE
+
+# --- Freischaltung der Rahmen — dieselben Proben wie bei den Skins.
+frame.unlocked.0 SCHLICHT 1 SCHLICHT
+frame.unlocked.1 SCHLICHT 1 SCHLICHT
+frame.unlocked.2 SCHLICHT 1 SCHLICHT
+frame.unlocked.3 SCHLICHT 1 SCHLICHT
+frame.unlocked.4 SCHLICHT 1 SCHLICHT
+frame.unlocked.5 SCHLICHT 1 SCHLICHT
+frame.unlocked.6 DOPPELLINIE 2 SCHLICHT DOPPELLINIE
+frame.unlocked.7 DOPPELLINIE 2 SCHLICHT DOPPELLINIE
+frame.unlocked.8 SCHLICHT 1 SCHLICHT
+frame.unlocked.9 SCHLICHT 1 SCHLICHT
+frame.unlocked.10 SCHLICHT 1 SCHLICHT
+frame.unlocked.11 SCHLICHT 1 SCHLICHT
+frame.unlocked.12 SCHLICHT 1 SCHLICHT
+frame.unlocked.13 SCHLICHT 1 SCHLICHT
+frame.unlocked.14 SCHLICHT 1 SCHLICHT
+frame.unlocked.15 SCHLICHT 1 SCHLICHT
+frame.unlocked.16 SCHLICHT 1 SCHLICHT
+frame.unlocked.17 SCHLICHT 1 SCHLICHT
+frame.unlocked.18 SCHLICHT 1 SCHLICHT
+frame.unlocked.19 SCHLICHT 1 SCHLICHT
+frame.unlocked.20 SCHLICHT 1 SCHLICHT
+frame.unlocked.21 SCHLICHT 1 SCHLICHT
+frame.unlocked.22 SCHLICHT 1 SCHLICHT
+frame.unlocked.23 SCHLICHT 1 SCHLICHT
+frame.unlocked.24 SCHLICHT 1 SCHLICHT
+frame.unlocked.25 SCHLICHT 1 SCHLICHT
+frame.unlocked.26 SCHLICHT 1 SCHLICHT
+frame.unlocked.27 SCHLICHT 1 SCHLICHT
+frame.unlocked.28 PRACHT 4 SCHLICHT DOPPELLINIE ZINNEN PRACHT
+frame.unlocked.29 PRACHT 4 SCHLICHT DOPPELLINIE ZINNEN PRACHT
+frame.unlocked.30 SCHLICHT 1 SCHLICHT
+frame.unlocked.31 SCHLICHT 1 SCHLICHT
+frame.unlocked.32 SCHLICHT 1 SCHLICHT
+frame.unlocked.33 SCHLICHT 1 SCHLICHT
+frame.unlocked.34 SCHLICHT 1 SCHLICHT
+frame.unlocked.35 SCHLICHT 1 SCHLICHT
+frame.unlocked.36 DOPPELLINIE 2 SCHLICHT DOPPELLINIE
+frame.unlocked.37 DOPPELLINIE 2 SCHLICHT DOPPELLINIE
+frame.unlocked.38 ZINNEN 3 SCHLICHT DOPPELLINIE ZINNEN
+frame.unlocked.39 SCHLICHT 1 SCHLICHT
+frame.unlocked.40 SCHLICHT 1 SCHLICHT
+frame.unlocked.41 SCHLICHT 1 SCHLICHT
+frame.unlocked.42 SCHLICHT 1 SCHLICHT
 
 # --- Ziele und Fortschrittsbalken (Progress). Die Schwellen stehen
 # damit dreifach im Repo (SkinPaint, ScenePaint, Progress) —

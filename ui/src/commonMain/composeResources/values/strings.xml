@@ -219,7 +219,7 @@
     <string name="frame_hint_doppellinie">COLLECT 10 SKINS</string>
     <string name="frame_hint_pracht">COLLECT 30 SKINS</string>
     <string name="frame_hint_zinnen">COLLECT 20 SKINS</string>
-    <string name="frame_on_card">SHOWS ON THE CARD YOU SHARE</string>
+    <string name="frame_on_card">SHOWS ON CARD AND GAME OVER</string>
     <string name="frame_pracht">SPLENDOUR</string>
     <string name="frame_schlicht">PLAIN</string>
     <string name="frame_zinnen">BATTLEMENT</string>
