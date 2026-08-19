@@ -97,17 +97,23 @@
     <string name="skin_selected">SELECTED</string>
     <string name="skin_tap_select">TAP TO SELECT</string>
     <string name="skin_klassik">CLASSIC</string>
+    <string name="skin_matcha">MATCHA</string>
+    <string name="skin_toffifee">TOFFIFEE</string>
     <string name="skin_minze">MINT</string>
     <string name="skin_lava">LAVA</string>
     <string name="skin_gold">GOLD</string>
     <string name="skin_frost">FROST</string>
+    <string name="skin_basketball">BASKETBALL</string>
     <string name="skin_schatten">SHADOW</string>
+    <string name="skin_tennisball">TENNIS BALL</string>
     <string name="skin_prisma">PRISM</string>
     <string name="skin_hint_minze">BEST 10 (BRONZE)</string>
     <string name="skin_hint_lava">BEST 20 (SILVER)</string>
     <string name="skin_hint_gold">BEST 30 (GOLD)</string>
     <string name="skin_hint_frost">BEST 40 (PLATINUM)</string>
+    <string name="skin_hint_basketball">BEST 50</string>
     <string name="skin_hint_schatten">4 PERFECTS IN A ROW</string>
+    <string name="skin_hint_tennisball">6 PERFECTS IN A ROW</string>
     <string name="skin_hint_prisma">DAILY STREAK: 3 DAYS</string>
 
     <!-- Score-Card / Teilen -->

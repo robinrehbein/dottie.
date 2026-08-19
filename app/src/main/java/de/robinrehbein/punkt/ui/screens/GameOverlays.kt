@@ -55,6 +55,8 @@ import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.components.PixelIcon
 import de.robinrehbein.punkt.ui.components.PixelIconButton
 import de.robinrehbein.punkt.ui.theme.Bytesized
+import kotlin.math.cos
+import kotlin.math.sin
 
 // ===== Gemeinsame Retro-Farbpalette =====
 internal val SkyColor = Color(0xFF4EC0CA)
@@ -798,6 +800,16 @@ internal fun SkinOverlay(
     onSelect: (DotSkin) -> Unit,
     onClose: () -> Unit
 ) {
+    // Ein gemeinsamer Rundflug für alle Vorschau-Vögel: dieselbe
+    // Kreisbahn wie im Spiel, nur im Miniatur-Fenster.
+    val previewTransition = rememberInfiniteTransition(label = "skinPreview")
+    val orbit by previewTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(durationMillis = 2600, easing = LinearEasing)),
+        label = "orbit"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -831,16 +843,26 @@ internal fun SkinOverlay(
                         .clickable(enabled = unlocked) { onSelect(skin) }
                         .padding(horizontal = 48.dp, vertical = 10.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(OutlineColor)
-                            .padding(4.dp)
-                            .background(
-                                if (unlocked) Color(skin.body)
-                                else Color(skin.body).copy(alpha = 0.25f)
-                            )
-                    )
+                    // Mini-Spielfenster: Rahmen, Himmel und der Vogel im
+                    // Rundflug — exakt derselbe Sprite wie im Spiel.
+                    Canvas(modifier = Modifier.size(44.dp)) {
+                        drawRect(color = OutlineColor)
+                        val pad = size.minDimension / 11f
+                        drawRect(
+                            color = if (unlocked) SkyColor else SkyColor.copy(alpha = 0.3f),
+                            topLeft = Offset(pad, pad),
+                            size = Size(size.width - 2 * pad, size.height - 2 * pad)
+                        )
+                        val orbitR = size.minDimension * 0.2f
+                        drawBirdSprite(
+                            px = size.width / 2f + cos(orbit) * orbitR,
+                            py = size.height / 2f + sin(orbit) * orbitR,
+                            r = size.minDimension * 0.18f,
+                            skin = skin,
+                            facingLeft = sin(orbit) > 0f,
+                            alpha = if (unlocked) 1f else 0.35f
+                        )
+                    }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
@@ -937,6 +959,49 @@ internal fun DrawScope.drawPixelCircle(
                 )
             }
         }
+    }
+}
+
+/**
+ * Zeichnet den Punkt-"Vogel" als Sprite: Pixel-Kreis mit Körper- und
+ * Schattenfarbe, Glanzpunkt und Auge in Blickrichtung. Wird vom Spiel
+ * (drawTimingDot) und von der Skin-Übersicht gemeinsam benutzt, damit
+ * beide exakt denselben Vogel zeigen.
+ */
+internal fun DrawScope.drawBirdSprite(
+    px: Float,
+    py: Float,
+    r: Float,
+    skin: DotSkin,
+    facingLeft: Boolean,
+    alpha: Float = 1f
+) {
+    drawPixelCircle(
+        color = Color(skin.body).copy(alpha = alpha),
+        outline = OutlineColor.copy(alpha = alpha),
+        centerX = px,
+        centerY = py,
+        radius = r,
+        shade = Color(skin.shade).copy(alpha = alpha)
+    )
+
+    val u = (r * 2f) / GRID
+    fun rect(col: Float, row: Float, cols: Float, rows: Float, color: Color) {
+        drawRect(
+            color = color.copy(alpha = color.alpha * alpha),
+            topLeft = Offset(px - r + col * u, py - r + row * u),
+            size = Size(cols * u, rows * u)
+        )
+    }
+
+    if (facingLeft) {
+        rect(GRID - 4.5f, 2.5f, 2f, 2f, Color(skin.shine))
+        rect(2f, 3f, 3.5f, 4f, Color.White)
+        rect(2f, 4f, 1.5f, 2f, OutlineColor)
+    } else {
+        rect(2.5f, 2.5f, 2f, 2f, Color(skin.shine))
+        rect(7.5f, 3f, 3.5f, 4f, Color.White)
+        rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
     }
 }
 

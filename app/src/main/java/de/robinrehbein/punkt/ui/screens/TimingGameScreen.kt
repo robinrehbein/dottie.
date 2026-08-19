@@ -883,40 +883,12 @@ private fun DrawScope.drawTimingDot(
         }
     }
 
-    fun drawBird() {
-        drawPixelCircle(
-            color = Color(skin.body),
-            outline = OutlineColor,
-            centerX = px,
-            centerY = py,
-            radius = r,
-            shade = Color(skin.shade)
-        )
-
-        val u = (r * 2f) / GRID
-        fun rect(col: Float, row: Float, cols: Float, rows: Float, color: Color) {
-            drawRect(
-                color = color,
-                topLeft = Offset(px - r + col * u, py - r + row * u),
-                size = Size(cols * u, rows * u)
-            )
-        }
-
-        // Glanzpunkt und Auge folgen der sichtbaren Flugrichtung: Die
-        // horizontale Geschwindigkeit ist ~ -sin(angle) * direction — zeigt
-        // sie nach links, wird das Gesicht gespiegelt. Der Wechsel passiert
-        // genau dort, wo der Vogel senkrecht fliegt, und fällt kaum auf.
-        val facingLeft = sin(game.angle) * game.direction > 0f
-        if (facingLeft) {
-            rect(GRID - 4.5f, 2.5f, 2f, 2f, Color(skin.shine))
-            rect(2f, 3f, 3.5f, 4f, Color.White)
-            rect(2f, 4f, 1.5f, 2f, OutlineColor)
-        } else {
-            rect(2.5f, 2.5f, 2f, 2f, Color(skin.shine))
-            rect(7.5f, 3f, 3.5f, 4f, Color.White)
-            rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
-        }
-    }
+    // Glanzpunkt und Auge folgen der sichtbaren Flugrichtung: Die
+    // horizontale Geschwindigkeit ist ~ -sin(angle) * direction — zeigt
+    // sie nach links, wird das Gesicht gespiegelt. Der Wechsel passiert
+    // genau dort, wo der Vogel senkrecht fliegt, und fällt kaum auf.
+    val facingLeft = sin(game.angle) * game.direction > 0f
+    fun drawBird() = drawBirdSprite(px, py, r, skin, facingLeft)
 
     if (flip > 0f) {
         rotate(degrees = flip, pivot = Offset(px, py)) { drawBird() }

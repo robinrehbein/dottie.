@@ -94,17 +94,23 @@
     <string name="skin_selected">AUSGEWAEHLT</string>
     <string name="skin_tap_select">TIPPEN ZUM WAEHLEN</string>
     <string name="skin_klassik">KLASSIK</string>
+    <string name="skin_matcha">MATCHA</string>
+    <string name="skin_toffifee">TOFFIFEE</string>
     <string name="skin_minze">MINZE</string>
     <string name="skin_lava">LAVA</string>
     <string name="skin_gold">GOLD</string>
     <string name="skin_frost">FROST</string>
+    <string name="skin_basketball">BASKETBALL</string>
     <string name="skin_schatten">SCHATTEN</string>
+    <string name="skin_tennisball">TENNISBALL</string>
     <string name="skin_prisma">PRISMA</string>
     <string name="skin_hint_minze">REKORD 10 (BRONZE)</string>
     <string name="skin_hint_lava">REKORD 20 (SILBER)</string>
     <string name="skin_hint_gold">REKORD 30 (GOLD)</string>
     <string name="skin_hint_frost">REKORD 40 (PLATIN)</string>
+    <string name="skin_hint_basketball">REKORD 50</string>
     <string name="skin_hint_schatten">4 PERFEKTE IN SERIE</string>
+    <string name="skin_hint_tennisball">6 PERFEKTE IN SERIE</string>
     <string name="skin_hint_prisma">DAILY-SERIE: 3 TAGE</string>
 
     <!-- Score-Card / Teilen -->

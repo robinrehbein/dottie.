@@ -12,8 +12,10 @@ class DotSkinTest {
         DotSkin.Stats(bestScore = best, bestPerfectStreak = perfect, bestDailyStreak = daily)
 
     @Test
-    fun `Klassik ist immer frei`() {
+    fun `Klassik, Matcha und Toffifee sind immer frei`() {
         assertTrue(DotSkin.KLASSIK.isUnlocked(stats()))
+        assertTrue(DotSkin.MATCHA.isUnlocked(stats()))
+        assertTrue(DotSkin.TOFFIFEE.isUnlocked(stats()))
     }
 
     @Test
@@ -26,12 +28,16 @@ class DotSkinTest {
         assertTrue(DotSkin.GOLD.isUnlocked(stats(best = 30)))
         assertFalse(DotSkin.FROST.isUnlocked(stats(best = 39)))
         assertTrue(DotSkin.FROST.isUnlocked(stats(best = 40)))
+        assertFalse(DotSkin.BASKETBALL.isUnlocked(stats(best = 49)))
+        assertTrue(DotSkin.BASKETBALL.isUnlocked(stats(best = 50)))
     }
 
     @Test
-    fun `Schatten braucht die Perfekt-Serie, Prisma die Daily-Serie`() {
+    fun `Schatten und Tennisball brauchen die Perfekt-Serie, Prisma die Daily-Serie`() {
         assertFalse(DotSkin.SCHATTEN.isUnlocked(stats(best = 99, perfect = 3)))
         assertTrue(DotSkin.SCHATTEN.isUnlocked(stats(perfect = 4)))
+        assertFalse(DotSkin.TENNISBALL.isUnlocked(stats(best = 99, perfect = 5)))
+        assertTrue(DotSkin.TENNISBALL.isUnlocked(stats(perfect = 6)))
         assertFalse(DotSkin.PRISMA.isUnlocked(stats(best = 99, daily = 2)))
         assertTrue(DotSkin.PRISMA.isUnlocked(stats(daily = 3)))
     }
@@ -45,7 +51,8 @@ class DotSkinTest {
 
     @Test
     fun `unlockedCount zaehlt ueber alle Bedingungen`() {
-        assertEquals(1, DotSkin.unlockedCount(stats()))
-        assertEquals(DotSkin.entries.size, DotSkin.unlockedCount(stats(best = 40, perfect = 4, daily = 3)))
+        // Drei Skins sind von Anfang an frei: Klassik, Matcha, Toffifee.
+        assertEquals(3, DotSkin.unlockedCount(stats()))
+        assertEquals(DotSkin.entries.size, DotSkin.unlockedCount(stats(best = 50, perfect = 6, daily = 3)))
     }
 }
