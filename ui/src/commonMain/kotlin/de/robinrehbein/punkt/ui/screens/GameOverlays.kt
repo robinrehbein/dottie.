@@ -14,14 +14,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -48,6 +50,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.CardFrame
@@ -291,156 +294,223 @@ fun ReadyOverlay(
         label = "blinkAlpha"
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.systemBars)
-    ) {
-        // Ein Zahnrad statt dreier Einzel-Icons: Ton, Erinnerung und Hilfe
-        // sind Einstellungen, keine Spielzüge — sie gehören hinter eine Tür.
-        PixelIconButton(
-            icon = PixelIcon.GEAR,
-            contentDescription = stringResource(Res.string.settings),
-            onClick = onSettings,
-            backgroundColor = PanelSand,
-            borderColor = TextDark,
-            strikeColor = RecordRed,
-            buttonSize = 48.dp,
-            borderWidth = 3.dp,
+    // Die Taster-Leiste zeichnet bis an den physischen Bildschirmrand,
+    // deshalb liegt sie außerhalb des Inset-Paddings — alles andere bleibt
+    // wie bisher innerhalb der Systemleisten.
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-        )
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 80.dp)
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.systemBars)
         ) {
-            Text(
-                // "DOTTIE." ist mit 7 Zeichen schmal genug für die vollen
-                // 64.sp — auch auf 360-dp-Displays ohne Umbruch.
-                text = "DOTTIE.",
-                style = ScoreShadowStyle,
-                fontSize = 64.sp,
-                color = Color.White,
-                modifier = Modifier.pointerInput(Unit) {
-                    detectTapGestures(onLongPress = { onToggleDiagnostics() })
-                }
+            // Ein Zahnrad statt dreier Einzel-Icons: Ton, Erinnerung und Hilfe
+            // sind Einstellungen, keine Spielzüge — sie gehören hinter eine Tür.
+            // Schatten und Glanzkante geben ihm dieselbe Tiefe wie dem Titel;
+            // beim Drücken sinkt es sichtbar in den Schatten.
+            PixelIconButton(
+                icon = PixelIcon.GEAR,
+                contentDescription = stringResource(Res.string.settings),
+                onClick = onSettings,
+                backgroundColor = PanelSand,
+                borderColor = TextDark,
+                strikeColor = RecordRed,
+                buttonSize = 48.dp,
+                borderWidth = 3.dp,
+                shadow = 4.dp,
+                highlightColor = Color(0xFFEFE9C2),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
             )
-            if (bestScore > 0) {
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 80.dp)
+            ) {
                 Text(
-                    text = stringResource(Res.string.best_score, bestScore),
+                    // "DOTTIE." ist mit 7 Zeichen schmal genug für die vollen
+                    // 64.sp — auch auf 360-dp-Displays ohne Umbruch.
+                    text = "DOTTIE.",
+                    style = ScoreShadowStyle,
+                    fontSize = 64.sp,
+                    color = Color.White,
+                    modifier = Modifier.pointerInput(Unit) {
+                        detectTapGestures(onLongPress = { onToggleDiagnostics() })
+                    }
+                )
+                if (bestScore > 0) {
+                    Text(
+                        text = stringResource(Res.string.best_score, bestScore),
+                        style = ScoreShadowStyle,
+                        fontSize = 22.sp,
+                        color = Color.White
+                    )
+                }
+                if (diagnostics != null) {
+                    Text(
+                        text = diagnostics,
+                        fontFamily = Bytesized,
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.85f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 6.dp, start = 16.dp, end = 16.dp)
+                    )
+                }
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(top = 140.dp)
+            ) {
+                Text(
+                    text = hint,
                     style = ScoreShadowStyle,
                     fontSize = 22.sp,
-                    color = Color.White
-                )
-            }
-            if (diagnostics != null) {
-                Text(
-                    text = diagnostics,
-                    fontFamily = Bytesized,
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.85f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 6.dp, start = 16.dp, end = 16.dp)
-                )
-            }
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(top = 140.dp)
-        ) {
-            Text(
-                text = hint,
-                style = ScoreShadowStyle,
-                fontSize = 22.sp,
-                color = Color.White.copy(alpha = blink),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 48.dp)
-        ) {
-            // Drei Knöpfe statt zwei: Die Statistik gehört auf den
-            // Startscreen, nicht in ein Untermenü — sie ist der Grund,
-            // den nächsten Lauf zu starten. Dafür sind alle drei etwas
-            // schmaler (108 statt 116 dp bei 10 dp Abstand), damit die
-            // Reihe auch auf 360-dp-Displays mit Rand steht.
-            Row {
-                // Die laufende Serie hängt als Abzeichen am Knopf, zu dem
-                // sie gehört: Sie ist eine Eigenschaft der Daily, keine
-                // eigene Zeile — und in der Ecke sieht man sie trotzdem.
-                Box {
-                    PixelButton(
-                        text = stringResource(Res.string.daily),
-                        onClick = onDaily,
-                        backgroundColor = DotBody,
-                        borderColor = TextDark,
-                        textColor = TextDark,
-                        width = 108.dp,
-                        height = 52.dp,
-                        borderWidth = 3.dp
-                    )
-                    if (dailyStreak >= 1) {
-                        StreakBadge(
-                            days = dailyStreak,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .offset(x = 5.dp, y = (-5).dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(10.dp))
-                PixelButton(
-                    text = stringResource(Res.string.skins),
-                    onClick = onSkins,
-                    backgroundColor = PanelSand,
-                    borderColor = TextDark,
-                    textColor = TextDark,
-                    width = 108.dp,
-                    height = 52.dp,
-                    borderWidth = 3.dp
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                PixelButton(
-                    text = stringResource(Res.string.stats),
-                    onClick = onStats,
-                    backgroundColor = PanelSand,
-                    borderColor = TextDark,
-                    textColor = TextDark,
-                    width = 108.dp,
-                    height = 52.dp,
-                    borderWidth = 3.dp
-                )
-            }
-            // Eine Zeile statt einer Zahlenwand: Wo vorher Tageswert,
-            // Serie und Versuchszähler standen, steht jetzt der eine
-            // Grund, gleich noch einmal zu spielen. Die Achse steht mit
-            // dabei — "MEDAILLE 199/200" allein läse sich als Medaillen.
-            if (goal != null) {
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = goalHeadline(goal),
-                    style = ScoreShadowStyle,
-                    fontSize = 15.sp,
-                    color = Color.White,
+                    color = Color.White.copy(alpha = blink),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
-                Spacer(modifier = Modifier.height(5.dp))
-                GoalBar(fraction = goal.fraction, modifier = Modifier.width(244.dp))
+            }
+
+            // Eine Zeile statt einer Zahlenwand: der eine Grund, gleich noch
+            // einmal zu spielen. Sie steht dort, wo früher die Knopfreihe
+            // schwebte — die Achse bleibt dabei, "MEDAILLE 199/200" allein
+            // läse sich als Medaillen.
+            if (goal != null) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 84.dp)
+                ) {
+                    Text(
+                        text = goalHeadline(goal),
+                        style = ScoreShadowStyle,
+                        fontSize = 15.sp,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(5.dp))
+                    GoalBar(fraction = goal.fraction, modifier = Modifier.width(244.dp))
+                }
             }
         }
+
+        // Drei Taster statt dreier schwebender Knöpfe: Die Statistik
+        // gehört auf den Startscreen, nicht in ein Untermenü — sie ist
+        // der Grund, den nächsten Lauf zu starten.
+        TasterBar(
+            dailyStreak = dailyStreak,
+            onDaily = onDaily,
+            onSkins = onSkins,
+            onStats = onStats,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+}
+
+/**
+ * Die Taster-Leiste am unteren Bildschirmrand: drei gleich breite Felder,
+ * randlos von ganz links bis ganz rechts, nur durch Outline-Linien
+ * getrennt — wie Taster an einem Gerät. Sie zeichnet unter die
+ * Systemleiste (Edge-to-Edge); deren Höhe landet als Innenabstand unter
+ * der Beschriftung, damit die Fläche bis an den Rand reicht, der Text
+ * aber über der Gesten-Zone steht.
+ */
+@Composable
+private fun TasterBar(
+    dailyStreak: Int,
+    onDaily: () -> Unit,
+    onSkins: () -> Unit,
+    onStats: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+    Row(modifier = modifier.fillMaxWidth().height(64.dp + bottomInset)) {
+        Taster(
+            text = stringResource(Res.string.daily),
+            onClick = onDaily,
+            backgroundColor = DotBody,
+            bottomInset = bottomInset,
+            modifier = Modifier.weight(1f)
+        ) {
+            // Die laufende Serie hängt als Abzeichen am Taster, zu dem sie
+            // gehört. Sie rückt in die Ecke hinein: Am Bildschirmrand gibt
+            // es kein Außen mehr, über das sie wie früher hinausragen
+            // könnte, ohne abgeschnitten zu werden.
+            if (dailyStreak >= 1) {
+                StreakBadge(
+                    days = dailyStreak,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 8.dp, end = 6.dp)
+                )
+            }
+        }
+        Taster(
+            text = stringResource(Res.string.skins),
+            onClick = onSkins,
+            backgroundColor = PanelSand,
+            bottomInset = bottomInset,
+            divider = true,
+            modifier = Modifier.weight(1f)
+        )
+        Taster(
+            text = stringResource(Res.string.stats),
+            onClick = onStats,
+            backgroundColor = PanelSand,
+            bottomInset = bottomInset,
+            divider = true,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+/**
+ * Ein Feld der [TasterBar]: Fläche, Oberkante, links optional die
+ * Trennlinie zum Nachbarn. Unter- und Seitenkanten gibt es nicht — die
+ * Leiste endet am Bildschirmrand, nicht an einem Rahmen.
+ */
+@Composable
+private fun Taster(
+    text: String,
+    onClick: () -> Unit,
+    backgroundColor: Color,
+    bottomInset: Dp,
+    modifier: Modifier = Modifier,
+    divider: Boolean = false,
+    badge: @Composable BoxScope.() -> Unit = {}
+) {
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .clickable { onClick() }
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val border = 4.dp.toPx()
+            drawRect(color = backgroundColor)
+            drawRect(color = OutlineColor, size = Size(size.width, border))
+            if (divider) drawRect(color = OutlineColor, size = Size(border, size.height))
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = bottomInset),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                fontFamily = Bytesized,
+                fontSize = 16.sp,
+                color = TextDark
+            )
+        }
+        badge()
     }
 }
 
