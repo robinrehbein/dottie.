@@ -32,6 +32,10 @@ kotlin {
         }
     }
 
+    // Desktop-JVM nur fuer Werkzeuge: headless Screenshots der geteilten
+    // Oberflaeche (ui/src/jvmTest/ScreenshotRenderer). Kein Auslieferungsziel.
+    jvm()
+
     // Wie in :core: ein XCFramework buendelt Geraet und beide
     // Simulator-Architekturen. Gebaut mit
     //   ./gradlew :ui:assembleDottieUiDebugXCFramework
@@ -68,6 +72,12 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+            }
+        }
+
+        val jvmMain by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
             }
         }
     }
