@@ -126,6 +126,17 @@ class ScreenshotRenderer {
             scene.tap(w / 2f, h - 32 * 2.625f)
             scene.step(0.8)
             scene.save("07-skins.png")
+            // Tief in die Liste ziehen: die Skin-Familien unterhalb der
+            // Rahmen — der lange Mittelteil der Sammlung.
+            repeat(40) {
+                scene.sendPointerEvent(
+                    PointerEventType.Scroll,
+                    Offset(w / 2f, h / 2f),
+                    scrollDelta = Offset(0f, 10f)
+                )
+                scene.step(0.05)
+            }
+            scene.save("07b-skins-scrolled.png")
             scene.tap(w / 2f, 150f)
             scene.step(0.3)
 
