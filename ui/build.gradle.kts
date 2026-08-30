@@ -75,7 +75,10 @@ kotlin {
             }
         }
 
-        val jvmMain by getting {
+        // compose.desktop.currentOs gehört an den ScreenshotRenderer (jvmTest),
+        // nicht an jvmMain: :ui selbst braucht Skiko nicht, nur das Werkzeug,
+        // das GameScreen headless zeichnet.
+        val jvmTest by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
             }

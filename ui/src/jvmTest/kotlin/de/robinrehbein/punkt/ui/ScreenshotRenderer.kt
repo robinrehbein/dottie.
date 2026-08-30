@@ -20,6 +20,12 @@ import org.jetbrains.skia.EncodedImageFormat
  * Skia in Geraetegroesse (1080x2400 bei 2.625x) und schreibt PNGs in das
  * Verzeichnis aus -Dshots.dir. Ohne dieses Property tut der Test nichts —
  * er ist ein Werkzeug, kein Pruefstein.
+ *
+ * Nicht reproduzierbar: TimingGame() (in GameScreen per remember erzeugt)
+ * nutzt Random.Default, kein Seed. READY-Screen und Layout sind deshalb
+ * stabil, die genaue Zonen-Position in RUNNING/GAME-OVER-Shots schwankt
+ * von Lauf zu Lauf. Ein Seed muesste durch GameScreens Signatur — dafuer
+ * ist dieses Werkzeug bewusst nicht angefasst.
  */
 class ScreenshotRenderer {
 

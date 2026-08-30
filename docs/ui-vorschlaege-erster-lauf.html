@@ -406,9 +406,14 @@
   <span class="tag">:core + Parity-Vektoren</span>
   <p>Beim allerersten Tipp springt die Zielzone an eine zufällige Stelle — das Ziel, das man
   im Startbild studiert hat, existiert plötzlich nicht mehr. Der Fix: Der Start übernimmt
-  die sichtbare READY-Zone als <b>erste</b> Zone des Laufs (liegt sie zu nah am Punkt, wird
-  nur der Punkt-Winkel korrigiert, nicht die Zone). Ab dem ersten Treffer läuft alles wie
-  bisher. Links/rechts im Vergleich — beide starten mit demselben Tipp:</p>
+  die sichtbare READY-Zone als <b>erste</b> Zone des Laufs. Naiv weggelassen
+  (<code>spawnZone()</code> einfach nicht aufrufen) reicht das nicht — dazu unten mehr.
+  Richtig gemacht: Liegt der Punkt zu nah <em>oder zu weit</em> vor der stehenden Zone, wird
+  nur der Punkt-Winkel so korrigiert, dass der Abstand wieder ins normale Fenster
+  <code>[MIN_ZONE_DISTANCE, MAX_ZONE_DISTANCE]</code> fällt — dieselben Grenzen, die auch
+  <code>spawnZone()</code> heute schon einhält. Die Zone selbst bewegt sich nie. Ab dem
+  ersten Treffer läuft alles wie bisher. Links/rechts im Vergleich — beide starten mit
+  demselben Tipp:</p>
   <div class="controls">
     <button class="pxbtn" id="btn-v2-start">BEIDE STARTEN</button>
     <button class="pxbtn" id="btn-v2-reset">ZURUECK</button>
@@ -423,9 +428,23 @@
       <div class="cap"><b>NACHHER:</b> die erste Zone ist die, die man schon kennt.</div>
     </div>
   </div>
+  <div class="panel warn">
+  <b>Ehrlich gemacht, nicht nur behauptet:</b> Die READY-Phase lässt den Punkt frei kreisen
+  (<code>READY_SPEED</code>), unabhängig davon, wie lange jemand wartet. Der Vorwärtsabstand
+  zur stehenden Zone im Moment des Tipps ist damit praktisch gleichverteilt über den vollen
+  Kreis — in <b>~18 %</b> der Fälle liegt er unter <code>MIN_ZONE_DISTANCE</code> (zu nah,
+  Sofort-Tod-Risiko), in <b>~55 %</b> der Fälle <em>über</em>
+  <code>MAX_ZONE_DISTANCE = 2,8 rad</code> (bis zu 5,2 rad, über 2 Sekunden leeres Kreisen vor
+  der ersten Chance — heute maximal ~1,2 s). Der Punkt-Winkel muss deshalb in <b>beide</b>
+  Richtungen korrigiert werden, nicht nur nach unten. Die Demo rechts implementiert genau das
+  (Klemmen auf <code>[MIN_ZONE_DISTANCE, MAX_ZONE_DISTANCE]</code>) — probier gezielt einen
+  sehr frühen und einen sehr späten Tipp aus, beide bleiben fair.
+  </div>
   <p><b>Umsetzung:</b> <code>tap()</code> im READY-Zweig
-  (<span class="file">TimingGame.kt:219–224</span>): statt <code>spawnZone()</code> nur
-  Twists/Distanz prüfen und die stehende <code>zoneCenter</code> behalten.
+  (<span class="file">TimingGame.kt:219–224</span>): statt <code>spawnZone()</code> die
+  stehende <code>zoneCenter</code> behalten, aber <code>angle</code> so setzen, dass der
+  Abstand in <code>[MIN_ZONE_DISTANCE, MAX_ZONE_DISTANCE]</code> liegt — Twist-Zustand für
+  die erste Zone bleibt unverändert (bei Score 0 ohnehin leer).
   <code>ZoneWindowTest</code> und <span class="file">parity/golden-vectors.txt</span>
   müssen den neuen Startpfad kennen.</p>
 </section>
@@ -436,6 +455,7 @@
   <span class="tag hoch">Wirkung: sehr hoch</span>
   <span class="tag">Aufwand: ~3 Std.</span>
   <span class="tag">:ui + TwistLessons-Muster</span>
+  <span class="tag problem">Optionaler Teil: :core</span>
   <p>Das README hat recht: Text-Banner liest im Lauf niemand, <em>der Blick klebt am
   Ring</em>. Also gehört das Lernsignal <b>an den Ring</b>: Solange jemand insgesamt noch
   keine drei Treffer hat, leuchtet die Zone auf und ein <span class="px">JETZT!</span>
@@ -457,8 +477,11 @@
   <p><b>Umsetzung:</b> Zeichnen in <code>drawTrack</code>/<code>drawTimingWorld</code>
   (<span class="file">WorldRenderer.kt:664–717</span>, ein „Coach“-Flag als Parameter),
   Zustand als <code>firstHitsCoached</code> neben <code>TwistLessons</code> im
-  <span class="file">GameStore</span>. Optional dazu: die ersten drei Zonen des allerersten
-  Laufs mit 0,72× Tempo (<code>currentSpeed()</code>-Faktor) — im Demo oben eingebaut.</p>
+  <span class="file">GameStore</span>. Der Kern des Vorschlags ist damit reines
+  <span class="file">:ui</span>. <b>Nicht mehr :ui:</b> das optionale 0,72×-Tempo für die
+  ersten drei Zonen (<code>currentSpeed()</code>-Faktor, im Demo oben eingebaut) — das läuft
+  durch <span class="file">:core</span> und müsste in die Golden-Vektoren. Kann man weglassen,
+  ohne den Rest des Vorschlags zu verlieren.</p>
 </section>
 
 <section id="v4">
@@ -468,11 +491,17 @@
   <span class="tag">Aufwand: ~3 Std.</span>
   <span class="tag">:core + :ui</span>
   <p>Dottie erklärt Twists bereits genau dort, wo der Blick frei ist: im Game-Over, einmalig,
-  eine Zeile. <b>Dieselbe Philosophie für den Tod selbst:</b> Die Engine unterscheidet in
-  <code>tap()</code>/<code>update()</code> längst drei Todesarten, wirft den Grund aber weg.
-  Ein <code>DeathReason</code> (ZU FRÜH · DANEBEN · ÜBERFAHREN · FALLE) plus ein rotes
-  Pixel-X am Todesort während des Freeze machen aus Spott eine Lektion — der Spott darf
-  trotzdem bleiben, eine Zeile tiefer. Stirb links und rechts je einmal:</p>
+  eine Zeile. <b>Dieselbe Philosophie für den Tod selbst:</b> Genauer hingeschaut, gibt es
+  heute nur einen einzigen, undifferenzierten Tod: In <code>tap()</code> landen zu früh und
+  daneben (auch ein Tipp in die violette Falle) im selben <code>else</code>-Zweig — der
+  Code-Kommentar sagt es offen: „Auch ein Tap in der Fallen-Zone landet hier: Sie ist
+  mechanisch einfach ‚daneben‘.“ Nur das Überfahren ohne Tipp hat einen eigenen Zweig in
+  <code>update()</code>. Die Rohdaten für eine echte Unterscheidung liegen vor (Vorzeichen von
+  <code>relativeToZone()</code>, ob <code>hasFakeZone</code> aktiv war) — die Klassifikation
+  selbst ist neuer Code, kein bloßes Sichtbarmachen. Ein <code>DeathReason</code> (ZU FRÜH ·
+  DANEBEN · ÜBERFAHREN · FALLE) plus ein rotes Pixel-X am Todesort während des Freeze machen
+  aus Spott trotzdem eine Lektion — der Spott darf bleiben, eine Zeile tiefer. Stirb links und
+  rechts je einmal:</p>
   <div class="phones">
     <div class="phone">
       <canvas id="cv-v4a" width="300" height="430" aria-label="Game Over vorher"></canvas>
@@ -513,9 +542,16 @@
     </div>
   </div>
   <p><b>Umsetzung:</b> reine Zeichenlogik in <code>drawTrack</code>
-  (<span class="file">WorldRenderer.kt:664–717</span>): Zeit bis Zone =
-  <code>rel / currentSpeed()</code>, unter 0,45 s Blöcke um eine Zelle wachsen lassen.
-  Kein Engine-Eingriff, keine Paritäts-Folgen fürs Gameplay.</p>
+  (<span class="file">WorldRenderer.kt:664–717</span>): <code>relativeToZone()</code> ist beim
+  Anflug <em>negativ</em>, Zeit bis Zone also <code>-rel / currentSpeed()</code>, unter 0,45 s
+  Blöcke um eine Zelle wachsen lassen. Kein Engine-Eingriff, keine Paritäts-Folgen fürs
+  Gameplay. Unter DRIFT wandert die Zone selbst mit — die Formel bleibt korrekt, weil sie mit
+  dem aktuellen <code>zoneCenter</code> jedes Frames neu rechnet, nicht mit einer
+  Momentaufnahme. Unter PULSE würde sich die Zone dann aus zwei Gründen gleichzeitig
+  verändern (Puls-Atmen <em>und</em> Telegraph) — optisch harmlos, weil beide dieselbe Sprache
+  sprechen (heller, größer), aber nicht getrennt testbar. Mit Vorschlag 3 (JETZT!-Coach) kann
+  sich das für die ersten drei Treffer überlagern; das ist gewollt, nicht doppelt gemoppelt —
+  beide sagen dasselbe auf demselben Kanal.</p>
 </section>
 
 
@@ -686,10 +722,12 @@
 <section id="teil3" style="margin-top:72px">
   <div class="eyebrow">Teil 3 · Startscreen &amp; Belohnung</div>
   <h2>DIE PERFEKT-SERIE VERDIENT EINE FEIER</h2>
-  <p>Ausgangsbefund, direkt aus dem Code: <code>bestPerfectStreak</code> schaltet acht Skins,
-  zwei Töne, zwei Beinamen und eine Kartenrahmen-Stufe frei
-  (<span class="file">SkinPaint.kt</span>, <span class="file">SoundSet.kt</span>,
-  <span class="file">CardStyle.kt</span>) — aber wird an <b>keiner einzigen Stelle im
+  <p>Ausgangsbefund, direkt aus dem Code: <code>bestPerfectStreak</code> schaltet sechs Skins
+  (SCHATTEN ab 4, BIENE ab 6, KOMBO ab 8, KARO ab 10, NEON ab 12, GEWITTER ab 15), einen Ton
+  (GLOCKE ab 20) und zwei Beinamen frei (<span class="file">SkinPaint.kt</span>,
+  <span class="file">SoundSet.kt</span>, <span class="file">CardStyle.kt</span> — Kartenrahmen
+  hängen dagegen an der <em>Sammlung</em>, nicht an der Serie, siehe
+  <span class="file">CardStyle.kt:255–257</span>) — aber wird an <b>keiner einzigen Stelle im
   Moment des Erreichens gefeiert</b>. Der Score-Rekord bekommt Live-Banner, Sound und
   Konfetti; die Perfekt-Serie bekommt nichts. Die folgenden sechs Vorschläge schließen
   diese Lücke — alle in <span class="file">:ui</span> bzw. im Store, keiner rührt an
@@ -714,6 +752,19 @@
   <span class="tag hoch">Wirkung: sehr hoch</span><span class="tag">Aufwand: ~3,5 Std. gesamt</span><span class="tag">:ui + GameStore</span>
   <p>Vier Vorschläge, die zusammen einen einzigen Ablauf ergeben — probier ihn unten
   komplett durch:</p>
+  <div class="panel warn">
+  <b>Ein Widerspruch, den man nicht wegreden sollte:</b> Vorschlag 3 begründet sich damit,
+  dass „im Lauf niemand Text-Banner liest, der Blick klebt am Ring" — und genau deshalb landet
+  das JETZT!-Signal am Ring, nicht als Text. 17 (ein dauerhaftes <span class="px">SERIE
+  ×N</span> im HUD) und besonders 19 (ein Vollbanner mitten im Lauf) stehen dazu in echter
+  Spannung. Die Verteidigung: 17 ist kein Banner, sondern ein ruhiger Zahlenwert am selben Ort
+  wie die Punktzahl — man liest ihn beiläufig, nicht bewusst. 19 ist das schwächere Glied: Ein
+  Vollbanner ausgerechnet im Moment höchster Konzentration riskiert, genau die Serie zu
+  zerreißen, die es feiert. <code>showBanner()</code> hat bereits einen
+  <code>priority</code>-Parameter (<span class="file">GameScreen.kt:342</span>) — wer 19 baut,
+  sollte ihn nutzen, um das Banner kurz und am Rand zu halten, nicht als weiteren Vollbildtext
+  wie die Twist-Fanfare.
+  </div>
   <ul style="max-width:42em">
     <li><b>17 · Die Serie sichtbar machen.</b> <code>ScoreHud</code> zeigt heute nur den
     kurzen <span class="px">PERFEKT! +N</span>-Blitz, der nach 0,6s verschwinden
@@ -764,11 +815,19 @@
   (<span class="file">WorldRenderer.kt: drawTrack, 664–717</span>) pulsiert und leuchtet
   stärker, je länger die aktuelle Serie läuft — reine Zeichenänderung, trifft keine
   Trefferlogik.</p>
-  <p><b>Aber, ehrlich:</b> Das Spiel hält laut README bewusst <b>ein einziges visuelles
-  Grundelement</b> durch (der gefüllte Block mit Kontur) und vermeidet Text-Banner mitten
-  im Lauf ausdrücklich. Ein „atmender" Kern wäre die erste Stelle, die von diesem Prinzip
-  abweicht — kein Blocker, aber ein bewusster Bruch, den man offen entscheiden sollte,
-  nicht nebenbei einführen.</p>
+  <p><b>Aber, ehrlich — und das eigentliche Risiko liegt woanders als zunächst gedacht:</b>
+  Der Perfekt-Kern pulsiert unter dem <span class="px">PULS</span>-Twist bereits heute
+  (<code>effectiveZoneHalf()</code>) — und das bedeutet dort etwas Reales: ein sich
+  veränderndes Trefferfenster, das man lesen muss, um zu treffen. Ein zweites, bedeutungsloses
+  Pulsieren auf demselben Kern (dieses hier reagiert auf die Serie, nicht auf die
+  Trefferbreite) würde Spieler etwas Falsches über ein <em>fairness-relevantes</em> Signal
+  lehren, sobald beide Twist und Serie gleichzeitig aktiv sind. Das ist der Grund, aus dem
+  dieser Vorschlag <em>optional</em> bleibt — nicht in erster Linie, weil er ein zweites
+  visuelles Grundelement wäre (das Spiel hält laut <span class="file">docs/TODO.md:19</span>
+  bewusst an einem einzigen fest: der gefüllte Block mit Kontur; das ist ein zweiter,
+  schwächerer Einwand). Wer das umsetzt, sollte den Serien-Puls entweder abschalten, sobald
+  <span class="px">PULS</span> aktiv ist, oder ihn sichtbar anders kodieren (z. B. am Rand
+  statt am Kern) — nicht beides auf dieselbe Fläche legen.</p>
   <div class="phones">
     <div class="phone">
       <canvas id="cv-ring" width="280" height="360"></canvas>
@@ -868,9 +927,20 @@
   Sim.prototype.inZone = function () { return Math.abs(this.rel()) <= this.zoneHalf; };
 
   Sim.prototype.spawnZone = function (keep) {
-    if (keep) return; // Vorschlag 3: Zone bleibt beim Start stehen
     var minD = Math.max(K.MIN_ZONE_DISTANCE, this.speed() * K.MIN_REACTION_SECONDS);
     var maxD = Math.max(K.MAX_ZONE_DISTANCE, minD + 0.4);
+    if (keep) {
+      // Vorschlag 2: Zone bleibt stehen — nur der Punkt-Winkel wird auf das
+      // normale Fenster [minD, maxD] geklemmt, in BEIDE Richtungen. Sonst
+      // droht ein Sofort-Tod (Punkt war zufällig fast schon da) oder
+      // minutenlanges Leerlaufen (Punkt war gerade erst vorbei).
+      var dist = wrapTwoPi(this.dir * (this.zoneCenter - this.angle));
+      var clamped = Math.min(Math.max(dist, minD), maxD);
+      if (clamped !== dist) {
+        this.angle = wrapTwoPi(this.zoneCenter - this.dir * clamped);
+      }
+      return;
+    }
     var d = minD + Math.random() * (maxD - minD);
     this.zoneCenter = wrapTwoPi(this.angle + this.dir * d);
   };
