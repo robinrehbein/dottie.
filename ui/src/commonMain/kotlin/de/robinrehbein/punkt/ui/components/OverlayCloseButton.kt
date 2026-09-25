@@ -18,76 +18,93 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import de.robinrehbein.punkt.ui.world.PanelSand
+import de.robinrehbein.punkt.ui.world.RecordRed
 import de.robinrehbein.punkt.ui.world.TextDark
 
 /**
- * Der sichtbare Ausgang eines Overlays: ein X-Knopf, gedacht für oben
- * rechts. Tippen neben das Overlay schließt weiterhin, das X zeigt nur,
- * dass es geht (Plan 7.2).
+ * Der Knopf oben rechts: im Startbildschirm die Einstellungen, in jedem
+ * Overlay das X (Plan 7.2). Beide sind derselbe Knopf an derselben
+ * Stelle — öffnet man die Einstellungen, liegt das X genau dort, wo eben
+ * die Schieber waren, gleich groß und mit demselben Schatten.
  *
- * Sichtbar 40 dp mit 4 dp Pixelschatten, antippbar auf 48 dp. Sandfarben
- * mit dunklem Rand wie die Taster, das X aus Pixelblöcken, damit es nicht
- * an einem Zeichen der Schrift hängt. Sinkt beim Drücken ein und tickt
- * über [LocalPressFeedback].
+ * Sichtbar 48 dp mit 4 dp Pixelschatten. Sandfläche, gerader dunkler
+ * Rand, heller Glanzstreifen unter der Oberkante. Der Schatten ist
+ * deckend, damit der Knopf auf hellem Himmel und auf dem dunklen Overlay
+ * gleich aussieht. Sinkt beim Drücken ein und tickt über
+ * [LocalPressFeedback].
  *
- * Den Platz legt der Aufrufer fest, etwa
- * `Modifier.align(Alignment.TopEnd).padding(8.dp)`.
- *
- * @param contentDescription Vorlesetext („SCHLIESSEN“). Ohne ihn liest
- *   ein Vorleser nur „Schaltfläche“.
+ * Platz: `Modifier.align(Alignment.TopEnd).padding(CORNER_BUTTON_PADDING)`
+ * innerhalb der Systemleisten — das tun alle Aufrufer, sonst sitzt das X
+ * woanders als die Schieber.
  */
 @Composable
-fun OverlayCloseButton(
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier,
-    contentDescription: String? = null
+fun CornerButton(
+    icon: PixelIcon,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val cd = contentDescription
     Box(
         modifier = modifier
-            .size(CLOSE_TOUCH)
-            .pixelPressable(interactionSource = interactionSource, onClick = onClose)
-            .then(
-                if (cd != null) Modifier.semantics { this.contentDescription = cd }
-                else Modifier
-            ),
+            .size(CORNER_FACE + PIXEL_SHADOW)
+            .pixelPressable(interactionSource = interactionSource, onClick = onClick)
+            .semantics { this.contentDescription = cd },
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.size(CLOSE_FACE + PIXEL_SHADOW)) {
+        Canvas(modifier = Modifier.size(CORNER_FACE + PIXEL_SHADOW)) {
             drawPressedFrame(
                 shadow = PIXEL_SHADOW.toPx(),
                 pressed = pressed,
-                shadowColor = CloseShadow
+                shadowColor = CornerShadow
             ) {
-                drawCloseFace(border = 3.dp.toPx())
+                drawCornerFace(border = CORNER_BORDER.toPx())
+                drawPixelIcon(icon, TextDark, RecordRed, PanelSand)
             }
         }
     }
 }
 
-private val CLOSE_TOUCH = 48.dp
-private val CLOSE_FACE = 40.dp
-private val CloseShadow = Color(0xFF2D1E27)
+/**
+ * Der sichtbare Ausgang eines Overlays: der [CornerButton] mit X.
+ * Tippen neben das Overlay schließt weiterhin, das X zeigt nur, dass es
+ * geht.
+ *
+ * @param contentDescription Vorlesetext („SCHLIESSEN“).
+ */
+@Composable
+fun OverlayCloseButton(
+    onClose: () -> Unit,
+    contentDescription: String,
+    modifier: Modifier = Modifier
+) = CornerButton(
+    icon = PixelIcon.CLOSE,
+    contentDescription = contentDescription,
+    onClick = onClose,
+    modifier = modifier
+)
 
-/** Sandfläche, gerader 3-dp-Rand und ein X aus 5 × 5 Blöcken auf einem 9er-Raster. */
-private fun DrawScope.drawCloseFace(border: Float) {
+/** Abstand des Eckknopfs zum Rand innerhalb der Systemleisten. */
+val CORNER_BUTTON_PADDING = 16.dp
+
+private val CORNER_FACE = 48.dp
+private val CORNER_BORDER = 3.dp
+private val CornerShadow = Color(0xFF2D1E27)
+private val CornerHighlight = Color(0xFFEFE9C2)
+
+/** Dunkler gerader Rand, Sandfläche, Glanzstreifen unter der Oberkante. */
+private fun DrawScope.drawCornerFace(border: Float) {
     drawRect(color = TextDark)
     drawRect(
         color = PanelSand,
         topLeft = Offset(border, border),
         size = Size(size.width - 2f * border, size.height - 2f * border)
     )
-    val cell = size.minDimension / 9f
-    val origin = 2f * cell
-    for (i in 0 until 5) {
-        for (j in intArrayOf(i, 4 - i)) {
-            drawRect(
-                color = TextDark,
-                topLeft = Offset(origin + j * cell, origin + i * cell),
-                size = Size(cell, cell)
-            )
-        }
-    }
+    drawRect(
+        color = CornerHighlight,
+        topLeft = Offset(border, border),
+        size = Size(size.width - 2f * border, border)
+    )
 }

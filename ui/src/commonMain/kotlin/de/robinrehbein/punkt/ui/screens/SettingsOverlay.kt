@@ -23,6 +23,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.ui.components.CORNER_BUTTON_PADDING
 import de.robinrehbein.punkt.ui.components.OverlayCloseButton
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.components.PixelIcon
@@ -164,7 +165,7 @@ internal fun SettingsOverlay(
             contentDescription = stringResource(Res.string.ctl_close),
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp)
+                .padding(CORNER_BUTTON_PADDING)
         )
     }
 }

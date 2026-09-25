@@ -54,6 +54,7 @@ import de.robinrehbein.punkt.ui.world.GrassLight
 import de.robinrehbein.punkt.ui.world.OutlineColor
 import org.jetbrains.compose.resources.stringResource
 // AP-14: X-Knopf der Hilfe (am Ende, damit AP-12 oben ungestört ergänzt).
+import de.robinrehbein.punkt.ui.components.CORNER_BUTTON_PADDING
 import de.robinrehbein.punkt.ui.components.OverlayCloseButton
 import de.robinrehbein.punkt.ui.resources.ctl_close
 
@@ -95,7 +96,7 @@ fun HelpOverlay(onClose: () -> Unit) {
             contentDescription = stringResource(Res.string.ctl_close),
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp)
+                .padding(CORNER_BUTTON_PADDING)
         )
     }
 }

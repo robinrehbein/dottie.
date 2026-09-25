@@ -85,6 +85,7 @@ import de.robinrehbein.punkt.ui.world.TextDark
 import kotlin.math.max
 import org.jetbrains.compose.resources.stringResource
 // AP-14: X-Knopf der Statistik (am Ende, damit AP-15 oben ungestört ergänzt).
+import de.robinrehbein.punkt.ui.components.CORNER_BUTTON_PADDING
 import de.robinrehbein.punkt.ui.components.OverlayCloseButton
 import de.robinrehbein.punkt.ui.resources.ctl_close
 
@@ -189,7 +190,7 @@ fun StatsOverlay(
             contentDescription = stringResource(Res.string.ctl_close),
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp)
+                .padding(CORNER_BUTTON_PADDING)
         )
     }
 }

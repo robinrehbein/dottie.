@@ -33,6 +33,7 @@ internal class ProbeScene(
     val width: Int,
     val height: Int,
     density: Float,
+    fontScale: Float = 1f,
     content: @Composable () -> Unit
 ) : AutoCloseable {
 
@@ -58,7 +59,7 @@ internal class ProbeScene(
             override val platformContext = platform
         }
         CanvasLayersComposeScene(
-            Density(density),
+            Density(density, fontScale),
             LayoutDirection.Ltr,
             IntSize(width, height),
             Dispatchers.Unconfined,
