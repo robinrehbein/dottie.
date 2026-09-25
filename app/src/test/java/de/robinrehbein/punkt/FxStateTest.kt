@@ -1,7 +1,10 @@
 package de.robinrehbein.punkt
 
 import de.robinrehbein.punkt.ui.world.FxState
+import androidx.compose.ui.geometry.Offset
+import de.robinrehbein.punkt.ui.world.addTapEcho
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -37,6 +40,11 @@ class FxStateTest {
         // == /AP-12 ==
         fx.celebrateTime = 1.1f
         // == AP-22 start ==
+        fx.notYetTime = 0.5f
+        fx.handPressed = true
+        fx.handEchoTime = 0.2f
+        fx.addTapEcho(Offset(10f, 10f))
+        fx.trainingWheels = true
         // == /AP-22 ==
         fx.deathTime = 0.2f
         // == AP-23 nebel ==
@@ -52,6 +60,12 @@ class FxStateTest {
         // == /AP-12 ==
         assertEquals(0f, fx.celebrateTime, 0f)
         // == AP-22 start ==
+        assertEquals(0f, fx.notYetTime, 0f)
+        assertFalse(fx.handPressed)
+        assertTrue(fx.handEchoTime < 0f)
+        assertTrue(fx.tapEchoes.isEmpty())
+        // Die Stützräder sind eine Einstellung, kein Effekt: Sie bleiben.
+        assertTrue(fx.trainingWheels)
         // == /AP-22 ==
         assertEquals(-1f, fx.deathTime, 0f)
         // == AP-23 nebel ==
@@ -59,6 +73,20 @@ class FxStateTest {
     }
 
     // == AP-22 start ==
+    /**
+     * Der Startbildschirm beginnt ohne NOCH NICHT, ohne Echos und mit
+     * losgelassener Hand; die Stützräder schaltet erst GameScreen ein.
+     */
+    @Test
+    fun `frischer Zustand hat keine Start-Effekte`() {
+        val fx = FxState()
+
+        assertEquals(0f, fx.notYetTime, 0f)
+        assertFalse(fx.handPressed)
+        assertTrue(fx.handEchoTime < 0f)
+        assertTrue(fx.tapEchoes.isEmpty())
+        assertFalse(fx.trainingWheels)
+    }
     // == /AP-22 ==
     /**
      * Ein frischer Zustand ist schon der Ruhezustand: Das Startbild darf
