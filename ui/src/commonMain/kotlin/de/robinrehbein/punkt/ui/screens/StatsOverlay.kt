@@ -279,8 +279,10 @@ private fun goalName(goal: Goal): String {
 /**
  * Worauf ein Ziel zählt. Bewusst eine Zuordnung statt eines abgeleiteten
  * Namens: Drei Achsen zählen Tage und teilen sich deshalb dasselbe Wort.
+ * `internal`, weil die Kacheln der Sammlung dieselben Wörter tragen
+ * (AP-15).
  */
-private fun goalAxisText(axis: GoalAxis) = when (axis) {
+internal fun goalAxisText(axis: GoalAxis) = when (axis) {
     GoalAxis.BEST_SCORE -> Res.string.goal_axis_points
     GoalAxis.TOTAL_SCORE -> Res.string.goal_axis_total
     GoalAxis.PERFECT_STREAK -> Res.string.goal_axis_perfect

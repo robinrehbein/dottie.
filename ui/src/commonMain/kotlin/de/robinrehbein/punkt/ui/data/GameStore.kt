@@ -725,6 +725,41 @@ class GameStore(private val prefs: KeyValueStore) {
     )
 
     // == AP-15 sammlung ==
+
+    // ===== Sammlung: schon angesehen (NEU-Markierung) =====
+
+    /**
+     * Die schon angesehenen Kacheln der Sammlung (siehe [CollectionSeen]).
+     * Rein lokal, nicht im [SyncState].
+     *
+     * Die zweite Migration nach der Besitz-Menge der Welten (AP-13): Beim
+     * ersten Lesen gibt es den Schlüssel noch nicht, dann gilt alles
+     * Offene als gesehen — außer dem, was erst die Welten-Leiter geöffnet
+     * hat (CollectionSeen.migrated). Die alten Schwellen fragt sie an den
+     * rohen Zahlen, genau wie die Übernahme der Besitz-Menge.
+     */
+    val collectionSeen: Set<String>
+        get() {
+            prefs.string(KEY_COLLECTION_SEEN)?.let { return CollectionSeen.decode(it) }
+            val legacy = ScenePaint.legacyUnlockedNames(sceneAxes(emptySet())).toSet()
+            val seen = CollectionSeen.migrated(stats(), legacy)
+            prefs.edit { putString(KEY_COLLECTION_SEEN, CollectionSeen.encode(seen)) }
+            return seen
+        }
+
+    /** Was in der Sammlung gerade NEU ist (offen, noch nicht angesehen). */
+    fun collectionNew(): Set<String> = CollectionSeen.newKeys(stats(), collectionSeen)
+
+    /**
+     * Merkt sich angesehene Kacheln. Angehängt an den gespeicherten Stand,
+     * nicht aus den Aufzählungen neu gebaut: Ein Schlüssel aus einer
+     * neueren Version überlebt so das Schreiben.
+     */
+    fun markCollectionSeen(keys: Collection<String>) {
+        val known = collectionSeen
+        if (known.containsAll(keys)) return
+        prefs.edit { putString(KEY_COLLECTION_SEEN, CollectionSeen.encode(known + keys)) }
+    }
     // == /AP-15 ==
 
     private companion object {
@@ -771,6 +806,9 @@ class GameStore(private val prefs: KeyValueStore) {
         // == /AP-13 ==
         const val KEY_PATRON = "patron_owned"
         // == AP-15 sammlung ==
+        // Die schon angesehenen Kacheln der Sammlung ("SCENE:WUESTE,SKIN:MINZE"),
+        // siehe CollectionSeen. Lokal, nicht im Sync.
+        const val KEY_COLLECTION_SEEN = "collection_seen"
         // == /AP-15 ==
         // Die schon erklaerten Twists als Namensliste ("FAKE,CHAIN"),
         // siehe TwistLessons. Rein lokal — kein Fortschritt, nur Didaktik.
