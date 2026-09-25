@@ -6,26 +6,30 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.use
 import de.robinrehbein.punkt.game.SoundSetId
+import de.robinrehbein.punkt.game.TimingGame
+import de.robinrehbein.punkt.ui.data.DeviceCalendar
 import de.robinrehbein.punkt.ui.data.FakeKeyValueStore
 import de.robinrehbein.punkt.ui.data.GameStore
+import de.robinrehbein.punkt.ui.data.fixedCalendarForTools
 import de.robinrehbein.punkt.ui.platform.GameFeedback
 import de.robinrehbein.punkt.ui.platform.GameSounds
 import de.robinrehbein.punkt.ui.screens.GameScreen
 import java.io.File
+import kotlin.random.Random
 import kotlin.test.Test
 import org.jetbrains.skia.EncodedImageFormat
 
 /**
  * Headless-Screenshots der geteilten Oberflaeche: rendert GameScreen mit
- * Skia in Geraetegroesse (1080x2400 bei 2.625x) und schreibt PNGs in das
- * Verzeichnis aus -Dshots.dir. Ohne dieses Property tut der Test nichts —
- * er ist ein Werkzeug, kein Pruefstein.
+ * Skia in Geraetegroesse (Standard 1080x2400 bei 2.625x) und schreibt PNGs
+ * in das Verzeichnis aus der Umgebungsvariable SHOTS_DIR. Ohne sie tut der
+ * Test nichts — er ist ein Werkzeug, kein Pruefstein. Gradle kennt
+ * SHOTS_DIR nicht als Eingabe, deshalb immer mit --rerun starten.
  *
- * Nicht reproduzierbar: TimingGame() (in GameScreen per remember erzeugt)
- * nutzt Random.Default, kein Seed. READY-Screen und Layout sind deshalb
- * stabil, die genaue Zonen-Position in RUNNING/GAME-OVER-Shots schwankt
- * von Lauf zu Lauf. Ein Seed muesste durch GameScreens Signatur — dafuer
- * ist dieses Werkzeug bewusst nicht angefasst.
+ * Reproduzierbar: Das Spiel ist geseedet (auch jeder freie Lauf, siehe
+ * GameScreen.runSeed), die Uhr steht fest ([FIXED_CALENDAR]) und die
+ * Bildzeit laeuft in festen Schritten. Zwei Laeufe mit demselben Seed
+ * liefern dieselben Bilder.
  */
 class ScreenshotRenderer {
 
@@ -56,11 +60,36 @@ class ScreenshotRenderer {
     @Test
     fun render() {
         val dir = System.getProperty("shots.dir") ?: System.getenv("SHOTS_DIR") ?: return
-        File(dir).mkdirs()
-        java.util.Locale.setDefault(java.util.Locale.GERMANY)
+        renderSet(File(dir), width = 1080, height = 2400, density = 2.625f, seed = SEED)
+    }
 
-        val w = 1080
-        val h = 2400
+    /**
+     * Der Screenshot-Satz fuer eine Geraetegroesse. Breite und Hoehe in
+     * Pixeln, [density] in Pixeln je dp — alle Tippstellen rechnen damit,
+     * damit derselbe Ablauf auch auf 720x1280 trifft.
+     */
+    fun renderSet(dir: File, width: Int, height: Int, density: Float, seed: Long) {
+        dir.mkdirs()
+        java.util.Locale.setDefault(java.util.Locale.GERMANY)
+        val vorher = fixedCalendarForTools
+        fixedCalendarForTools = FIXED_CALENDAR
+        try {
+            renderSetWithFixedClock(dir, width, height, density, seed)
+        } finally {
+            fixedCalendarForTools = vorher
+        }
+    }
+
+    private fun renderSetWithFixedClock(
+        dir: File,
+        width: Int,
+        height: Int,
+        density: Float,
+        seed: Long
+    ) {
+        val w = width
+        val h = height
+        val d = density
         var now = 0L
         fun ImageComposeScene.step(seconds: Double, everyMs: Long = 16) {
             val until = now + (seconds * 1_000_000_000L).toLong()
@@ -85,12 +114,14 @@ class ScreenshotRenderer {
         ImageComposeScene(
             width = w,
             height = h,
-            density = Density(2.625f)
+            density = Density(d)
         ) {
             GameScreen(
                 store = GameStore(FakeKeyValueStore()),
                 sounds = NoSounds(),
-                feedback = NoFeedback()
+                feedback = NoFeedback(),
+                game = TimingGame(Random(seed)),
+                runSeed = seed
             )
         }.use { scene ->
             // READY: kurz laufen lassen, damit Vogel und Blinken stehen
@@ -108,7 +139,7 @@ class ScreenshotRenderer {
             scene.save("03-gameover.png")
 
             // Hilfe aus dem Game-Over: "?" oben rechts (16dp Rand, 48dp Knopf)
-            scene.tap(w - (16 + 24) * 2.625f, (16 + 24) * 2.625f)
+            scene.tap(w - (16 + 24) * d, (16 + 24) * d)
             scene.step(0.6)
             scene.save("04-help.png")
             // Hilfe schliessen (Tap konsumiert, kein Neustart)
@@ -122,14 +153,14 @@ class ScreenshotRenderer {
             scene.save("05-menu-back.png")
 
             // Einstellungen: Regler-Knopf oben rechts im READY
-            scene.tap(w - (16 + 24) * 2.625f, (16 + 24) * 2.625f)
+            scene.tap(w - (16 + 24) * d, (16 + 24) * d)
             scene.step(0.6)
             scene.save("06-settings.png")
             scene.tap(w / 2f, 200f)
             scene.step(0.3)
 
-            // Skins: Taster-Leiste unten, mittleres Drittel
-            scene.tap(w / 2f, h - 32 * 2.625f)
+            // Sammlung: Taster-Leiste unten, mittleres Drittel
+            scene.tap(w / 2f, h - 32 * d)
             scene.step(0.8)
             scene.save("07-skins.png")
             // Tief in die Liste ziehen: die Skin-Familien unterhalb der
@@ -147,9 +178,22 @@ class ScreenshotRenderer {
             scene.step(0.3)
 
             // Statistik: Taster-Leiste unten, rechtes Drittel
-            scene.tap(w * 5f / 6f, h - 32 * 2.625f)
+            scene.tap(w * 5f / 6f, h - 32 * d)
             scene.step(0.8)
             scene.save("08-stats.png")
         }
+    }
+
+    private companion object {
+        /** Der Seed der Standard-Bilder. */
+        const val SEED = 20260925L
+
+        /** Mittwoch, 17. Juni 2026, 12 Uhr: Tageshimmel, kein Saison-Monat. */
+        val FIXED_CALENDAR = DeviceCalendar(
+            epochDay = java.time.LocalDate.of(2026, 6, 17).toEpochDay(),
+            month = 6,
+            year = 2026,
+            hour = 12
+        )
     }
 }
