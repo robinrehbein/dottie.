@@ -777,6 +777,9 @@ internal fun DrawScope.drawUnlockBurst(
     }
 }
 
+/** Radius des Vogels relativ zur Bildhöhe — auch für alles, was ihm ausweichen muss. */
+internal const val DOT_RADIUS_SHARE = 0.026f
+
 internal fun DrawScope.drawTimingDot(
     game: TimingGame,
     fx: FxState,
@@ -790,7 +793,7 @@ internal fun DrawScope.drawTimingDot(
     val h = size.height
     val px = cx + cos(game.angle) * radius
     var py = cy + sin(game.angle) * radius
-    val r = h * 0.026f
+    val r = h * DOT_RADIUS_SHARE
 
     // Mario-Tod: Während des Todes-Freeze bleibt der Vogel stehen, dann
     // hüpft er nach oben, dreht sich dabei auf den Rücken und fällt
@@ -885,4 +888,32 @@ internal fun DrawScope.drawTimingDot(
     } else {
         drawBird(px, py)
     }
+
+    // Todesmarker (Plan 3.2): Im Freeze steht ein weißer Pixelrahmen um
+    // den Vogel — genau dort ist es passiert. Mit dem Hüpfer ist er weg,
+    // dann steht die Ursache als Text unter dem Ring.
+    if (fx.deathTime >= 0f && fx.deathTime < TimingGame.DEATH_FREEZE_SECONDS) {
+        drawDeathFrame(px, py, r, floor(h / 220f).coerceAtLeast(2f))
+    }
+}
+
+/**
+ * Weißer Rahmen um den Vogel, gezeichnet als vier Pixelbalken im
+ * Raster der Bahn ([cell]), mit dunkler Kontur außen herum, damit er auch
+ * vor hellem Himmel steht.
+ */
+private fun DrawScope.drawDeathFrame(px: Float, py: Float, r: Float, cell: Float) {
+    val half = r + cell * 2f
+    val stroke = cell
+    fun frame(inset: Float, width: Float, color: Color) {
+        val left = px - half - inset
+        val top = py - half - inset
+        val side = (half + inset) * 2f
+        drawRect(color, Offset(left, top), Size(side, width))
+        drawRect(color, Offset(left, top + side - width), Size(side, width))
+        drawRect(color, Offset(left, top), Size(width, side))
+        drawRect(color, Offset(left + side - width, top), Size(width, side))
+    }
+    frame(inset = stroke * 0.5f, width = stroke * 2f, color = OutlineColor)
+    frame(inset = 0f, width = stroke, color = Color.White)
 }

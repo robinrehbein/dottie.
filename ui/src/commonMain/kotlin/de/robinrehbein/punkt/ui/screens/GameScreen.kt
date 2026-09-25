@@ -258,6 +258,12 @@ fun GameScreen(
     // wurde. Gefüllt beim Tod, siehe GameEventDied.
     var twistToExplain by remember { mutableStateOf<Twist?>(null) }
     // == AP-11 todesursache ==
+    // Warum der letzte Lauf endete — ein Spiegel von game.lastDeathCause,
+    // den die Game-Loop pro Frame nachzieht. Als Compose-Zustand, weil
+    // die Anzeige am Ring und im Game-Over sonst nicht neu zeichnet.
+    var deathCause by remember { mutableStateOf(de.robinrehbein.punkt.game.DeathCause.NONE) }
+    // Steht bei diesem Tod "BOMBE = NIE TIPPEN" dabei? Einmal pro Gerät.
+    var bombLesson by remember { mutableStateOf(false) }
     // == /AP-11 ==
     var dailyBestToday by remember {
         mutableIntStateOf(store.dailyBestFor(deviceCalendar().epochDay))
@@ -379,6 +385,8 @@ fun GameScreen(
                 val events = game.update(dt)
                 fx.flashAlpha = (fx.flashAlpha - dt * 3.5f).coerceAtLeast(0f)
                 // == AP-11 todesursache ==
+                // Gleiche Werte lösen keine Neuzusammensetzung aus.
+                deathCause = game.lastDeathCause
                 // == /AP-11 ==
                 fx.shakeTime = (fx.shakeTime - dt).coerceAtLeast(0f)
                 // == AP-22 start ==
@@ -452,6 +460,9 @@ fun GameScreen(
                             fx.celebrateTime = 0f
                             fx.deathTime = 0f
                             // == AP-11 todesursache ==
+                            deathCause = game.lastDeathCause
+                            bombLesson = deathCause == de.robinrehbein.punkt.game.DeathCause.TRAP &&
+                                store.takeBombLesson()
                             // == /AP-11 ==
                             val previousBest = store.bestScore
                             newMedalThisRun = MedalPaint.isUpgrade(game.score, previousBest)
@@ -490,7 +501,10 @@ fun GameScreen(
                             // wartet auf die nächsten Tode — das Game-Over
                             // bleibt ruhig. Die Daily zählt dabei wie
                             // jeder andere Lauf.
-                            twistToExplain = store.twistToExplain(runState.unlockedTwists)
+                            twistToExplain = store.twistToExplain(
+                                runState.unlockedTwists,
+                                diedInTrap = game.lastDeathCause == de.robinrehbein.punkt.game.DeathCause.TRAP
+                            )
                             twistToExplain?.let { store.markTwistExplained(it) }
                             // Jeder beendete Lauf ist ein moeglicher neuer
                             // Stand fuer die Uhr. Ohne Aenderung ist der
@@ -608,6 +622,10 @@ fun GameScreen(
             )
         }
         // == AP-11 todesursache ==
+        // Die Ursache am Ring, solange der Vogel stürzt (Freeze und Fall).
+        if (phase == GamePhase.DYING) {
+            DeathCauseLabel(cause = deathCause, bombLesson = bombLesson)
+        }
         // == /AP-11 ==
 
         when (phase) {
@@ -752,6 +770,7 @@ fun GameScreen(
                     onHelp = { showHelp = true },
                     cause = {
                         // == AP-11 todesursache ==
+                        DeathCauseSmall(deathCause)
                         // == /AP-11 ==
                     }
                 )
