@@ -238,6 +238,19 @@ class ScreenshotRenderer {
         // HILFE in den Einstellungen auch auf 720x1280, ohne abgezählte Pixel.
         fun ProbeScene.tap(x: Float, y: Float) = tapAt(Offset(x, y))
         fun ProbeScene.save(name: String) = save(File(dir, name))
+        // Ein Tap per Beschriftung, der wirkt: Gradle-Läufe nebeneinander
+        // bremsen die Test-JVM so, dass zwischen Drücken und Loslassen
+        // echte Zeit über der Langdruck-Grenze vergehen kann. Dann wird
+        // aus dem Tap kein Klick. Wiederholen, bis sich das Bild ändert.
+        fun ProbeScene.tapSure(label: String) {
+            val vorher = labels()
+            repeat(3) {
+                tap(label)
+                step(0.1)
+                if (labels() != vorher) return
+            }
+            error("„$label“ wirkt nicht: ${labels()}")
+        }
         // == /AP-31 ==
 
         val game = TimingGame(Random(seed))
@@ -279,9 +292,10 @@ class ScreenshotRenderer {
             // == /AP-14 ==
 
             // == AP-14 bedienung ==
-            // Zurueck ins Menue: MENUE in der Leiste am unteren Rand, links
-            // (ohne TEILEN ueber die ganze Breite).
-            scene.tap(w / 4f, h - 32 * d)
+            // Zurueck ins Menue: MENUE in der Leiste am unteren Rand. Über
+            // die Beschriftung getippt (AP-31): Auf 720x1280 lag der feste
+            // Punkt w/4 neben dem Knopf.
+            scene.tapSure("MENÜ")
             scene.step(0.5)
             // == /AP-14 ==
             scene.save("05-menu-back.png")
@@ -289,26 +303,26 @@ class ScreenshotRenderer {
             // == AP-31 release ==
             // Einstellungen: Regler-Knopf oben rechts im READY. Die Hilfe
             // gibt es nur noch hier (das „?“ im Game-Over ist weg, Plan 7.3).
-            scene.tap("EINSTELLUNGEN")
+            scene.tapSure("EINSTELLUNGEN")
             scene.step(0.6)
             scene.save("06-settings.png")
-            scene.tap("HILFE")
+            scene.tapSure("HILFE")
             scene.step(0.6)
             scene.save("04-help.png")
             // Hilfe über das X schließen: zurück im Startbildschirm.
-            scene.tap("SCHLIESSEN")
+            scene.tapSure("SCHLIESSEN")
             scene.step(0.3)
 
             // Sammlung: Taster-Leiste unten, mittleres Drittel
-            scene.tap(w / 2f, h - 32 * d)
+            scene.tapSure("SAMMLUNG")
             scene.step(0.8)
             scene.save("07-sammlung.png")
-            scene.tap("SCHLIESSEN")
+            scene.tapSure("SCHLIESSEN")
             scene.step(0.3)
             // == /AP-31 ==
 
             // Statistik: Taster-Leiste unten, rechtes Drittel
-            scene.tap(w * 5f / 6f, h - 32 * d)
+            scene.tapSure("STATISTIK")
             scene.step(0.8)
             scene.save("08-stats.png")
         }
