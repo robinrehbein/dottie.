@@ -124,7 +124,7 @@ ol.order li::before { content: counter(o); font-family: "Bytesized", "Silkscreen
 :root[data-theme="dark"] ol.order li::before { color: var(--yellow); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) ol.order li::before { color: var(--yellow); } }
 ol.order li div { display: grid; gap: 4px; }
-.meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.meta, ol.order li div.meta { display: flex; flex-wrap: wrap; gap: 6px; }
 
 footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-soft); display: grid; gap: 8px; }
 @media (prefers-reduced-motion: reduce) { button:active { transform: none; } }

@@ -1,12 +1,12 @@
-# Plan: Erstkontakt, Flackern, Lila — und danach die Bedienelemente
+# Plan: Erstkontakt, Flackern, Lila und Bedienelemente
 
 Stand: 25.09.2026, geprüft gegen `main` c5742c9 (Version 2.27).
 Spielbare Vorschau aller Entscheidungen: `docs/feedback-check.html`
 (dieselbe Seite als Artefakt: https://claude.ai/artifact/7gP6DMMrMaWCp6wU8YskB4, Version 10).
 
 Dieses Dokument hält alles fest, was bis hier entschieden ist, damit bei der
-Umsetzung nichts verloren geht. Abschnitt 7 bereitet den nächsten Schritt vor:
-die UX der Bedienelemente.
+Umsetzung nichts verloren geht. Abschnitt 7 enthält die Prüfung der
+Bedienelemente.
 
 ---
 
@@ -168,33 +168,76 @@ Fünf Leute, Handy in die Hand, nichts erklären, 60 Sekunden zuschauen.
 - Beide Lila-Bilder zeigen: „Welches davon meinst du?“
 - Erkennen sie Nebel und Bomben ohne Erklärung?
 
-## 7. Nächster Schritt: UX der Bedienelemente
+## 7. Bedienelemente
 
-Noch nicht bewertet. Bestandsaufnahme aus dem Code als Ausgangspunkt:
+Geprüft am 25.09.2026. Spielbare Vorschau: `docs/bedienelemente.html`
+(Artefakt: https://claude.ai/artifact/XGqtpxgMGUg969nbUQGsvf).
 
-| Ort | Element | Code |
-|---|---|---|
-| Startbildschirm | Einstellungen (Regler-Symbol, 48 dp, oben rechts) | `GameOverlays.kt:313` |
-| Startbildschirm | Taster-Leiste DAILY / SKINS / STATISTIK, randlos unten, 64 dp | `GameOverlays.kt:429–483` |
-| Startbildschirm | Serien-Abzeichen am DAILY-Taster | `GameOverlays.kt:526` |
-| Startbildschirm | Titel „DOTTIE.“ (langer Druck = versteckte Diagnose) | `GameOverlays.kt:335` |
-| Game-Over | „TIPPEN = NOCHMAL“, TEILEN, MENÜ, Hilfe „?“ oben rechts | `GameOverlays.kt:244`, `:767–789` |
-| Einstellungen | Ton, Erinnerung, Hilfe, Kauf, „Tippen zum Schließen“ | `GameOverlays.kt:1089–1200` |
-| Skins | Auswahl, Freischalt-Hinweise, Werbung für Freischaltung | `GameOverlays.kt:1294` |
-| Statistik | Bestenliste, „Tippen zum Schließen“ | `StatsOverlay.kt:169` |
+Tippflächen sind überall mindestens 48 dp groß, die Taster-Leiste ist gut zu
+treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
 
-Fragen, die dabei zu prüfen sind:
+### 7.1 Muss
 
-- **„Überall tippen“ gegen Knöpfe:** Im Startbildschirm und im Game-Over
-  startet ein Tap irgendwo das Spiel, Knöpfe fangen Taps ab. Wo landen
-  Wut-Taps nach dem Tod (MENÜ, TEILEN)? Reicht die Sperre von 0,55 s?
-- **Mit der neuen Startregel** (erster Tap zählt) werden Taps im Startbildschirm
-  wichtiger. Liegt die Taster-Leiste zu nah am Tippbereich?
-- **Tippflächen:** Größe und Abstand (Material empfiehlt mindestens 48 dp),
-  besonders Regler-Symbol und „?“ oben rechts.
-- **Einheitlichkeit:** Symbol (Regler) gegen Text-Knöpfe, „Tippen zum
-  Schließen“ statt eines sichtbaren Schließen-Knopfs, Hilfe an zwei Orten.
-- **Auffindbarkeit:** Hilfe liegt hinter dem Zahnrad und dem „?“. Braucht es
-  sie nach 3.1 überhaupt noch prominent?
-- **Rückmeldung beim Drücken:** Haben alle Knöpfe denselben Druck-Effekt
-  (Einsinken in den Schatten wie beim Regler)?
+- **Game-Over: Wut-Taps landen im Menü.** Das Spiel reagiert auf das
+  Aufsetzen des Fingers überall (`GameScreen.kt:535`), der Neustart ist
+  0,55 s gesperrt. MENÜ und TEILEN sitzen mitten in der Spalte direkt unter
+  „TIPPEN = NOCHMAL“ und sind sofort aktiv (`GameOverlays.kt:776–789`). Die
+  Spalte ist senkrecht zentriert, jede Zusatzzeile verschiebt die Knöpfe.
+  → MENÜ und TEILEN in eine feste Leiste am unteren Rand (Stil der
+  Taster-Leiste), in den ersten 0,8 s blass und gesperrt. Alles darüber
+  heißt „nochmal“. Inhalt oben verankert statt zentriert.
+- **Zurück-Geste beendet die App.** Weder `:ui` noch `:app` fangen Zurück ab.
+  → Zurück schließt das oberste Overlay (Hilfe, Einstellungen, Sammlung,
+  Statistik), im Game-Over geht es zum Startbildschirm, im laufenden Spiel
+  passiert nichts, im Startbildschirm ohne Overlay schließt die App.
+  Umsetzung: `expect`/`actual` in `:ui`, Android mit
+  `androidx.activity.compose.BackHandler`, iOS ohne Wirkung (CMP 1.7.3 hat
+  noch keinen gemeinsamen BackHandler).
+
+### 7.2 Sollte
+
+- **DAILY sieht aus wie „Spielen“:** einziger gelber Taster, links, startet
+  sofort einen Tageslauf (`GameScreen.kt:576–580`). → Sandfarben wie die
+  anderen, hervorgehoben nur durch das Serien-Abzeichen. Beim ersten Tap eine
+  einmalige Karte: „TAGESLAUF: HEUTE FÜR ALLE GLEICH. DEIN BESTER VERSUCH
+  ZÄHLT.“ mit START.
+- **Ein Druck-Stil:** Nur der Regler-Knopf hat Schatten und sinkt ein
+  (`PixelButton.kt:101–140`). Text-Knöpfe und Taster zeigen die runde
+  Material-Welle. → Alle Knöpfe mit 4-dp-Pixelschatten, beim Drücken
+  einsinken, keine Welle, kurzer Haptik-Tick.
+- **Sichtbarer Ausgang:** Overlays schließen nur über „TIPPEN ZUM
+  SCHLIESSEN“ (60 % Weiß, unten). → X-Knopf oben rechts, Tippen daneben
+  schließt weiterhin.
+- **Schalter statt Zustands-Knöpfe:** „TON: AN“ / „ERINNERUNG: AUS“ sind
+  mehrdeutig. → Zeilen mit Beschriftung links und Pixel-Schalter rechts. Die
+  Lautsprecher- und Glocken-Symbole in `PixelButton.kt:171–202` sind
+  gezeichnet, aber ungenutzt.
+
+### 7.3 Schnell
+
+- **Umlaute:** `bytesized_regular.ttf` enthält Ä, Ö, Ü, ß. 38 Zeilen in
+  `values-de/strings.xml` schreiben trotzdem UE/AE/OE (MENUE, GRUENEN,
+  WAEHLEN, SCHLIESSEN).
+- **SKINS → SAMMLUNG:** Der Taster öffnet Skins, Kulissen, Töne und Rahmen.
+- **„?“ im Game-Over** entfernen, sobald Todesursache und Erklärung beim
+  ersten Fallen-Tod da sind. Hilfe bleibt in den Einstellungen.
+- **Vorlesen:** `role = Role.Button` für `PixelButton` und Taster, „?“ als
+  „Hilfe“ beschriften.
+- **MENÜ 6 dp neben der Mitte**, wenn TEILEN fehlt: Der Abstandhalter in der
+  Knopfzeile bleibt stehen.
+
+### 7.4 Reihenfolge
+
+1. Zurück-Geste abfangen.
+2. Game-Over: feste Leiste unten mit 0,8 s Sperre.
+3. Umlaute und SAMMLUNG.
+4. Ein Druck-Stil, X-Knopf, Schalter.
+5. DAILY zurücknehmen und beim ersten Mal erklären, zusammen mit dem neuen
+   Startbildschirm (Phase 4).
+
+### 7.5 Offen
+
+- Braucht das Game-Over TEILEN überhaupt in der Leiste, oder nur nach einem
+  neuen Rekord?
+- 0,8 s Sperre für die Leiste: im Test mit echten Wut-Taps prüfen.
+- Soll es im laufenden Spiel eine Pause geben (dann würde Zurück pausieren)?
