@@ -26,6 +26,18 @@
     <string name="skins">SKINS</string>
     <string name="collection">SAMMLUNG</string>
     <!-- == AP-15 sammlung == -->
+    <string name="tab_bird">VOGEL</string>
+    <string name="tab_world">WELT</string>
+    <string name="tab_sound">TON</string>
+    <string name="tab_frame">RAHMEN</string>
+    <string name="collection_new">NEU</string>
+    <string name="collection_new_world">NEUE WELT: %1$s</string>
+    <string name="collection_new_worlds">NEUE WELTEN: %1$s</string>
+    <string name="collection_unlocked">FREIGESCHALTET</string>
+    <string name="collection_locked">GESPERRT</string>
+    <string name="collection_locked_preview">VORSCHAU · GESPERRT</string>
+    <string name="collection_progress">%1$d/%2$d %3$s</string>
+    <string name="collection_hear">HÖRPROBE</string>
     <!-- == /AP-15 == -->
     <string name="today_score">HEUTE: %1$d</string>
     <string name="streak_one">SERIE: 1 TAG</string>

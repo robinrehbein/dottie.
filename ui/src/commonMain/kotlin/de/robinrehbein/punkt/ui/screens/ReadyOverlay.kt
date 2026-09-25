@@ -286,6 +286,15 @@ private fun TasterBar(
             modifier = Modifier.weight(1f)
         ) {
             // == AP-15 sammlung ==
+            // Roter Punkt, solange in der Sammlung etwas NEU ist — in
+            // derselben Ecke, in der am DAILY-Taster die Serie hängt.
+            if (collectionHasNew) {
+                NewDot(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 12.dp, end = 12.dp)
+                )
+            }
             // == /AP-15 ==
         }
         Taster(

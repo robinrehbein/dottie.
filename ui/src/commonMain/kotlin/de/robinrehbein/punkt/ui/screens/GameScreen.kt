@@ -277,6 +277,19 @@ private fun GameScreenContent(
     // Gefüllt ab AP-15, bis dahin immer false (Plan 8.3).
     var collectionHasNew by remember { mutableStateOf(false) }
     // == AP-15 sammlung ==
+    // Die NEU-Kacheln der Sammlung (siehe CollectionSeen): Sie tragen den
+    // roten Punkt am Taster, das Banner „NEUE WELTEN“ und die Schilder im
+    // Raster. Nachgezogen bei jedem Phasenwechsel (ein Lauf kann etwas
+    // freigeschaltet haben) und nach jedem Abgleich (die Uhr auch).
+    var collectionNew by remember { mutableStateOf(emptySet<String>()) }
+    // Mit welchem Reiter die Sammlung aufgeht: VOGEL über den Taster, WELT
+    // über das Banner.
+    var collectionTab by remember { mutableStateOf(CollectionTab.VOGEL) }
+    fun refreshCollection() {
+        collectionNew = store.collectionNew()
+        collectionHasNew = collectionNew.isNotEmpty()
+    }
+    LaunchedEffect(phase, store.syncRevision) { refreshCollection() }
     // == /AP-15 ==
     // Statistik-Seite: Zahlen und Ziele werden beim Öffnen einmal
     // gerechnet und festgehalten. Pro Frame nachzurechnen wäre für eine
@@ -703,6 +716,8 @@ private fun GameScreenContent(
                     // das Tagespass-Angebot ist — sie kann nachladen, was
                     // beim Start nicht geklappt hat.
                     hooks.onSkinsOpened()
+                    refreshCollection()
+                    collectionTab = CollectionTab.VOGEL
                     showSkins = true
                 },
                 onStats = {
@@ -724,6 +739,18 @@ private fun GameScreenContent(
                 collectionHasNew = collectionHasNew,
                 banner = {
                     // == AP-15 sammlung ==
+                    // Neue Welten bekommen ein Banner unter dem Rekord:
+                    // Eine Welt ändert das ganze Bild, sie soll nicht nur
+                    // als roter Punkt am Taster warten. Tippen öffnet die
+                    // Sammlung im Reiter WELT.
+                    NewWorldsBanner(
+                        de.robinrehbein.punkt.ui.data.CollectionSeen.newScenes(collectionNew)
+                    ) {
+                        refreshSkinPass(deviceCalendar().epochDay)
+                        hooks.onSkinsOpened()
+                        collectionTab = CollectionTab.WELT
+                        showSkins = true
+                    }
                     // == /AP-15 ==
                 }
             )
@@ -896,12 +923,23 @@ private fun GameScreenContent(
         }
 
         if (showSkins) {
-            SkinOverlay(
+            // Saison-Fenster für die Balken der Saison-Skins: einmal je
+            // Öffnen abgelesen, nicht pro Frame.
+            val jetzt = remember { deviceCalendar() }
+            CollectionOverlay(
                 // patronOwned wird hier bewusst noch einmal gelesen: Erst
-                // dieser Zugriff lässt die Liste nach dem Kauf neu zeichnen.
+                // dieser Zugriff lässt die Sammlung nach dem Kauf neu zeichnen.
                 stats = store.stats().copy(patronOwned = patronOwned),
-                // Wer schon werbefrei ist, liest am Goenner-Angebot, was
-                // fuer ihn wirklich neu ist — sonst zahlt er die
+                month = jetzt.month,
+                seasonDays = store.seasonDaysFor(jetzt.month, jetzt.year),
+                newKeys = collectionNew,
+                onSeen = { key ->
+                    store.markCollectionSeen(listOf(key))
+                    refreshCollection()
+                },
+                initialTab = collectionTab,
+                // Wer schon werbefrei ist, liest am Gönner-Angebot, was
+                // für ihn wirklich neu ist — sonst zahlt er die
                 // Werbefreiheit ein zweites Mal, ohne es zu merken.
                 adsAlreadyRemoved = adsRemoved,
                 selected = skin,
@@ -910,49 +948,49 @@ private fun GameScreenContent(
                     sound = it
                     store.selectedSound = it
                     sounds.soundSet = it
-                    // Die Hörprobe ist der ganze Sinn der Zeile: Ohne sie
-                    // waehlt man einen Klang nach seinem Namen.
-                    sounds.preview(it)
-                    // Wie Skin- und Kulissen-Wahl eine Entscheidung: Sie
-                    // muss sofort raus, sonst ueberschreibt sie beim
-                    // naechsten Abgleich die juengere Wahl der Gegenseite.
+                    // Wie Skin- und Welten-Wahl eine Entscheidung: Sie
+                    // muss sofort raus, sonst überschreibt sie beim
+                    // nächsten Abgleich die jüngere Wahl der Gegenseite.
                     hooks.onPublishSync()
                 },
+                // Die Hörprobe gibt es für jedes Set, auch gesperrt: Wer
+                // es hört, will es haben (Plan 7.1).
+                onPreviewSound = { sounds.preview(it) },
                 selectedCardFrame = cardFrame,
                 onSelectCardFrame = { gewaehlt ->
                     // Der Rahmen ist die einzige Sammlung, die andere
                     // Leute zu sehen bekommen. Er wird nicht mit der Uhr
                     // abgeglichen — die hat keine Score-Karte —, deshalb
-                    // faellt hier auch kein onPublishSync an.
+                    // fällt hier auch kein onPublishSync an.
                     cardFrame = gewaehlt
                     store.selectedCardFrame = gewaehlt
                 },
                 selectedScene = scene,
+                // Eine Auswahl schließt die Sammlung nicht (Plan 8.6 #12):
+                // Man sieht sie im Schaufenster und wählt weiter.
                 onSelectScene = {
                     scene = it
                     store.selectedScene = it
-                    // Wie die Skin-Wahl eine Entscheidung: Sie muss sofort
-                    // raus, sonst ueberschreibt sie beim naechsten
-                    // Abgleich die juengere Wahl auf der Gegenseite.
                     hooks.onPublishSync()
-                    showSkins = false
                 },
                 onSelect = {
                     skin = it
                     store.selectedSkin = it
                     // Die Skin-Wahl ist der einzige Wert, bei dem "neuer
                     // gewinnt" gilt — sie muss deshalb sofort raus, sonst
-                    // ueberschreibt sie beim naechsten Abgleich die
-                    // juengere Wahl auf der Uhr.
+                    // überschreibt sie beim nächsten Abgleich die
+                    // jüngere Wahl auf der Uhr.
                     hooks.onPublishSync()
-                    showSkins = false
                 },
-                onClose = { showSkins = false },
+                onClose = {
+                    showSkins = false
+                    refreshCollection()
+                },
                 skinPass = skinPass,
                 adOfferReady = hooks.adsEnabled && hooks.rewardedReady,
                 onWatchAdFor = { wanted ->
                     // Erst der bestätigte Spot, dann der Pass: Bei Abbruch
-                    // passiert nichts, das Overlay bleibt stehen.
+                    // passiert nichts, die Sammlung bleibt stehen.
                     hooks.onWatchAdFor(wanted) {
                         store.grantSkinPass(deviceCalendar().epochDay, wanted)
                         skinPass = wanted
