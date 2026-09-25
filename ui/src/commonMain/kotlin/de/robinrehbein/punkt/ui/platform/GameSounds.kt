@@ -55,4 +55,17 @@ interface GameFeedback {
     fun death()
     fun thud()
     fun newRecord()
+
+    /**
+     * Kurzer Tick beim Drücken eines Knopfs (Bedienung, nicht Spiel).
+     *
+     * Läuft über die Systemeinstellung für Berührungs-Feedback, damit man
+     * ihn abschalten kann: Android über `View.performHapticFeedback`, iOS
+     * über `UISelectionFeedbackGenerator`. Die Oberfläche erreicht ihn
+     * über [de.robinrehbein.punkt.ui.components.LocalPressFeedback].
+     *
+     * Der Standard tut nichts, damit Umsetzungen ohne Haptik (Tests,
+     * Screenshots) nichts ergänzen müssen.
+     */
+    fun tap() {}
 }

@@ -1,17 +1,21 @@
 package de.robinrehbein.punkt.game
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.view.HapticFeedbackConstants
+import android.view.View
 import de.robinrehbein.punkt.ui.platform.GameFeedback
 
 /**
  * Haptisches Feedback für das Spiel. Jeder Effekt ist bewusst kurz gehalten,
  * damit er das Spielgefühl unterstützt statt zu nerven.
  */
-class GameHaptics(context: Context) : GameFeedback {
+class GameHaptics(private val context: Context) : GameFeedback {
 
     // VibratorManager gibt es erst ab API 31 — auf Android 9-11 (minSdk 28)
     // führt der alte Weg über VIBRATOR_SERVICE. Nullable + as?, damit ein
@@ -63,6 +67,25 @@ class GameHaptics(context: Context) : GameFeedback {
         val timings = longArrayOf(0, 40, 60, 40, 60, 80)
         val amplitudes = intArrayOf(0, 160, 0, 200, 0, 255)
         vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+    }
+
+    /**
+     * Kurzer Tick beim Drücken eines Knopfs.
+     *
+     * Bewusst nicht über den Vibrator wie die Spiel-Muster oben, sondern
+     * über `View.performHapticFeedback`: Das folgt der Systemeinstellung
+     * für Berührungs-Feedback. Wer sie abschaltet, spürt keinen Tick.
+     */
+    override fun tap() {
+        touchView?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+    }
+
+    // Der Tick braucht eine View. GameHaptics bekommt nur den Context
+    // aus LocalContext, das ist die Activity (oder eine Hülle um sie).
+    private val touchView: View? by lazy {
+        var c: Context? = context
+        while (c is ContextWrapper && c !is Activity) c = c.baseContext
+        (c as? Activity)?.window?.decorView
     }
 
     private fun vibrate(effect: VibrationEffect) {
