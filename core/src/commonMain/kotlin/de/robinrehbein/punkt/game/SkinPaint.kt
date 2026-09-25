@@ -90,6 +90,12 @@ data class SkinState(
  *
  * [patronOwned] ist kein Verdienst, sondern ein Kauf. Er schaltet nur die
  * Gönner-Familie frei und zählt nirgends mit, wo Leistung gezählt wird.
+ *
+ * [ownedScenes] ist die Besitz-Menge der Welten, als Namen ([SceneId.name])
+ * und nicht als Ordinale, damit eine unbekannte Welt aus einer neueren
+ * Version ein Downgrade übersteht. Eine Welt darin bleibt offen, auch
+ * wenn ihre Regel inzwischen strenger ist (siehe [ScenePaint.isUnlocked]).
+ * Skins, Töne und Rahmen lesen das Feld nicht, außer über die Welten.
  */
 data class SkinStats(
     val bestScore: Int,
@@ -100,7 +106,8 @@ data class SkinStats(
     val daysPlayed: Int = 0,
     val monthsPlayed: Int = 0,
     val seasonEarned: Int = 0,
-    val patronOwned: Boolean = false
+    val patronOwned: Boolean = false,
+    val ownedScenes: Set<String> = emptySet()
 )
 
 /**
@@ -165,7 +172,7 @@ object SkinPaint {
     val SKY_STAGES: List<Long> = listOf(
         0xFF4EC0CA, // 0+  Tag
         0xFF5B9BD5, // 5+  Blau
-        0xFF7B6FD0, // 10+ Lila
+        0xFF3F6FC4, // 10+ tiefes Blau (früher Lila #7B6FD0)
         0xFFC0616F, // 15+ Altrosa
         0xFFD98A3D, // 20+ Sonnenuntergang
         0xFF3D4A8C, // 25+ Dämmerung

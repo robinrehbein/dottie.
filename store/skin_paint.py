@@ -106,7 +106,7 @@ _SHADE_LIMIT = GRID * F(1.15)
 SKY_STAGES = [
     0xFF4EC0CA,  # 0+  Tag
     0xFF5B9BD5,  # 5+  Blau
-    0xFF7B6FD0,  # 10+ Lila
+    0xFF3F6FC4,  # 10+ tiefes Blau (frueher Lila)
     0xFFC0616F,  # 15+ Altrosa
     0xFFD98A3D,  # 20+ Sonnenuntergang
     0xFF3D4A8C,  # 25+ Daemmerung

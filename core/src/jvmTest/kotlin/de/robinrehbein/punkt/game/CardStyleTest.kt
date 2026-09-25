@@ -79,9 +79,9 @@ class CardStyleTest {
         // 20, also nicht alle Töne.
         CardFrame.KASKADE -> alles.copy(bestPerfectStreak = 19)
 
-        // Volle Skin-Sammlung, aber die STADT verlangt Rekord 85 — ohne
+        // Volle Skin-Sammlung, aber die STADT verlangt Rekord 100 — ohne
         // sie fehlt auch der WELTRAUM, also nicht alle Kulissen.
-        CardFrame.PRACHT -> alles.copy(bestScore = 84)
+        CardFrame.PRACHT -> alles.copy(bestScore = 99)
 
         else -> gesuchterSkinStand(ziel)
     }
@@ -150,12 +150,19 @@ class CardStyleTest {
         // davor und einmal genau darauf geprüft. Die übrigen Achsen
         // stehen dabei voll — was fehlt, ist immer nur die eine.
 
-        // KASKADE: die Kulissen. Ohne die STADT (Rekord 85) fehlt auch
+        // KASKADE: die Kulissen. Ohne die STADT (Rekord 100) fehlt auch
         // der WELTRAUM, der alle anderen verlangt.
-        val ohneKulisse = alles.copy(bestScore = 84, bestPerfectStreak = 19)
+        val ohneKulisse = alles.copy(bestScore = 99, bestPerfectStreak = 19)
         assertTrue(ScenePaint.unlockedCount(ohneKulisse) < SceneId.entries.size)
         assertEquals(CardFrame.PRACHT, CardStyle.frame(ohneKulisse))
-        assertEquals(CardFrame.KASKADE, CardStyle.frame(ohneKulisse.copy(bestScore = 85)))
+        assertEquals(CardFrame.KASKADE, CardStyle.frame(ohneKulisse.copy(bestScore = 100)))
+
+        // Dieselbe Stufe über den Bestandsschutz: Die STADT aus der
+        // Besitz-Menge zählt für die Kaskade wie eine verdiente.
+        assertEquals(
+            CardFrame.KASKADE,
+            CardStyle.frame(ohneKulisse.copy(ownedScenes = setOf(SceneId.STADT.name)))
+        )
 
         // PERLENKRANZ: die Töne. Die GLOCKE verlangt eine Perfekt-Serie
         // von 20.
@@ -183,8 +190,8 @@ class CardStyleTest {
         // ihr vorbei — sonst hiesse "höchste verdiente Stufe" bei zwei
         // Spielständen zweierlei.
         val nurKulissen = SkinStats(
-            bestScore = 85, bestPerfectStreak = 0, bestDailyStreak = 30,
-            runCount = 500, totalScore = 10_000
+            bestScore = 100, bestPerfectStreak = 0, bestDailyStreak = 1,
+            runCount = 100, totalScore = 2_500
         )
         assertTrue(
             "alle Kulissen offen",

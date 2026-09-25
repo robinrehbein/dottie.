@@ -149,12 +149,16 @@ object Progress {
         Triple(SkinId.JAHRESZEIT, GoalAxis.MONTHS_PLAYED, 3)
     )
 
-    /** Dieselbe Tabelle für die Kulissen (siehe [ScenePaint.isUnlocked]). */
+    /**
+     * Dieselbe Tabelle für die Welten (siehe [ScenePaint.ruleMet]). Eine
+     * Welt aus der Besitz-Menge taucht hier nicht als Ziel auf, weil
+     * [goals] über [ScenePaint.isUnlocked] fragt.
+     */
     internal val SCENE_THRESHOLDS: List<Triple<SceneId, GoalAxis, Int>> = listOf(
-        Triple(SceneId.WUESTE, GoalAxis.RUN_COUNT, 500),
-        Triple(SceneId.MEER, GoalAxis.TOTAL_SCORE, 10_000),
-        Triple(SceneId.BERG, GoalAxis.DAILY_STREAK, 30),
-        Triple(SceneId.STADT, GoalAxis.BEST_SCORE, 85)
+        Triple(SceneId.WUESTE, GoalAxis.RUN_COUNT, 100),
+        Triple(SceneId.MEER, GoalAxis.TOTAL_SCORE, 2_500),
+        Triple(SceneId.BERG, GoalAxis.DAILY_STREAK, 1),
+        Triple(SceneId.STADT, GoalAxis.BEST_SCORE, 100)
     )
 
     /**
