@@ -817,7 +817,7 @@ internal class WearGameController(context: Context) {
     }
 
     /**
-     * Spott-Text pro Tod, gleiche Logik wie pickTaunt in GameOverlays.kt:
+     * Spott-Text pro Tod, gleiche Logik wie rememberTaunter in ui/.../screens/GameOverOverlay.kt:
      * Pool nach Situation (Null-Runde, knapp dran, weit drunter, sonst),
      * Auswahl deterministisch über score+best statt echtem Zufall — fühlt
      * sich zufällig an, bleibt aber testbar. Die Wear-Arrays sind eine

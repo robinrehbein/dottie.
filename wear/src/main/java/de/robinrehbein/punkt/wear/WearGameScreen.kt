@@ -33,7 +33,7 @@ import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.TimingGame
 import kotlinx.coroutines.isActive
 
-/** Rot fürs "neuer Rekord"-Feedback, wie RecordRed in GameOverlays.kt. */
+/** Rot fürs "neuer Rekord"-Feedback, wie RecordRed in ui/.../world/Palette.kt. */
 private val WearRecordRed = Color(0xFFE53935)
 
 /** Banner-Orange und Feier-Gold, wie in ScoreHud/GameOverOverlay am Phone. */

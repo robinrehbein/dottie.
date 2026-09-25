@@ -139,9 +139,7 @@
     <string name="twist_chain_title">KETTE (AB 25)</string>
     <string name="twist_chain_text">ZWEI ZONEN NACHEINANDER — GLEICHE RICHTUNG.</string>
     <string name="help_max_twists">MAXIMAL ZWEI TWISTS GLEICHZEITIG — ZUFÄLLIG GEMISCHT.</string>
-    <string name="tap_to_close">TIPPEN ZUM SCHLIESSEN</string>
     <string name="skin_selected">AUSGEWÄHLT</string>
-    <string name="skin_tap_select">TIPPEN ZUM WÄHLEN</string>
     <string name="skin_family_einfarbig">EINFARBIG</string>
     <string name="skin_family_gemustert">GEMUSTERT</string>
     <string name="skin_family_bewegt">BEWEGT</string>
@@ -260,7 +258,6 @@
     <string name="sound_amboss">AMBOSS</string>
     <string name="sound_hint_glocke">PERFEKT-SERIE: 20</string>
     <string name="sound_hint_amboss">25.000 PUNKTE INSGESAMT</string>
-    <string name="sound_tap_hear">ANTIPPEN ZUM HÖREN</string>
     <string name="stats">STATISTIK</string>
     <string name="stats_runs">LÄUFE</string>
     <string name="stats_total_score">PUNKTE INSGESAMT</string>
@@ -286,7 +283,6 @@
     <string name="frame_pracht">PRACHT</string>
     <string name="frame_schlicht">SCHLICHT</string>
     <string name="frame_zinnen">ZINNEN</string>
-    <string name="frames">RAHMEN</string>
     <string name="goal_axis_days">TAGE</string>
     <string name="goal_axis_months">MONATE</string>
     <string name="goal_axis_perfect">PERFEKTE IN FOLGE</string>

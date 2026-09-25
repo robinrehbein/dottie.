@@ -189,8 +189,8 @@ fun GameScreen(
  * Spielprinzip "STOPP": Der Punkt kreist automatisch auf einer Bahn.
  * Ein Tap, während er in der Zielzone ist, zählt — daneben getappt oder
  * die Zone überfahren ist sofort das Ende. Präzision statt Dauerfeuer.
- * Mit steigendem Score schalten sich Twists frei (Puls, Drift, Geist,
- * Falle, Kette), die pro Zone zufällig gemischt werden.
+ * Mit steigendem Score schalten sich Twists frei (Puls, Drift, Nebel,
+ * Bomben, Kette), die pro Zone zufällig gemischt werden.
  */
 @Composable
 private fun GameScreenContent(
@@ -218,7 +218,7 @@ private fun GameScreenContent(
     var patronOwned by remember { mutableStateOf(store.patronOwned) }
     // Ebenfalls als Zustand: Wer waehrend der Sitzung werbefrei kauft,
     // soll die Goenner-Zeile sofort in ihrer ehrlichen Fassung sehen
-    // (siehe SkinOverlay) — nicht erst beim naechsten Start.
+    // (siehe CollectionOverlay) — nicht erst beim naechsten Start.
     var adsRemoved by remember { mutableStateOf(store.adsRemoved) }
 
     // Texte, die in Ereignis-Handlern gebraucht werden: Lesen geht nur

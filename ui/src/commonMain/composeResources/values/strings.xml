@@ -139,9 +139,7 @@
     <string name="twist_chain_title">CHAIN (AT 25)</string>
     <string name="twist_chain_text">TWO ZONES IN A ROW — SAME DIRECTION.</string>
     <string name="help_max_twists">AT MOST TWO TWISTS AT ONCE — RANDOMLY MIXED.</string>
-    <string name="tap_to_close">TAP TO CLOSE</string>
     <string name="skin_selected">SELECTED</string>
-    <string name="skin_tap_select">TAP TO SELECT</string>
     <string name="skin_family_einfarbig">SOLID</string>
     <string name="skin_family_gemustert">PATTERNED</string>
     <string name="skin_family_bewegt">ANIMATED</string>
@@ -260,7 +258,6 @@
     <string name="sound_amboss">ANVIL</string>
     <string name="sound_hint_glocke">PERFECT STREAK: 20</string>
     <string name="sound_hint_amboss">25,000 POINTS TOTAL</string>
-    <string name="sound_tap_hear">TAP TO HEAR</string>
     <string name="stats">STATS</string>
     <string name="stats_runs">RUNS</string>
     <string name="stats_total_score">TOTAL POINTS</string>
@@ -286,7 +283,6 @@
     <string name="frame_pracht">SPLENDOUR</string>
     <string name="frame_schlicht">PLAIN</string>
     <string name="frame_zinnen">BATTLEMENT</string>
-    <string name="frames">FRAMES</string>
     <string name="goal_axis_days">DAYS</string>
     <string name="goal_axis_months">MONTHS</string>
     <string name="goal_axis_perfect">PERFECTS IN A ROW</string>

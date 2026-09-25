@@ -220,8 +220,8 @@ class GameStore(private val prefs: KeyValueStore) {
      * Neues gebracht hat. Die Daily zaehlt dabei wie jeder andere Lauf:
      * Auch dort ist die Falle beim ersten Mal neu.
      *
-     * [diedInTrap]: Der Lauf endete in der Falle. Bis AP-12 ohne Wirkung
-     * (Plan 8.3).
+     * [diedInTrap]: Der Lauf endete in den Bomben. Dann darf die
+     * Bomben-Erklärung vordrängeln (Plan 3.4, [TwistLessons.next]).
      */
     fun twistToExplain(unlockedThisRun: List<Twist>, diedInTrap: Boolean = false): Twist? =
         TwistLessons.next(unlockedThisRun, explainedTwists, diedInTrap)
@@ -291,15 +291,7 @@ class GameStore(private val prefs: KeyValueStore) {
     fun dailyBestFor(epochDay: Long): Int =
         if (dailyDay == epochDay) dailyBest else 0
 
-    /**
-     * Die Serie, wie sie ein Daily-Lauf HEUTE fortschreiben würde. Für die
-     * Anzeige auf dem Startscreen: War gestern der letzte Lauf, läuft die
-     * Serie noch; liegt er länger zurück, ist sie faktisch gerissen.
-     */
     // == AP-22 start ==
-    // Der KDoc über dem Anker gehört zu dailyStreakPreviewFor unten und
-    // steht dort noch einmal.
-
     /**
      * Hat dieses Gerät die DAILY-Karte schon gezeigt (Plan 7.2, 8.6 #4)?
      * Rein lokal wie die Bomben-Lektion und bewusst nicht im SyncState:
@@ -312,13 +304,13 @@ class GameStore(private val prefs: KeyValueStore) {
     fun markDailyIntroSeen() {
         prefs.edit { putBoolean(KEY_DAILY_INTRO_SEEN, true) }
     }
-
-    /**
-     * Die Serie, wie sie ein Daily-Lauf HEUTE fortschreiben würde (für
-     * den Startbildschirm): Lief gestern der letzte, zählt sie noch.
-     */
     // == /AP-22 ==
 
+    /**
+     * Die Serie, wie sie ein Daily-Lauf HEUTE fortschreiben würde. Für die
+     * Anzeige auf dem Startscreen: War gestern der letzte Lauf, läuft die
+     * Serie noch; liegt er länger zurück, ist sie faktisch gerissen.
+     */
     fun dailyStreakPreviewFor(epochDay: Long): Int = when {
         dailyDay == epochDay -> dailyStreak
         dailyDay == epochDay - 1 -> dailyStreak

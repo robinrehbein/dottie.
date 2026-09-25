@@ -24,8 +24,8 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-// ===== Palette 1:1 aus app/.../ui/screens/GameOverlays.kt und
-// TimingGameScreen.kt übernommen, damit der Wear-Prototyp optisch zur
+// ===== Palette 1:1 aus ui/.../world/Palette.kt (bis v2.27
+// GameOverlays.kt und TimingGameScreen.kt) übernommen, damit der Wear-Prototyp optisch zur
 // Telefon-Version passt, ohne eine Abhängigkeit auf :app zu brauchen. =====
 
 // Die Himmelsfarben kommen aus ScenePaint (:core) — die Uhr zieht sie nur
@@ -37,7 +37,7 @@ internal val WearOutlineColor = Color(0xFF543847)
 internal val WearGrassLight = Color(0xFF9DE85A)
 internal val WearGrassDark = Color(0xFF74BF2E)
 
-/** Standard-Segmentfarbe außerhalb jeder Zone (Sand-Ton aus GameOverlays.kt). */
+/** Standard-Segmentfarbe außerhalb jeder Zone (Sand-Ton aus ui/.../world/Palette.kt). */
 internal val WearTrackDefaultColor = Color(0xFFD3C87E)
 
 /**
@@ -58,7 +58,7 @@ internal val WearFogEdgeColor = Color(0xFFA0BEDA)
 internal val WearFogMidColor = Color(0xFFD6E5F4)
 internal val WearFogCoreColor = Color(0xFFF4F8FD)
 
-/** Raster-Auflösung für den Pixel-Vogel, wie GRID in GameOverlays.kt. */
+/** Raster-Auflösung für den Pixel-Vogel, wie GRID in ui/.../world/PixelShapes.kt. */
 private const val WEAR_GRID = 13f
 
 /**
@@ -527,7 +527,7 @@ private fun DrawScope.drawWearDot(
 
 /**
  * Kleine Pixel-Münze in den Farben der Medaillen-Stufe. Die 72dp-Medaille
- * des Phones (MedalBadge in GameOverlays.kt) samt Band wäre auf der Uhr
+ * des Phones (MedalBadge in ui/.../screens/Panels.kt) samt Band wäre auf der Uhr
  * zu groß — hier reicht die Münze mit Glanzpunkt als kompaktes Symbol.
  */
 internal fun DrawScope.drawWearMedalCoin(tier: WearMedalTier) {
@@ -579,7 +579,7 @@ internal fun DrawScope.drawWearSkinCoin(skin: WearDotSkin, hour: Int, month: Int
 }
 
 /**
- * Lokale Kopie von drawPixelCircle (GameOverlays.kt) — kein :app-Zugriff.
+ * Lokale Kopie von drawPixelCircle (ui/.../world/PixelShapes.kt) — kein :app-Zugriff.
  * Die Füllfarbe kommt pro Feld aus [cell], damit gemusterte und bewegte
  * Skins auf der Uhr genauso aussehen wie am Phone.
  */

@@ -2,7 +2,7 @@
 """Generiert die Play-Store-Feature-Grafiken (1024x500) im Pixel-Look des
 Spiels — wie die App selbst komplett aus Code, ohne gemalte Assets.
 
-Die Farben entsprechen der Spiel-Palette (GameOverlays/TimingGameScreen);
+Die Farben entsprechen der Spiel-Palette (ui/.../world/Palette.kt);
 der Himmel erzaehlt links-nach-rechts die Stufen-Progression von Tag zu
 Nacht. Seit v2.20 laeuft unter der Tagline eine Reihe echter Skins mit:
 Die 42 Skins sind das Argument dieses Updates, und die Feature-Grafik ist
