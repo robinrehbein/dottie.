@@ -1,12 +1,17 @@
 package de.robinrehbein.punkt.ui.world
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.game.TrapPaint
 import de.robinrehbein.punkt.game.Twist
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -122,6 +127,100 @@ class MineFieldTest {
         }
         assertTrue(checked > 1000, "genug Frames geprüft: $checked")
         assertTrue(firstSteps > 0, "Schritt 0 kam vor")
+    }
+
+    /**
+     * Bildgrößen wie im Spiel: Bahnradius und Zellgröße für ein kleines
+     * Telefon, ein übliches Telefon (1080×2340), ein Tablet und die Maße
+     * des ScreenshotRenderers.
+     */
+    private val geometries = listOf(
+        150f to 2f,
+        388.8f to 10f,
+        576f to 14f,
+        259.2f to 7f
+    )
+
+    /** Die Pixel-Rechtecke der Kugel einer Mine, wie drawMineBody sie setzt. */
+    private fun bodyRects(c: Offset, px: Int): List<Rect> {
+        val u = px.toFloat()
+        val ox = (c.x - u * TrapPaint.MINE_SIZE / 2f).roundToInt().toFloat()
+        val oy = (c.y - u * TrapPaint.MINE_SIZE / 2f).roundToInt().toFloat()
+        val out = ArrayList<Rect>()
+        for (r in 0 until TrapPaint.MINE_SIZE) for (k in 0 until TrapPaint.MINE_SIZE) {
+            if (TrapPaint.MINE[r][k] == '.') continue
+            out.add(Rect(ox + k * u, oy + r * u, ox + (k + 1) * u, oy + (r + 1) * u))
+        }
+        return out
+    }
+
+    private fun Rect.hits(o: Rect): Boolean =
+        left < o.right && o.left < right && top < o.bottom && o.top < bottom
+
+    @Test
+    fun `die Kugeln benachbarter Minen berühren sich nie, auch nicht unter PULS`() {
+        for ((radius, cellPx) in geometries) {
+            var narrow = false
+            eachTrapFrame(setOf(Twist.FAKE, Twist.PULSE), seeds = 1L..30L, frames = 300) { game, mines ->
+                val px = trapMinePixel(game, segments, radius, cellPx)
+                assertTrue(px in 1..minePixel(cellPx), "Pixelmaß $px")
+                val rim = mineRim(px).toFloat()
+                if (game.fakeZoneHalf() < game.zoneHalfWidth * 0.7f) narrow = true
+                val bodies = mines.map {
+                    bodyRects(Offset(cos(it.angle) * radius, sin(it.angle) * radius), px)
+                }
+                for (i in bodies.indices) for (j in i + 1 until bodies.size) {
+                    for (a in bodies[i]) for (b in bodies[j]) {
+                        // Zwischen zwei Kugeln bleibt mindestens eine Randbreite.
+                        val grown = Rect(a.left - rim, a.top - rim, a.right + rim, a.bottom + rim)
+                        assertTrue(
+                            !grown.hits(b),
+                            "Minen $i/$j überdecken sich (r=$radius, cell=$cellPx, px=$px, " +
+                                "Breite ${game.fakeZoneHalf()})"
+                        )
+                    }
+                }
+            }
+            assertTrue(narrow, "die Falle war eng (r=$radius)")
+        }
+    }
+
+    @Test
+    fun `keine Mine liegt auf einem Sandblock`() {
+        for ((radius, cellPx) in geometries) {
+            eachTrapFrame(setOf(Twist.FAKE, Twist.PULSE), seeds = 1L..30L, frames = 300) { game, mines ->
+                val zoneHalf = game.effectiveZoneHalf()
+                val px = trapMinePixel(game, segments, radius, cellPx)
+                val half = mineHalfExtent(px)
+                val centers = mines.map { Offset(cos(it.angle) * radius, sin(it.angle) * radius) }
+                val rim = mineRim(px).toFloat()
+                // Das Bild der Minen: jeder Kugel-Pixel samt Rand.
+                val mineRects = centers.flatMap { c ->
+                    bodyRects(c, px).map { Rect(it.left - rim, it.top - rim, it.right + rim, it.bottom + rim) }
+                }
+                var extraFree = 0
+                for (k in 0 until segments) {
+                    val a = k * cell
+                    val inZone = abs(TimingGame.wrapToPi(a - game.zoneCenter)) <= zoneHalf
+                    if (inZone) continue
+                    val inFake = abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= game.fakeZoneHalf()
+                    if (inFake) continue
+                    val bx = cos(a) * radius
+                    val by = sin(a) * radius
+                    val blockHalf = cellPx * 3f / 2f
+                    if (blockHitsMine(bx, by, blockHalf, centers, half)) {
+                        extraFree++
+                        continue
+                    }
+                    val block = Rect(bx - blockHalf, by - blockHalf, bx + blockHalf, by + blockHalf)
+                    for (m in mineRects) {
+                        assertTrue(!block.hits(m), "Sandblock $k unter einer Mine (r=$radius)")
+                    }
+                }
+                // Frei bleibt höchstens ein Block je Ende der Kette.
+                assertTrue(extraFree <= 2, "zu viele Blöcke frei: $extraFree (r=$radius)")
+            }
+        }
     }
 
     @Test

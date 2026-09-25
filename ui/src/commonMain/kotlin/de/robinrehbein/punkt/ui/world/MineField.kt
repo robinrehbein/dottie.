@@ -7,11 +7,13 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import de.robinrehbein.punkt.game.DeathCause
 import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.game.TrapPaint
+import de.robinrehbein.punkt.game.Twist
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -37,6 +39,73 @@ internal const val TRAP_BOOM_SPARKS = 12
  * steht 0,6 Sprite-Pixel über.
  */
 internal fun minePixel(cell: Float): Int = (cell * 0.6f).roundToInt().coerceAtLeast(1)
+
+/** Breite des hellen Rands in Bildpunkten bei Sprite-Pixeln der Kante [px]. */
+internal fun mineRim(px: Int): Int = (px * 0.6f).roundToInt().coerceAtLeast(1)
+
+/**
+ * Halbe Kantenlänge des Quadrats, das eine Mine samt Rand einnimmt, in
+ * Bildpunkten, gemessen von der Mitte.
+ */
+internal fun mineHalfExtent(px: Int): Float = TrapPaint.MINE_SIZE * px / 2f + mineRim(px)
+
+/**
+ * Passen zwei Minen mit Sprite-Pixeln [px] im Abstand [distance] (Bildpunkte,
+ * beliebige Richtung) nebeneinander, ohne dass sich ihre Kugeln berühren?
+ *
+ * Zwischen zwei Kugeln bleibt mindestens eine Randbreite plus ein Bildpunkt
+ * für das Runden auf ganze Pixel; die Ränder selbst dürfen sich teilen.
+ * Das Sprite ist ein 5×5-Kern mit vier Zacken: Schräg (45°) begrenzt der
+ * Kern (`√2 · (5 px + rim)`), längs der Achsen die Zacken (`7 px + rim`).
+ */
+internal fun minesFit(px: Int, distance: Float): Boolean {
+    val rim = mineRim(px)
+    val diagonal = SQRT2 * (5 * px + rim)
+    val axis = (TrapPaint.MINE_SIZE * px + rim).toFloat()
+    return distance >= max(diagonal, axis) + 1f
+}
+
+private const val SQRT2 = 1.4142135f
+
+/**
+ * Sprite-Pixelmaß der Minen der aktuellen Falle (Plan 3.4: Mine in
+ * Blockgröße). Höchstens [minePixel] ([cell]), und so klein, dass
+ * benachbarte Minen sich nie überdecken, auch nicht an der engsten Stelle
+ * unter PULS. Gemessen wird an der kleinsten Breite, die die Falle in
+ * dieser Runde annehmen kann; so bleibt die Größe beim Atmen stehen, nur
+ * der Abstand atmet. Mindestens 1.
+ */
+internal fun trapMinePixel(game: TimingGame, segments: Int, radius: Float, cell: Float): Int {
+    val count = TrapPaint.count(game.zoneHalfWidth, 2f * PI.toFloat() / segments)
+    val narrowest = if (Twist.PULSE in game.activeTwists) {
+        min(game.fakeZoneHalf(), game.zoneHalfWidth * TimingGame.PULSE_MIN_SHARE)
+    } else {
+        game.fakeZoneHalf()
+    }
+    val pitch = 2f * narrowest / count
+    // Sehne statt Bogen: So weit liegen zwei Minen auf dem Bild auseinander.
+    val distance = 2f * radius * sin(pitch / 2f)
+    var px = minePixel(cell)
+    while (px > 1 && !minesFit(px, distance)) px--
+    return px
+}
+
+/**
+ * Überdeckt ein Bahn-Block mit Mitte ([bx], [by]) und halber Kante
+ * [blockHalf] eine der Minen (Mitten [mineCenters], halbe Kante
+ * [mineHalf])? Ein Bildpunkt Luft zählt mit. Dann bleibt der Block frei,
+ * damit keine Mine halb auf dem Sand liegt.
+ */
+internal fun blockHitsMine(
+    bx: Float,
+    by: Float,
+    blockHalf: Float,
+    mineCenters: List<Offset>,
+    mineHalf: Float
+): Boolean {
+    val reach = blockHalf + mineHalf + 1f
+    return mineCenters.any { abs(it.x - bx) < reach && abs(it.y - by) < reach }
+}
 
 /**
  * Eine Mine, mittig auf ([cx], [cy]), mit Sprite-Pixeln der Kantenlänge
@@ -64,7 +133,7 @@ internal fun DrawScope.drawMineRim(cx: Float, cy: Float, px: Int) {
     val size = TrapPaint.MINE_SIZE
     val ox = mineOrigin(cx, u)
     val oy = mineOrigin(cy, u)
-    val rim = (u * 0.6f).roundToInt().coerceAtLeast(1).toFloat()
+    val rim = mineRim(px).toFloat()
     val rimColor = Color(TrapPaint.RIM)
     for (r in 0 until size) {
         val row = TrapPaint.MINE[r]

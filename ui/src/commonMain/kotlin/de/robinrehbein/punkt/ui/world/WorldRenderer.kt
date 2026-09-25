@@ -694,6 +694,12 @@ internal fun DrawScope.drawTrack(
     val segments = 60
     val zoneHalf = game.effectiveZoneHalf()
     val mines = trapMines(game, segments, zoneHalf)
+    // Minen in Blockgröße, aber nie so groß, dass sie sich überdecken
+    // (unter PULS rückt die Kette zusammen). Ihre Mitten auf dem Bild
+    // braucht die Schleife, um Sandblöcke unter den Minen frei zu lassen.
+    val minePx = trapMinePixel(game, segments, radius, cell)
+    val mineHalf = mineHalfExtent(minePx)
+    val mineCenters = mines.map { Offset(cx + cos(it.angle) * radius, cy + sin(it.angle) * radius) }
     for (k in 0 until segments) {
         val a = k.toFloat() / segments * (2f * PI.toFloat())
         val px = cx + cos(a) * radius
@@ -717,6 +723,9 @@ internal fun DrawScope.drawTrack(
         if (inFake && !inZone) continue
 
         val outer = if (inZone) cell * 5f else cell * 3f
+        // Die Minen liegen nicht auf dem Segment-Raster: Ein Sandblock am
+        // Rand der Falle, den eine Mine berühren würde, bleibt ebenfalls frei.
+        if (!inZone && blockHitsMine(px, py, outer / 2f, mineCenters, mineHalf)) continue
         val inner = if (inZone) cell * 3.4f else cell * 1.8f
         val innerColor = when {
             inPerfectCore -> GrassLight
@@ -738,14 +747,13 @@ internal fun DrawScope.drawTrack(
 
     // Die Minen der Falle: so viele, wie TrapPaint.count aus der
     // Grundbreite ergibt, verteilt über die Breite fakeZoneHalf() (8.7).
-    // Erst alle Ränder, dann alle Kugeln, damit sich dicht liegende Minen
-    // unter PULS nicht gegenseitig überdecken.
-    val minePx = minePixel(cell)
-    for (mine in mines) {
-        drawMineRim(cx + cos(mine.angle) * radius, cy + sin(mine.angle) * radius, minePx)
+    // Erst alle Ränder, dann alle Kugeln: Benachbarte Minen teilen sich
+    // ihren Rand, die Kugeln berühren sich nie (trapMinePixel).
+    for (c in mineCenters) {
+        drawMineRim(c.x, c.y, minePx)
     }
-    for (mine in mines) {
-        drawMineBody(cx + cos(mine.angle) * radius, cy + sin(mine.angle) * radius, minePx, mine.red)
+    for ((i, mine) in mines.withIndex()) {
+        drawMineBody(mineCenters[i].x, mineCenters[i].y, minePx, mine.red)
     }
 }
 
