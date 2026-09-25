@@ -106,7 +106,7 @@ object Progress {
      * wird per Test bezahlt: `ProgressTest` prüft für jedes Ziel, dass es
      * bei `target` fällt und bei `target - 1` noch steht.
      */
-    private val SKIN_THRESHOLDS: List<Triple<SkinId, GoalAxis, Int>> = listOf(
+    internal val SKIN_THRESHOLDS: List<Triple<SkinId, GoalAxis, Int>> = listOf(
         Triple(SkinId.MINZE, GoalAxis.BEST_SCORE, 10),
         Triple(SkinId.LAVA, GoalAxis.BEST_SCORE, 20),
         Triple(SkinId.GOLD, GoalAxis.BEST_SCORE, 30),
@@ -150,7 +150,7 @@ object Progress {
     )
 
     /** Dieselbe Tabelle für die Kulissen (siehe [ScenePaint.isUnlocked]). */
-    private val SCENE_THRESHOLDS: List<Triple<SceneId, GoalAxis, Int>> = listOf(
+    internal val SCENE_THRESHOLDS: List<Triple<SceneId, GoalAxis, Int>> = listOf(
         Triple(SceneId.WUESTE, GoalAxis.RUN_COUNT, 500),
         Triple(SceneId.MEER, GoalAxis.TOTAL_SCORE, 10_000),
         Triple(SceneId.BERG, GoalAxis.DAILY_STREAK, 30),
@@ -165,7 +165,7 @@ object Progress {
      * Kulisse, hörte niemand das neue Set — er sähe den neuen Vogel und
      * hielte den Klang für dessen Beiwerk.
      */
-    private val SOUND_THRESHOLDS: List<Triple<SoundSetId, GoalAxis, Int>> = listOf(
+    internal val SOUND_THRESHOLDS: List<Triple<SoundSetId, GoalAxis, Int>> = listOf(
         Triple(SoundSetId.GLOCKE, GoalAxis.PERFECT_STREAK, 20),
         Triple(SoundSetId.AMBOSS, GoalAxis.TOTAL_SCORE, 25_000)
     )

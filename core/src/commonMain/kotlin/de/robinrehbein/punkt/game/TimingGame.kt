@@ -38,6 +38,33 @@ data object GameEventDied : GameEvent
 data object GameEventSettled : GameEvent
 
 /**
+ * Ein Tap in READY, der noch nicht zählt: Der Punkt steht nicht im Grün.
+ *
+ * Bis zur neuen Startregel liefert die Engine dieses Event nie. Es steht
+ * schon hier, damit Telefon, Uhr und iOS ihre Antwort darauf (Wackeln,
+ * Haptik-Tick, „NOCH NICHT“) gegen einen festen Namen bauen können.
+ */
+data object GameEventNotYet : GameEvent
+
+/**
+ * Warum der letzte Lauf geendet hat.
+ *
+ * Aus dem Zustand beim [GameEventDied] allein lässt sich das nicht sicher
+ * ablesen: Das Event kommt erst im nächsten `update()`, und `die()` setzt
+ * `elapsed` zurück. Deshalb hält die Engine die Ursache im Moment des
+ * Todes fest ([TimingGame.lastDeathCause]).
+ *
+ * - [EARLY]: Tap vor der Zone („ZU FRÜH“).
+ * - [LATE]: Tap hinter der Zone, jenseits der Spät-Gnade („ZU SPÄT“).
+ * - [MISSED]: Zone ohne Tap überfahren („VERPASST“).
+ * - [TRAP]: Tap in die Fallen-Zone („BOOM!“). Geht vor EARLY und LATE.
+ * - [NONE]: Kein Tod seit dem letzten Start.
+ *
+ * Auf oberster Ebene aus demselben Grund wie die Events (ObjC-Export).
+ */
+enum class DeathCause { NONE, EARLY, LATE, MISSED, TRAP }
+
+/**
  * Pure-Kotlin Engine für das "Stopp"-Spielprinzip: Timing-Präzision.
  *
  * Der Punkt läuft automatisch auf einer Kreisbahn. Irgendwo auf der Bahn
@@ -90,7 +117,7 @@ class TimingGame(private var random: Random) {
     var direction: Int = 1
         private set
 
-    var zoneCenter: Float = 1.8f
+    var zoneCenter: Float = READY_ZONE_CENTER
         private set
 
     /** Basisbreite der Zone (halb); die effektive Breite kann pulsieren. */
@@ -132,6 +159,38 @@ class TimingGame(private var random: Random) {
     var fakeZoneCenter: Float = 0f
         private set
 
+    /**
+     * Warum der letzte Lauf endete. Gesetzt im selben Moment wie der Tod
+     * (im tödlichen Tap bzw. beim Überfahren), zurückgesetzt bei jedem
+     * Start. Die Engine selbst liest den Wert nie.
+     */
+    var lastDeathCause: DeathCause = DeathCause.NONE
+        private set
+
+    /**
+     * BLIND!-Bonus: +1 für einen Treffer, solange der Punkt im Nebel ist.
+     * Noch ohne Wirkung — die Wertung kommt mit der Nebel-Regel.
+     */
+    var blindBonus: Boolean = false
+
+    /**
+     * War der letzte Treffer ein Blindtreffer im Nebel? Für den
+     * BLIND!-Pop. Bleibt bis zur Nebel-Regel immer `false`.
+     */
+    var lastHitBlind: Boolean = false
+        private set
+
+    /**
+     * Zeitpunkt (in `elapsed`), an dem der Puls beim Tod stehen blieb.
+     * Ohne das Einfrieren atmete die Zone in DYING ab Phase 0 weiter, und
+     * der Vogel stand im Freeze womöglich sichtbar im Grün, obwohl die
+     * Anzeige ZU FRÜH sagt.
+     */
+    private var frozenPulseTime: Float = 0f
+
+    /** [zoneAge] im Moment des Todes, für DYING und OVER. */
+    private var zoneAgeAtDeath: Float = 0f
+
     /** Wie viele Ketten-Zonen nach der aktuellen noch folgen. */
     var chainRemaining: Int = 0
         private set
@@ -160,10 +219,58 @@ class TimingGame(private var random: Random) {
     /** Effektive halbe Zonenbreite — pulsiert, wenn PULSE aktiv ist. */
     fun effectiveZoneHalf(): Float {
         if (Twist.PULSE !in activeTwists) return zoneHalfWidth
+        // Nach dem Tod steht der Puls still: vor und nach dem tödlichen
+        // Tap ist die Zone gleich breit (siehe frozenPulseTime).
+        val pulseTime = if (phase == GamePhase.DYING || phase == GamePhase.OVER) {
+            frozenPulseTime
+        } else {
+            elapsed
+        }
         val pulse = PULSE_MIN_SHARE + (1f - PULSE_MIN_SHARE) *
-            (0.5f + 0.5f * sin(elapsed * PULSE_SPEED))
+            (0.5f + 0.5f * sin(pulseTime * PULSE_SPEED))
         return zoneHalfWidth * pulse
     }
+
+    /**
+     * Wie lange die aktuelle Zone schon steht, in Sekunden. Die Uhr für
+     * Darstellungen, die mit der Zone beginnen (Lauflicht der Bomben,
+     * Einrollen des Nebels) — ohne eigene Zufallszahl und ohne eigene Uhr.
+     *
+     * In READY und RUNNING `min(elapsed, timeSinceHit)`: seit dem Start
+     * bzw. seit dem letzten Treffer, der die Zone neu gesetzt hat. In DYING
+     * und OVER der Wert beim Tod, damit das Bild im Freeze stehen bleibt.
+     */
+    val zoneAge: Float
+        get() = when (phase) {
+            GamePhase.DYING, GamePhase.OVER -> zoneAgeAtDeath
+            else -> minOf(elapsed, timeSinceHit)
+        }
+
+    /**
+     * Anfang der Nebelbank, relativ zur Zone wie [relativeToZone]
+     * (negativ = davor): [FOG_SECONDS] Laufzeit vor der Zonenkante.
+     *
+     * Gerechnet mit der Grundbreite [zoneHalfWidth], nicht mit der
+     * pulsierenden — die Wolke soll nicht mitatmen.
+     */
+    fun fogStart(): Float = -zoneHalfWidth - currentSpeed() * FOG_SECONDS
+
+    /**
+     * Ende der Nebelbank, relativ zur Zone: im ersten Viertel der Zone
+     * (`-h + FOG_END_SHARE·h`). Der PERFEKT-Kern liegt immer dahinter.
+     */
+    fun fogEnd(): Float = -zoneHalfWidth + zoneHalfWidth * FOG_END_SHARE
+
+    /**
+     * Steht der Punkt gerade in der Nebelbank? Reine Geometrie, gilt in
+     * jeder Phase und unabhängig vom Twist. Wirkt noch nicht auf
+     * [isDotVisible].
+     */
+    val isInFog: Boolean
+        get() {
+            val rel = relativeToZone()
+            return rel >= fogStart() && rel <= fogEnd()
+        }
 
     /** Steht der Punkt gerade in der (effektiven) Zielzone? */
     val isInZone: Boolean get() = abs(relativeToZone()) <= effectiveZoneHalf()
@@ -210,6 +317,29 @@ class TimingGame(private var random: Random) {
         (BASE_SPEED + hits * SPEED_PER_HIT).coerceAtMost(MAX_SPEED)
 
     /**
+     * Startet den Lauf aus READY, ohne den Tap zu werten: Die Zone springt
+     * an eine neue Stelle, der Punkt läuft mit Spieltempo. Das ist das
+     * bisherige Verhalten eines Taps in READY. [GameEventStarted] landet
+     * wie bei [tap] im Puffer und kommt mit dem nächsten [update].
+     *
+     * Außerhalb von READY passiert nichts (Rückgabe `null`).
+     */
+    fun start(): GameEvent? {
+        if (phase != GamePhase.READY) return null
+        beginRun()
+        pendingEvents.add(GameEventStarted)
+        return GameEventStarted
+    }
+
+    private fun beginRun() {
+        phase = GamePhase.RUNNING
+        elapsed = 0f
+        lastDeathCause = DeathCause.NONE
+        lastHitBlind = false
+        spawnZone()
+    }
+
+    /**
      * Verarbeitet einen Tap. In READY startet er den Lauf, in RUNNING ist
      * er der Stopp-Versuch, in OVER (nach kurzer Sperre gegen Wut-Taps)
      * geht es zurück in den READY-Zustand.
@@ -217,9 +347,7 @@ class TimingGame(private var random: Random) {
     fun tap(): GameEvent? {
         val event: GameEvent? = when (phase) {
             GamePhase.READY -> {
-                phase = GamePhase.RUNNING
-                elapsed = 0f
-                spawnZone()
+                beginRun()
                 GameEventStarted
             }
             GamePhase.RUNNING -> {
@@ -240,6 +368,13 @@ class TimingGame(private var random: Random) {
                 } else {
                     // Auch ein Tap in der Fallen-Zone landet hier: Sie ist
                     // mechanisch einfach "daneben" — ihre Gefahr ist optisch.
+                    // Die Ursache wird vor die() festgehalten, solange
+                    // elapsed und damit der Puls noch stimmen.
+                    lastDeathCause = when {
+                        isInFakeZone() -> DeathCause.TRAP
+                        rel < 0f -> DeathCause.EARLY
+                        else -> DeathCause.LATE
+                    }
                     die()
                     GameEventDied
                 }
@@ -249,9 +384,7 @@ class TimingGame(private var random: Random) {
                 if (elapsed >= RESTART_LOCK_SECONDS) {
                     // Sofort-Neustart: aus der Wut direkt in den nächsten Lauf.
                     reset()
-                    phase = GamePhase.RUNNING
-                    elapsed = 0f
-                    spawnZone()
+                    beginRun()
                     GameEventStarted
                 } else {
                     null
@@ -289,7 +422,7 @@ class TimingGame(private var random: Random) {
         phase = GamePhase.READY
         angle = 0f
         direction = 1
-        zoneCenter = 1.8f
+        zoneCenter = READY_ZONE_CENTER
         zoneHalfWidth = BASE_ZONE_HALF
         score = 0
         hits = 0
@@ -303,6 +436,10 @@ class TimingGame(private var random: Random) {
         chainRemaining = 0
         announcedTwists.clear()
         pendingEvents.clear()
+        lastDeathCause = DeathCause.NONE
+        lastHitBlind = false
+        frozenPulseTime = 0f
+        zoneAgeAtDeath = 0f
     }
 
     /**
@@ -333,6 +470,7 @@ class TimingGame(private var random: Random) {
                 // damit sich das Überfahren auf jeder Tempo-Stufe gleich
                 // anfühlt und späte Taps nicht vom Tod überholt werden.
                 if (relativeToZone() > zoneHalfWidth + currentSpeed() * PASS_BUFFER_SECONDS) {
+                    lastDeathCause = DeathCause.MISSED
                     die()
                     events.add(GameEventDied)
                 }
@@ -455,8 +593,18 @@ class TimingGame(private var random: Random) {
             candidate in pair && activeTwists.any { it != candidate && it in pair }
         }
 
+    /**
+     * Steht der Punkt in der Fallen-Zone? Dieselbe Rechnung wie in den
+     * Renderern, die die Falle zeichnen (Abstand zur Mitte ≤ [fakeZoneHalf]).
+     */
+    private fun isInFakeZone(): Boolean =
+        hasFakeZone && abs(wrapToPi(angle - fakeZoneCenter)) <= fakeZoneHalf()
+
     private fun die() {
         if (phase != GamePhase.RUNNING) return
+        // Puls und Zonen-Uhr einfrieren, bevor elapsed zurückgesetzt wird.
+        frozenPulseTime = elapsed
+        zoneAgeAtDeath = minOf(elapsed, timeSinceHit)
         phase = GamePhase.DYING
         elapsed = 0f
     }
@@ -469,6 +617,9 @@ class TimingGame(private var random: Random) {
         const val SPEED_PER_HIT = 0.07f
         const val MAX_SPEED = 5.2f
         const val READY_SPEED = 1.2f
+
+        /** Wo die Zone in READY steht, vor dem ersten Start. */
+        const val READY_ZONE_CENTER = 1.8f
 
         // Zielzone (Radiant)
         const val BASE_ZONE_HALF = 0.40f
@@ -519,6 +670,19 @@ class TimingGame(private var random: Random) {
         const val GHOST_BLINK_SPEED = 1.6f
         const val GHOST_VISIBLE_SHARE = 0.62f
         const val FAKE_MIN_DISTANCE = 0.55f
+
+        /**
+         * Nebel (GEIST): Die Bank beginnt so viele Sekunden Laufzeit vor
+         * der Zonenkante ...
+         */
+        const val FOG_SECONDS = 0.12f
+
+        /**
+         * ... und reicht bis zu diesem Anteil der halben Zonenbreite in die
+         * Zone hinein (0,5 = erstes Viertel der Zone). Verdeckt ist der
+         * Punkt damit `FOG_SECONDS + FOG_END_SHARE·h/Tempo` Sekunden.
+         */
+        const val FOG_END_SHARE = 0.5f
         const val CHAIN_LENGTH = 1
         const val CHAIN_MIN_DISTANCE = 1.0f
         const val CHAIN_MAX_DISTANCE = 1.8f
