@@ -2,6 +2,7 @@ package de.robinrehbein.punkt.wear
 
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.HapticFeedbackConstants
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -48,6 +49,14 @@ class MainActivity : ComponentActivity() {
             write = { controller.applySync(it) }
         )
         controller.onStateChanged = { statsSync.publish() }
+        // „NOCH NICHT“ als kurzer Tick über das Berührungs-Feedback der
+        // Ansicht: Er folgt damit der Systemeinstellung und lässt sich
+        // dort abschalten (Plan 8.6 Punkt 17), anders als die Vibration
+        // bei Treffer und Tod. Kommt für Touch, Taste und Drehring
+        // gleichermaßen, weil alle drei über controller.tap() laufen.
+        controller.onNotYetTick = {
+            window.decorView.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        }
         // Gönner-Kauf: Die Uhr fragt Play selbst, statt sich ein Flag vom
         // Telefon schicken zu lassen — der Kauf hängt am Google-Konto.
         patron = WearPatron(applicationContext) {
