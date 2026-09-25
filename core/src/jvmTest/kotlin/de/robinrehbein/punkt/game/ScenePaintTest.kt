@@ -28,7 +28,7 @@ class ScenePaintTest {
         monthsPlayed = 12
     )
 
-    /** Alle Farben einer Kulisse — Himmel, Wolke, Boden, Requisiten. */
+    /** Alle Farben einer Kulisse — Himmel, Wolke, Boden, Requisiten, Hintergrund. */
     private fun farben(id: SceneId): List<Long> {
         val scene = ScenePaint.of(id)
         val out = mutableListOf<Long>()
@@ -39,6 +39,7 @@ class ScenePaintTest {
             out += listOf(prop.dark, prop.body, prop.light, prop.stem, prop.stemShade)
             out += prop.accents
         }
+        scene.backdrop?.let { out += it.colors }
         return out
     }
 
@@ -271,6 +272,16 @@ class ScenePaintTest {
     fun `jede Kulisse beschreibt vollstaendig vier Requisiten`() {
         SceneId.entries.forEach { id ->
             val props = ScenePaint.props(id)
+            // Der WELTRAUM ist leer bis auf den Sternenhimmel: Vor den
+            // Sternen treibt nichts. Wer keine Requisiten hat, braucht
+            // deshalb einen Hintergrund — sonst bliebe nur der Himmel.
+            if (props.isEmpty()) {
+                assertEquals(
+                    "$id ohne Requisiten braucht den Sternenhimmel",
+                    BackdropKind.STERNENHIMMEL, ScenePaint.of(id).backdrop?.kind
+                )
+                return@forEach
+            }
             assertEquals("$id braucht vier Requisiten-Plätze", ScenePaint.PROP_SLOTS, props.size)
             props.forEach { prop ->
                 assertTrue("$id: Requisiten-Größe muss positiv sein", prop.size > 0f)
@@ -416,10 +427,11 @@ class ScenePaintTest {
 
     @Test
     fun `die Laterne loest den Fels nur in der STADT ab`() {
-        // Der Stein ist tragend: Er kommt in fünf von sechs Kulissen vor,
-        // und im WELTRAUM sind alle vier Requisiten Felsen — das
-        // Asteroidenfeld ist die einzige Kulisse, in der sie treiben
-        // dürfen. Die Laterne ist deshalb eine Ergänzung, kein Ersatz.
+        // Der Stein steht nur noch in der WÜSTE: Im MEER haben ihn Inseln
+        // abgelöst, am BERG Tannen, und im WELTRAUM lasen sich die
+        // treibenden Felsbrocken als graue Wolken — dort sind jetzt nur
+        // Sterne. Die Laterne ist in der STADT deshalb eine Ergänzung,
+        // kein Ersatz.
         SceneId.entries.forEach { id ->
             val laternen = ScenePaint.props(id).count { it.shape == PropShape.LATERNE }
             if (id == SceneId.STADT) {
@@ -432,7 +444,7 @@ class ScenePaintTest {
         val fels = SceneId.entries.sumOf { id ->
             ScenePaint.props(id).count { it.shape == PropShape.FELS }
         }
-        assertEquals("Der Fels darf nur an dem einen Platz weichen", 9, fels)
+        assertEquals("Der Fels steht nur in der WÜSTE, auf zwei Plätzen", 2, fels)
 
         val laterne = ScenePaint.props(SceneId.STADT).first { it.shape == PropShape.LATERNE }
         assertEquals("Eine Laterne auf der Straße wankt nicht", 0f, laterne.sway, 0f)
@@ -589,4 +601,32 @@ class ScenePaintTest {
     private fun nah(a: Float, b: Float) = kotlin.math.abs(a - b) < 1e-4f
 
     private fun hex(color: Long): String = "#" + color.toString(16).uppercase().takeLast(6)
+
+    @Test
+    fun `Weltraum hat Sterne und Galaxien statt Felsen`() {
+        val weltraum = ScenePaint.of(SceneId.WELTRAUM)
+        assertTrue("Im WELTRAUM treibt vor den Sternen nichts", weltraum.props.isEmpty())
+        val backdrop = weltraum.backdrop
+        assertNotNull("Der WELTRAUM braucht einen Sternenhimmel", backdrop)
+        assertEquals(BackdropKind.STERNENHIMMEL, backdrop!!.kind)
+        assertEquals("Drei Sternfarben, Kern und zwei Arme", 6, backdrop.colors.size)
+    }
+
+    @Test
+    fun `Berg hat ein Gebirge und Meer hat Inseln`() {
+        val berg = ScenePaint.of(SceneId.BERG)
+        assertEquals(BackdropKind.GEBIRGE, berg.backdrop?.kind)
+        assertEquals("Zwei Ketten mit Schatten, Schnee mit Schatten", 6, berg.backdrop!!.colors.size)
+        assertTrue(
+            "Am BERG stehen nur Tannen",
+            berg.props.all { it.shape == PropShape.NADELBAUM }
+        )
+        val meer = ScenePaint.props(SceneId.MEER)
+        assertEquals("Im MEER treiben zwei Inseln", 2, meer.count { it.shape == PropShape.INSEL })
+        assertTrue("Dazwischen Wellen", meer.any { it.shape == PropShape.WELLE })
+        // Die übrigen Welten bleiben ohne Hintergrund.
+        listOf(SceneId.WIESE, SceneId.WUESTE, SceneId.MEER, SceneId.STADT).forEach {
+            assertNull("$it hat keinen Hintergrund", ScenePaint.of(it).backdrop)
+        }
+    }
 }

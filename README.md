@@ -193,8 +193,12 @@ und iOS (`ios/`) hat keine Werbung — dort ändert sich nichts.
 Die zweite Sammlung neben den Skins: **sechs Kulissen** — Wiese, Wüste,
 Meer, Berg, Stadt, Weltraum. Eine Kulisse ist alles, was **nicht** über
 Treffer entscheidet: der Himmel in seinen sieben Stufen, die Wolken, die
-Requisiten am Boden (Baum, Blume, Strauch, Kaktus, Welle, Nadelbaum,
-Hochhaus, Fels, Laterne) und der Bodenstreifen.
+Requisiten am Boden (Baum, Blume, Strauch, Kaktus, Welle, Insel mit
+Palmen, verschneite Tanne, Hochhaus, Fels, Laterne), der Bodenstreifen und
+bei zwei Welten eine Hintergrund-Ebene: das Gebirge mit Schneegipfeln am
+Berg und im Weltraum ein Sternenhimmel mit funkelnden Sternen, zwei
+langsam drehenden Galaxien und gelegentlichen Sternschnuppen — dort gibt
+es weder Boden noch Requisiten.
 
 **Warum die Kulisse verkäuflich ist und die Bahn nicht.** Bahn, Zielzone,
 Perfekt-Kern und Falle sehen in jeder Kulisse exakt gleich aus. Damit ist
