@@ -79,7 +79,7 @@
     -->
     <string name="twist_learned_pulse">NEW THIS RUN: PULSE — THE ZONE BREATHES</string>
     <string name="twist_learned_drift">NEW THIS RUN: DRIFT — THE ZONE WANDERS</string>
-    <string name="twist_learned_ghost">NEW THIS RUN: GHOST — THE DOT BLINKS AWAY</string>
+    <string name="twist_learned_ghost">NEW THIS RUN: FOG — THE DOT VANISHES INTO THE CLOUD</string>
     <string name="twist_learned_fake">NEW THIS RUN: BOMBS — NEVER TAP INTO THEM</string>
     <!-- == AP-12 bomben == -->
     <!-- == /AP-12 == -->
@@ -129,9 +129,10 @@
     <string name="twist_pulse_text">THE ZONE BREATHES — GROWS AND SHRINKS.</string>
     <string name="twist_drift_title">DRIFT (AT 10)</string>
     <string name="twist_drift_text">THE ZONE SLOWLY WANDERS ALONG THE TRACK.</string>
-    <string name="twist_ghost_title">GHOST (AT 15)</string>
-    <string name="twist_ghost_text">THE DOT BLINKS AWAY — KEEP THE TRACK IN YOUR HEAD.</string>
+    <string name="twist_ghost_title">FOG (AT 15)</string>
+    <string name="twist_ghost_text">A FOG BANK LIES BEFORE THE ZONE — THE DOT FLIES ON UNSEEN. HIT IT BLIND: +1.</string>
     <!-- == AP-23 nebel == -->
+    <string name="fog_blind_plus">BLIND! +%1$d</string>
     <!-- == /AP-23 == -->
     <string name="twist_fake_title">BOMBS (AT 20)</string>
     <string name="twist_fake_text">A CHAIN OF BOMBS NEXT TO THE ZONE: NEVER TAP INTO IT!</string>

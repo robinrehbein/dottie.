@@ -110,6 +110,10 @@ fun DrawScope.drawTimingWorld(
             drawTimingDot(game, fx, cx, cy, radius, skin, hour, month)
         }
         // == AP-23 nebel ==
+        // Die Nebelbank liegt über dem Vogel: Er gleitet an ihrer Kontur
+        // hinein und heraus. Grenzen allein aus der Engine.
+        drawFogBank(game, cx, cy, radius, game.fogStart(), game.fogEnd())
+        drawFogPuffs(game, fx, cx, cy, radius)
         // == /AP-23 ==
         if (fx.celebrateTime > 0f) {
             drawUnlockBurst(fx.celebrateTime, cx, cy, radius, cell)

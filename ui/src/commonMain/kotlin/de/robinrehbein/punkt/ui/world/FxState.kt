@@ -42,6 +42,18 @@ class FxState {
     /** Sekunden seit dem Tod (Mario-Huepfer), negativ = kein Tod aktiv. */
     var deathTime = -1f
     // == AP-23 nebel ==
+
+    /**
+     * Wölkchen beim Ein- und Austritt in den Nebel (siehe trackFog):
+     * Sekunden seit dem Wechsel (negativ = keins) und Bahnwinkel des Punkts.
+     */
+    var fogInTime = -1f
+    var fogInAngle = 0f
+    var fogOutTime = -1f
+    var fogOutAngle = 0f
+
+    /** War der Punkt im letzten Frame im Nebel? 1 = ja, 0 = nein, -1 = unbekannt. */
+    var fogWasIn = -1
     // == /AP-23 ==
 
     /**
@@ -66,6 +78,9 @@ class FxState {
         // == /AP-22 ==
         deathTime = -1f
         // == AP-23 nebel ==
+        fogInTime = -1f
+        fogOutTime = -1f
+        fogWasIn = -1
         // == /AP-23 ==
     }
 }
