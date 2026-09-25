@@ -507,9 +507,12 @@ private fun Showcase(
             .height(SHOWCASE_HEIGHT)
             .clipToBounds()
     ) {
+        // Wie weit der Rahmen nach innen reicht: Schriftzug und Ring
+        // bleiben innerhalb der Rahmenkante.
+        val depth = showcaseFrameDepth(frame)
         Canvas(modifier = Modifier.fillMaxSize()) {
             tick // pro Frame neu zeichnen
-            drawShowcase(game, fx, skin, scene, hour, month)
+            drawShowcase(game, fx, skin, scene, hour, month, depth.toPx())
             if (locked) drawRect(color = TileEdge.copy(alpha = 0.35f))
             drawShowcaseFrame(frame)
         }
@@ -517,11 +520,11 @@ private fun Showcase(
             Text(
                 text = stringResource(Res.string.collection_locked_preview),
                 style = ScoreShadowStyle,
-                fontSize = 15.sp,
+                fontSize = 14.sp,
                 color = Color.White,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 10.dp)
+                    .padding(top = depth + SHOWCASE_LABEL_TOP)
             )
         }
     }
@@ -529,13 +532,51 @@ private fun Showcase(
 
 private val SHOWCASE_HEIGHT = 168.dp
 
+/** Abstand des Schriftzugs „VORSCHAU · GESPERRT“ unter der Rahmenkante. */
+private val SHOWCASE_LABEL_TOP = 6.dp
+
+/**
+ * Das Band oben im Schaufenster (unter der Rahmenkante), das dem
+ * Schriftzug gehört. Der Ring beginnt erst darunter — auch wenn nichts
+ * gesperrt ist, damit das Bild beim Blättern nicht springt.
+ */
+private val SHOWCASE_LABEL_BAND = 36.dp
+
+/** Luft zwischen Ring und unterer Rahmenkante. */
+private val SHOWCASE_RING_BOTTOM = 6.dp
+
+/** Größter Ring im Schaufenster, als Anteil der Höhe. */
+private const val SHOWCASE_RING_MAX = 0.27f
+
+/**
+ * Wie tief der Rahmen von oben ins Schaufenster reicht — aus derselben
+ * Tabelle, mit der er gezeichnet wird ([drawShowcaseFrame]).
+ */
+private fun showcaseFrameDepth(frame: CardFrame?): androidx.compose.ui.unit.Dp = when (frame) {
+    null -> 0.dp
+    CardFrame.SCHLICHT -> 6.dp
+    else -> {
+        val zeilen = 84
+        val zellen = CardStyle.frameRects(frame, 200, zeilen)
+            // Nur Stücke der oberen Kante; die Seitenbänder reichen
+            // von oben bis unten und zählen hier nicht.
+            .filter { it.row + it.rows < zeilen / 4 }
+            .maxOfOrNull { it.row + it.rows } ?: 0
+        FRAME_CELL * zellen
+    }
+}
+
+/** Kantenlänge einer Rahmenzelle im Schaufenster. */
+private val FRAME_CELL = 2.dp
+
 private fun DrawScope.drawShowcase(
     game: TimingGame,
     fx: FxState,
     skin: SkinId,
     scene: SceneId,
     hour: Int,
-    month: Int
+    month: Int,
+    frameDepth: Float
 ) {
     val w = size.width
     val h = size.height
@@ -553,11 +594,15 @@ private fun DrawScope.drawShowcase(
     drawScenery(game, cell, kulisse.props)
     kulisse.ground?.let { drawGroundStrip(cell, it) }
 
-    // Die Bahn als Ring in der Mitte, der Vogel darauf größer als im
-    // Spiel: Im Schaufenster soll man sein Muster erkennen.
+    // Die Bahn als Ring, der Vogel darauf größer als im Spiel: Im
+    // Schaufenster soll man sein Muster erkennen. Der Ring bleibt
+    // innerhalb der Rahmenkante und unter dem Band, das oben dem
+    // Schriftzug „VORSCHAU · GESPERRT“ gehört.
+    val top = frameDepth + SHOWCASE_LABEL_BAND.toPx()
+    val bottom = h - frameDepth - SHOWCASE_RING_BOTTOM.toPx()
+    val radius = minOf((bottom - top) / 2f, h * SHOWCASE_RING_MAX)
     val cx = w / 2f
-    val cy = h * 0.44f
-    val radius = h * 0.3f
+    val cy = (top + bottom) / 2f
     drawTrack(game, cx, cy, radius, cell)
     val px = cx + cos(game.angle) * radius
     val py = cy + sin(game.angle) * radius
@@ -581,7 +626,7 @@ private fun DrawScope.drawShowcaseFrame(frame: CardFrame?) {
         )
         return
     }
-    val zelle = 2.dp.toPx()
+    val zelle = FRAME_CELL.toPx()
     val spalten = (size.width / zelle).roundToInt().coerceAtLeast(1)
     val zeilen = (size.height / zelle).roundToInt().coerceAtLeast(1)
     val breite = size.width / spalten
@@ -970,7 +1015,9 @@ private fun PatronOffer(
  * Das Banner im Startbildschirm, wenn neue Welten auf sind:
  * „NEUE WELTEN: WÜSTE, MEER“. Mehrere Welten auf einmal (nach dem Update
  * oder wenn Skin und Welt zusammenfallen) stehen gesammelt in einer
- * Zeile. Tippen öffnet die Sammlung im Reiter WELT.
+ * Zeile. Tippen öffnet die Sammlung im Reiter WELT. Es ist bewusst flach
+ * und sitzt dicht unter dem Rekord: Darunter beginnt der Ring, und in
+ * seinem Inneren gehört der Platz dem Spiel (Hinweise von AP-22).
  */
 @Composable
 fun NewWorldsBanner(scenes: List<SceneId>, onClick: () -> Unit) {
@@ -985,7 +1032,7 @@ fun NewWorldsBanner(scenes: List<SceneId>, onClick: () -> Unit) {
     val pressed by interactionSource.collectIsPressedAsState()
     Box(
         modifier = Modifier
-            .padding(top = 14.dp, start = 24.dp, end = 24.dp)
+            .padding(top = 6.dp, start = 24.dp, end = 24.dp)
             .pixelPressable(interactionSource = interactionSource, onClick = onClick)
             .offset(y = if (pressed) PIXEL_SHADOW else 0.dp)
             .drawBehind {
@@ -997,12 +1044,12 @@ fun NewWorldsBanner(scenes: List<SceneId>, onClick: () -> Unit) {
                 drawRect(OutlineColor)
                 drawRect(RecordRed, topLeft = Offset(b, b), size = Size(size.width - 2 * b, size.height - 2 * b))
             }
-            .padding(horizontal = 14.dp, vertical = 9.dp)
+            .padding(horizontal = 12.dp, vertical = 5.dp)
     ) {
         Text(
             text = text,
             fontFamily = Bytesized,
-            fontSize = 16.sp,
+            fontSize = 14.sp,
             color = Color.White,
             textAlign = TextAlign.Center
         )
