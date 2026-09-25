@@ -31,15 +31,22 @@ object TwistLessons {
      * naechsten Versuch, keine Lehrstunde; die uebrigen Twists kommen bei
      * den naechsten Toden dran.
      *
-     * [diedInTrap] sagt, ob dieser Lauf in der Falle endete. Bis AP-12
-     * ohne Wirkung (Plan 8.3).
+     * Eine Ausnahme: Endete der Lauf in der Falle ([diedInTrap]) und ist
+     * die Falle noch nicht erklärt, drängelt sie vor (Plan 3.4). Wer gerade
+     * in die Bomben getippt hat, braucht jetzt genau diese Erklärung und
+     * nicht die zum PULS. Die übrigen Twists behalten ihre Reihenfolge und
+     * kommen bei den nächsten Toden dran. Der Tod in der Falle beweist,
+     * dass sie im Lauf war, deshalb zählt er auch dann, wenn sie in
+     * [unlockedThisRun] fehlt.
      */
     fun next(
         unlockedThisRun: List<Twist>,
         explained: Set<String>,
         diedInTrap: Boolean = false
-    ): Twist? =
-        unlockedThisRun.firstOrNull { it.name !in explained }
+    ): Twist? {
+        if (diedInTrap && Twist.FAKE.name !in explained) return Twist.FAKE
+        return unlockedThisRun.firstOrNull { it.name !in explained }
+    }
 
     /** "FAKE,CHAIN" → {FAKE, CHAIN}. Leer und null heissen dasselbe. */
     fun decode(stored: String?): Set<String> =
