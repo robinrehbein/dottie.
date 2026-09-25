@@ -43,7 +43,8 @@ import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.ui.components.PixelIcon
 import de.robinrehbein.punkt.ui.components.PIXEL_SHADOW
-import de.robinrehbein.punkt.ui.components.PixelIconButton
+import de.robinrehbein.punkt.ui.components.CORNER_BUTTON_PADDING
+import de.robinrehbein.punkt.ui.components.CornerButton
 import de.robinrehbein.punkt.ui.components.pixelPressable
 import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.best_score
@@ -118,22 +119,15 @@ fun ReadyOverlay(
         ) {
             // Ein Zahnrad statt dreier Einzel-Icons: Ton, Erinnerung und Hilfe
             // sind Einstellungen, keine Spielzüge — sie gehören hinter eine Tür.
-            // Schatten und Glanzkante geben ihm dieselbe Tiefe wie dem Titel;
-            // beim Drücken sinkt es sichtbar in den Schatten.
-            PixelIconButton(
+            // Derselbe Eckknopf wie das X der Overlays: Öffnet man die
+            // Einstellungen, liegt das X genau hier.
+            CornerButton(
                 icon = PixelIcon.SLIDERS,
                 contentDescription = stringResource(Res.string.settings),
                 onClick = onSettings,
-                backgroundColor = PanelSand,
-                borderColor = TextDark,
-                strikeColor = RecordRed,
-                buttonSize = 48.dp,
-                borderWidth = 3.dp,
-                shadow = 4.dp,
-                highlightColor = Color(0xFFEFE9C2),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp)
+                    .padding(CORNER_BUTTON_PADDING)
             )
 
             // Auf kurzen Bildschirmen (720×1280) reicht der Ring bis dicht

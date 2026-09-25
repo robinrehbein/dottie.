@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -53,6 +54,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.CardFrame
@@ -72,6 +75,7 @@ import de.robinrehbein.punkt.game.SkinStats
 import de.robinrehbein.punkt.game.SoundBank
 import de.robinrehbein.punkt.game.SoundSetId
 import de.robinrehbein.punkt.game.TimingGame
+import de.robinrehbein.punkt.ui.components.CORNER_BUTTON_PADDING
 import de.robinrehbein.punkt.ui.components.OverlayCloseButton
 import de.robinrehbein.punkt.ui.components.PIXEL_SHADOW
 import de.robinrehbein.punkt.ui.components.PixelButton
@@ -258,7 +262,7 @@ fun CollectionOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(OutlineColor.copy(alpha = 0.97f))
+            .background(OutlineColor)
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { onClose() })
             }
@@ -272,20 +276,21 @@ fun CollectionOverlay(
                     .fillMaxWidth()
                     .height(HEADER_HEIGHT)
             ) {
-                Text(
-                    text = stringResource(Res.string.collection),
-                    style = ScoreShadowStyle,
-                    fontSize = 28.sp,
-                    color = Color.White,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-                OverlayCloseButton(
-                    onClose = onClose,
-                    contentDescription = stringResource(Res.string.ctl_close),
+                // Auf Höhe der Knopfmitte, nicht der Kopfmitte.
+                Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                )
+                        .align(Alignment.TopCenter)
+                        .padding(top = CORNER_BUTTON_PADDING)
+                        .height(48.dp)
+                ) {
+                    Text(
+                        text = stringResource(Res.string.collection),
+                        style = ScoreShadowStyle,
+                        fontSize = 28.sp,
+                        color = Color.White
+                    )
+                }
             }
 
             // Alles darunter schluckt Taps: Wer in der Sammlung daneben
@@ -465,11 +470,25 @@ fun CollectionOverlay(
                 }
             }
         }
+
+        // Das X liegt wie in jedem Overlay genau dort, wo im
+        // Startbildschirm die Einstellungen sitzen.
+        OverlayCloseButton(
+            onClose = onClose,
+            contentDescription = stringResource(Res.string.ctl_close),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(CORNER_BUTTON_PADDING)
+        )
     }
 }
 
-/** Höhe des Kopfs mit Titel und X — er zählt zum Rand und schließt beim Tippen. */
-private val HEADER_HEIGHT = 64.dp
+/**
+ * Höhe des Kopfs mit Titel und X — er zählt zum Rand und schließt beim
+ * Tippen. Der Eckknopf (48 dp plus 4 dp Schatten) sitzt 16 dp unter der
+ * Oberkante; darunter bleiben 8 dp Luft bis zum Schaufenster.
+ */
+private val HEADER_HEIGHT = 76.dp
 
 /** Wie blass gesperrte Vorschauen sind. */
 private const val LOCKED_ALPHA = 0.3f
@@ -479,7 +498,6 @@ private const val SHOWCASE_BIRD_SCALE = 2.4f
 
 private val TileBackground = Color(0xFF4A3642)
 private val TileEdge = Color(0xFF1A1016)
-private val TabIdle = Color(0xFF2E1F28)
 
 /**
  * Das Schaufenster: ein Stück Spielbild in der angesehenen Welt mit dem
@@ -706,52 +724,68 @@ private fun ShowcaseInfo(
             .height(INFO_HEIGHT)
             .padding(horizontal = 24.dp, vertical = 6.dp)
     ) {
-        Text(
-            text = name,
-            style = ScoreShadowStyle,
-            fontSize = 20.sp,
-            color = Color.White,
-            textAlign = TextAlign.Center
-        )
-        val status = when {
-            isSelected -> stringResource(Res.string.skin_selected)
-            onPass -> stringResource(Res.string.skin_pass_today)
-            open && tab == CollectionTab.RAHMEN -> stringResource(Res.string.frame_on_card)
-            open -> stringResource(Res.string.collection_unlocked)
-            else -> stringResource(Res.string.collection_locked) + (hint?.let { " · $it" } ?: "")
-        }
-        Text(
-            text = status,
-            fontFamily = Bytesized,
-            fontSize = 14.sp,
-            color = when {
-                isSelected -> DotBody
-                onPass -> GrassLight
-                open -> Color.White.copy(alpha = 0.75f)
-                else -> Color.White.copy(alpha = 0.6f)
-            },
-            textAlign = TextAlign.Center
-        )
-        val axis = axisText(progress.axis)
-        if (!progress.unlocked && axis != null) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                GoalBar(fraction = progress.fraction, modifier = Modifier.width(120.dp), height = 10.dp)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(
-                        Res.string.collection_progress,
-                        progress.current,
-                        progress.target,
-                        axis
-                    ),
-                    fontFamily = Bytesized,
-                    fontSize = 13.sp,
-                    color = Color.White
-                )
+        // Die Texte bekommen, was der Knopf übrig lässt, und bleiben je
+        // eine Zeile: Mit großer Systemschrift drückten sie sonst den
+        // Knopf unter seine Schattenhöhe, und die App stürzte ab.
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .clipToBounds()
+        ) {
+            Text(
+                text = name,
+                style = ScoreShadowStyle,
+                fontSize = 20.sp,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            val status = when {
+                isSelected -> stringResource(Res.string.skin_selected)
+                onPass -> stringResource(Res.string.skin_pass_today)
+                open && tab == CollectionTab.RAHMEN -> stringResource(Res.string.frame_on_card)
+                open -> stringResource(Res.string.collection_unlocked)
+                else -> stringResource(Res.string.collection_locked) + (hint?.let { " · $it" } ?: "")
+            }
+            Text(
+                text = status,
+                fontFamily = Bytesized,
+                fontSize = 14.sp,
+                color = when {
+                    isSelected -> DotBody
+                    onPass -> GrassLight
+                    open -> Color.White.copy(alpha = 0.75f)
+                    else -> Color.White.copy(alpha = 0.6f)
+                },
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            val axis = axisText(progress.axis)
+            if (!progress.unlocked && axis != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    GoalBar(fraction = progress.fraction, modifier = Modifier.width(120.dp), height = 10.dp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(
+                            Res.string.collection_progress,
+                            progress.current,
+                            progress.target,
+                            axis
+                        ),
+                        fontFamily = Bytesized,
+                        fontSize = 13.sp,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
-        Spacer(modifier = Modifier.weight(1f))
         // Der Spot macht einen gesperrten Skin für heute spielbar. Gönner
         // bleiben ausgenommen: Ein Spot darf keinen Kauf ersetzen.
         val spotOffer = tab == CollectionTab.VOGEL && !open && adOfferReady &&
@@ -781,7 +815,12 @@ private fun ShowcaseInfo(
     }
 }
 
-private val INFO_HEIGHT = 112.dp
+/**
+ * Name, Bedingung, Fortschritt und ein 40-dp-Knopf mit Schatten, jeweils
+ * einzeilig bei Schriftgröße 1. Mit 112 dp war das zu knapp: Der Knopf
+ * wurde gestaucht, bei großer Systemschrift unter seine Schattenhöhe.
+ */
+private val INFO_HEIGHT = 128.dp
 
 /** Worauf ein Balken zählt, als Wort — null, wo es nichts zu zählen gibt. */
 @Composable
@@ -802,11 +841,18 @@ private fun CollectionTabs(
     newKeys: Set<String>,
     onTab: (CollectionTab) -> Unit
 ) {
+    // Eine Leiste im Pixel-Stil wie die Kacheln darunter: gemeinsamer
+    // dunkler Rahmen, dunkle Trennstriche, der aktive Reiter sandfarben
+    // mit Glanzkante wie die Knöpfe. Seitlich bündig mit dem Raster.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .drawBehind { drawRect(TileEdge, size = Size(size.width, 3.dp.toPx())) }
+            .padding(horizontal = 12.dp)
+            .padding(top = 4.dp)
+            .height(TAB_HEIGHT)
+            .background(TileEdge)
+            .padding(TAB_BORDER),
+        horizontalArrangement = Arrangement.spacedBy(TAB_BORDER)
     ) {
         CollectionTab.entries.forEach { t ->
             val (label, count, total, prefix) = when (t) {
@@ -837,49 +883,52 @@ private fun CollectionTabs(
             }
             val active = t == current
             val hasNew = newKeys.any { it.startsWith(prefix) }
+            val ink = if (active) TextDark else PanelSand
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxSize()
-                    .background(if (active) PanelSand else TabIdle)
+                    .fillMaxHeight()
+                    .background(if (active) PanelSand else TileBackground)
+                    .drawBehind {
+                        if (active) {
+                            drawRect(TabHighlight, size = Size(size.width, TAB_BORDER.toPx()))
+                        }
+                    }
                     .pixelPressable(role = Role.Tab) { onTab(t) }
                     .semantics { selected = active },
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = label,
-                        fontFamily = Bytesized,
-                        fontSize = 13.sp,
-                        color = if (active) TextDark else PanelSand
-                    )
+                    // Der rote Punkt steht direkt hinter dem Wort, nicht
+                    // lose in der Ecke.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = label,
+                            fontFamily = Bytesized,
+                            fontSize = 13.sp,
+                            color = ink
+                        )
+                        if (hasNew) {
+                            Spacer(modifier = Modifier.width(5.dp))
+                            NewDot(dotSize = 9.dp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "$count/$total",
                         fontFamily = Bytesized,
                         fontSize = 11.sp,
-                        color = (if (active) TextDark else PanelSand).copy(alpha = 0.75f)
-                    )
-                }
-                if (hasNew) {
-                    NewDot(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 6.dp, end = 6.dp)
-                    )
-                }
-                if (t != CollectionTab.entries.last()) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .width(3.dp)
-                            .fillMaxHeight()
-                            .background(TileEdge)
+                        color = ink.copy(alpha = if (active) 0.7f else 0.6f)
                     )
                 }
             }
         }
     }
 }
+
+private val TAB_HEIGHT = 52.dp
+private val TAB_BORDER = 3.dp
+private val TabHighlight = Color(0xFFEFE9C2)
 
 private data class TabData(val label: String, val count: Int, val total: Int, val prefix: String)
 
@@ -973,8 +1022,8 @@ internal fun NewBadge(modifier: Modifier = Modifier) {
  * solange es in der Sammlung etwas NEU gibt.
  */
 @Composable
-internal fun NewDot(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier.size(12.dp)) {
+internal fun NewDot(modifier: Modifier = Modifier, dotSize: Dp = 12.dp) {
+    Canvas(modifier = modifier.size(dotSize)) {
         val border = 2.dp.toPx()
         drawRect(color = TileEdge)
         drawRect(

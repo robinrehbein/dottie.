@@ -57,8 +57,10 @@ class CollectionOverlayTest {
         calls: Calls,
         selected: SkinId = SkinId.KLASSIK,
         newKeys: Set<String> = emptySet(),
-        adOfferReady: Boolean = true
-    ) = ProbeScene(width, height, density) {
+        adOfferReady: Boolean = true,
+        stats: SkinStats = this.stats,
+        fontScale: Float = 1f
+    ) = ProbeScene(width, height, density, fontScale) {
         CollectionOverlay(
             stats = stats,
             selected = selected,
@@ -164,6 +166,40 @@ class CollectionOverlayTest {
                 assertTrue(role == Role.Button || role == Role.Tab, "„$label“ hat die Rolle $role")
             }
             assertEquals(4, roles.count { it.second == Role.Tab })
+        }
+    }
+
+    /**
+     * Absturz vom Gerät: Mit großer Systemschrift drückten Name, Bedingung
+     * und Fortschritt eines gesperrten Tons den HÖRPROBE-Knopf unter seine
+     * Schattenhöhe, und das Zeichnen warf. Jetzt behält der Knopf seine
+     * Höhe, und die Hörprobe kommt an.
+     */
+    @Test
+    fun hoerprobeUeberstehtGrosseSchrift() {
+        val bestand = SkinStats(
+            bestScore = 116,
+            bestPerfectStreak = 14,
+            bestDailyStreak = 1,
+            totalScore = 21_000,
+            runCount = 300
+        )
+        for (scale in listOf(1f, 1.3f, 1.5f, 2f)) {
+            val calls = Calls()
+            scene(calls, stats = bestand, fontScale = scale).use { s ->
+                s.step(0.2)
+                s.tap("TON")
+                for (ton in listOf("GLOCKE", "AMBOSS")) {
+                    s.tap(ton)
+                    s.tap("HÖRPROBE")
+                    s.step(0.2)
+                }
+                assertEquals(
+                    listOf(SoundSetId.GLOCKE, SoundSetId.GLOCKE, SoundSetId.AMBOSS, SoundSetId.AMBOSS),
+                    calls.previews,
+                    "Schriftgröße $scale"
+                )
+            }
         }
     }
 }

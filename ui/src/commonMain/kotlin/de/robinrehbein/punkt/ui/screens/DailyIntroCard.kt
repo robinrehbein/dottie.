@@ -21,6 +21,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.ui.components.CORNER_BUTTON_PADDING
 import de.robinrehbein.punkt.ui.components.OverlayCloseButton
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.resources.Res
@@ -83,55 +84,57 @@ fun DailyIntroCard(onStart: () -> Unit, onClose: () -> Unit) {
                 // nicht als Spiel-Tap durchschlägt.
                 detectTapGestures(onTap = { onClose() })
             }
-            .windowInsetsPadding(WindowInsets.systemBars)
-            // Seitenrand, damit die Karte auf schmalen Geräten nicht an
-            // den Bildrand stößt.
-            .padding(horizontal = 24.dp),
+            .windowInsetsPadding(WindowInsets.systemBars),
         contentAlignment = Alignment.Center
     ) {
-        PixelPanel {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .widthIn(max = 300.dp)
-                    // Taps auf die Karte selbst schließen nicht.
-                    .pointerInput(Unit) { detectTapGestures { } }
-                    .padding(horizontal = 20.dp, vertical = 20.dp)
-            ) {
-                Text(
-                    text = stringResource(Res.string.daily_intro_title),
-                    fontFamily = Bytesized,
-                    fontSize = 26.sp,
-                    color = TextDark,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = stringResource(Res.string.daily_intro_text),
-                    fontFamily = Bytesized,
-                    fontSize = 17.sp,
-                    color = TextDark,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = stringResource(Res.string.daily_intro_how),
-                    fontFamily = Bytesized,
-                    fontSize = 13.sp,
-                    color = TextDark.copy(alpha = 0.75f),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(18.dp))
-                PixelButton(
-                    text = stringResource(Res.string.daily_intro_start),
-                    onClick = onStart,
-                    backgroundColor = DotBody,
-                    borderColor = TextDark,
-                    textColor = TextDark,
-                    width = 200.dp,
-                    height = 52.dp,
-                    borderWidth = 3.dp
-                )
+        // Seitenrand, damit die Karte auf schmalen Geräten nicht an den
+        // Bildrand stößt. Nur um die Karte: Das X sitzt wie in jedem
+        // Overlay an der Stelle der Einstellungen.
+        Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+            PixelPanel {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .widthIn(max = 300.dp)
+                        // Taps auf die Karte selbst schließen nicht.
+                        .pointerInput(Unit) { detectTapGestures { } }
+                        .padding(horizontal = 20.dp, vertical = 20.dp)
+                ) {
+                    Text(
+                        text = stringResource(Res.string.daily_intro_title),
+                        fontFamily = Bytesized,
+                        fontSize = 26.sp,
+                        color = TextDark,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(Res.string.daily_intro_text),
+                        fontFamily = Bytesized,
+                        fontSize = 17.sp,
+                        color = TextDark,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = stringResource(Res.string.daily_intro_how),
+                        fontFamily = Bytesized,
+                        fontSize = 13.sp,
+                        color = TextDark.copy(alpha = 0.75f),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(18.dp))
+                    PixelButton(
+                        text = stringResource(Res.string.daily_intro_start),
+                        onClick = onStart,
+                        backgroundColor = DotBody,
+                        borderColor = TextDark,
+                        textColor = TextDark,
+                        width = 200.dp,
+                        height = 52.dp,
+                        borderWidth = 3.dp
+                    )
+                }
             }
         }
 
@@ -140,7 +143,7 @@ fun DailyIntroCard(onStart: () -> Unit, onClose: () -> Unit) {
             contentDescription = stringResource(Res.string.ctl_close),
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp)
+                .padding(CORNER_BUTTON_PADDING)
         )
     }
 }

@@ -126,6 +126,10 @@ internal fun DrawScope.drawPressedFrame(
     shadowColor: Color,
     face: DrawScope.() -> Unit
 ) {
+    // Zu wenig Platz für Knopf und Schatten (ein Layout, das den Knopf
+    // staucht): nichts zeichnen statt negativ einzurücken — inset wirft
+    // bei negativer Größe, und die App stürzte ab.
+    if (size.width < shadow || size.height < shadow) return
     val press = if (pressed) shadow else 0f
     if (shadow > 0f && !pressed) {
         drawRect(
@@ -140,7 +144,7 @@ internal fun DrawScope.drawPressedFrame(
 }
 
 /** Icon motifs for [PixelIconButton], drawn as blocky shapes on a 16-unit grid. */
-enum class PixelIcon { SPEAKER_ON, SPEAKER_OFF, BELL_ON, BELL_OFF, SLIDERS }
+enum class PixelIcon { SPEAKER_ON, SPEAKER_OFF, BELL_ON, BELL_OFF, SLIDERS, CLOSE }
 
 /**
  * A square pixel art button showing an icon instead of text — same border
@@ -246,6 +250,14 @@ internal fun DrawScope.drawPixelIcon(
             block(9.2f, 3.1f, 2.6f, 3.3f)
             block(4.8f, 6.35f, 2.6f, 3.3f)
             block(9.8f, 9.6f, 2.6f, 3.3f)
+        }
+        PixelIcon.CLOSE -> {
+            // Ein X aus 2 × 2 großen Blöcken auf den beiden Diagonalen,
+            // derselbe Rand wie bei den Schiebern (3 bis 13).
+            for (i in 0 until 5) {
+                block(3f + i * 2f, 3f + i * 2f, 2f, 2f)
+                if (i != 2) block(11f - i * 2f, 3f + i * 2f, 2f, 2f)
+            }
         }
     }
     if (icon == PixelIcon.SPEAKER_OFF || icon == PixelIcon.BELL_OFF) {
