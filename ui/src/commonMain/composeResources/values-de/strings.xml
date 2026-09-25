@@ -37,6 +37,11 @@
     <string name="banner_stage">NEUE STUFE!</string>
     <string name="game_over">GAME OVER</string>
     <!-- == AP-11 todesursache == -->
+    <string name="death_early">ZU FRÜH</string>
+    <string name="death_late">ZU SPÄT</string>
+    <string name="death_missed">VERPASST</string>
+    <string name="death_trap">BOOM!</string>
+    <string name="death_bomb_lesson">BOMBE = NIE TIPPEN</string>
     <!-- == /AP-11 == -->
     <string name="medal">MEDAILLE</string>
     <string name="medal_bronze">BRONZE</string>

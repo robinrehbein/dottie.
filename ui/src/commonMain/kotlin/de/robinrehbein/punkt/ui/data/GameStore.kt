@@ -241,6 +241,23 @@ class GameStore(private val prefs: KeyValueStore) {
     }
 
     // == AP-11 todesursache ==
+    /**
+     * Hat dieses Gerät „BOMBE = NIE TIPPEN“ schon gezeigt? Rein lokal wie
+     * die Twist-Erklärungen und bewusst nicht im SyncState: Es ist
+     * Didaktik, kein Fortschritt (Plan 8.6 #9).
+     */
+    val bombLessonSeen: Boolean
+        get() = prefs.boolean(KEY_BOMB_LESSON_SEEN, false)
+
+    /**
+     * Die Bomben-Lektion für diesen Tod: true genau beim ersten Mal, dann
+     * ist sie gemerkt und kommt auf diesem Gerät nie wieder.
+     */
+    fun takeBombLesson(): Boolean {
+        if (bombLessonSeen) return false
+        prefs.edit { putBoolean(KEY_BOMB_LESSON_SEEN, true) }
+        return true
+    }
     // == /AP-11 ==
 
     // ===== Daily Challenge =====
@@ -759,6 +776,8 @@ class GameStore(private val prefs: KeyValueStore) {
         // siehe TwistLessons. Rein lokal — kein Fortschritt, nur Didaktik.
         const val KEY_TWISTS_EXPLAINED = "twists_explained"
         // == AP-11 todesursache ==
+        // Ob „BOMBE = NIE TIPPEN“ schon einmal kam. Lokal, nicht im Sync.
+        const val KEY_BOMB_LESSON_SEEN = "bomb_lesson_seen"
         // == /AP-11 ==
     }
 }
