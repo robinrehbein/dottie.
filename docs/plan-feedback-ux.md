@@ -194,6 +194,26 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
   `androidx.activity.compose.BackHandler`, iOS ohne Wirkung (CMP 1.7.3 hat
   noch keinen gemeinsamen BackHandler).
 
+- **Sammlung (heute „SKINS“) umbauen.** Eine Liste mit 62 Zeilen: 6
+  Kulissen, 3 Töne, 7 Rahmen, 46 Skins in 6 Familien
+  (`GameOverlays.kt:1294–1600`). Keine Vorschau im Spielbild, gesperrte
+  Zeilen sind nicht antippbar und zeigen keinen Fortschritt (obwohl
+  `Progress.goals` ihn schon rechnet, `Progress.kt:245–254`), frisch
+  Freigeschaltetes wird nicht markiert.
+  → **SAMMLUNG** mit vier Reitern **VOGEL · WELT · TON · RAHMEN**, jeweils mit
+  Zähler („12/46“).
+  → **Schaufenster** oben: Stück Bahn mit Vogel in der angesehenen Welt, bei
+  Tönen die Hörprobe. **Anschauen darf man alles, auswählen nur
+  Freigeschaltetes.** Gesperrtes zeigt Bedingung, Fortschritt
+  („37/500 LÄUFE“) und bei Skins „HEUTE PER SPOT TESTEN“ (Gönner-Skins
+  weiterhin ausgenommen).
+  → **Raster** mit vier Kacheln pro Zeile, gesperrte blass mit kleinem
+  Fortschrittsbalken. Im Reiter VOGEL bleiben die Familien als
+  Zwischenüberschriften, das Gönner-Angebot steht unter seiner Familie.
+  → **NEU-Markierung** an frischen Kacheln, roter Punkt am Reiter und am
+  Taster im Startbildschirm, bis man es angesehen hat.
+  → „Kulissen“ heißen im Spiel künftig **Welten**.
+
 ### 7.2 Sollte
 
 - **DAILY sieht aus wie „Spielen“:** einziger gelber Taster, links, startet
@@ -213,12 +233,23 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
   Lautsprecher- und Glocken-Symbole in `PixelButton.kt:171–202` sind
   gezeichnet, aber ungenutzt.
 
+- **Welten früher erreichbar (Entscheidung).** Heute braucht die erste neue
+  Welt 500 Läufe, 10.000 Punkte, eine 30-Tage-Daily-Serie oder Rekord 85
+  (`ScenePaint.kt:610–615`). Bei grob 10 Punkten und 12 s pro Lauf sind das
+  1,5–2 Stunden reine Spielzeit für die Wüste und rund 1.000 Läufe fürs
+  Meer. Skins kommen dagegen früh (MATCHA nach 5 Läufen). Vorschlag:
+  WÜSTE 25 Läufe, MEER 1.000 Punkte insgesamt, BERG 7 Daily-Tage in Folge,
+  STADT Rekord 40, WELTRAUM bleibt „alle anderen“. Das ist keine Änderung am
+  Spiel, nur an den Belohnungsschwellen. Folgen prüfen: Rahmen KASKADE hängt
+  an „alle Kulissen“, die Zielzeile rechnet über dieselben Schwellen, und
+  Spieler mit altem Stand bekommen beim Update eventuell mehrere Welten auf
+  einmal (dann gesammelt feiern).
+
 ### 7.3 Schnell
 
 - **Umlaute:** `bytesized_regular.ttf` enthält Ä, Ö, Ü, ß. 38 Zeilen in
   `values-de/strings.xml` schreiben trotzdem UE/AE/OE (MENUE, GRUENEN,
   WAEHLEN, SCHLIESSEN).
-- **SKINS → SAMMLUNG:** Der Taster öffnet Skins, Kulissen, Töne und Rahmen.
 - **„?“ im Game-Over** entfernen, sobald Todesursache und Erklärung beim
   ersten Fallen-Tod da sind. Hilfe bleibt in den Einstellungen.
 - **Vorlesen:** `role = Role.Button` für `PixelButton` und Taster, „?“ als
@@ -230,12 +261,18 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
 
 1. Zurück-Geste abfangen.
 2. Game-Over: feste Leiste unten mit 0,8 s Sperre.
-3. Umlaute und SAMMLUNG.
-4. Ein Druck-Stil, X-Knopf, Schalter.
-5. DAILY zurücknehmen und beim ersten Mal erklären, zusammen mit dem neuen
+3. Umlaute und SAMMLUNG als Name.
+4. Sammlung umbauen (Reiter, Raster, Schaufenster, Fortschritt, NEU).
+   Die Welten-Leiter lässt sich unabhängig davon umsetzen.
+5. Ein Druck-Stil, X-Knopf, Schalter.
+6. DAILY zurücknehmen und beim ersten Mal erklären, zusammen mit dem neuen
    Startbildschirm (Phase 4).
 
 ### 7.5 Offen
+
+- Welten-Leiter übernehmen? Und mit welchen Werten (echte Durchschnitte aus
+  der Statistik wären besser als die Schätzung)?
+- Hörprobe auch für gesperrte Töne erlauben (als Anreiz)?
 
 - Braucht das Game-Over TEILEN überhaupt in der Leiste, oder nur nach einem
   neuen Rekord?
