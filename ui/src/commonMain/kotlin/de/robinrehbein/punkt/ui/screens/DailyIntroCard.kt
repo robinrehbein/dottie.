@@ -83,7 +83,10 @@ fun DailyIntroCard(onStart: () -> Unit, onClose: () -> Unit) {
                 // nicht als Spiel-Tap durchschlägt.
                 detectTapGestures(onTap = { onClose() })
             }
-            .windowInsetsPadding(WindowInsets.systemBars),
+            .windowInsetsPadding(WindowInsets.systemBars)
+            // Seitenrand, damit die Karte auf schmalen Geräten nicht an
+            // den Bildrand stößt.
+            .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center
     ) {
         PixelPanel {

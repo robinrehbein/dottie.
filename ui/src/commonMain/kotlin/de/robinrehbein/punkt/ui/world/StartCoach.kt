@@ -139,6 +139,13 @@ internal val HandDropShadow = Color(0x59543847)
 internal fun handUnit(radius: Float): Float = max(1f, floor(radius / 30.6f))
 
 /**
+ * Linke obere Ecke des Hand-Sprites, auf ganze Pixel abgerundet. Die
+ * Fingerspitze (Spalte 4–5, Zeile 0) liegt bei [tipX]/[tipY].
+ */
+internal fun handOrigin(tipX: Float, tipY: Float, u: Float): Offset =
+    Offset(floor(tipX - u * 5f), floor(tipY))
+
+/**
  * Hand und Echo an der Fingerspitze. Die Spitze (Spalte 4–5, Zeile 0)
  * steht knapp über der Ringmitte; gedrückt sinkt sie um zwei Pixel und
  * färbt sich gelblich.
@@ -154,8 +161,12 @@ fun DrawScope.drawStartHand(
     val pressed = fx.handPressed
     val tipX = cx + wobble
     val tipY = cy - u + if (pressed) u * 2f else 0f
-    val ox = tipX - u * 5f
-    val oy = tipY
+    // Auf ganze Pixel gerundet: u ist ganzzahlig, liegt auch der Ursprung
+    // im Raster, stoßen die Hand-Pixel ohne Naht aneinander, auch wenn die
+    // Ringmitte gebrochen ist (720×1280: cy = 563,2).
+    val origin = handOrigin(tipX, tipY, u)
+    val ox = origin.x
+    val oy = origin.y
     for (row in HAND.indices) {
         for (col in 0 until HAND_COLUMNS) {
             if (HAND[row][col] == '.') continue

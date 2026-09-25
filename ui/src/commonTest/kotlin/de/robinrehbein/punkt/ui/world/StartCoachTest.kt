@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Size
 import de.robinrehbein.punkt.game.GameEventNotYet
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.TimingGame
+import kotlin.math.floor
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -179,12 +180,34 @@ class StartCoachTest {
         for (size in formats) {
             val ring = ringGeometry(size)
             val center = notYetCenter(size)
-            val handTop = ring.cy - handUnit(ring.radius)
+            val u = handUnit(ring.radius)
+            // Die Oberkante, wie drawStartHand sie zeichnet (abgerundet).
+            val handTop = handOrigin(ring.cx, ring.cy - u, u).y
             // Die Schrift ist gut 22 dp hoch; ein Zehntel des Radius reicht
             // auf allen Formaten als halbe Zeilenhöhe.
             assertTrue(center.y + ring.radius * 0.12f < handTop, "NOCH NICHT auf der Hand bei $size")
             assertTrue(center.y - ring.radius * 0.12f > ring.cy - ring.radius, "NOCH NICHT über dem Ring bei $size")
             assertEquals(ring.cx, center.x)
+        }
+    }
+
+    @Test
+    fun `die Hand liegt im Pixelraster, auch bei gebrochener Ringmitte`() {
+        // 720×1280: cy = 0,44·1280 = 563,2; 1080×2340: cy = 1029,6.
+        for (size in formats + listOf(Size(720f, 1280f), Size(1080f, 2340f))) {
+            val ring = ringGeometry(size)
+            val u = handUnit(ring.radius)
+            assertEquals(u, floor(u), "Hand-Pixel nicht ganzzahlig bei $size")
+            for (wobble in listOf(0f, 0.37f, -1.6f, 2.75f)) {
+                for (pressed in listOf(false, true)) {
+                    val tipY = ring.cy - u + if (pressed) u * 2f else 0f
+                    val o = handOrigin(ring.cx + wobble, tipY, u)
+                    assertEquals(floor(o.x), o.x, "ox gebrochen bei $size, wobble $wobble")
+                    assertEquals(floor(o.y), o.y, "oy gebrochen bei $size, wobble $wobble")
+                    // Die Spitze weicht höchstens ein Pixel vom Ziel ab.
+                    assertTrue(tipY - o.y in 0f..1f, "Spitze verrutscht bei $size")
+                }
+            }
         }
     }
 }
