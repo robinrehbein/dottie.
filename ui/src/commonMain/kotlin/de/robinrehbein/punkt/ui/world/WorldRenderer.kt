@@ -693,8 +693,7 @@ internal fun DrawScope.drawTrack(
     // bleiben durch ihre größeren Blöcke bewusst ein durchgehendes Band.
     val segments = 60
     val zoneHalf = game.effectiveZoneHalf()
-    val redMines = trapRedSegments(game, segments, zoneHalf)
-    val minePx = minePixel(cell)
+    val mines = trapMines(game, segments, zoneHalf)
     for (k in 0 until segments) {
         val a = k.toFloat() / segments * (2f * PI.toFloat())
         val px = cx + cos(a) * radius
@@ -712,12 +711,10 @@ internal fun DrawScope.drawTrack(
         val relativeFake = TimingGame.wrapToPi(a - game.fakeZoneCenter)
         val inFake = game.hasFakeZone && abs(relativeFake) <= fakeHalf
 
-        // Jeder Block der Falle ist eine Mine. Liegt die Falle auf der
-        // Zone, gewinnt die Zone: Grün bleibt Grün.
-        if (inFake && !inZone) {
-            drawMine(px, py, minePx, redMines[k])
-            continue
-        }
+        // Die Falle ist eine Kette aus Minen statt aus Blöcken: Hier
+        // bleibt die Bahn frei, die Minen kommen nach der Schleife.
+        // Liegt die Falle auf der Zone, gewinnt die Zone: Grün bleibt Grün.
+        if (inFake && !inZone) continue
 
         val outer = if (inZone) cell * 5f else cell * 3f
         val inner = if (inZone) cell * 3.4f else cell * 1.8f
@@ -737,6 +734,18 @@ internal fun DrawScope.drawTrack(
             topLeft = Offset(px - inner / 2f, py - inner / 2f),
             size = Size(inner, inner)
         )
+    }
+
+    // Die Minen der Falle: so viele, wie TrapPaint.count aus der
+    // Grundbreite ergibt, verteilt über die Breite fakeZoneHalf() (8.7).
+    // Erst alle Ränder, dann alle Kugeln, damit sich dicht liegende Minen
+    // unter PULS nicht gegenseitig überdecken.
+    val minePx = minePixel(cell)
+    for (mine in mines) {
+        drawMineRim(cx + cos(mine.angle) * radius, cy + sin(mine.angle) * radius, minePx)
+    }
+    for (mine in mines) {
+        drawMineBody(cx + cos(mine.angle) * radius, cy + sin(mine.angle) * radius, minePx, mine.red)
     }
 }
 

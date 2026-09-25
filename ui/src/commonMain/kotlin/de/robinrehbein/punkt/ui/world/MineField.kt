@@ -46,10 +46,24 @@ internal fun minePixel(cell: Float): Int = (cell * 0.6f).roundToInt().coerceAtLe
  * Kugel und Glanz darüber. Alle Koordinaten auf ganze Pixel gerundet.
  */
 internal fun DrawScope.drawMine(cx: Float, cy: Float, px: Int, red: Boolean) {
+    drawMineRim(cx, cy, px)
+    drawMineBody(cx, cy, px, red)
+}
+
+/** Linke obere Ecke des Sprites, auf ganze Pixel gerundet. */
+private fun mineOrigin(c: Float, u: Float): Float =
+    (c - u * TrapPaint.MINE_SIZE / 2f).roundToInt().toFloat()
+
+/**
+ * Nur der helle Rand einer Mine. Liegen Minen dicht (PULS drückt die
+ * Kette zusammen), zeichnet `drawTrack` erst alle Ränder, dann alle
+ * Kugeln, damit kein Rand über eine Nachbarkugel fällt.
+ */
+internal fun DrawScope.drawMineRim(cx: Float, cy: Float, px: Int) {
     val u = px.toFloat()
     val size = TrapPaint.MINE_SIZE
-    val ox = (cx - u * size / 2f).roundToInt().toFloat()
-    val oy = (cy - u * size / 2f).roundToInt().toFloat()
+    val ox = mineOrigin(cx, u)
+    val oy = mineOrigin(cy, u)
     val rim = (u * 0.6f).roundToInt().coerceAtLeast(1).toFloat()
     val rimColor = Color(TrapPaint.RIM)
     for (r in 0 until size) {
@@ -63,6 +77,14 @@ internal fun DrawScope.drawMine(cx: Float, cy: Float, px: Int, red: Boolean) {
             )
         }
     }
+}
+
+/** Kugel und Glanz einer Mine, ohne Rand (siehe [drawMineRim]). */
+internal fun DrawScope.drawMineBody(cx: Float, cy: Float, px: Int, red: Boolean) {
+    val u = px.toFloat()
+    val size = TrapPaint.MINE_SIZE
+    val ox = mineOrigin(cx, u)
+    val oy = mineOrigin(cy, u)
     val ball = Color(if (red) TrapPaint.RED else TrapPaint.BALL)
     val gloss = Color(TrapPaint.GLOSS)
     for (r in 0 until size) {
@@ -80,42 +102,47 @@ internal fun DrawScope.drawMine(cx: Float, cy: Float, px: Int, red: Boolean) {
 }
 
 /**
- * Das Lauflicht der aktuellen Falle: welche Blöcke der Bahn als rote Mine
- * gezeichnet werden. Index = Segment der Bahn (0 bis [segments] - 1).
- *
- * Anzahl und Maske rechnen mit der Grundbreite [TimingGame.zoneHalfWidth],
- * damit sie unter PULS stehen bleiben (Plan 8.7). Minen liegen dagegen auf
- * allen Segmenten in der Breite von [TimingGame.fakeZoneHalf] außerhalb der
- * Zone ([zoneHalf]), genau wie `drawTrack` sie zeichnet. Die Minen werden in
- * Laufrichtung des Lichts ([TrapPaint.direction]) durchgezählt; liegen
- * gerade mehr oder weniger Minen auf der Bahn, als die Maske hat, wird
- * anteilig zugeordnet. Stimmen beide Zahlen, hat jede Mine ihren eigenen
- * Eintrag.
+ * Eine Mine der Falle: Winkel auf der Bahn, ihr Platz [index] in der
+ * Lauflicht-Maske und ob sie gerade rot ist.
  */
-internal fun trapRedSegments(game: TimingGame, segments: Int, zoneHalf: Float): BooleanArray {
-    val red = BooleanArray(segments)
-    if (!game.hasFakeZone) return red
-    val fakeHalf = game.fakeZoneHalf()
-    val direction = TrapPaint.direction(game.fakeZoneCenter)
-    val mines = ArrayList<Pair<Int, Float>>()
-    for (k in 0 until segments) {
-        val a = k.toFloat() / segments * (2f * PI.toFloat())
-        val d = TimingGame.wrapToPi(a - game.fakeZoneCenter)
-        val inZone = abs(TimingGame.wrapToPi(a - game.zoneCenter)) <= zoneHalf
-        if (abs(d) <= fakeHalf && !inZone) mines.add(k to d * direction)
-    }
-    if (mines.isEmpty()) return red
-    mines.sortBy { it.second }
-    val count = TrapPaint.count(game.zoneHalfWidth, 2f * PI.toFloat() / segments)
+internal class TrapMine(val angle: Float, val index: Int, val red: Boolean)
+
+/**
+ * Die Minen der aktuellen Falle samt Lauflicht (Plan 3.4, 8.5, 8.7).
+ *
+ * Die Zahl ist `n = TrapPaint.count(zoneHalfWidth, cell)` mit der
+ * Grundbreite [TimingGame.zoneHalfWidth] und [cell] = Winkel eines
+ * Bahn-Blocks ([segments] Blöcke im Kreis). Sie hängt also nicht an der
+ * Lage der Falle zum Segment-Raster und bleibt unter PULS stehen. Die n
+ * Minen liegen gleichmäßig über die Breite von [TimingGame.fakeZoneHalf]
+ * verteilt (je eine in der Mitte von n gleich breiten Feldern): Unter PULS
+ * atmet die Kette, die Zahl nicht.
+ *
+ * Mine `i` (in Laufrichtung des Lichts, [TrapPaint.direction]) bekommt
+ * genau den Maskeneintrag `i` aus [TrapPaint.redMask]; die Uhr ist
+ * [TimingGame.zoneAge]. Nur wenn die Falle die Zone ([zoneHalf]) berührt,
+ * entfallen die Minen darin (Grün bleibt Grün), ihre Einträge ebenso.
+ * Nichts hier zieht eine Zufallszahl.
+ */
+internal fun trapMines(game: TimingGame, segments: Int, zoneHalf: Float): List<TrapMine> {
+    if (!game.hasFakeZone) return emptyList()
+    val cell = 2f * PI.toFloat() / segments
+    val count = TrapPaint.count(game.zoneHalfWidth, cell)
     val mask = TrapPaint.redMask(
         count,
         floor(game.zoneAge / TrapPaint.LIGHT_STEP_SECONDS).toInt()
     )
-    mines.forEachIndexed { rank, (k, _) ->
-        val index = (rank * count / mines.size).coerceIn(0, count - 1)
-        red[k] = mask[index]
+    val fakeHalf = game.fakeZoneHalf()
+    val direction = TrapPaint.direction(game.fakeZoneCenter)
+    val pitch = 2f * fakeHalf / count
+    val mines = ArrayList<TrapMine>(count)
+    for (i in 0 until count) {
+        val offset = (-fakeHalf + (i + 0.5f) * pitch) * direction
+        val angle = TimingGame.wrapTwoPi(game.fakeZoneCenter + offset)
+        if (abs(TimingGame.wrapToPi(angle - game.zoneCenter)) <= zoneHalf) continue
+        mines.add(TrapMine(angle, i, mask[i]))
     }
-    return red
+    return mines
 }
 
 /**

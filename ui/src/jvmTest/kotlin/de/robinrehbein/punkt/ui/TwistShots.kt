@@ -183,6 +183,30 @@ class TwistShots {
         }
     }
 
+    /**
+     * Die Falle unter PULS, einmal eng und einmal weit: Die Kette atmet,
+     * die Zahl der Minen bleibt (Plan 8.7).
+     */
+    @Test
+    fun bombenPuls() {
+        val dir = shotsDir() ?: return
+        val game = trapGame(2, setOf(Twist.PULSE))
+        val n = bombCount(game)
+        listOf(
+            "eng" to { h: Float -> h < game.zoneHalfWidth * 0.66f },
+            "weit" to { h: Float -> h > game.zoneHalfWidth * 0.97f }
+        ).forEach { (name, wanted) ->
+            var frames = 0
+            while (!wanted(game.fakeZoneHalf())) {
+                game.update(BOT_DT / 4f)
+                check(game.phase == GamePhase.RUNNING) { "Punkt ist vor PULS-$name an der Zone vorbei" }
+                check(++frames < MAX_BOT_FRAMES) { "PULS erreicht $name nicht" }
+            }
+            println("   bomben-puls-$name: breite=${game.fakeZoneHalf() / game.zoneHalfWidth} minen=$n")
+            shoot(dir, "bomben-puls-$name.png", game)
+        }
+    }
+
     private fun relativeToFake(game: TimingGame): Float =
         TimingGame.wrapToPi(game.angle - game.fakeZoneCenter)
     // == /AP-12 ==

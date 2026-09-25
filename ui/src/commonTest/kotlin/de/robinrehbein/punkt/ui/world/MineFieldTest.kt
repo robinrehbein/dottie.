@@ -14,67 +14,121 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
- * Das Lauflicht der Bomben ([trapRedSegments]): rot wird nur, was auch
- * als Mine gezeichnet wird, und die Zahl der roten Minen folgt der Maske
- * aus [TrapPaint] — ohne dass das Bild den Engine-Zufall berührt.
+ * Die Minen der Falle und ihr Lauflicht ([trapMines]): Die Zahl kommt aus
+ * [TrapPaint.count] mit der Grundbreite und bleibt unter PULS stehen, jede
+ * Mine hat ihren eigenen Maskeneintrag, und das Bild berührt den
+ * Engine-Zufall nicht.
  */
 class MineFieldTest {
 
     private val segments = 60
+    private val cell = 2f * PI.toFloat() / segments
 
     /** Ein laufendes Spiel, dessen erste Zone eine Falle hat. */
-    private fun gameWithTrap(): TimingGame {
-        for (seed in 1L..200L) {
-            val game = TimingGame(Random(seed)).apply { twistOverride = setOf(Twist.FAKE) }
+    private fun gameWithTrap(twists: Set<Twist> = setOf(Twist.FAKE), from: Long = 1L): TimingGame {
+        for (seed in from..from + 200L) {
+            val game = TimingGame(Random(seed)).apply { twistOverride = twists }
             game.start()
             if (game.hasFakeZone) return game
         }
         fail("Kein Seed mit Falle gefunden")
     }
 
-    private fun mineSegments(game: TimingGame): List<Int> = (0 until segments).filter { k ->
-        val a = k.toFloat() / segments * (2f * PI.toFloat())
-        abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= game.fakeZoneHalf() &&
-            abs(TimingGame.wrapToPi(a - game.zoneCenter)) > game.effectiveZoneHalf()
-    }
-
-    @Test
-    fun `rot sind nur Minen und die Zahl folgt der Maske`() {
-        val game = gameWithTrap()
-        val mines = mineSegments(game)
-        val count = TrapPaint.count(game.zoneHalfWidth, 2f * PI.toFloat() / segments)
-        assertTrue(mines.isNotEmpty(), "die Falle liegt auf der Bahn")
-
-        var steps = 0
-        while (game.phase == GamePhase.RUNNING && steps < count) {
-            val red = trapRedSegments(game, segments, game.effectiveZoneHalf())
-            val redIdx = red.indices.filter { red[it] }
-            assertTrue(redIdx.all { it in mines }, "rot außerhalb der Falle: $redIdx")
-
-            val step = floor(game.zoneAge / TrapPaint.LIGHT_STEP_SECONDS).toInt()
-            val maskRed = TrapPaint.redMask(count, step).count { it }
-            if (mines.size == count) {
-                assertEquals(maskRed, redIdx.size, "Schritt $step: jede Mine hat ihren Eintrag")
-            } else {
-                assertTrue(redIdx.size <= maskRed + 1, "Schritt $step: höchstens eine Mine zu viel rot")
+    /**
+     * Spielt [seeds] Spiele mit [twists] je [frames] Frames ohne Tippen
+     * durch und ruft [check] für jeden Frame mit Falle.
+     */
+    private fun eachTrapFrame(
+        twists: Set<Twist>,
+        seeds: LongRange = 1L..60L,
+        frames: Int = 400,
+        check: (TimingGame, List<TrapMine>) -> Unit
+    ): Int {
+        var checked = 0
+        for (seed in seeds) {
+            val game = TimingGame(Random(seed)).apply { twistOverride = twists }
+            game.start()
+            repeat(frames) {
+                if (game.phase != GamePhase.RUNNING) return@repeat
+                if (game.hasFakeZone) {
+                    check(game, trapMines(game, segments, game.effectiveZoneHalf()))
+                    checked++
+                }
+                game.update(1f / 120f)
             }
-            // Einen Schritt weiter, ohne zu tippen.
-            val target = step + 1
-            while (game.phase == GamePhase.RUNNING &&
-                floor(game.zoneAge / TrapPaint.LIGHT_STEP_SECONDS).toInt() < target
-            ) {
-                game.update(1f / 240f)
-            }
-            steps++
         }
-        assertTrue(steps > 0, "mindestens ein Schritt geprüft")
+        return checked
+    }
+
+    /** Berührt die Falle in diesem Frame die Zone? Dann dürfen Minen fehlen. */
+    private fun touchesZone(game: TimingGame): Boolean =
+        abs(TimingGame.wrapToPi(game.fakeZoneCenter - game.zoneCenter)) <=
+            game.fakeZoneHalf() + game.effectiveZoneHalf()
+
+    @Test
+    fun `die Zahl der Minen kommt aus TrapPaint count`() {
+        val count = TrapPaint.count(gameWithTrap().zoneHalfWidth, cell)
+        val checked = eachTrapFrame(setOf(Twist.FAKE)) { game, mines ->
+            if (touchesZone(game)) return@eachTrapFrame
+            assertEquals(TrapPaint.count(game.zoneHalfWidth, cell), mines.size)
+            assertEquals((0 until mines.size).toList(), mines.map { it.index })
+        }
+        assertTrue(checked > 1000, "genug Frames geprüft: $checked")
+        assertEquals(7, count, "Grundbreite ergibt sieben Minen (AP-02)")
     }
 
     @Test
-    fun `ohne Falle ist nichts rot`() {
+    fun `unter PULS schwankt die Zahl der Minen nicht`() {
+        var pulsed = false
+        val checked = eachTrapFrame(setOf(Twist.FAKE, Twist.PULSE)) { game, mines ->
+            if (touchesZone(game)) return@eachTrapFrame
+            if (game.fakeZoneHalf() < game.zoneHalfWidth * 0.8f) pulsed = true
+            assertEquals(TrapPaint.count(game.zoneHalfWidth, cell), mines.size)
+        }
+        assertTrue(checked > 1000, "genug Frames geprüft: $checked")
+        assertTrue(pulsed, "die Falle hat tatsächlich geatmet")
+    }
+
+    @Test
+    fun `die Minen liegen in der Breite der Falle und in Laufrichtung`() {
+        eachTrapFrame(setOf(Twist.FAKE, Twist.PULSE)) { game, mines ->
+            val half = game.fakeZoneHalf()
+            val direction = TrapPaint.direction(game.fakeZoneCenter)
+            var last = Float.NEGATIVE_INFINITY
+            for (mine in mines) {
+                val d = TimingGame.wrapToPi(mine.angle - game.fakeZoneCenter)
+                assertTrue(abs(d) <= half + 1e-4f, "Mine außerhalb der Falle: $d > $half")
+                assertTrue(d * direction > last, "Minen in Laufrichtung sortiert")
+                last = d * direction
+            }
+        }
+    }
+
+    @Test
+    fun `rot ist genau was die Maske sagt, im ersten Schritt eine Mine`() {
+        var firstSteps = 0
+        val checked = eachTrapFrame(setOf(Twist.FAKE, Twist.PULSE)) { game, mines ->
+            if (touchesZone(game)) return@eachTrapFrame
+            val count = TrapPaint.count(game.zoneHalfWidth, cell)
+            val step = floor(game.zoneAge / TrapPaint.LIGHT_STEP_SECONDS).toInt()
+            val mask = TrapPaint.redMask(count, step)
+            assertEquals(mask, mines.map { it.red }, "Schritt $step")
+            val period = count + (count + 1) / 2
+            if (((step % period) + period) % period == 0) {
+                assertEquals(1, mines.count { it.red }, "Schritt 0: genau eine Mine rot")
+                assertTrue(mines.first().red, "Schritt 0: die erste Mine in Laufrichtung")
+                firstSteps++
+            }
+        }
+        assertTrue(checked > 1000, "genug Frames geprüft: $checked")
+        assertTrue(firstSteps > 0, "Schritt 0 kam vor")
+    }
+
+    @Test
+    fun `ohne Falle gibt es keine Minen`() {
         val game = TimingGame(Random(1L)).apply { twistOverride = emptySet() }
         game.start()
-        assertTrue(trapRedSegments(game, segments, game.effectiveZoneHalf()).none { it })
+        assertTrue(trapMines(game, segments, game.effectiveZoneHalf()).isEmpty())
     }
 
     @Test
@@ -84,7 +138,7 @@ class MineFieldTest {
         val a = gameWithTrap()
         val b = gameWithTrap()
         repeat(600) {
-            trapRedSegments(a, segments, a.effectiveZoneHalf())
+            trapMines(a, segments, a.effectiveZoneHalf())
             a.update(1f / 120f)
             b.update(1f / 120f)
             if (a.isInZone) a.tap()
