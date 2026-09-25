@@ -219,9 +219,12 @@ class GameStore(private val prefs: KeyValueStore) {
      * Der Twist, den dieser Lauf erklaeren soll — null, wenn er nichts
      * Neues gebracht hat. Die Daily zaehlt dabei wie jeder andere Lauf:
      * Auch dort ist die Falle beim ersten Mal neu.
+     *
+     * [diedInTrap]: Der Lauf endete in der Falle. Bis AP-12 ohne Wirkung
+     * (Plan 8.3).
      */
-    fun twistToExplain(unlockedThisRun: List<Twist>): Twist? =
-        TwistLessons.next(unlockedThisRun, explainedTwists)
+    fun twistToExplain(unlockedThisRun: List<Twist>, diedInTrap: Boolean = false): Twist? =
+        TwistLessons.next(unlockedThisRun, explainedTwists, diedInTrap)
 
     /**
      * Merkt sich einen erklaerten Twist. Geschrieben wird an den
@@ -236,6 +239,9 @@ class GameStore(private val prefs: KeyValueStore) {
             putString(KEY_TWISTS_EXPLAINED, TwistLessons.encode(known + twist.name))
         }
     }
+
+    // == AP-11 todesursache ==
+    // == /AP-11 ==
 
     // ===== Daily Challenge =====
 
@@ -273,6 +279,9 @@ class GameStore(private val prefs: KeyValueStore) {
      * Anzeige auf dem Startscreen: War gestern der letzte Lauf, läuft die
      * Serie noch; liegt er länger zurück, ist sie faktisch gerissen.
      */
+    // == AP-22 start ==
+    // == /AP-22 ==
+
     fun dailyStreakPreviewFor(epochDay: Long): Int = when {
         dailyDay == epochDay -> dailyStreak
         dailyDay == epochDay - 1 -> dailyStreak
@@ -405,8 +414,13 @@ class GameStore(private val prefs: KeyValueStore) {
         // Monate — deshalb hier die gesetzten Bits zählen.
         monthsPlayed = monthsPlayedMask.countOneBits(),
         seasonEarned = seasonEarned,
-        patronOwned = patronOwned
+        patronOwned = patronOwned,
+        // == AP-13 welten ==
+        // == /AP-13 ==
     )
+
+    // == AP-13 welten ==
+    // == /AP-13 ==
 
     // ===== Abgleich mit der Uhr =====
 
@@ -474,7 +488,9 @@ class GameStore(private val prefs: KeyValueStore) {
             // Freischaltungen selbst aus den Ständen ab und würde ein
             // ungedecktes Set ohnehin abweisen.
             sound = if (soundShared) selectedSound.name else "",
-            soundChangedAt = if (soundShared) prefs.long(KEY_SOUND_CHANGED, 0L) else 0L
+            soundChangedAt = if (soundShared) prefs.long(KEY_SOUND_CHANGED, 0L) else 0L,
+            // == AP-13 welten ==
+            // == /AP-13 ==
         )
     }
 
@@ -572,6 +588,8 @@ class GameStore(private val prefs: KeyValueStore) {
                 putLong(KEY_SOUND_CHANGED, state.soundChangedAt)
             }
         }
+        // == AP-13 welten ==
+        // == /AP-13 ==
         }
         // Erst ganz am Ende, wenn alles geschrieben ist: Wer auf den
         // Zähler hört, liest gleich darauf die Werte — und soll dabei den
@@ -598,8 +616,13 @@ class GameStore(private val prefs: KeyValueStore) {
         // Der Kauf steht nicht im Austauschformat, also gilt hier der
         // lokale Spiegel — sonst fiele ein Gönner-Skin beim Abgleich
         // stumm auf KLASSIK zurück.
-        patronOwned = patronOwned
+        patronOwned = patronOwned,
+        // == AP-13 welten ==
+        // == /AP-13 ==
     )
+
+    // == AP-15 sammlung ==
+    // == /AP-15 ==
 
     private companion object {
         const val PREFS_NAME = "punkt_scores"
@@ -631,12 +654,20 @@ class GameStore(private val prefs: KeyValueStore) {
         // Fenster, Tageszähler und letzter gezählter Tag der laufenden
         // Saison; nur KEY_SEASON_EARNED überlebt den Monat.
         const val KEY_SEASON_WINDOW = "season_window"
+        // == AP-22 start ==
+        // == /AP-22 ==
         const val KEY_SEASON_DAYS = "season_days"
         const val KEY_SEASON_LAST_DAY = "season_last_day"
         const val KEY_SEASON_EARNED = "season_earned"
+        // == AP-13 welten ==
+        // == /AP-13 ==
         const val KEY_PATRON = "patron_owned"
+        // == AP-15 sammlung ==
+        // == /AP-15 ==
         // Die schon erklaerten Twists als Namensliste ("FAKE,CHAIN"),
         // siehe TwistLessons. Rein lokal — kein Fortschritt, nur Didaktik.
         const val KEY_TWISTS_EXPLAINED = "twists_explained"
+        // == AP-11 todesursache ==
+        // == /AP-11 ==
     }
 }

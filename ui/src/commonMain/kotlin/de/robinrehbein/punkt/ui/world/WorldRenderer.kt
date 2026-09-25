@@ -43,6 +43,20 @@ import kotlin.math.sin
  * nach der Nacht geht es zurueck Richtung Tag.
  */
 
+/**
+ * Lage der Kreisbahn im Bild: Mitte und Radius. Eine Quelle für alles,
+ * was sich am Ring ausrichten muss (Todesursache, Hinweis, Hand) — damit
+ * niemand die Zahlen aus [drawTimingWorld] abschreibt.
+ */
+data class RingGeometry(val cx: Float, val cy: Float, val radius: Float)
+
+/** Die Kreisbahn für eine Bildgröße: Mitte bei 44 % der Höhe, Radius min(0,36 w; 0,28 h). */
+fun ringGeometry(size: Size): RingGeometry = RingGeometry(
+    cx = size.width / 2f,
+    cy = size.height * 0.44f,
+    radius = min(size.width * 0.36f, size.height * 0.28f)
+)
+
 fun DrawScope.drawTimingWorld(
     game: TimingGame,
     fx: FxState,
@@ -87,16 +101,20 @@ fun DrawScope.drawTimingWorld(
         // Kreisbahn mit Zielzone, ggf. Fallen-Zone und Punkt. Sie zieht
         // ihre Farben bewusst NICHT aus der Kulisse: Worauf getippt wird,
         // sieht überall gleich aus — sonst wäre die Kulisse ein Vorteil.
-        val cx = w / 2f
-        val cy = h * 0.44f
-        val radius = min(w * 0.36f, h * 0.28f)
+        val (cx, cy, radius) = ringGeometry(size)
         drawTrack(game, cx, cy, radius, cell)
+        // == AP-22 start ==
+        // == /AP-22 ==
         if (game.isDotVisible) {
             drawTimingDot(game, fx, cx, cy, radius, skin, hour, month)
         }
+        // == AP-23 nebel ==
+        // == /AP-23 ==
         if (fx.celebrateTime > 0f) {
             drawUnlockBurst(fx.celebrateTime, cx, cy, radius, cell)
         }
+        // == AP-12 bomben ==
+        // == /AP-12 ==
     }
 
     // Weißer Blitz beim Aufprall
