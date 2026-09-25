@@ -21,7 +21,7 @@
          einsprachig (siehe dort). %1$d = verdient, %2$d = erreichbar —
          Saison- und Goenner-Skins zaehlen nicht mit. -->
     <string name="skins">SKINS %1$d/%2$d</string>
-    <string name="back">ZURUECK</string>
+    <string name="back">ZURÜCK</string>
 
     <!-- Medaillen-Namen, identisch zum Phone-Modul -->
     <string name="medal_bronze">BRONZE</string>
