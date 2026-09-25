@@ -38,8 +38,19 @@ enum class BackAction {
 /**
  * Die Entscheidung für die Zurück-Geste aus dem sichtbaren Zustand.
  *
- * Bis AP-14 nur ein Platzhalter (Plan 8.3): Zurück bleibt unbehandelt,
- * wie bisher.
+ * Das oberste Overlay schließt zuerst, in dieser Reihenfolge: Hilfe
+ * (kann über den Einstellungen liegen) > Einstellungen > Statistik >
+ * Sammlung. Ohne Overlay entscheidet die Phase:
+ *
+ * - OVER: zurück in den Startbildschirm, wie MENÜ. Die 0,8-s-Sperre der
+ *   Game-Over-Leiste gilt hier nicht (Plan 8.6 #13): Wer bewusst zurück
+ *   wischt, meint es auch so.
+ * - RUNNING und DYING: verbrauchen, ohne etwas zu tun. Es gibt keine
+ *   Pause, und ein Wisch vom Rand darf keinen Lauf beenden.
+ * - READY: nicht behandeln, Android schließt dann die App wie bisher.
+ *
+ * [showDailyIntro] bleibt bis AP-22 ohne Wirkung (die Karte gibt es erst
+ * dort, Plan 8.4).
  */
 fun backAction(
     showHelp: Boolean,
@@ -48,4 +59,12 @@ fun backAction(
     showSkins: Boolean,
     showDailyIntro: Boolean,
     phase: GamePhase
-): BackAction = BackAction.NOT_HANDLED
+): BackAction = when {
+    showHelp -> BackAction.CLOSE_HELP
+    showSettings -> BackAction.CLOSE_SETTINGS
+    showStats -> BackAction.CLOSE_STATS
+    showSkins -> BackAction.CLOSE_COLLECTION
+    phase == GamePhase.OVER -> BackAction.TO_MENU
+    phase == GamePhase.RUNNING || phase == GamePhase.DYING -> BackAction.CONSUME
+    else -> BackAction.NOT_HANDLED
+}

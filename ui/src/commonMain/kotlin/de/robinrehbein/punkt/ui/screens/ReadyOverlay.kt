@@ -7,8 +7,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,7 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.Goal
 import de.robinrehbein.punkt.ui.components.PixelIcon
+import de.robinrehbein.punkt.ui.components.PIXEL_SHADOW
 import de.robinrehbein.punkt.ui.components.PixelIconButton
+import de.robinrehbein.punkt.ui.components.pixelPressable
 import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.best_score
 import de.robinrehbein.punkt.ui.resources.collection
@@ -298,32 +303,50 @@ private fun TasterBar(
  * Ein Feld der [TasterBar]: Fläche, Oberkante, links optional die
  * Trennlinie zum Nachbarn. Unter- und Seitenkanten gibt es nicht — die
  * Leiste endet am Bildschirmrand, nicht an einem Rahmen.
+ *
+ * Gedrückt wie die übrigen Pixel-Knöpfe (Plan 7.2): keine Material-Welle,
+ * ein Haptik-Tick über [pixelPressable], und das Feld sinkt ein — die
+ * Fläche dunkelt um eine Stufe ab und die Beschriftung rutscht um den
+ * Pixelschatten nach unten. Auch die Game-Over-Leiste baut darauf auf.
+ *
+ * @param enabled Ist das Feld gesperrt, löst ein Tap nichts aus. Er wird
+ *   dabei aber nicht verbraucht (siehe [pixelPressable]); wer ihn
+ *   schlucken will, muss das außen tun.
  */
 @Composable
-private fun Taster(
+internal fun Taster(
     text: String,
     onClick: () -> Unit,
     backgroundColor: Color,
     bottomInset: Dp,
     modifier: Modifier = Modifier,
     divider: Boolean = false,
+    enabled: Boolean = true,
     badge: @Composable BoxScope.() -> Unit = {}
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .clickable { onClick() }
+            .pixelPressable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                onClick = onClick
+            )
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val border = 4.dp.toPx()
             drawRect(color = backgroundColor)
+            if (pressed) drawRect(color = OutlineColor.copy(alpha = TASTER_PRESSED_SHADE))
             drawRect(color = OutlineColor, size = Size(size.width, border))
             if (divider) drawRect(color = OutlineColor, size = Size(border, size.height))
         }
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = bottomInset),
+                .padding(bottom = bottomInset)
+                .offset(y = if (pressed) PIXEL_SHADOW else 0.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -336,6 +359,9 @@ private fun Taster(
         badge()
     }
 }
+
+/** Wie stark ein gedrückter Taster abdunkelt: eine Stufe, kein Schatten-Loch. */
+private const val TASTER_PRESSED_SHADE = 0.14f
 
 /**
  * Das rote Serien-Abzeichen an der Ecke des DAILY-Knopfs: dunkler

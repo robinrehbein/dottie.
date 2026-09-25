@@ -37,7 +37,6 @@ import de.robinrehbein.punkt.ui.resources.help_line5
 import de.robinrehbein.punkt.ui.resources.help_max_twists
 import de.robinrehbein.punkt.ui.resources.help_title
 import de.robinrehbein.punkt.ui.resources.help_twists
-import de.robinrehbein.punkt.ui.resources.tap_to_close
 import de.robinrehbein.punkt.ui.resources.twist_chain_text
 import de.robinrehbein.punkt.ui.resources.twist_chain_title
 import de.robinrehbein.punkt.ui.resources.twist_drift_text
@@ -54,6 +53,9 @@ import de.robinrehbein.punkt.ui.world.DotBody
 import de.robinrehbein.punkt.ui.world.GrassLight
 import de.robinrehbein.punkt.ui.world.OutlineColor
 import org.jetbrains.compose.resources.stringResource
+// AP-14: X-Knopf der Hilfe (am Ende, damit AP-12 oben ungestört ergänzt).
+import de.robinrehbein.punkt.ui.components.OverlayCloseButton
+import de.robinrehbein.punkt.ui.resources.ctl_close
 
 // Die Spiel-Erklärung. Bis v2.27 Teil von GameOverlays.kt
 // (aufgeteilt nach Plan 8.4).
@@ -84,15 +86,17 @@ fun HelpOverlay(onClose: () -> Unit) {
                 .padding(vertical = 32.dp)
         ) {
             StopHelpContent()
-
-            Spacer(modifier = Modifier.height(28.dp))
-            Text(
-                text = stringResource(Res.string.tap_to_close),
-                fontFamily = Bytesized,
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.6f)
-            )
         }
+
+        // Der sichtbare Ausgang statt „TIPPEN ZUM SCHLIESSEN“ (Plan 7.2).
+        // Tippen daneben schließt weiterhin.
+        OverlayCloseButton(
+            onClose = onClose,
+            contentDescription = stringResource(Res.string.ctl_close),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+        )
     }
 }
 

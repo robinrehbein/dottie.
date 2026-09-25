@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -56,8 +58,11 @@ import de.robinrehbein.punkt.game.Twist
 import de.robinrehbein.punkt.ui.data.GameStore
 import de.robinrehbein.punkt.ui.data.deviceCalendar
 import de.robinrehbein.punkt.ui.data.deviceHourAndMonth
+import de.robinrehbein.punkt.ui.components.LocalPressFeedback
+import de.robinrehbein.punkt.ui.components.PressFeedback
 import de.robinrehbein.punkt.ui.platform.GameFeedback
 import de.robinrehbein.punkt.ui.platform.GameSounds
+import de.robinrehbein.punkt.ui.platform.PlatformBackHandler
 import de.robinrehbein.punkt.ui.platform.PlatformHooks
 import de.robinrehbein.punkt.ui.platform.ShareRequest
 import de.robinrehbein.punkt.ui.resources.Res
@@ -144,12 +149,12 @@ private class RunState {
     }
 }
 
+// == AP-14 bedienung ==
 /**
- * Spielprinzip "STOPP": Der Punkt kreist automatisch auf einer Bahn.
- * Ein Tap, während er in der Zielzone ist, zählt — daneben getappt oder
- * die Zone überfahren ist sofort das Ende. Präzision statt Dauerfeuer.
- * Mit steigendem Score schalten sich Twists frei (Puls, Drift, Geist,
- * Falle, Kette), die pro Zone zufällig gemischt werden.
+ * Der Spielbildschirm. Hängt den Haptik-Tick der Knöpfe an
+ * [GameFeedback.tap] (über [LocalPressFeedback]), damit jeder Pixel-Knopf,
+ * Taster und Schalter darunter beim Drücken kurz tickt (Plan 7.2), und
+ * zeichnet dann [GameScreenContent].
  */
 @Composable
 fun GameScreen(
@@ -164,6 +169,30 @@ fun GameScreen(
     // Fester Seed für freie Läufe, sonst echter Zufall. Nur für
     // reproduzierbare Screenshots; die Daily behält ihren Tages-Seed.
     runSeed: Long? = null
+) {
+    val pressFeedback = remember(feedback) { PressFeedback { feedback.tap() } }
+    CompositionLocalProvider(LocalPressFeedback provides pressFeedback) {
+        GameScreenContent(store, sounds, feedback, hooks, modifier, game, runSeed)
+    }
+}
+// == /AP-14 ==
+
+/**
+ * Spielprinzip "STOPP": Der Punkt kreist automatisch auf einer Bahn.
+ * Ein Tap, während er in der Zielzone ist, zählt — daneben getappt oder
+ * die Zone überfahren ist sofort das Ende. Präzision statt Dauerfeuer.
+ * Mit steigendem Score schalten sich Twists frei (Puls, Drift, Geist,
+ * Falle, Kette), die pro Zone zufällig gemischt werden.
+ */
+@Composable
+private fun GameScreenContent(
+    store: GameStore,
+    sounds: GameSounds,
+    feedback: GameFeedback,
+    hooks: PlatformHooks,
+    modifier: Modifier,
+    game: TimingGame,
+    runSeed: Long?
 ) {
     remember(sounds) {
         sounds.muted = store.soundMuted
@@ -199,6 +228,16 @@ fun GameScreen(
     // Werbe-Kauf und Datenschutz.
     var showSettings by remember { mutableStateOf(false) }
     // == AP-14 bedienung ==
+    // Die Game-Over-Leiste ist gesperrt, solange OVER jünger ist als
+    // GAME_OVER_BAR_LOCK_SECONDS. Gemessen an der Spielzeit (game.elapsed),
+    // nicht an der Uhr (Plan 8.7). frameTick hält die Rechnung im Takt der
+    // Frames; neu gezeichnet wird nur, wenn der Wert wirklich kippt.
+    val overBarLocked by remember {
+        derivedStateOf {
+            frameTick
+            phase == GamePhase.OVER && game.elapsed < GAME_OVER_BAR_LOCK_SECONDS
+        }
+    }
     // == /AP-14 ==
     // Der Rahmen der Score-Karte als vierte Sammlung. null heisst "nie
     // gewaehlt" und ist etwas anderes als SCHLICHT: Ohne Wahl traegt die
@@ -373,6 +412,23 @@ fun GameScreen(
         bannerState.timeLeft = seconds
         bannerState.priority = priority
     }
+
+    // == AP-14 bedienung ==
+    // Zurück in den Startbildschirm: MENÜ in der Game-Over-Leiste und die
+    // Zurück-Geste im Game-Over rufen dasselbe.
+    fun backToMenu() {
+        dailyMode = false
+        game.reset()
+        // Auch die Effekte zurücksetzen — sonst läuft die
+        // Sturz-Animation weiter und der Vogel fehlt im
+        // Startbild, obwohl er dort wieder kreisen soll.
+        fx.reset()
+        bannerState.timeLeft = 0f
+        bannerText = ""
+        bannerState.lastStage = 0
+        bannerState.recordCelebrated = false
+    }
+    // == /AP-14 ==
 
     // Game-Loop: ein Update pro gerendertem Frame.
     LaunchedEffect(Unit) {
@@ -755,24 +811,14 @@ fun GameScreen(
                             )
                         }
                     },
-                    onMenu = {
-                        dailyMode = false
-                        game.reset()
-                        // Auch die Effekte zurücksetzen — sonst läuft die
-                        // Sturz-Animation weiter und der Vogel fehlt im
-                        // Startbild, obwohl er dort wieder kreisen soll.
-                        fx.reset()
-                        bannerState.timeLeft = 0f
-                        bannerText = ""
-                        bannerState.lastStage = 0
-                        bannerState.recordCelebrated = false
-                    },
+                    onMenu = { backToMenu() },
                     onHelp = { showHelp = true },
                     cause = {
                         // == AP-11 todesursache ==
                         DeathCauseSmall(deathCause)
                         // == /AP-11 ==
-                    }
+                    },
+                    barLocked = overBarLocked
                 )
             }
         }
@@ -815,6 +861,30 @@ fun GameScreen(
             HelpOverlay(onClose = { showHelp = false })
         }
         // == AP-14 bedienung ==
+        // Die Zurück-Geste (Plan 7.1): schließt das oberste Overlay, führt
+        // aus dem Game-Over ins Menü und tut im Lauf nichts. Im
+        // Startbildschirm ohne Overlay bleibt sie beim System (App zu).
+        val zurueck = backAction(
+            showHelp = showHelp,
+            showSettings = showSettings,
+            showStats = showStats,
+            showSkins = showSkins,
+            showDailyIntro = false,
+            phase = phase
+        )
+        PlatformBackHandler(enabled = zurueck != BackAction.NOT_HANDLED) {
+            when (zurueck) {
+                BackAction.CLOSE_HELP -> showHelp = false
+                BackAction.CLOSE_SETTINGS -> showSettings = false
+                BackAction.CLOSE_STATS -> showStats = false
+                BackAction.CLOSE_COLLECTION -> showSkins = false
+                BackAction.TO_MENU -> backToMenu()
+                // Die Daily-Karte kommt mit AP-22.
+                BackAction.CLOSE_DAILY_INTRO,
+                BackAction.CONSUME,
+                BackAction.NOT_HANDLED -> Unit
+            }
+        }
         // == /AP-14 ==
 
         if (showStats) {

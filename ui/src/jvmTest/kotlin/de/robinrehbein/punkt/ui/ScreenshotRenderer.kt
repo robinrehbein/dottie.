@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.use
+import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.SoundSetId
 import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.ui.data.DeviceCalendar
@@ -111,6 +112,7 @@ class ScreenshotRenderer {
             println("-> $name")
         }
 
+        val game = TimingGame(Random(seed))
         ImageComposeScene(
             width = w,
             height = h,
@@ -120,7 +122,7 @@ class ScreenshotRenderer {
                 store = GameStore(FakeKeyValueStore()),
                 sounds = NoSounds(),
                 feedback = NoFeedback(),
-                game = TimingGame(Random(seed)),
+                game = game,
                 runSeed = seed
             )
         }.use { scene ->
@@ -134,9 +136,17 @@ class ScreenshotRenderer {
             scene.save("02-running.png")
 
             // Sterben: Zone einfach nicht antippen und ueberfahren lassen,
-            // dann Freeze + Sturz + Settle abwarten -> Game-Over steht.
-            scene.step(6.0)
+            // dann Freeze + Sturz abwarten -> Game-Over steht.
+            // == AP-14 bedienung ==
+            // Zwei Zeitpunkte nach dem Aufschlag: bei 0,3 s ist die Leiste
+            // unten noch gesperrt (blass), bei 1,0 s ist sie frei.
+            var frames = 0
+            while (game.phase != GamePhase.OVER && frames++ < 1_000) scene.step(0.016)
+            scene.step(0.3)
+            scene.save("03a-gameover-gesperrt.png")
+            scene.step(0.7)
             scene.save("03-gameover.png")
+            // == /AP-14 ==
 
             // Hilfe aus dem Game-Over: "?" oben rechts (16dp Rand, 48dp Knopf)
             scene.tap(w - (16 + 24) * d, (16 + 24) * d)
@@ -146,10 +156,12 @@ class ScreenshotRenderer {
             scene.tap(w / 2f, h * 0.85f)
             scene.step(0.3)
 
-            // Zurueck ins Menue: MENUE-Knopf (ohne TEILEN zentriert, unter
-            // "TIPPEN = NOCHMAL")
-            scene.tap(w / 2f, h * 0.7375f)
+            // == AP-14 bedienung ==
+            // Zurueck ins Menue: MENUE in der Leiste am unteren Rand, links
+            // (ohne TEILEN ueber die ganze Breite).
+            scene.tap(w / 4f, h - 32 * d)
             scene.step(0.5)
+            // == /AP-14 ==
             scene.save("05-menu-back.png")
 
             // Einstellungen: Regler-Knopf oben rechts im READY
