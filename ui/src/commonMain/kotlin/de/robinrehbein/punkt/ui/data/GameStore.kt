@@ -297,6 +297,26 @@ class GameStore(private val prefs: KeyValueStore) {
      * Serie noch; liegt er länger zurück, ist sie faktisch gerissen.
      */
     // == AP-22 start ==
+    // Der KDoc über dem Anker gehört zu dailyStreakPreviewFor unten und
+    // steht dort noch einmal.
+
+    /**
+     * Hat dieses Gerät die DAILY-Karte schon gezeigt (Plan 7.2, 8.6 #4)?
+     * Rein lokal wie die Bomben-Lektion und bewusst nicht im SyncState:
+     * Es ist eine Erklärung, kein Fortschritt.
+     */
+    val dailyIntroSeen: Boolean
+        get() = prefs.boolean(KEY_DAILY_INTRO_SEEN, false)
+
+    /** Merkt, dass die DAILY-Karte gezeigt wurde. Sie kommt nie wieder. */
+    fun markDailyIntroSeen() {
+        prefs.edit { putBoolean(KEY_DAILY_INTRO_SEEN, true) }
+    }
+
+    /**
+     * Die Serie, wie sie ein Daily-Lauf HEUTE fortschreiben würde (für
+     * den Startbildschirm): Lief gestern der letzte, zählt sie noch.
+     */
     // == /AP-22 ==
 
     fun dailyStreakPreviewFor(epochDay: Long): Int = when {
@@ -793,6 +813,8 @@ class GameStore(private val prefs: KeyValueStore) {
         // Saison; nur KEY_SEASON_EARNED überlebt den Monat.
         const val KEY_SEASON_WINDOW = "season_window"
         // == AP-22 start ==
+        /** Die DAILY-Karte wurde gezeigt (lokal, nicht im Abgleich). */
+        const val KEY_DAILY_INTRO_SEEN = "daily_intro_seen"
         // == /AP-22 ==
         const val KEY_SEASON_DAYS = "season_days"
         const val KEY_SEASON_LAST_DAY = "season_last_day"

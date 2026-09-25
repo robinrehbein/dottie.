@@ -37,6 +37,7 @@ import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.GameEventChainNext
 import de.robinrehbein.punkt.game.GameEventDied
 import de.robinrehbein.punkt.game.GameEventHit
+import de.robinrehbein.punkt.game.GameEventNotYet
 import de.robinrehbein.punkt.game.GameEventPerfectHit
 import de.robinrehbein.punkt.game.GameEventSettled
 import de.robinrehbein.punkt.game.GameEventStarted
@@ -80,6 +81,7 @@ import de.robinrehbein.punkt.ui.resources.perfect_plus
 import de.robinrehbein.punkt.ui.resources.ready_hint
 import de.robinrehbein.punkt.ui.resources.share_text
 import de.robinrehbein.punkt.ui.resources.share_text_daily
+import de.robinrehbein.punkt.ui.resources.start_not_yet
 import de.robinrehbein.punkt.ui.share.ScoreCardContent
 import de.robinrehbein.punkt.ui.share.renderScoreCard
 import de.robinrehbein.punkt.ui.text.sceneTitle
@@ -87,6 +89,12 @@ import de.robinrehbein.punkt.ui.theme.Bytesized
 import de.robinrehbein.punkt.ui.world.CELEBRATE_SECONDS
 import de.robinrehbein.punkt.ui.world.FxState
 import de.robinrehbein.punkt.ui.world.drawTimingWorld
+import de.robinrehbein.punkt.ui.world.NOT_YET_SECONDS
+import de.robinrehbein.punkt.ui.world.addTapEcho
+import de.robinrehbein.punkt.ui.world.advanceStartCoach
+import de.robinrehbein.punkt.ui.world.drawNotYet
+import de.robinrehbein.punkt.ui.world.drawTapEchoes
+import de.robinrehbein.punkt.ui.world.startCoachActive
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
@@ -254,6 +262,24 @@ private fun GameScreenContent(
     var soundOn by remember { mutableStateOf(!store.soundMuted) }
     var dailyMode by remember { mutableStateOf(false) }
     // == AP-22 start ==
+    // dailyMode heißt seit AP-22 „DAILY ist scharf“: DAILY schaltet nur
+    // noch um, gestartet wird per Tap im Grün (Plan 8.6 #4).
+    // Die einmalige DAILY-Karte (DailyIntroCard).
+    var showDailyIntro by remember { mutableStateOf(false) }
+    // Stützräder (Hand, Leuchten, keine Zielzeile) für die ersten
+    // START_COACH_RUNS Läufe. Nachgezogen bei jedem Phasenwechsel (ein
+    // Lauf wurde gezählt) und nach jedem Abgleich (die Uhr zählt mit).
+    var trainingWheels by remember { mutableStateOf(startCoachActive(store.runCount)) }
+    LaunchedEffect(phase, store.syncRevision) {
+        trainingWheels = startCoachActive(store.runCount)
+    }
+    val notYetText = stringResource(Res.string.start_not_yet)
+    val notYetMeasurer = rememberTextMeasurer()
+    val notYetStyle = ScoreShadowStyle.copy(
+        fontFamily = Bytesized,
+        fontSize = 22.sp,
+        color = Color.White
+    )
     // == /AP-22 ==
     var skin by remember { mutableStateOf(store.selectedSkin) }
     // Die Kulisse ist die zweite Sammlung: kein Tagespass, kein
@@ -459,6 +485,12 @@ private fun GameScreenContent(
                 // == /AP-11 ==
                 fx.shakeTime = (fx.shakeTime - dt).coerceAtLeast(0f)
                 // == AP-22 start ==
+                fx.trainingWheels = trainingWheels
+                advanceStartCoach(fx, game, dt)
+                // Die Zielzeile fällt während der Stützräder weg, auch im
+                // Game-Over (Plan 8.6 #7). Gleiche Werte lösen keine
+                // Neuzusammensetzung aus.
+                if (trainingWheels) nextGoal = null
                 // == /AP-22 ==
                 fx.celebrateTime = (fx.celebrateTime - dt).coerceAtLeast(0f)
                 // == AP-23 nebel ==
@@ -486,10 +518,22 @@ private fun GameScreenContent(
                             twistToExplain = null
                             fx.deathTime = -1f
                             // == AP-22 start ==
-                            sounds.start()
+                            // Beim READY-Treffer spielt der Treffer-Ton,
+                            // nicht zusätzlich der Start (Plan 8.5 AP-22).
+                            // Der Sofort-Neustart aus dem Game-Over hat
+                            // keinen Treffer und behält den Start-Ton.
+                            if (events.none { it is GameEventHit || it is GameEventPerfectHit }) {
+                                sounds.start()
+                            }
                             // == /AP-22 ==
                         }
                         // == AP-22 start ==
+                        is GameEventNotYet -> {
+                            // Tap daneben im Startbildschirm: kostet nichts,
+                            // sagt aber „NOCH NICHT“ und tickt (Plan 3.1).
+                            fx.notYetTime = NOT_YET_SECONDS
+                            feedback.tap()
+                        }
                         // == /AP-22 ==
                         is GameEventHit -> {
                             feedback.score()
@@ -650,12 +694,16 @@ private fun GameScreenContent(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                detectTapGestures(onPress = {
+                detectTapGestures(onPress = { position ->
                     // == AP-22 start ==
+                    // Jeder freie Tap hinterlässt ein Echo, in allen Phasen.
+                    fx.addTapEcho(position)
                     // == /AP-22 ==
-                    // Ein Tap in READY/OVER startet gleich einen Lauf —
-                    // vorher Seed und Tag für den aktuellen Modus setzen.
-                    if (game.phase == GamePhase.READY ||
+                    // Seed und Tag für den aktuellen Modus setzen, bevor ein
+                    // Tap einen Lauf startet: in READY nur, wenn er im Grün
+                    // liegt (sonst kommt NOCH NICHT, und der Lauf beginnt
+                    // erst später), aus OVER immer (Sofort-Neustart).
+                    if ((game.phase == GamePhase.READY && game.isInZone) ||
                         game.phase == GamePhase.OVER
                     ) {
                         prepareRun()
@@ -670,6 +718,8 @@ private fun GameScreenContent(
             // von der Uhr — sie werden je Lauf einmal abgelesen.
             drawTimingWorld(game, fx, skin, scene, runState.hour, runState.month)
             // == AP-22 start ==
+            drawNotYet(fx, notYetText, notYetMeasurer, notYetStyle)
+            drawTapEchoes(fx)
             // == /AP-22 ==
         }
 
@@ -703,11 +753,23 @@ private fun GameScreenContent(
                 hint = stringResource(Res.string.ready_hint),
                 dailyStreak = dailyStreak,
                 goal = nextGoal,
+                // == AP-22 start ==
+                // DAILY schaltet nur noch um (Plan 8.6 #4): beim ersten Mal
+                // die Karte, danach aus ↔ scharf. Gestartet wird per Tap im
+                // Grün, prepareRun() setzt dann den Tages-Seed.
                 onDaily = {
-                    dailyMode = true
-                    prepareRun()
-                    game.tap()
+                    when (dailyTap(armed = dailyMode, introSeen = store.dailyIntroSeen)) {
+                        DailyTap.SHOW_INTRO -> {
+                            store.markDailyIntroSeen()
+                            showDailyIntro = true
+                        }
+                        DailyTap.ARM -> dailyMode = true
+                        DailyTap.DISARM -> dailyMode = false
+                    }
                 },
+                dailyArmed = dailyMode,
+                goalHidden = trainingWheels,
+                // == /AP-22 ==
                 onSkins = {
                     // Vor dem Öffnen nachziehen: Der Startscreen kann seit
                     // dem letzten Lauf einen Tageswechsel gesehen haben.
@@ -851,6 +913,15 @@ private fun GameScreenContent(
         }
 
         // == AP-22 start ==
+        if (showDailyIntro && phase == GamePhase.READY) {
+            DailyIntroCard(
+                onStart = {
+                    showDailyIntro = false
+                    dailyMode = true
+                },
+                onClose = { showDailyIntro = false }
+            )
+        }
         // == /AP-22 ==
 
         if (showSettings) {
@@ -896,7 +967,9 @@ private fun GameScreenContent(
             showSettings = showSettings,
             showStats = showStats,
             showSkins = showSkins,
-            showDailyIntro = false,
+            // == AP-22 start ==
+            showDailyIntro = showDailyIntro,
+            // == /AP-22 ==
             phase = phase
         )
         PlatformBackHandler(enabled = zurueck != BackAction.NOT_HANDLED) {
@@ -906,8 +979,9 @@ private fun GameScreenContent(
                 BackAction.CLOSE_STATS -> showStats = false
                 BackAction.CLOSE_COLLECTION -> showSkins = false
                 BackAction.TO_MENU -> backToMenu()
-                // Die Daily-Karte kommt mit AP-22.
-                BackAction.CLOSE_DAILY_INTRO,
+                // == AP-22 start ==
+                BackAction.CLOSE_DAILY_INTRO -> showDailyIntro = false
+                // == /AP-22 ==
                 BackAction.CONSUME,
                 BackAction.NOT_HANDLED -> Unit
             }

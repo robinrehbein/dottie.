@@ -104,6 +104,7 @@ fun DrawScope.drawTimingWorld(
         val (cx, cy, radius) = ringGeometry(size)
         drawTrack(game, cx, cy, radius, cell)
         // == AP-22 start ==
+        drawStartCoach(game, fx, cx, cy, radius, cell)
         // == /AP-22 ==
         if (game.isDotVisible) {
             drawTimingDot(game, fx, cx, cy, radius, skin, hour, month)

@@ -49,8 +49,8 @@ enum class BackAction {
  *   Pause, und ein Wisch vom Rand darf keinen Lauf beenden.
  * - READY: nicht behandeln, Android schließt dann die App wie bisher.
  *
- * [showDailyIntro] bleibt bis AP-22 ohne Wirkung (die Karte gibt es erst
- * dort, Plan 8.4).
+ * Die DAILY-Karte (AP-22) liegt über dem Startbildschirm; über ihr kann
+ * kein anderes Overlay aufgehen. Sie steht deshalb direkt vor den Phasen.
  */
 fun backAction(
     showHelp: Boolean,
@@ -64,6 +64,9 @@ fun backAction(
     showSettings -> BackAction.CLOSE_SETTINGS
     showStats -> BackAction.CLOSE_STATS
     showSkins -> BackAction.CLOSE_COLLECTION
+    // == AP-22 start ==
+    showDailyIntro -> BackAction.CLOSE_DAILY_INTRO
+    // == /AP-22 ==
     phase == GamePhase.OVER -> BackAction.TO_MENU
     phase == GamePhase.RUNNING || phase == GamePhase.DYING -> BackAction.CONSUME
     else -> BackAction.NOT_HANDLED

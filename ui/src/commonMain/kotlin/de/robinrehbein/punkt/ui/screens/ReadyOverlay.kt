@@ -1,17 +1,12 @@
 package de.robinrehbein.punkt.ui.screens
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +33,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +50,7 @@ import de.robinrehbein.punkt.ui.resources.best_score
 import de.robinrehbein.punkt.ui.resources.collection
 import de.robinrehbein.punkt.ui.resources.daily
 import de.robinrehbein.punkt.ui.resources.settings
+import de.robinrehbein.punkt.ui.resources.start_daily_armed
 import de.robinrehbein.punkt.ui.resources.stats
 import de.robinrehbein.punkt.ui.theme.Bytesized
 import de.robinrehbein.punkt.ui.world.DotBody
@@ -61,6 +58,7 @@ import de.robinrehbein.punkt.ui.world.OutlineColor
 import de.robinrehbein.punkt.ui.world.PanelSand
 import de.robinrehbein.punkt.ui.world.RecordRed
 import de.robinrehbein.punkt.ui.world.TextDark
+import de.robinrehbein.punkt.ui.world.readyHintArea
 import org.jetbrains.compose.resources.stringResource
 
 // Der Startbildschirm mit Taster-Leiste. Bis v2.27 Teil von
@@ -68,7 +66,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * Der Startbildschirm. Er zeigt bewusst nur noch acht Dinge: Titel,
- * Rekord, den blinkenden Hinweis, das Zahnrad, die drei Knöpfe und die
+ * Rekord, den Hinweis unter dem Ring, das Zahnrad, die drei Knöpfe und die
  * eine Ziel-Zeile.
  *
  * Alles, was vorher hier stand und nur selten gebraucht wird, ist
@@ -102,23 +100,18 @@ fun ReadyOverlay(
     collectionHasNew: Boolean = false,
     // Platz für ein Banner unter Titel und Rekord ("NEUE WELTEN: …").
     // Leer, solange niemand etwas hineinreicht (Plan 8.3).
-    banner: @Composable () -> Unit = {}
+    banner: @Composable () -> Unit = {},
+    // DAILY ist scharf: Der nächste Lauf ist der Tageslauf (Plan 8.6 #4).
+    dailyArmed: Boolean = false,
+    // Die Zielzeile fällt während der Stützräder weg (Plan 8.6 #7).
+    goalHidden: Boolean = false
 ) {
-    val blink by rememberInfiniteTransition(label = "blink").animateFloat(
-        initialValue = 1f,
-        targetValue = 0.25f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 600, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "blinkAlpha"
-    )
 
     // Die Taster-Leiste zeichnet bis an den physischen Bildschirmrand,
     // deshalb liegt sie außerhalb des Inset-Paddings — alles andere bleibt
     // wie bisher innerhalb der Systemleisten.
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
@@ -143,18 +136,23 @@ fun ReadyOverlay(
                     .padding(16.dp)
             )
 
+            // Auf kurzen Bildschirmen (720×1280) reicht der Ring bis dicht
+            // unter den Titel. Die Titelspalte rückt dann nach oben und der
+            // Titel wird kleiner, damit Rekord und Welten-Banner über
+            // „NOCH NICHT“ und der Hand enden (Plan 8.5 AP-22).
+            val compact = maxHeight < COMPACT_HEIGHT
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 80.dp)
+                    .padding(top = if (compact) 12.dp else 80.dp)
             ) {
                 Text(
                     // "DOTTIE." ist mit 7 Zeichen schmal genug für die vollen
                     // 64.sp — auch auf 360-dp-Displays ohne Umbruch.
                     text = "DOTTIE.",
                     style = ScoreShadowStyle,
-                    fontSize = 64.sp,
+                    fontSize = if (compact) 48.sp else 64.sp,
                     color = Color.White,
                     modifier = Modifier.pointerInput(Unit) {
                         detectTapGestures(onLongPress = { onToggleDiagnostics() })
@@ -183,27 +181,11 @@ fun ReadyOverlay(
                 // == /AP-15 ==
             }
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(top = 140.dp)
-            ) {
-                Text(
-                    text = hint,
-                    style = ScoreShadowStyle,
-                    fontSize = 22.sp,
-                    color = Color.White.copy(alpha = blink),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-            }
-
             // Eine Zeile statt einer Zahlenwand: der eine Grund, gleich noch
             // einmal zu spielen. Sie steht dort, wo früher die Knopfreihe
             // schwebte — die Achse bleibt dabei, "MEDAILLE 199/200" allein
             // läse sich als Medaillen.
-            if (goal != null) {
+            if (goal != null && !goalHidden) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
@@ -224,11 +206,19 @@ fun ReadyOverlay(
             }
         }
 
+        // Der Hinweis steht unter dem Ring, ohne Blinken (Plan 3.1): Ein
+        // blinkender Text sagt „jetzt tippen“, und genau das soll man
+        // hier nicht blind tun. Die Fläche rechnet sich aus derselben
+        // Bildgröße wie die Kreisbahn (readyHintArea), deshalb liegt er
+        // außerhalb des Inset-Paddings, wie der Ring selbst.
+        ReadyHint(hint)
+
         // Drei Taster statt dreier schwebender Knöpfe: Die Statistik
         // gehört auf den Startscreen, nicht in ein Untermenü — sie ist
         // der Grund, den nächsten Lauf zu starten.
         TasterBar(
             dailyStreak = dailyStreak,
+            dailyArmed = dailyArmed,
             collectionHasNew = collectionHasNew,
             onDaily = onDaily,
             onSkins = onSkins,
@@ -249,6 +239,7 @@ fun ReadyOverlay(
 @Composable
 private fun TasterBar(
     dailyStreak: Int,
+    dailyArmed: Boolean,
     collectionHasNew: Boolean,
     onDaily: () -> Unit,
     onSkins: () -> Unit,
@@ -257,10 +248,14 @@ private fun TasterBar(
 ) {
     val bottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
     Row(modifier = modifier.fillMaxWidth().height(64.dp + bottomInset)) {
+        // DAILY ist sandfarben wie die anderen Taster und kein zweites
+        // „Spielen“ mehr (Plan 7.2). Scharf geschaltet trägt er das Gelb
+        // des Vogels und sagt es: DAILY: AN.
         Taster(
-            text = stringResource(Res.string.daily),
+            text = if (dailyArmed) stringResource(Res.string.start_daily_armed)
+            else stringResource(Res.string.daily),
             onClick = onDaily,
-            backgroundColor = DotBody,
+            backgroundColor = if (dailyArmed) DailyArmedColor else PanelSand,
             bottomInset = bottomInset,
             modifier = Modifier.weight(1f)
         ) {
@@ -366,6 +361,37 @@ internal fun Taster(
             )
         }
         badge()
+    }
+}
+
+/** Unter dieser Höhe rückt die Titelspalte zusammen (720×1280 sind 640 dp). */
+private val COMPACT_HEIGHT = 700.dp
+
+/**
+ * „TIPPE, WENN DER PUNKT IM GRÜNEN IST“ in der Fläche aus
+ * [readyHintArea]: unter dem Ring, ohne Ring, Zone und Vogel zu berühren.
+ */
+@Composable
+private fun ReadyHint(hint: String) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        val area = with(density) { readyHintArea(Size(maxWidth.toPx(), maxHeight.toPx())) }
+        with(density) {
+            Box(
+                contentAlignment = Alignment.TopCenter,
+                modifier = Modifier
+                    .offset(x = area.left.toDp(), y = area.top.toDp())
+                    .size(width = area.width.toDp(), height = area.height.toDp())
+            ) {
+                Text(
+                    text = hint,
+                    style = ScoreShadowStyle,
+                    fontSize = 18.sp,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }
 

@@ -82,13 +82,11 @@ class BackActionTest {
         assertEquals(BackAction.NOT_HANDLED, action(phase = GamePhase.READY))
     }
 
-    @Test
-    fun dailyKarteBleibtBisAp22OhneWirkung() {
-        // Die Karte gibt es erst mit AP-22 (Plan 8.4). Bis dahin
-        // entscheidet allein die Phase.
-        assertEquals(BackAction.NOT_HANDLED, action(dailyIntro = true, phase = GamePhase.READY))
-        assertEquals(BackAction.TO_MENU, action(dailyIntro = true, phase = GamePhase.OVER))
-    }
+    // == AP-22 start ==
+    // Der Platzhalter dailyKarteBleibtBisAp22OhneWirkung galt nur bis
+    // AP-22 (Plan 8.4). Die Zurück-Geste über der DAILY-Karte prüft jetzt
+    // DailyIntroTest (`Zurück schließt die Karte vor der Phase`).
+    // == /AP-22 ==
 
     @Test
     fun leistenSperreDauertLaengerAlsDieNeustartSperre() {

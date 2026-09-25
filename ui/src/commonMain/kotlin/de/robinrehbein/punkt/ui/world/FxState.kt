@@ -19,6 +19,24 @@ class FxState {
     /** Restzeit der Freischalt-Zelebration (goldener Ring + Schimmer). */
     var celebrateTime = 0f
     // == AP-22 start ==
+
+    /**
+     * Stützräder an (Hand, Leuchten, Plan 8.6 #2)? Kein Effekt, sondern
+     * Einstellung aus GameScreen: [reset] lässt ihn stehen.
+     */
+    var trainingWheels = false
+
+    /** Restzeit von „NOCH NICHT“ nach einem Tap daneben in READY. */
+    var notYetTime = 0f
+
+    /** Drückt die Hand gerade (Punkt im Grün)? */
+    var handPressed = false
+
+    /** Sekunden seit dem Echo an der Fingerspitze, negativ = keins. */
+    var handEchoTime = -1f
+
+    /** Die laufenden Tipp-Echos, ältestes zuerst. */
+    val tapEchoes = ArrayList<TapEcho>()
     // == /AP-22 ==
 
     /** Sekunden seit dem Tod (Mario-Huepfer), negativ = kein Tod aktiv. */
@@ -41,6 +59,10 @@ class FxState {
         // == /AP-12 ==
         celebrateTime = 0f
         // == AP-22 start ==
+        notYetTime = 0f
+        handPressed = false
+        handEchoTime = -1f
+        tapEchoes.clear()
         // == /AP-22 ==
         deathTime = -1f
         // == AP-23 nebel ==
