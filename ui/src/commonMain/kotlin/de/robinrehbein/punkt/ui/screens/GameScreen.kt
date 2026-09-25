@@ -189,8 +189,8 @@ fun GameScreen(
  * Spielprinzip "STOPP": Der Punkt kreist automatisch auf einer Bahn.
  * Ein Tap, während er in der Zielzone ist, zählt — daneben getappt oder
  * die Zone überfahren ist sofort das Ende. Präzision statt Dauerfeuer.
- * Mit steigendem Score schalten sich Twists frei (Puls, Drift, Geist,
- * Falle, Kette), die pro Zone zufällig gemischt werden.
+ * Mit steigendem Score schalten sich Twists frei (Puls, Drift, Nebel,
+ * Bomben, Kette), die pro Zone zufällig gemischt werden.
  */
 @Composable
 private fun GameScreenContent(
@@ -218,7 +218,7 @@ private fun GameScreenContent(
     var patronOwned by remember { mutableStateOf(store.patronOwned) }
     // Ebenfalls als Zustand: Wer waehrend der Sitzung werbefrei kauft,
     // soll die Goenner-Zeile sofort in ihrer ehrlichen Fassung sehen
-    // (siehe SkinOverlay) — nicht erst beim naechsten Start.
+    // (siehe CollectionOverlay) — nicht erst beim naechsten Start.
     var adsRemoved by remember { mutableStateOf(store.adsRemoved) }
 
     // Texte, die in Ereignis-Handlern gebraucht werden: Lesen geht nur
@@ -257,7 +257,11 @@ private fun GameScreenContent(
     // == AP-23 nebel ==
     // BLIND!-Pop nach einem gewerteten Blindtreffer, mit dessen Punkten.
     var showBlind by remember { mutableStateOf(false) }
-    var blindPoints by remember { mutableIntStateOf(2) }
+    var blindPoints by remember { mutableIntStateOf(1) }
+    // Wo getroffen wurde (Winkel) und bei welchem Treffer: Der Pop bleibt
+    // an der Trefferstelle stehen, während der Vogel weiterfliegt.
+    var blindAngle by remember { mutableStateOf(0f) }
+    var blindHits by remember { mutableIntStateOf(-1) }
     // == /AP-23 ==
     var perfectPoints by remember { mutableIntStateOf(2) }
     var bannerText by remember { mutableStateOf("") }
@@ -499,7 +503,11 @@ private fun GameScreenContent(
                 // == AP-23 nebel ==
                 de.robinrehbein.punkt.ui.world.trackFog(fx, game, dt)
                 showBlind = de.robinrehbein.punkt.ui.world.isBlindPopShown(game)
-                if (showBlind) blindPoints = game.lastHitPoints
+                if (showBlind && blindHits != game.hits) {
+                    blindHits = game.hits
+                    blindAngle = game.angle
+                    blindPoints = blindBonusPoints(game)
+                }
                 // == /AP-23 ==
                 if (fx.deathTime >= 0f) fx.deathTime += dt
                 bannerState.timeLeft = (bannerState.timeLeft - dt).coerceAtLeast(0f)
@@ -730,9 +738,9 @@ private fun GameScreenContent(
         }
 
         // == AP-23 nebel ==
-        // BLIND! +2 an der Stelle von PERFEKT (beides zugleich gibt es nicht).
+        // BLIND! +1 am Ring, an der Trefferstelle (Plan 8.6 #1).
         if (showBlind) {
-            BlindPop(points = blindPoints)
+            BlindPop(bonus = blindPoints, angle = blindAngle)
         }
         // == /AP-23 ==
 
@@ -911,7 +919,6 @@ private fun GameScreenContent(
                         }
                     },
                     onMenu = { backToMenu() },
-                    onHelp = { showHelp = true },
                     cause = {
                         // == AP-11 todesursache ==
                         DeathCauseSmall(deathCause)

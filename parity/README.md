@@ -30,13 +30,13 @@ Stand liegt im Commit `b4ed73f`.
 
 | Abschnitt | Inhalt |
 |---|---|
-| `const.*`, `twist.*`, `daily.*` | Konstanten, Freischalt-Scores, Tages-Seeds |
+| `const.*`, `twist.*`, `daily.*` | Konstanten (inkl. `READY_ZONE_CENTER`, `FOG_*`), Freischalt-Scores, Tages-Seeds |
 | `medal.*`, `sky.*` | Medaillen-Schwellen und -Farben, Himmelsstufen |
 | `skin.*`, `season.*` | Reihenfolge, Farben, Raster, Freischaltungen, Saison-Regeln |
-| `scene.*` | Kulissen: Himmel, Wolken, Boden, Requisiten, Freischaltungen |
+| `scene.*` | Welten (früher Kulissen): Himmel, Wolken, Boden, Requisiten, Freischaltungen |
 | `progress.*` | Ziele, ihre Reihenfolge und der Fortschrittsbalken |
 | `rng.*` | Kotlins XorWow-Generator Zahl für Zahl |
-| `trace.*` | ganze Läufe, Treffer für Treffer |
+| `trace.*` | ganze Läufe, Treffer für Treffer, dazu `trace.ready.*` für die Startregel |
 
 Die Skin-Abschnitte im Einzelnen — sie sind der größte Teil der Datei:
 
@@ -51,8 +51,10 @@ Die Skin-Abschnitte im Einzelnen — sie sind der größte Teil der Datei:
   (TAGESZEIT) oder Monat (JAHRESZEIT) hängt.
 - `skin.probe.N` und `skin.unlocked.N` — je Probe die neun
   Bestleistungen (Rekord, Perfekt-Serie, Daily-Serie, Läufe, Punkte
-  insgesamt, Tage, Monate, Saison-Maske, Kauf) und dahinter, was damit
-  offen ist.
+  insgesamt, Tage, Monate, Saison-Maske, Kauf), seit v2.28 als zehnte
+  Spalte `ownedScenes`, und dahinter, was damit offen ist.
+  `ownedScenes` ist die Besitz-Menge der Welten (Bestandsschutz, siehe
+  unten): Namen sortiert und mit Komma getrennt, `-` für leer.
 - `season.<ID>` — Monat, Bit in `seasonEarned` und geforderte Tage. Ein
   Saison-Skin wird nur in seinem Monat verdient, gilt danach aber für
   immer; entschieden wird deshalb über die Maske, nie über den Kalender.
@@ -62,19 +64,45 @@ Proben daran:
 
 - `scene.order`, `scene.sky.<ID>`, `scene.cloud.<ID>`, `scene.ground.<ID>`,
   `scene.chips.<ID>`, `scene.prop.<ID>.<k>` — die komplette Datentabelle
-  einer Kulisse. Sie fällt beim Ansehen *nicht* auf: Die WÜSTE öffnet
-  erst nach 500 Läufen, der WELTRAUM ganz zuletzt. Ein falscher Wert
-  könnte dort monatelang unbemerkt liegen.
+  einer Welt. Sie fällt beim Ansehen *nicht* auf: Die WÜSTE öffnet erst
+  nach 100 Läufen, der WELTRAUM ganz zuletzt. Ein falscher Wert könnte
+  dort lange unbemerkt liegen.
 - `scene.unlocked.N` — dieselben Proben wie bei den Skins, plus eigene
-  für die höheren Kulissen-Schwellen (je einmal knapp darunter und genau
-  auf der Kante).
+  für die Welten-Leiter seit v2.28 (WÜSTE 100 Läufe, MEER 2.500 Punkte,
+  BERG Daily-Serie 1, STADT Rekord 100, WELTRAUM alle anderen), je einmal
+  knapp darunter und genau auf der Kante: 99/100, 2.499/2.500, 0/1 und
+  99/100. Offen ist eine Welt, wenn die Regel greift **oder** sie in
+  `ownedScenes` steht; so behält, wer STADT nach der alten Schwelle
+  (Rekord 85) schon hatte, sie auch mit Rekord 90.
 - `progress.probe.N`, `progress.goals.N`, `progress.next.N` — die offenen
-  Ziele **in ihrer Reihenfolge**. Das erste Ziel ist das, was im
+  Ziele **in ihrer Reihenfolge**. Die Probe trägt wie bei den Skins
+  `ownedScenes` als letzte Spalte. Das erste Ziel ist das, was im
   Game-Over steht; eine andere Sortierung wäre ein anderer Satz. Die
   Proben tragen zusätzlich Monat und Saison-Tage, weil ein Saison-Ziel
   nur in seinem eigenen Monat auftauchen darf.
 - `progress.fractions` / `progress.filledBlocks` — die Rastung des
   Balkens an ihren Kanten, inklusive der Werte unter 0 und über 1.
+
+Die Startregel (seit v2.28) und der Nebel stehen so drin:
+
+- `trace.ready.notYet` — ein Tap in READY außerhalb des Grüns liefert
+  `GameEventNotYet`, zweimal hintereinander, und die Zone bleibt bei
+  `READY_ZONE_CENTER` (1,8). Der Tap zieht keine Zufallszahl.
+- `trace.ready.frames`, `trace.ready.events`, `trace.ready.hits`,
+  `trace.ready.N` — erster Tap im Grün: Er ist Treffer 1 (hier PERFEKT),
+  `GameEventStarted` steht **vor** dem Treffer-Event, danach läuft der
+  Lauf weiter wie `trace.perfect.*`. `trace.ready.edge` ist der Start am
+  Zonenrand: ein normaler Treffer, +1.
+- `trace.perfect.*`, `trace.second.*` und `trace.death` sind seit der
+  Startregel unverändert: Der Bot startet dort weiter mit
+  `TimingGame.start()`, dem alten READY-Verhalten.
+- `const.FOG_SECONDS`, `const.FOG_END_SHARE` — die Nebelbank beginnt
+  0,12 s Laufzeit vor der Zone und endet im ersten Viertel. Die alten
+  `const.GHOST_*` (Blinktakt) sind entfallen.
+- **BLIND! +1** (ein Treffer, solange der Punkt im Nebel steckt, zählt
+  1 + 1, die Perfekt-Serie bleibt) taucht in keinem `trace` auf: Der Bot
+  tappt bei |rel| ≤ 0,11·h und damit nie im Nebel. Geprüft wird die
+  Regel in `ReadyTapTest` (`:core`).
 
 `rng` bleibt der empfindlichste Abschnitt: An dieser Zahlenfolge hängt,
 dass iPhone und Android an demselben Tag dieselbe Daily Challenge

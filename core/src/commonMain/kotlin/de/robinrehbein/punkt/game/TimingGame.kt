@@ -626,7 +626,7 @@ class TimingGame(private var random: Random) {
     }
 
     /**
-     * Kuratierte Kombis: GEIST + FALLE stapelt fehlende Information
+     * Kuratierte Kombis: NEBEL (GHOST) + BOMBEN (FAKE) stapelt fehlende Information
      * (unsichtbarer Punkt) mit tödlicher Fehlinformation (Köder-Zone) —
      * Tode daraus fühlen sich nach Zufall an, nicht nach Skill. Alle
      * anderen Paare bleiben erlaubt, Härte ist sonst gewollt.
@@ -713,7 +713,7 @@ class TimingGame(private var random: Random) {
         const val FAKE_MIN_DISTANCE = 0.55f
 
         /**
-         * Nebel (GEIST): Die Bank beginnt so viele Sekunden Laufzeit vor
+         * Nebel (Twist.GHOST): Die Bank beginnt so viele Sekunden Laufzeit vor
          * der Zonenkante ...
          */
         const val FOG_SECONDS = 0.12f

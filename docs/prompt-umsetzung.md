@@ -43,7 +43,7 @@ Durchführung:
 - Zwischen den Wellen mir kurz berichten: was fertig ist, was offen ist,
   Screenshot-Pfade. Anhalten nur bei echten Blockern.
 
-Spielregeln: Außer der Startregel, dem Nebel (GEIST), BLIND! +1 und den
+Spielregeln: Außer der Startregel, dem Nebel (Twist.GHOST), BLIND! +1 und den
 Welten-Schwellen mit Bestandsschutz ändert sich nichts an der Mechanik.
 Tempo, Zonenbreite, Punkte und Twist-Auswahl bleiben unverändert.
 

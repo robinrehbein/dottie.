@@ -7,6 +7,11 @@ WearGameScreen.kt): rundes Display auf schwarzem Grund, Bahn als
 Perlenkette mit 40 Segmenten, Pixel-Vogel, Score mittig. Als Schrift
 dient DejaVu Sans Bold als Stellvertreter fuer das Roboto-Bold der Uhr —
 die Wear-App nutzt bewusst NICHT den Bytesized-Font des Phones.
+Seit v2.28: Himmel aus `store/skin_paint.py` (ohne Lila), die Falle als
+Kette aus Minen ohne Lauflicht (TrapPaint, ueber `store/twist_paint.py`),
+das einfache Nebelband der Uhr und ein ruhiges TIPP (es blinkt nicht mehr;
+der erste Tap im Gruen zaehlt).
+
 Ausfuehren aus dem Repo-Root:
 
     python3 store/generate_wear_screenshots.py
@@ -14,7 +19,14 @@ Ausfuehren aus dem Repo-Root:
 
 import math
 import os
+import sys
+
 from PIL import Image, ImageDraw, ImageFont
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import skin_paint as sp  # noqa: E402
+import twist_paint as tp  # noqa: E402
 
 # Play verlangt fuer Wear mindestens 384x384 im Format 1:1 — 512 laesst
 # etwas Reserve fuer scharfe Darstellung.
@@ -24,17 +36,13 @@ SIZE = 512
 SP = SIZE / 450.0
 
 # ===== Palette 1:1 aus WearRenderer.kt =====
-SKY_STAGES = [
-    (0x4E, 0xC0, 0xCA), (0x5B, 0x9B, 0xD5), (0x7B, 0x6F, 0xD0),
-    (0xC0, 0x61, 0x6F), (0xD9, 0x8A, 0x3D), (0x3D, 0x4A, 0x8C),
-    (0x2A, 0x26, 0x40),
-]
+# Der Himmel kommt wie auf der Uhr aus ScenePaint (Welt WIESE = die
+# Stufen aus SkinPaint), hier ueber die gepruefte Portierung.
+SKY_STAGES = [sp.rgb(c) for c in sp.SKY_STAGES]
 OUTLINE = (0x54, 0x38, 0x47)
 TRACK_DEFAULT = (0xD3, 0xC8, 0x7E)
 GRASS_LIGHT = (0x9D, 0xE8, 0x5A)
 GRASS_DARK = (0x74, 0xBF, 0x2E)
-FAKE = (0xB4, 0x4F, 0xD8)
-FAKE_CORE = (0x8A, 0x2F, 0xB0)
 DOT_BODY = (0xFF, 0xD8, 0x47)
 DOT_SHADE = (0xF5, 0xA6, 0x23)
 DOT_SHINE = (0xFF, 0xF3, 0xB8)
@@ -77,10 +85,13 @@ class WatchScene:
 
     # ===== Spielwelt (Geometrie aus drawWearWorld) =====
     def track(self, zone_center, has_fake=False, fake_center=0.0):
+        """Bahn wie drawWearWorld. Mit [has_fake] liegen auf der Falle
+        Minen statt Bloecke, ohne Lauflicht (die Uhr hat keins)."""
         radius = SIZE * 0.38
         cx = cy = SIZE / 2
         segments = 40
         core_half = max(ZONE_HALF * PERFECT_SHARE, math.pi / segments)
+        mines = []
         for k in range(segments):
             a = k / segments * 2 * math.pi
             px = cx + math.cos(a) * radius
@@ -90,22 +101,18 @@ class WatchScene:
             in_zone = rel <= ZONE_HALF
             in_core = rel <= core_half
             rel_fake = abs(wrap_pi(a - fake_center))
-            in_fake = has_fake and rel_fake <= ZONE_HALF
-            in_fake_core = has_fake and rel_fake <= ZONE_HALF * PERFECT_SHARE
+            if has_fake and not in_zone and rel_fake <= ZONE_HALF:
+                mines.append((px, py))
+                continue
 
             # Zonen-Bloecke wie in WearRenderer.kt: 7f/5f seit dem
             # Geraete-Test (5f/3.4f waren auf der Uhr zu klein).
-            highlighted = in_zone or in_fake
-            outer = self.cell * (7 if highlighted else 3)
-            inner = self.cell * (5 if highlighted else 1.8)
+            outer = self.cell * (7 if in_zone else 3)
+            inner = self.cell * (5 if in_zone else 1.8)
             if in_core:
                 color = GRASS_LIGHT
             elif in_zone:
                 color = GRASS_DARK
-            elif in_fake_core:
-                color = FAKE_CORE
-            elif in_fake:
-                color = FAKE
             else:
                 color = TRACK_DEFAULT
 
@@ -115,6 +122,30 @@ class WatchScene:
             self.d.rectangle(
                 [px - inner / 2, py - inner / 2, px + inner / 2, py + inner / 2],
                 fill=color)
+        # Die Minen, schwarz: kein Lauflicht auf der Uhr.
+        for px, py in mines:
+            tp.draw_mine(self.d, px, py, self.cell + 1)
+
+    def fog_band(self, start, end):
+        """Das Nebelband der Uhr (drawFogBand): Bloecke von [start] bis
+        [end] auf der Bahn, Rand #A0BEDA, Mitte #D6E5F4, Kern #F4F8FD,
+        ein Block etwas groesser als der Vogel."""
+        radius = SIZE * 0.38
+        cx = cy = SIZE / 2
+        u = SIZE * 0.075 * 2 / GRID
+        edge = max(1, round(u))
+        outer = round(u * (GRID + 2))
+        mid = outer - 2 * edge
+        core = mid - 4 * edge
+        n = max(1, math.ceil(abs(end - start) * radius / (outer / 2)))
+        angles = [start + (end - start) * i / n for i in range(n + 1)]
+        bottom, _, fog_mid, _, inner = tp.fog_layers()
+        for extent, color in ((outer, bottom), (mid, fog_mid), (core, inner)):
+            for a in angles:
+                px = round(cx + math.cos(a) * radius)
+                py = round(cy + math.sin(a) * radius)
+                self.d.rectangle([px - extent / 2, py - extent / 2,
+                                  px + extent / 2, py + extent / 2], fill=color)
 
     def dot(self, angle, direction=1):
         radius = SIZE * 0.38
@@ -198,7 +229,8 @@ def main():
         s.text_center(0, "7", 44, WHITE)
         s.finish(f"{outdir}/wear-01-gameplay.png")
 
-        # ===== 02: Startscreen — blinkendes TIPP/TAP + Rekordzeile.
+        # ===== 02: Startscreen — ruhiges TIPP/TAP + Rekordzeile. Der erste
+        # Tap im Gruen ist schon Treffer 1.
         s = WatchScene(score_stage=0)
         s.track(zone_center=2.3)
         s.dot(angle=0.6, direction=1)
@@ -206,8 +238,8 @@ def main():
         s.text_center(22, t["best"].format(23), 16, WHITE)
         s.finish(f"{outdir}/wear-02-ready.png")
 
-        # ===== 03: Falle-Twist am Abendhimmel — gruene Zone und violette
-        # Koeder-Zone gleichzeitig, Score 21.
+        # ===== 03: Bomben am Abendhimmel — gruene Zone und die Minenkette
+        # daneben, Score 21.
         s = WatchScene(score_stage=4)  # Score 21 -> Sonnenuntergang
         s.track(zone_center=-0.7, has_fake=True, fake_center=2.1)
         s.dot(angle=-2.4, direction=1)
@@ -222,6 +254,17 @@ def main():
         s.text_center(10, t["best"].format(34), 18, RECORD_RED)
         s.text_center(36, t["tap"], 16, WHITE)
         s.finish(f"{outdir}/wear-04-gameover.png")
+
+        # ===== 05: Nebel — das Band liegt vor der Zone, der Vogel kommt
+        # gleich an und verschwindet darin. Score 17.
+        s = WatchScene(score_stage=3)
+        zone = 0.9
+        speed = 2.4 + 16 * 0.07
+        s.track(zone_center=zone)
+        s.fog_band(zone - ZONE_HALF - 0.12 * speed, zone - ZONE_HALF * 0.5)
+        s.dot(angle=zone - ZONE_HALF - 0.12 * speed - 0.7, direction=1)
+        s.text_center(0, "17", 44, WHITE)
+        s.finish(f"{outdir}/wear-05-nebel.png")
 
 
 if __name__ == "__main__":

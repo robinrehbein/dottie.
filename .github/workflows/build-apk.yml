@@ -31,9 +31,10 @@ jobs:
       # :core ist ein Multiplattform-Modul und kennt kein
       # testDebugUnitTest — seine Tests heissen jvmTest. Ohne den
       # expliziten Aufruf liefen sie (inkl. der Paritaets-Vektoren) in der
-      # CI nie mit.
+      # CI nie mit. Dasselbe gilt für :ui: Seine Desktop-Tests (Bedienung,
+      # Nebel, Sammlung, Start-Tap, Rendering) heissen ebenfalls jvmTest.
       - name: Run unit tests
-        run: ./gradlew --no-daemon :core:jvmTest testDebugUnitTest
+        run: ./gradlew --no-daemon :core:jvmTest testDebugUnitTest :ui:jvmTest
 
       # Auf dem Arbeits-Branch reicht ein Build-Check: Kompiliert alles?
       # Die Debug-APK landet als Workflow-Artefakt (Actions → Run →
