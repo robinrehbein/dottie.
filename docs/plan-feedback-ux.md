@@ -235,17 +235,29 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
   Lautsprecher- und Glocken-Symbole in `PixelButton.kt:171–202` sind
   gezeichnet, aber ungenutzt.
 
-- **Welten früher erreichbar (Entscheidung).** Heute braucht die erste neue
+- **Welten früher erreichbar (entschieden).** Heute braucht die erste neue
   Welt 500 Läufe, 10.000 Punkte, eine 30-Tage-Daily-Serie oder Rekord 85
-  (`ScenePaint.kt:610–615`). Bei grob 10 Punkten und 12 s pro Lauf sind das
-  1,5–2 Stunden reine Spielzeit für die Wüste und rund 1.000 Läufe fürs
-  Meer. Skins kommen dagegen früh (MATCHA nach 5 Läufen). Vorschlag:
-  WÜSTE 25 Läufe, MEER 1.000 Punkte insgesamt, BERG 7 Daily-Tage in Folge,
-  STADT Rekord 40, WELTRAUM bleibt „alle anderen“. Das ist keine Änderung am
-  Spiel, nur an den Belohnungsschwellen. Folgen prüfen: Rahmen KASKADE hängt
-  an „alle Kulissen“, die Zielzeile rechnet über dieselben Schwellen, und
-  Spieler mit altem Stand bekommen beim Update eventuell mehrere Welten auf
-  einmal (dann gesammelt feiern).
+  (`ScenePaint.kt:610–615`). Skins kommen dagegen früh (MATCHA nach 5
+  Läufen). Neue Schwellen:
+
+  | Welt | Heute | Neu |
+  |---|---|---|
+  | WIESE | offen | offen |
+  | WÜSTE | 500 Läufe | **100 Läufe** |
+  | MEER | 10.000 Punkte insgesamt | **2.500 Punkte insgesamt** |
+  | BERG | Daily-Serie 30 Tage | **1 Daily gespielt** (`bestDailyStreak >= 1`) |
+  | STADT | Rekord 85 | **Rekord 100** |
+  | WELTRAUM | alle anderen | alle anderen |
+
+  Nur Belohnungsschwellen, keine Änderung am Spiel. Folgen, die mitziehen
+  müssen: die `scene_hint_*`-Texte in allen Sprachen, die Zielzeile
+  (`Progress`), Tests, die Schwellen festnageln. STADT wird schwerer als
+  heute, damit auch WELTRAUM und der Rahmen KASKADE („Pracht und alle
+  Kulissen“), die alle Welten voraussetzen. Spieler, die heute schon Rekord
+  85–99 und damit STADT haben, dürfen sie nicht verlieren: Einmal
+  freigeschaltete Welten bleiben offen (prüfen, ob die Freischaltung
+  gespeichert oder jedes Mal neu berechnet wird). Beim Update können mehrere
+  Welten auf einmal aufgehen, dann gesammelt feiern.
 
 ### 7.3 Schnell
 
@@ -272,8 +284,6 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
 
 ### 7.5 Offen
 
-- Welten-Leiter übernehmen? Und mit welchen Werten (echte Durchschnitte aus
-  der Statistik wären besser als die Schätzung)?
 
 - Braucht das Game-Over TEILEN überhaupt in der Leiste, oder nur nach einem
   neuen Rekord?
