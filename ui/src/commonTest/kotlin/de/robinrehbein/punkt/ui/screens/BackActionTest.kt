@@ -82,13 +82,19 @@ class BackActionTest {
         assertEquals(BackAction.NOT_HANDLED, action(phase = GamePhase.READY))
     }
 
+    // == AP-22 start ==
     @Test
-    fun dailyKarteBleibtBisAp22OhneWirkung() {
-        // Die Karte gibt es erst mit AP-22 (Plan 8.4). Bis dahin
-        // entscheidet allein die Phase.
-        assertEquals(BackAction.NOT_HANDLED, action(dailyIntro = true, phase = GamePhase.READY))
-        assertEquals(BackAction.TO_MENU, action(dailyIntro = true, phase = GamePhase.OVER))
+    fun dailyKarteSchliesstVorDerPhase() {
+        // Die DAILY-Karte liegt über dem Startbildschirm (AP-22): Zurück
+        // schließt sie, statt die App zu beenden.
+        assertEquals(BackAction.CLOSE_DAILY_INTRO, action(dailyIntro = true, phase = GamePhase.READY))
+        // Die übrigen Overlays liegen darüber und schließen zuerst.
+        assertEquals(BackAction.CLOSE_HELP, action(help = true, dailyIntro = true))
+        assertEquals(BackAction.CLOSE_SETTINGS, action(settings = true, dailyIntro = true))
+        assertEquals(BackAction.CLOSE_STATS, action(stats = true, dailyIntro = true))
+        assertEquals(BackAction.CLOSE_COLLECTION, action(skins = true, dailyIntro = true))
     }
+    // == /AP-22 ==
 
     @Test
     fun leistenSperreDauertLaengerAlsDieNeustartSperre() {
