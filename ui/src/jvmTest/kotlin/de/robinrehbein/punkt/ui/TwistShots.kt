@@ -322,6 +322,34 @@ class TwistShots {
         }
     }
 
+    /**
+     * Abstand zwischen Minen und Sand: die Falle auf dem Telefon aus der
+     * Meldung (1080×2340), auf 1080×2400 und 720×1280, dazu 1080×2340
+     * unter PULS eng. Die Kette soll im Takt der Blöcke liegen, mit einem
+     * Blockabstand Luft zum Sand.
+     */
+    @Test
+    fun bombenAbstand() {
+        val dir = shotsDir() ?: return
+        listOf(
+            Triple(1080, 2340, 2.625f),
+            Triple(1080, 2400, 2.625f),
+            Triple(720, 1280, 2f)
+        ).forEach { (w, h, d) ->
+            val game = trapGame(2)
+            bombStep(game, 1)
+            shoot(dir, "bomben-abstand-${w}x$h.png", game, width = w, height = h, density = d)
+        }
+        val game = trapGame(2, setOf(Twist.PULSE))
+        var frames = 0
+        while (game.fakeZoneHalf() >= game.zoneHalfWidth * 0.66f) {
+            game.update(BOT_DT / 4f)
+            check(game.phase == GamePhase.RUNNING) { "Punkt ist vor PULS-eng an der Zone vorbei" }
+            check(++frames < MAX_BOT_FRAMES) { "PULS erreicht eng nicht" }
+        }
+        shoot(dir, "bomben-abstand-1080x2340-puls-eng.png", game, width = 1080, height = 2340)
+    }
+
     private fun relativeToFake(game: TimingGame): Float =
         TimingGame.wrapToPi(game.angle - game.fakeZoneCenter)
     // == /AP-12 ==

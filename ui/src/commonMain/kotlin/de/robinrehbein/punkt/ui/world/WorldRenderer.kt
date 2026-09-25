@@ -732,15 +732,15 @@ internal fun DrawScope.drawTrack(
     // bleiben durch ihre größeren Blöcke bewusst ein durchgehendes Band.
     val segments = 60
     val zoneHalf = game.effectiveZoneHalf()
-    val mines = trapMines(game, segments, zoneHalf)
-    // Minen in Blockgröße, aber nie so groß, dass sie sich überdecken
-    // (unter PULS rückt die Kette zusammen). Ihre Mitten auf dem Bild
-    // braucht die Schleife, um Sandblöcke unter den Minen frei zu lassen.
-    val minePx = trapMinePixel(game, segments, radius, cell)
-    val mineHalf = mineHalfExtent(minePx)
+    // Minen so groß wie möglich, aber nie so groß, dass sie sich oder den
+    // Sand daneben berühren (unter PULS rückt die Kette zusammen). Sie
+    // liegen im Takt der Blöcke auf den Plätzen, die die Falle frei lässt.
+    val trap = trapLayout(game, segments, zoneHalf, radius, cell)
+    val minePx = trap.px
+    val mines = trap.mines
     val mineCenters = mines.map { Offset(cx + cos(it.angle) * radius, cy + sin(it.angle) * radius) }
     for (k in 0 until segments) {
-        val a = k.toFloat() / segments * (2f * PI.toFloat())
+        val a = trackSlotAngle(k, segments)
         val px = cx + cos(a) * radius
         val py = cy + sin(a) * radius
 
@@ -757,14 +757,17 @@ internal fun DrawScope.drawTrack(
         val inFake = game.hasFakeZone && abs(relativeFake) <= fakeHalf
 
         // Die Falle ist eine Kette aus Minen statt aus Blöcken: Hier
-        // bleibt die Bahn frei, die Minen kommen nach der Schleife.
+        // bleibt die Bahn frei, die Minen kommen nach der Schleife — auf
+        // genau diese Plätze (trapChain), der Sand daneben bleibt liegen.
         // Liegt die Falle auf der Zone, gewinnt die Zone: Grün bleibt Grün.
         if (inFake && !inZone) continue
 
         val outer = if (inZone) cell * 5f else cell * 3f
-        // Die Minen liegen nicht auf dem Segment-Raster: Ein Sandblock am
-        // Rand der Falle, den eine Mine berühren würde, bleibt ebenfalls frei.
-        if (!inZone && blockHitsMine(px, py, outer / 2f, mineCenters, mineHalf)) continue
+        // Nur im Notfall (winzige Bahn unter PULS, siehe trapChain) reicht
+        // eine Mine an den Sand heran; dann bleibt dieser Block frei.
+        val underMine = !inZone &&
+            mineCenters.any { mineTouchesBlock(it.x - px, it.y - py, minePx, outer / 2f) }
+        if (underMine) continue
         val inner = if (inZone) cell * 3.4f else cell * 1.8f
         val innerColor = when {
             inPerfectCore -> GrassLight
@@ -785,9 +788,10 @@ internal fun DrawScope.drawTrack(
     }
 
     // Die Minen der Falle: so viele, wie TrapPaint.count aus der
-    // Grundbreite ergibt, verteilt über die Breite fakeZoneHalf() (8.7).
-    // Erst alle Ränder, dann alle Kugeln: Benachbarte Minen teilen sich
-    // ihren Rand, die Kugeln berühren sich nie (trapMinePixel).
+    // Grundbreite ergibt, im Takt der Blöcke über die Breite
+    // fakeZoneHalf() (8.7). Erst alle Ränder, dann alle Kugeln:
+    // Benachbarte Minen teilen sich ihren Rand, die Kugeln berühren sich
+    // nie (trapMinePixel).
     for (c in mineCenters) {
         drawMineRim(c.x, c.y, minePx)
     }
