@@ -30,8 +30,15 @@ object TwistLessons {
      * Bewusst nur EINER je Tod. Das Game-Over ist der Atemzug vor dem
      * naechsten Versuch, keine Lehrstunde; die uebrigen Twists kommen bei
      * den naechsten Toden dran.
+     *
+     * [diedInTrap] sagt, ob dieser Lauf in der Falle endete. Bis AP-12
+     * ohne Wirkung (Plan 8.3).
      */
-    fun next(unlockedThisRun: List<Twist>, explained: Set<String>): Twist? =
+    fun next(
+        unlockedThisRun: List<Twist>,
+        explained: Set<String>,
+        diedInTrap: Boolean = false
+    ): Twist? =
         unlockedThisRun.firstOrNull { it.name !in explained }
 
     /** "FAKE,CHAIN" → {FAKE, CHAIN}. Leer und null heissen dasselbe. */

@@ -10,13 +10,21 @@ package de.robinrehbein.punkt.ui.world
  */
 class FxState {
     var flashAlpha = 0f
+    // == AP-11 todesursache ==
+    // == /AP-11 ==
     var shakeTime = 0f
+    // == AP-12 bomben ==
+    // == /AP-12 ==
 
     /** Restzeit der Freischalt-Zelebration (goldener Ring + Schimmer). */
     var celebrateTime = 0f
+    // == AP-22 start ==
+    // == /AP-22 ==
 
     /** Sekunden seit dem Tod (Mario-Huepfer), negativ = kein Tod aktiv. */
     var deathTime = -1f
+    // == AP-23 nebel ==
+    // == /AP-23 ==
 
     /**
      * Alle Effekte auf den Ruhezustand — noetig ueberall dort, wo ein Lauf
@@ -26,8 +34,16 @@ class FxState {
      */
     fun reset() {
         flashAlpha = 0f
+        // == AP-11 todesursache ==
+        // == /AP-11 ==
         shakeTime = 0f
+        // == AP-12 bomben ==
+        // == /AP-12 ==
         celebrateTime = 0f
+        // == AP-22 start ==
+        // == /AP-22 ==
         deathTime = -1f
+        // == AP-23 nebel ==
+        // == /AP-23 ==
     }
 }

@@ -157,13 +157,18 @@ fun GameScreen(
     sounds: GameSounds,
     feedback: GameFeedback,
     hooks: PlatformHooks = PlatformHooks(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Das Spiel selbst. Von außen nur für Werkzeuge (ScreenshotRenderer)
+    // gesetzt, die ein geseedetes Spiel brauchen.
+    game: TimingGame = remember { TimingGame() },
+    // Fester Seed für freie Läufe, sonst echter Zufall. Nur für
+    // reproduzierbare Screenshots; die Daily behält ihren Tages-Seed.
+    runSeed: Long? = null
 ) {
     remember(sounds) {
         sounds.muted = store.soundMuted
         sounds.soundSet = store.selectedSound
     }
-    val game = remember { TimingGame() }
     val fx = remember { FxState() }
     val bannerState = remember { BannerState() }
     // Schon beim Aufbau die Uhr lesen: Der Vogel kreist auch im
@@ -193,6 +198,8 @@ fun GameScreen(
     // Einstellungs-Overlay hinter dem Zahnrad: Ton, Erinnerung, Hilfe,
     // Werbe-Kauf und Datenschutz.
     var showSettings by remember { mutableStateOf(false) }
+    // == AP-14 bedienung ==
+    // == /AP-14 ==
     // Der Rahmen der Score-Karte als vierte Sammlung. null heisst "nie
     // gewaehlt" und ist etwas anderes als SCHLICHT: Ohne Wahl traegt die
     // Karte automatisch die hoechste verdiente Stufe.
@@ -200,11 +207,15 @@ fun GameScreen(
     var isNewRecord by remember { mutableStateOf(false) }
     var taunt by remember { mutableStateOf("") }
     var showPerfect by remember { mutableStateOf(false) }
+    // == AP-23 nebel ==
+    // == /AP-23 ==
     var perfectPoints by remember { mutableIntStateOf(2) }
     var bannerText by remember { mutableStateOf("") }
     var showHelp by remember { mutableStateOf(false) }
     var soundOn by remember { mutableStateOf(!store.soundMuted) }
     var dailyMode by remember { mutableStateOf(false) }
+    // == AP-22 start ==
+    // == /AP-22 ==
     var skin by remember { mutableStateOf(store.selectedSkin) }
     // Die Kulisse ist die zweite Sammlung: kein Tagespass, kein
     // Verfallsdatum — deshalb reicht ein schlichter Zustand.
@@ -223,6 +234,11 @@ fun GameScreen(
         mutableStateOf(store.skinPassFor(deviceCalendar().epochDay))
     }
     var showSkins by remember { mutableStateOf(false) }
+    // Liegt in der Sammlung etwas Neues, das noch niemand angesehen hat?
+    // Gefüllt ab AP-15, bis dahin immer false (Plan 8.3).
+    var collectionHasNew by remember { mutableStateOf(false) }
+    // == AP-15 sammlung ==
+    // == /AP-15 ==
     // Statistik-Seite: Zahlen und Ziele werden beim Öffnen einmal
     // gerechnet und festgehalten. Pro Frame nachzurechnen wäre für eine
     // Seite, die stillsteht, solange sie offen ist, reine Verschwendung.
@@ -241,6 +257,8 @@ fun GameScreen(
     // nichts Neues gebracht hat oder alles Neue schon einmal erklärt
     // wurde. Gefüllt beim Tod, siehe GameEventDied.
     var twistToExplain by remember { mutableStateOf<Twist?>(null) }
+    // == AP-11 todesursache ==
+    // == /AP-11 ==
     var dailyBestToday by remember {
         mutableIntStateOf(store.dailyBestFor(deviceCalendar().epochDay))
     }
@@ -334,7 +352,11 @@ fun GameScreen(
         val today = runState.epochDay
         // Jeder Lauf-Start ist auch der Moment, den Tagespass nachzuziehen.
         refreshSkinPass(today)
-        if (dailyMode) game.reseed(DailyChallenge.seedFor(today)) else game.reseedSystem()
+        when {
+            dailyMode -> game.reseed(DailyChallenge.seedFor(today))
+            runSeed != null -> game.reseed(runSeed)
+            else -> game.reseedSystem()
+        }
     }
 
     // Banner mit Priorität: Ein wichtigeres Banner ("REKORD GEKNACKT!")
@@ -356,8 +378,14 @@ fun GameScreen(
 
                 val events = game.update(dt)
                 fx.flashAlpha = (fx.flashAlpha - dt * 3.5f).coerceAtLeast(0f)
+                // == AP-11 todesursache ==
+                // == /AP-11 ==
                 fx.shakeTime = (fx.shakeTime - dt).coerceAtLeast(0f)
+                // == AP-22 start ==
+                // == /AP-22 ==
                 fx.celebrateTime = (fx.celebrateTime - dt).coerceAtLeast(0f)
+                // == AP-23 nebel ==
+                // == /AP-23 ==
                 if (fx.deathTime >= 0f) fx.deathTime += dt
                 bannerState.timeLeft = (bannerState.timeLeft - dt).coerceAtLeast(0f)
                 if (bannerState.timeLeft <= 0f && bannerText.isNotEmpty()) {
@@ -380,8 +408,12 @@ fun GameScreen(
                             newMedalThisRun = false
                             twistToExplain = null
                             fx.deathTime = -1f
+                            // == AP-22 start ==
                             sounds.start()
+                            // == /AP-22 ==
                         }
+                        // == AP-22 start ==
+                        // == /AP-22 ==
                         is GameEventHit -> {
                             feedback.score()
                             sounds.hit(game.score)
@@ -419,6 +451,8 @@ fun GameScreen(
                             fx.shakeTime = 0.4f
                             fx.celebrateTime = 0f
                             fx.deathTime = 0f
+                            // == AP-11 todesursache ==
+                            // == /AP-11 ==
                             val previousBest = store.bestScore
                             newMedalThisRun = MedalPaint.isUpgrade(game.score, previousBest)
                             // Gezählt wird, was VERDIENT ist: Saison zählt
@@ -534,6 +568,8 @@ fun GameScreen(
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures(onPress = {
+                    // == AP-22 start ==
+                    // == /AP-22 ==
                     // Ein Tap in READY/OVER startet gleich einen Lauf —
                     // vorher Seed und Tag für den aktuellen Modus setzen.
                     if (game.phase == GamePhase.READY ||
@@ -550,7 +586,12 @@ fun GameScreen(
             // Stunde und Monat kommen aus dem Lauf-Zustand, nicht frisch
             // von der Uhr — sie werden je Lauf einmal abgelesen.
             drawTimingWorld(game, fx, skin, scene, runState.hour, runState.month)
+            // == AP-22 start ==
+            // == /AP-22 ==
         }
+
+        // == AP-23 nebel ==
+        // == /AP-23 ==
 
         // Positionen relativ zur Bildhöhe: Die Bahn endet spätestens bei
         // 72% der Höhe, der Perfekt-Text sitzt knapp darunter — auf jedem
@@ -566,6 +607,8 @@ fun GameScreen(
                     .padding(top = maxHeight * 0.74f)
             )
         }
+        // == AP-11 todesursache ==
+        // == /AP-11 ==
 
         when (phase) {
             GamePhase.READY -> ReadyOverlay(
@@ -603,7 +646,12 @@ fun GameScreen(
                 },
                 onSettings = { showSettings = true },
                 diagnostics = if (showDiagnostics) hooks.diagnostics else null,
-                onToggleDiagnostics = { showDiagnostics = !showDiagnostics }
+                onToggleDiagnostics = { showDiagnostics = !showDiagnostics },
+                collectionHasNew = collectionHasNew,
+                banner = {
+                    // == AP-15 sammlung ==
+                    // == /AP-15 ==
+                }
             )
             GamePhase.RUNNING, GamePhase.DYING ->
                 ScoreHud(
@@ -701,10 +749,17 @@ fun GameScreen(
                         bannerState.lastStage = 0
                         bannerState.recordCelebrated = false
                     },
-                    onHelp = { showHelp = true }
+                    onHelp = { showHelp = true },
+                    cause = {
+                        // == AP-11 todesursache ==
+                        // == /AP-11 ==
+                    }
                 )
             }
         }
+
+        // == AP-22 start ==
+        // == /AP-22 ==
 
         if (showSettings) {
             SettingsOverlay(
@@ -740,6 +795,8 @@ fun GameScreen(
         if (showHelp) {
             HelpOverlay(onClose = { showHelp = false })
         }
+        // == AP-14 bedienung ==
+        // == /AP-14 ==
 
         if (showStats) {
             StatsOverlay(
