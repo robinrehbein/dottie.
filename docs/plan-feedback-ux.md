@@ -253,11 +253,18 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
   müssen: die `scene_hint_*`-Texte in allen Sprachen, die Zielzeile
   (`Progress`), Tests, die Schwellen festnageln. STADT wird schwerer als
   heute, damit auch WELTRAUM und der Rahmen KASKADE („Pracht und alle
-  Kulissen“), die alle Welten voraussetzen. Spieler, die heute schon Rekord
-  85–99 und damit STADT haben, dürfen sie nicht verlieren: Einmal
-  freigeschaltete Welten bleiben offen (prüfen, ob die Freischaltung
-  gespeichert oder jedes Mal neu berechnet wird). Beim Update können mehrere
-  Welten auf einmal aufgehen, dann gesammelt feiern.
+  Kulissen“), die alle Welten voraussetzen. Die Schwellen sind in
+  `Progress.kt` (ab Zeile 100) gespiegelt und müssen dort mitgeändert werden.
+
+  **Achtung Bestandsschutz:** Freischaltungen werden nicht gespeichert,
+  sondern jedes Mal aus den Statistiken berechnet (`ScenePaint.isUnlocked`,
+  auch beim Sync-Merge in `GameStore.kt:562`). Wer heute Rekord 85–99 hat,
+  würde STADT mit dem Update verlieren, und eine gewählte STADT fiele auf
+  WIESE zurück. Lösung: beim ersten Start nach dem Update einen gespeicherten
+  Merker „STADT besessen“ setzen, wenn `bestScore >= 85`, und in
+  `isUnlocked` berücksichtigen (auch für WELTRAUM und KASKADE). Der Merker
+  muss mitsynchronisiert werden (Uhr, zweites Gerät). Beim Update können
+  außerdem mehrere Welten auf einmal aufgehen, dann gesammelt feiern.
 
 ### 7.3 Schnell
 
