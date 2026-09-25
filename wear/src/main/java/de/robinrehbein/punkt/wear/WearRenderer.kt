@@ -11,9 +11,16 @@ import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.TimingGame
+import de.robinrehbein.punkt.game.TrapPaint
+import de.robinrehbein.punkt.game.Twist
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.round
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -42,9 +49,14 @@ internal val WearTrackDefaultColor = Color(0xFFD3C87E)
 internal val WearDotBody = Color(0xFFFFD847)
 internal val WearDotShine = Color(0xFFFFF3B8)
 
-/** Fallen-Zone (aus TimingGameScreen.kt, dort privat). */
-internal val WearFakeZoneColor = Color(0xFFB44FD8)
-internal val WearFakeZoneCoreColor = Color(0xFF8A2FB0)
+/**
+ * Nebelband (Twist NEBEL, intern GHOST): Rand und Kern. Dieselben Töne wie
+ * die Wolke am Telefon (Unterkante und Inneres), aber ohne Wolkenform —
+ * auf der Uhr reicht ein einfaches Band (Plan 8.6 Punkt 15).
+ */
+internal val WearFogEdgeColor = Color(0xFFA0BEDA)
+internal val WearFogMidColor = Color(0xFFD6E5F4)
+internal val WearFogCoreColor = Color(0xFFF4F8FD)
 
 /** Raster-Auflösung für den Pixel-Vogel, wie GRID in GameOverlays.kt. */
 private const val WEAR_GRID = 13f
@@ -64,8 +76,11 @@ private const val WEAR_DEATH_GRAVITY = 6f
  */
 private const val WEAR_DEATH_FLIP_SECONDS = 0.3f
 
+/** Vogelradius im Verhältnis zur kleineren Displaykante. */
+private const val WEAR_DOT_RADIUS_SHARE = 0.075f
+
 /** Segmentzahl der Bahn — dieselbe wie am Phone (drawTrack). */
-private const val WEAR_TRACK_SEGMENTS = 60
+internal const val WEAR_TRACK_SEGMENTS = 60
 
 /**
  * Blockbreiten als Vielfaches des Segment-Abstands. Die Werte stammen aus
@@ -97,13 +112,16 @@ private const val WEAR_CORE_ZONE = 0.68f
  * [hour] und [month] kommen von der Geräte-Uhr (Controller): TAGESZEIT
  * und JAHRESZEIT ziehen daraus ihr Kleid. [scene] ist die Kulisse des
  * Telefons — die Uhr wählt keine, sie zeigt nur, was ankommt.
+ * [dotWobble] schiebt den Vogel seitlich, in Vogel-Pixeln: das Wackeln
+ * nach einem Tap daneben in READY (siehe WearNotYet.wobble).
  */
 internal fun DrawScope.drawWearWorld(
     game: TimingGame,
     skin: WearDotSkin,
     hour: Int,
     month: Int,
-    scene: SceneId = SceneId.WIESE
+    scene: SceneId = SceneId.WIESE,
+    dotWobble: Float = 0f
 ) {
     val d = size.minDimension
     val cx = size.width / 2f
@@ -117,11 +135,15 @@ internal fun DrawScope.drawWearWorld(
     // ist robust gegenüber eckigen/ovalen Displays.
     val radius = d * 0.38f
     drawWearTrack(game, cx, cy, radius)
+    // Die Nebelbank liegt über der Bahn und unter dem Vogel. Verdeckt wird
+    // der Vogel nicht vom Band, sondern von der Engine (isDotVisible) —
+    // das Band zeigt nur, wo das passiert.
+    drawFogBand(game, cx, cy, radius, d * WEAR_DOT_RADIUS_SHARE)
     // In OVER ist der Vogel bereits unten aus dem Bild gefallen
     // (Mario-Hüpfer in der DYING-Phase) — die Bahn bleibt leer, bis der
     // nächste Lauf startet. Am Phone regelt das fx.deathTime genauso.
     if (game.phase != GamePhase.OVER && game.isDotVisible) {
-        drawWearDot(game, cx, cy, radius, d, skin, hour, month)
+        drawWearDot(game, cx, cy, radius, d, skin, hour, month, dotWobble)
     }
 }
 
@@ -130,6 +152,10 @@ internal fun DrawScope.drawWearWorld(
  * drawTrack am Phone, nur dass die Blockgrößen hier aus dem
  * Segment-Abstand folgen (siehe WEAR_SEG_*), damit die Proportionen auf
  * dem kleinen Display erhalten bleiben.
+ *
+ * Die Falle (Twist FAKE) ist wie am Telefon eine Kette aus Minen aus
+ * [TrapPaint], auf der Uhr aber ohne Lauflicht (Plan 8.6 Punkt 15): alle
+ * Kugeln schwarz. Wo eine Mine liegt, bleibt die Bahn frei.
  */
 private fun DrawScope.drawWearTrack(
     game: TimingGame,
@@ -147,6 +173,15 @@ private fun DrawScope.drawWearTrack(
     val zoneInner = round(zoneOuter * WEAR_CORE_ZONE).coerceAtLeast(2f)
 
     val zoneHalf = game.effectiveZoneHalf()
+    // Kern und Fallenbreite kommen aus der Engine — siehe perfectHalf()
+    // und fakeZoneHalf(). Die Minen verteilen sich über fakeZoneHalf().
+    val coreHalf = game.perfectHalf()
+    val fakeHalf = game.fakeZoneHalf()
+    val mines = wearTrapMineAngles(game, segments, zoneHalf)
+    val minePx = wearMinePixel(wearMineDistance(game, segments, radius), zoneOuter)
+    val mineHalf = wearMineHalfExtent(minePx)
+    val mineCenters = mines.map { Offset(cx + cos(it) * radius, cy + sin(it) * radius) }
+
     for (k in 0 until segments) {
         val a = k.toFloat() / segments * (2f * Math.PI.toFloat())
         val px = cx + cos(a) * radius
@@ -154,24 +189,22 @@ private fun DrawScope.drawWearTrack(
 
         val relativeZone = TimingGame.wrapToPi(a - game.zoneCenter)
         val inZone = abs(relativeZone) <= zoneHalf
-        // Kern und Fallenbreite kommen aus der Engine — siehe perfectHalf().
-        val coreHalf = game.perfectHalf()
         val inPerfectCore = abs(relativeZone) <= coreHalf
 
-        val fakeHalf = game.fakeZoneHalf()
         val inFake = game.hasFakeZone &&
             abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= fakeHalf
-        val inFakeCore = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= coreHalf
+        // Auf der Falle liegen die Minen statt der Blöcke. Liegt sie auf
+        // der Zone, gewinnt die Zone: Grün bleibt Grün.
+        if (inFake && !inZone) continue
 
-        val highlighted = inZone || inFake
-        val outer = if (highlighted) zoneOuter else neutralOuter
-        val inner = if (highlighted) zoneInner else neutralInner
+        val outer = if (inZone) zoneOuter else neutralOuter
+        // Die Minen liegen nicht auf dem Segment-Raster: Ein Sandblock,
+        // den eine Mine berühren würde, bleibt ebenfalls frei.
+        if (!inZone && wearBlockHitsMine(px, py, outer / 2f, mineCenters, mineHalf)) continue
+        val inner = if (inZone) zoneInner else neutralInner
         val innerColor = when {
             inPerfectCore -> WearGrassLight
             inZone -> WearGrassDark
-            inFakeCore -> WearFakeZoneCoreColor
-            inFake -> WearFakeZoneColor
             else -> WearTrackDefaultColor
         }
 
@@ -185,6 +218,198 @@ private fun DrawScope.drawWearTrack(
             topLeft = Offset(px - inner / 2f, py - inner / 2f),
             size = Size(inner, inner)
         )
+    }
+
+    // Erst alle Ränder, dann alle Kugeln: Benachbarte Minen teilen sich
+    // ihren Rand, die Kugeln berühren sich nie (wearMinePixel).
+    for (c in mineCenters) drawWearMine(c.x, c.y, minePx, rimOnly = true)
+    for (c in mineCenters) drawWearMine(c.x, c.y, minePx, rimOnly = false)
+}
+
+// ===== Minen der Falle (Plan 3.4, auf der Uhr ohne Lauflicht) =====
+
+/**
+ * Winkel der Minen der aktuellen Falle auf der Bahn.
+ *
+ * Die Zahl kommt aus [TrapPaint.count] mit der Grundbreite
+ * [TimingGame.zoneHalfWidth] und dem Winkel eines Bahn-Blocks als Zelle;
+ * sie rundet ab und bleibt unter PULS stehen. Die Minen liegen gleichmäßig
+ * über die Breite von [TimingGame.fakeZoneHalf] verteilt (je eine in der
+ * Mitte von n gleich breiten Feldern), die Kette atmet also mit, die Zahl
+ * nicht. Minen, die in der echten Zone ([zoneHalf]) lägen, entfallen.
+ * Kein Lauflicht, keine Zufallszahl.
+ */
+internal fun wearTrapMineAngles(game: TimingGame, segments: Int, zoneHalf: Float): List<Float> {
+    if (!game.hasFakeZone) return emptyList()
+    val cell = 2f * PI.toFloat() / segments
+    val count = TrapPaint.count(game.zoneHalfWidth, cell)
+    val fakeHalf = game.fakeZoneHalf()
+    val pitch = 2f * fakeHalf / count
+    val angles = ArrayList<Float>(count)
+    for (i in 0 until count) {
+        val angle = TimingGame.wrapTwoPi(game.fakeZoneCenter - fakeHalf + (i + 0.5f) * pitch)
+        if (abs(TimingGame.wrapToPi(angle - game.zoneCenter)) <= zoneHalf) continue
+        angles.add(angle)
+    }
+    return angles
+}
+
+/**
+ * Kleinster Abstand zweier benachbarter Minen auf dem Bild (Sehne, in
+ * Bildpunkten), den die Falle in dieser Runde annehmen kann. Unter PULS
+ * zählt das Wellental, damit die Minen beim Atmen nicht die Größe wechseln.
+ */
+internal fun wearMineDistance(game: TimingGame, segments: Int, radius: Float): Float {
+    val count = TrapPaint.count(game.zoneHalfWidth, 2f * PI.toFloat() / segments)
+    val narrowest = if (Twist.PULSE in game.activeTwists) {
+        min(game.fakeZoneHalf(), game.zoneHalfWidth * TimingGame.PULSE_MIN_SHARE)
+    } else {
+        game.fakeZoneHalf()
+    }
+    val pitch = 2f * narrowest / count
+    return 2f * radius * sin(pitch / 2f)
+}
+
+/** Breite des hellen Rands in Bildpunkten bei Sprite-Pixeln der Kante [px]. */
+internal fun wearMineRim(px: Int): Int = (px * 0.6f).roundToInt().coerceAtLeast(1)
+
+/** Halbe Kantenlänge einer Mine samt Rand, von der Mitte gemessen. */
+internal fun wearMineHalfExtent(px: Int): Float = TrapPaint.MINE_SIZE * px / 2f + wearMineRim(px)
+
+/**
+ * Berühren sich zwei Kugeln mit Sprite-Pixeln [px] im Abstand [distance]
+ * nicht? Zwischen ihnen bleibt mindestens ein Bildpunkt; die hellen Ränder
+ * dürfen sich teilen, sie liegen unter den Kugeln. Das Sprite ist ein
+ * 5×5-Kern mit vier Zacken: schräg begrenzt der Kern (`√2 · 5 px`), längs
+ * der Achsen die Zacken (`7 px`).
+ */
+internal fun wearMinesFit(px: Int, distance: Float): Boolean {
+    val diagonal = sqrt(2f) * 5f * px
+    val axis = (TrapPaint.MINE_SIZE * px).toFloat()
+    return distance >= max(diagonal, axis) + 1f
+}
+
+/**
+ * Sprite-Pixelmaß der Minen: höchstens so groß, wie ein Zonenblock
+ * ([zoneOuter]) es hergibt, und nie so groß, dass sich benachbarte Kugeln
+ * im Abstand [distance] berühren. Mindestens 1.
+ */
+internal fun wearMinePixel(distance: Float, zoneOuter: Float): Int {
+    var px = (zoneOuter / TrapPaint.MINE_SIZE).roundToInt().coerceAtLeast(1)
+    while (px > 1 && !wearMinesFit(px, distance)) px--
+    return px
+}
+
+/**
+ * Überdeckt ein Bahn-Block mit Mitte ([bx], [by]) und halber Kante
+ * [blockHalf] eine der Minen? Ein Bildpunkt Luft zählt mit.
+ */
+internal fun wearBlockHitsMine(
+    bx: Float,
+    by: Float,
+    blockHalf: Float,
+    mineCenters: List<Offset>,
+    mineHalf: Float
+): Boolean {
+    val reach = blockHalf + mineHalf + 1f
+    return mineCenters.any { abs(it.x - bx) < reach && abs(it.y - by) < reach }
+}
+
+/**
+ * Eine Mine aus [TrapPaint.MINE], mittig auf ([cx], [cy]). [rimOnly]: nur
+ * der helle Rand um jeden gesetzten Pixel, sonst Kugel und Glanz. Die
+ * Kugel ist immer schwarz — die Uhr hat kein Lauflicht.
+ */
+private fun DrawScope.drawWearMine(cx: Float, cy: Float, px: Int, rimOnly: Boolean) {
+    val u = px.toFloat()
+    val n = TrapPaint.MINE_SIZE
+    val ox = (cx - u * n / 2f).roundToInt().toFloat()
+    val oy = (cy - u * n / 2f).roundToInt().toFloat()
+    val rim = wearMineRim(px).toFloat()
+    val rimColor = Color(TrapPaint.RIM)
+    val ball = Color(TrapPaint.BALL)
+    val gloss = Color(TrapPaint.GLOSS)
+    for (r in 0 until n) {
+        val row = TrapPaint.MINE[r]
+        for (k in 0 until n) {
+            val ch = row[k]
+            if (ch == '.') continue
+            if (rimOnly) {
+                drawRect(
+                    color = rimColor,
+                    topLeft = Offset(ox + k * u - rim, oy + r * u - rim),
+                    size = Size(u + 2f * rim, u + 2f * rim)
+                )
+            } else {
+                drawRect(
+                    color = if (ch == 'W') gloss else ball,
+                    topLeft = Offset(ox + k * u, oy + r * u),
+                    size = Size(u, u)
+                )
+            }
+        }
+    }
+}
+
+// ===== Nebelband (Twist NEBEL, Plan 3.3 und 8.6 Punkt 15) =====
+
+/**
+ * Winkel, an denen das Nebelband Blöcke setzt, vom Anfang der Nebelbank
+ * bis zu ihrem Ende, im Abstand von höchstens [step] (Radiant). Leer, wenn
+ * gerade kein Nebel liegt: nur in RUNNING (beim Tod verschwindet das
+ * Band) und nur unter NEBEL.
+ *
+ * Die Grenzen kommen allein aus der Engine ([TimingGame.fogStart],
+ * [TimingGame.fogEnd], relativ zur Zone in Laufrichtung) — dieselben, an
+ * denen [TimingGame.isDotVisible] den Vogel verbirgt.
+ */
+internal fun wearFogAngles(game: TimingGame, step: Float): List<Float> {
+    if (game.phase != GamePhase.RUNNING || Twist.GHOST !in game.activeTwists) return emptyList()
+    if (!(step > 0f)) return emptyList()
+    val from = game.fogStart()
+    val to = game.fogEnd()
+    if (to < from) return emptyList()
+    val n = ceil((to - from) / step).toInt().coerceAtLeast(1)
+    return List(n + 1) { i ->
+        val rel = from + (to - from) * i / n
+        TimingGame.wrapTwoPi(game.zoneCenter + game.direction * rel)
+    }
+}
+
+/**
+ * Das Nebelband: eine Reihe heller Pixel-Blöcke über der Bahn, etwas
+ * dicker als der Vogel, mit bläulichem Rand. Keine Wolkenform, kein
+ * Einrollen — auf dem kleinen Display zählt nur, dass man sieht, wo der
+ * Vogel verschwindet. [dotRadius] ist der Vogelradius in Bildpunkten.
+ */
+private fun DrawScope.drawFogBand(
+    game: TimingGame,
+    cx: Float,
+    cy: Float,
+    radius: Float,
+    dotRadius: Float
+) {
+    // Ein Band-Pixel = ein Vogel-Pixel, wie die Wolke am Telefon.
+    val u = (dotRadius * 2f) / WEAR_GRID
+    val edge = round(u).coerceAtLeast(1f)
+    val outer = round(u * (WEAR_GRID + 2f))
+    val mid = outer - 2f * edge
+    val core = mid - 4f * edge
+    // Blöcke im Abstand eines halben Blocks: Das Band hat keine Lücken.
+    val angles = wearFogAngles(game, step = (outer / 2f) / radius)
+    if (angles.isEmpty()) return
+    val layers = listOf(outer to WearFogEdgeColor, mid to WearFogMidColor, core to WearFogCoreColor)
+    for ((extent, color) in layers) {
+        if (extent <= 0f) continue
+        for (a in angles) {
+            val px = round(cx + cos(a) * radius)
+            val py = round(cy + sin(a) * radius)
+            drawRect(
+                color = color,
+                topLeft = Offset(px - extent / 2f, py - extent / 2f),
+                size = Size(extent, extent)
+            )
+        }
     }
 }
 
@@ -201,11 +426,12 @@ private fun DrawScope.drawWearDot(
     minDimension: Float,
     skin: WearDotSkin,
     hour: Int,
-    month: Int
+    month: Int,
+    wobble: Float
 ) {
-    val px = cx + cos(game.angle) * radius
+    val r = minDimension * WEAR_DOT_RADIUS_SHARE
+    val px = cx + cos(game.angle) * radius + wobble * (r * 2f) / WEAR_GRID
     var py = cy + sin(game.angle) * radius
-    val r = minDimension * 0.075f
 
     // Mario-Tod wie am Phone (drawTimingDot in TimingGameScreen.kt):
     // Während des Todes-Freeze bleibt der Vogel stehen, dann hüpft er nach
