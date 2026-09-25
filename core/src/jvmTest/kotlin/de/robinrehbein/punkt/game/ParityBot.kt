@@ -74,7 +74,7 @@ object ParityBot {
      */
     fun playPerfect(seed: Long, maxHits: Int): List<Snapshot> {
         val game = TimingGame(Random(seed))
-        game.tap() // READY -> RUNNING
+        game.start() // READY -> RUNNING
         val out = mutableListOf<Snapshot>()
         var frames = 0
         while (out.size < maxHits && frames < MAX_FRAMES) {
@@ -92,7 +92,7 @@ object ParityBot {
     /** Startet den Lauf und tappt nie wieder — Tod durch Überfahren. */
     fun playPassive(seed: Long): Death {
         val game = TimingGame(Random(seed))
-        game.tap()
+        game.start()
         var frames = 0
         var angle = game.angle
         var zoneCenter = game.zoneCenter

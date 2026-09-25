@@ -67,11 +67,11 @@ class TimingGameTest {
     }
 
     @Test
-    fun `starts in ready phase and first tap starts the run`() {
+    fun `starts in ready phase and start begins the run`() {
         val game = newGame()
         assertEquals(GamePhase.READY, game.phase)
 
-        val event = game.tap()
+        val event = game.start()
 
         assertEquals(GameEventStarted, event)
         assertEquals(GamePhase.RUNNING, game.phase)
@@ -80,7 +80,7 @@ class TimingGameTest {
     @Test
     fun `tap inside the zone scores and reverses direction`() {
         val game = newGame()
-        game.tap()
+        game.start()
         val directionBefore = game.direction
 
         val event = game.hitZone()
@@ -96,7 +96,7 @@ class TimingGameTest {
     @Test
     fun `perfect hit scores double`() {
         val game = newGame()
-        game.tap()
+        game.start()
 
         val event = game.hitPerfect()
 
@@ -108,7 +108,7 @@ class TimingGameTest {
     @Test
     fun `perfect streak ramps the bonus up to the cap`() {
         val game = newGame()
-        game.tap()
+        game.start()
 
         // +2, +3, +4, +5, +5 — die Serie klettert und deckelt bei +5.
         val expected = listOf(2, 3, 4, 5, 5)
@@ -124,7 +124,7 @@ class TimingGameTest {
     @Test
     fun `normal hit resets the perfect streak without punishment`() {
         val game = newGame()
-        game.tap()
+        game.start()
 
         game.hitPerfect() // +2, Serie 1
         game.hitPerfect() // +3, Serie 2
@@ -143,7 +143,7 @@ class TimingGameTest {
     @Test
     fun `difficulty scales with hits not score`() {
         val game = newGame()
-        game.tap()
+        game.start()
 
         game.hitPerfect() // Score +2, aber nur EIN Treffer
 
@@ -164,7 +164,7 @@ class TimingGameTest {
     @Test
     fun `tap outside the zone kills`() {
         val game = newGame()
-        game.tap()
+        game.start()
         // Direkt nach dem Start ist die Zone mindestens MIN_ZONE_DISTANCE
         // entfernt — ein sofortiger zweiter Tap liegt sicher daneben.
         val event = game.tap()
@@ -176,7 +176,7 @@ class TimingGameTest {
     @Test
     fun `passing the zone without a tap kills`() {
         val game = newGame()
-        game.tap()
+        game.start()
 
         val events = game.tick(8f)
 
@@ -189,7 +189,7 @@ class TimingGameTest {
     @Test
     fun `events from tap are also delivered through update`() {
         val game = newGame()
-        game.tap() // Started gepuffert
+        game.start() // Started gepuffert
 
         val events = game.update(1f / 60f)
 
@@ -199,7 +199,7 @@ class TimingGameTest {
     @Test
     fun `zone respawns ahead in the new running direction`() {
         val game = newGame()
-        game.tap()
+        game.start()
         repeat(5) {
             val event = game.hitZone()
             assertTrue(
@@ -218,7 +218,7 @@ class TimingGameTest {
     @Test
     fun `zone shrinks with score but never below minimum`() {
         val game = newGame()
-        game.tap()
+        game.start()
         assertEquals(TimingGame.BASE_ZONE_HALF, game.zoneHalfWidth, 0.001f)
 
         repeat(60) { game.hitZone() }
@@ -231,7 +231,7 @@ class TimingGameTest {
     fun `speed increases with score but is capped`() {
         val game = newGame()
         assertEquals(TimingGame.BASE_SPEED, game.currentSpeed(), 0.0001f)
-        game.tap()
+        game.start()
         repeat(60) { game.hitZone() }
         assertTrue(game.currentSpeed() <= TimingGame.MAX_SPEED)
         assertTrue(game.currentSpeed() > TimingGame.BASE_SPEED)
@@ -240,7 +240,7 @@ class TimingGameTest {
     @Test
     fun `restart lock prevents immediate rage-tap restart`() {
         val game = newGame()
-        game.tap()
+        game.start()
         game.tap() // daneben → DYING
         var time = 0f
         while (game.phase != GamePhase.OVER && time < 5f) {
@@ -263,7 +263,7 @@ class TimingGameTest {
     @Test
     fun `slightly late tap on the exit side still counts as a hit`() {
         val game = newGame()
-        game.tap()
+        game.start()
         assertTrue(game.runUntilInZone())
 
         // Bis knapp hinter die Zonenkante laufen — innerhalb des Gnadenfensters.
@@ -283,7 +283,7 @@ class TimingGameTest {
     @Test
     fun `clearly late tap is still a miss`() {
         val game = newGame()
-        game.tap()
+        game.start()
         assertTrue(game.runUntilInZone())
 
         // Über das Gnadenfenster hinauslaufen (aber vor dem Überfahren-Tod).
@@ -304,7 +304,7 @@ class TimingGameTest {
     @Test
     fun `zone distance keeps minimum reaction time even at high speed`() {
         val game = newGame()
-        game.tap()
+        game.start()
 
         repeat(60) {
             val event = game.hitZone()
@@ -327,7 +327,7 @@ class TimingGameTest {
     @Test
     fun `reset restores a clean ready state`() {
         val game = newGame()
-        game.tap()
+        game.start()
         game.hitZone()
         game.tap() // wahrscheinlich daneben
 
@@ -351,7 +351,7 @@ class TimingGameTest {
     fun `pulse twist varies the effective zone width within bounds`() {
         val game = newGame()
         game.twistOverride = setOf(Twist.PULSE)
-        game.tap()
+        game.start()
 
         var minSeen = Float.MAX_VALUE
         var maxSeen = 0f
@@ -372,7 +372,7 @@ class TimingGameTest {
     fun `drift twist moves the zone center`() {
         val game = newGame()
         game.twistOverride = setOf(Twist.DRIFT)
-        game.tap()
+        game.start()
         val centerBefore = game.zoneCenter
 
         game.tick(0.3f)
@@ -387,7 +387,7 @@ class TimingGameTest {
     fun `ghost twist blinks the dot while running`() {
         val game = newGame()
         game.twistOverride = setOf(Twist.GHOST)
-        game.tap()
+        game.start()
 
         var visibleSeen = false
         var hiddenSeen = false
@@ -412,7 +412,7 @@ class TimingGameTest {
     fun `fake zone spawns between dot and target zone`() {
         val game = newGame()
         game.twistOverride = setOf(Twist.FAKE)
-        game.tap()
+        game.start()
 
         if (game.hasFakeZone) {
             // Die Falle liegt in Laufrichtung vor der echten Zone.
@@ -427,7 +427,7 @@ class TimingGameTest {
     fun `chain twist keeps direction and spawns follow-up zone`() {
         val game = newGame()
         game.twistOverride = setOf(Twist.CHAIN)
-        game.tap()
+        game.start()
         val directionBefore = game.direction
         assertEquals(TimingGame.CHAIN_LENGTH, game.chainRemaining)
 
@@ -451,7 +451,7 @@ class TimingGameTest {
     @Test
     fun `twists unlock at their score thresholds and are announced once`() {
         val game = TimingGame(random = Random(7)) // ohne Override: echte Auswahl
-        game.tap()
+        game.start()
 
         val announced = mutableListOf<Twist>()
         var time = 0f
@@ -483,7 +483,7 @@ class TimingGameTest {
         var spawnsWithBothUnlocked = 0
         for (seed in 0 until 20) {
             val game = TimingGame(random = Random(seed))
-            game.tap()
+            game.start()
             var guard = 0
             while (game.phase == GamePhase.RUNNING &&
                 game.score < 45 && guard++ < 200
@@ -509,7 +509,7 @@ class TimingGameTest {
     @Test
     fun `no twists are active below the first threshold`() {
         val game = TimingGame(random = Random(3)) // ohne Override
-        game.tap()
+        game.start()
         // Score 0: keine Twists freigeschaltet
         assertTrue(game.activeTwists.isEmpty())
     }

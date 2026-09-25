@@ -22,8 +22,8 @@ class DailyChallengeTest {
         val seed = DailyChallenge.seedFor(20_675L)
         val a = TimingGame(random = Random(seed)).apply { twistOverride = emptySet() }
         val b = TimingGame(random = Random(seed)).apply { twistOverride = emptySet() }
-        a.tap()
-        b.tap()
+        a.start()
+        b.start()
         assertEquals(a.zoneCenter, b.zoneCenter, 0f)
     }
 
@@ -31,12 +31,12 @@ class DailyChallengeTest {
     fun `reseed macht einen Lauf deterministisch wiederholbar`() {
         val seed = DailyChallenge.seedFor(20_675L)
         val game = TimingGame(random = Random(seed)).apply { twistOverride = emptySet() }
-        game.tap()
+        game.start()
         val firstZone = game.zoneCenter
 
         game.reset()
         game.reseed(seed)
-        game.tap()
+        game.start()
         assertEquals(firstZone, game.zoneCenter, 0f)
     }
 
