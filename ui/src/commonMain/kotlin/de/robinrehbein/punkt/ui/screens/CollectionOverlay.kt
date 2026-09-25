@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.game.BackdropKind
 import de.robinrehbein.punkt.game.CardFrame
 import de.robinrehbein.punkt.game.CardStyle
 import de.robinrehbein.punkt.game.CollectionAxis
@@ -65,6 +66,7 @@ import de.robinrehbein.punkt.game.CollectionItemProgress
 import de.robinrehbein.punkt.game.CollectionProgress
 import de.robinrehbein.punkt.game.FrameTone
 import de.robinrehbein.punkt.game.GoalAxis
+import de.robinrehbein.punkt.game.PropShape
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinFamily
@@ -123,6 +125,7 @@ import de.robinrehbein.punkt.ui.world.PanelSand
 import de.robinrehbein.punkt.ui.world.RecordRed
 import de.robinrehbein.punkt.ui.world.TextDark
 import de.robinrehbein.punkt.ui.world.drawCloud
+import de.robinrehbein.punkt.ui.world.drawBackdrop
 import de.robinrehbein.punkt.ui.world.drawGroundStrip
 import de.robinrehbein.punkt.ui.world.drawPixelCircle
 import de.robinrehbein.punkt.ui.world.drawScenery
@@ -604,6 +607,7 @@ private fun DrawScope.drawShowcase(
     val kulisse = ScenePaint.of(scene)
 
     drawRect(color = Color(kulisse.sky[0]))
+    drawBackdrop(kulisse.backdrop, game.elapsed, cell)
     kulisse.cloud?.let { cloud ->
         val drift = game.elapsed * h * 0.02f
         drawCloud(w * 0.12f - drift % (w * 1.4f) + w * 0.2f, h * 0.12f, cell, Color(cloud))
@@ -1140,26 +1144,47 @@ private fun DrawScope.drawScenePreview(scene: SceneId, alpha: Float) {
             alpha = alpha
         )
     }
-    // Requisite: die größte Form der Welt als zwei Blöcke.
-    val prop = paint.props.first()
-    drawRect(
-        color = Color(prop.dark),
-        topLeft = Offset(d * 0.22f, horizon - d * 0.22f),
-        size = Size(d * 0.26f, d * 0.22f),
-        alpha = alpha
-    )
-    drawRect(
-        color = Color(prop.body),
-        topLeft = Offset(d * 0.28f, horizon - d * 0.34f),
-        size = Size(d * 0.16f, d * 0.14f),
-        alpha = alpha
-    )
-    drawRect(
-        color = Color(prop.light),
-        topLeft = Offset(d * 0.58f, horizon - d * 0.16f),
-        size = Size(d * 0.18f, d * 0.16f),
-        alpha = alpha
-    )
+    fun block(color: Long, x: Float, y: Float, bw: Float, bh: Float, a: Float = alpha) =
+        drawRect(color = Color(color), topLeft = Offset(d * x, d * y), size = Size(d * bw, d * bh), alpha = a)
+    val backdrop = paint.backdrop
+    when {
+        // WELTRAUM: Sterne und eine kleine Galaxie statt Requisiten.
+        backdrop?.kind == BackdropKind.STERNENHIMMEL -> {
+            val c = backdrop.colors
+            listOf(0.2f to 0.2f, 0.7f to 0.16f, 0.45f to 0.32f, 0.8f to 0.42f, 0.25f to 0.55f, 0.62f to 0.7f, 0.18f to 0.78f)
+                .forEachIndexed { i, (x, y) -> block(c[i % 3], x, y, 0.05f, 0.05f) }
+            block(c[4], 0.44f, 0.5f, 0.3f, 0.08f, alpha * 0.8f)
+            block(c[5], 0.36f, 0.56f, 0.18f, 0.06f, alpha * 0.7f)
+            block(c[3], 0.52f, 0.49f, 0.1f, 0.1f)
+        }
+        // BERG: ein verschneiter Gipfel hinter einer Tanne.
+        backdrop?.kind == BackdropKind.GEBIRGE -> {
+            val c = backdrop.colors
+            block(c[0], 0.14f, horizon / d - 0.14f, 0.6f, 0.14f)
+            block(c[0], 0.24f, horizon / d - 0.26f, 0.4f, 0.12f)
+            block(c[4], 0.32f, horizon / d - 0.36f, 0.24f, 0.1f)
+            val tanne = paint.props.first()
+            block(tanne.dark, 0.6f, horizon / d - 0.18f, 0.22f, 0.18f)
+            block(tanne.body, 0.64f, horizon / d - 0.3f, 0.14f, 0.12f)
+            block(tanne.light, 0.67f, horizon / d - 0.36f, 0.08f, 0.06f)
+        }
+        // MEER: Insel mit Palme.
+        paint.props.first().shape == PropShape.INSEL -> {
+            val insel = paint.props.first()
+            block(insel.light, 0.2f, horizon / d - 0.08f, 0.44f, 0.08f)
+            block(insel.stem, 0.36f, horizon / d - 0.3f, 0.06f, 0.22f)
+            block(insel.body, 0.24f, horizon / d - 0.36f, 0.3f, 0.07f)
+            block(insel.dark, 0.2f, horizon / d - 0.3f, 0.08f, 0.06f)
+            block(insel.dark, 0.48f, horizon / d - 0.3f, 0.08f, 0.06f)
+        }
+        // Sonst: die größte Form der Welt als drei Blöcke.
+        else -> {
+            val prop = paint.props.first()
+            block(prop.dark, 0.22f, horizon / d - 0.22f, 0.26f, 0.22f)
+            block(prop.body, 0.28f, horizon / d - 0.34f, 0.16f, 0.14f)
+            block(prop.light, 0.58f, horizon / d - 0.16f, 0.18f, 0.16f)
+        }
+    }
 }
 
 /**

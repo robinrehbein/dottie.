@@ -58,8 +58,44 @@ enum class PropShape {
     FELS,
 
     /** Laterne: schmaler Mast mit leuchtendem Glas (siehe LANTERN_PARTS). */
-    LATERNE
+    LATERNE,
+
+    /**
+     * Insel: flacher Sandhügel im Wasser mit zwei Palmen. [Prop.dark] und
+     * [Prop.body] sind die Palmwedel, [Prop.light] der Sand, [Prop.stem]
+     * und [Prop.stemShade] die Stämme, der Akzent die Sandschattenseite.
+     */
+    INSEL
 }
+
+/**
+ * Was hinter Wolken und Requisiten liegt — eine Ebene, die sich langsamer
+ * bewegt als alles davor.
+ */
+enum class BackdropKind {
+    /**
+     * Zwei Gebirgsketten mit Schneegipfeln, die hintere heller (Luftdunst).
+     * Farben: ferne Kette, ihre Schattenseite, nahe Kette, ihre
+     * Schattenseite, Schnee, Schneeschatten.
+     */
+    GEBIRGE,
+
+    /**
+     * Sternenhimmel über das ganze Bild: funkelnde Sterne, zwei langsam
+     * drehende Galaxien, ab und zu eine Sternschnuppe. Farben: Stern
+     * weiß, Stern warm, Stern kühl, Galaxienkern, Arm eins, Arm zwei.
+     */
+    STERNENHIMMEL
+}
+
+/**
+ * Die Hintergrund-Ebene einer Kulisse. [colors] folgt der Reihenfolge,
+ * die bei [BackdropKind] steht.
+ */
+data class Backdrop(
+    val kind: BackdropKind,
+    val colors: List<Long>
+)
 
 /**
  * Ein Rechteck einer Requisitenform, die als Tabelle statt als
@@ -121,13 +157,16 @@ data class Ground(
 /**
  * Eine komplette Kulisse. [cloud] und [ground] sind optional: Im Vakuum
  * gibt es weder Wolken noch Boden, und beides fehlt dort mit Absicht,
- * statt in Grau ausgeblendet zu werden.
+ * statt in Grau ausgeblendet zu werden. [backdrop] ist die Ebene hinter
+ * allem (Gebirge, Sternenhimmel), null heißt: nur Himmel. [props] darf
+ * leer sein — im WELTRAUM treibt nichts vor den Sternen.
  */
 class Scene(
     val sky: List<Long>,
     val cloud: Long?,
     val ground: Ground?,
-    val props: List<Prop>
+    val props: List<Prop>,
+    val backdrop: Backdrop?
 )
 
 object ScenePaint {
@@ -333,6 +372,7 @@ object ScenePaint {
             0xFF2A2640  // 30+ Nacht
         ),
         cloud = 0xFFE9FCFD,
+        backdrop = null,
         ground = Ground(
             sand = 0xFFDED895,
             sandShade = 0xFFD3C87E,
@@ -375,6 +415,7 @@ object ScenePaint {
             0xFF8E3B47, 0xFF4A2C4E, 0xFF241C33
         ),
         cloud = 0xFFF7E9C8,
+        backdrop = null,
         ground = Ground(
             sand = 0xFFE8C88A,
             sandShade = 0xFFD4AE6E,
@@ -403,13 +444,19 @@ object ScenePaint {
         )
     )
 
-    /** Meer: der Boden ist Wasser, die Narbe darauf ist Schaum. */
+    /**
+     * Meer: der Boden ist Wasser, die Narbe darauf ist Schaum. Zwischen
+     * den Wellen treiben Inseln mit Palmen vorbei. Die Palmwedel sind
+     * blaustichig grün wie die Kakteen der WÜSTE — ein Wiesengrün käme
+     * der Zielzone zu nah.
+     */
     private val MEER = Scene(
         sky = listOf(
             0xFF5AD2E8, 0xFF2F9AD4, 0xFF2E5FB8, 0xFFC4707C,
             0xFFE09A4A, 0xFF35447F, 0xFF1B2138
         ),
         cloud = 0xFFDFF4FF,
+        backdrop = null,
         ground = Ground(
             sand = 0xFF2F86C8,
             sandShade = 0xFF24699E,
@@ -418,34 +465,49 @@ object ScenePaint {
         ),
         props = listOf(
             Prop(
-                PropShape.WELLE, 0.075f, 1.0f,
-                dark = 0xFF1F5FA8, body = 0xFF2E86D8, light = 0xFF7FC8F0,
-                accents = listOf(0xFFFFFFFF, 0xFFDFF4FF)
+                PropShape.INSEL, 0.062f, 1.0f,
+                dark = 0xFF1F6B41, body = 0xFF2E8B57, light = 0xFFEBD49A,
+                stem = 0xFF9C6B3C, stemShade = 0xFF7A4E2A,
+                accents = listOf(0xFFCFB277)
             ),
             Prop(
-                PropShape.WELLE, 0.032f, 0.8f,
+                PropShape.WELLE, 0.022f, 0.8f,
                 dark = 0xFF1F5FA8, body = 0xFF2E86D8, light = 0xFF7FC8F0,
                 accents = listOf(0xFFDFF4FF, 0xFFFFFFFF)
             ),
             Prop(
-                PropShape.WELLE, 0.058f, -1.0f,
-                dark = 0xFF1F5FA8, body = 0xFF2E86D8, light = 0xFF7FC8F0,
-                accents = listOf(0xFFFFFFFF, 0xFFDFF4FF)
+                PropShape.INSEL, 0.046f, -1.0f,
+                dark = 0xFF1F6B41, body = 0xFF2E8B57, light = 0xFFEBD49A,
+                stem = 0xFF9C6B3C, stemShade = 0xFF7A4E2A,
+                accents = listOf(0xFFCFB277)
             ),
             Prop(
-                PropShape.FELS, 0.026f, 0f,
-                dark = 0xFF4A5A6A, body = 0xFF6B7C8C, light = 0xFF9AAAB8
+                PropShape.WELLE, 0.028f, -0.8f,
+                dark = 0xFF1F5FA8, body = 0xFF2E86D8, light = 0xFF7FC8F0,
+                accents = listOf(0xFFFFFFFF, 0xFFDFF4FF)
             )
         )
     )
 
-    /** Berg: Schnee statt Sand, Nadelbäume mit weißer Spitze. */
+    /**
+     * Berg: Schnee statt Sand, dahinter zwei Gebirgsketten mit
+     * Schneegipfeln, davor verschneite Tannen. Der Akzent der Tannen ist
+     * der Schnee auf ihren Lagen.
+     */
     private val BERG = Scene(
         sky = listOf(
             0xFFA8D8E8, 0xFF6FAFD8, 0xFF4A7FC0, 0xFF8A5A6E,
             0xFFD08A5A, 0xFF3E4A78, 0xFF1E2438
         ),
         cloud = 0xFFF2FAFF,
+        backdrop = Backdrop(
+            BackdropKind.GEBIRGE,
+            listOf(
+                0xFF9DB0CC, 0xFF8397B8, // ferne Kette, im Dunst
+                0xFF66789A, 0xFF52627F, // nahe Kette
+                0xFFF4F8FC, 0xFFD2DEEA  // Schnee, Schneeschatten
+            )
+        ),
         ground = Ground(
             sand = 0xFFE4EDF4,
             sandShade = 0xFFCBD8E4,
@@ -455,21 +517,27 @@ object ScenePaint {
         props = listOf(
             Prop(
                 PropShape.NADELBAUM, 0.075f, 1.0f,
-                dark = 0xFF1E5140, body = 0xFF2A6B52, light = 0xFFD8E8F0,
-                stem = 0xFF5C4130, stemShade = 0xFF46311F
+                dark = 0xFF1E5140, body = 0xFF2A6B52, light = 0xFFF4F8FC,
+                stem = 0xFF5C4130, stemShade = 0xFF46311F,
+                accents = listOf(0xFFF4F8FC)
             ),
             Prop(
-                PropShape.FELS, 0.032f, 0f,
-                dark = 0xFF6A6E78, body = 0xFF8A8F9C, light = 0xFFB8BEC9
+                PropShape.NADELBAUM, 0.040f, 0.6f,
+                dark = 0xFF1E5140, body = 0xFF2A6B52, light = 0xFFF4F8FC,
+                stem = 0xFF5C4130, stemShade = 0xFF46311F,
+                accents = listOf(0xFFF4F8FC)
             ),
             Prop(
                 PropShape.NADELBAUM, 0.058f, -1.0f,
-                dark = 0xFF1E5140, body = 0xFF2A6B52, light = 0xFFD8E8F0,
-                stem = 0xFF5C4130, stemShade = 0xFF46311F
+                dark = 0xFF1E5140, body = 0xFF2A6B52, light = 0xFFF4F8FC,
+                stem = 0xFF5C4130, stemShade = 0xFF46311F,
+                accents = listOf(0xFFF4F8FC)
             ),
             Prop(
-                PropShape.FELS, 0.026f, 0f,
-                dark = 0xFF6A6E78, body = 0xFF8A8F9C, light = 0xFFB8BEC9
+                PropShape.NADELBAUM, 0.032f, 0.4f,
+                dark = 0xFF1E5140, body = 0xFF2A6B52, light = 0xFFF4F8FC,
+                stem = 0xFF5C4130, stemShade = 0xFF46311F,
+                accents = listOf(0xFFF4F8FC)
             )
         )
     )
@@ -485,6 +553,7 @@ object ScenePaint {
             0xFFE8963C, 0xFF3A3F6E, 0xFF1A1A2E
         ),
         cloud = 0xFFE4E8F0,
+        backdrop = null,
         ground = Ground(
             sand = 0xFF4A4550,
             sandShade = 0xFF383340,
@@ -522,9 +591,9 @@ object ScenePaint {
     )
 
     /**
-     * Weltraum: kein Boden, keine Wolken. Statt Pflanzen treiben
-     * Felsbrocken in zwei Legierungen auf der Höhe, auf der sonst der
-     * Boden läge — die Linie bleibt, nur der Boden fehlt.
+     * Weltraum: kein Boden, keine Wolken, keine Requisiten — nur der
+     * Sternenhimmel mit Galaxien. Früher trieben hier Felsbrocken auf
+     * Bodenhöhe; im Spiel lasen sie sich als graue Wolken.
      */
     private val WELTRAUM = Scene(
         sky = listOf(
@@ -538,25 +607,16 @@ object ScenePaint {
             0xFF8A2C4A, 0xFF3A1A3E, 0xFF0A0716
         ),
         cloud = null,
-        ground = null,
-        props = listOf(
-            Prop(
-                PropShape.FELS, 0.075f, 1.0f,
-                dark = 0xFF342E42, body = 0xFF4E4860, light = 0xFF726C88
-            ),
-            Prop(
-                PropShape.FELS, 0.032f, 0.8f,
-                dark = 0xFF2E3A4A, body = 0xFF46566C, light = 0xFF6C8098
-            ),
-            Prop(
-                PropShape.FELS, 0.058f, -1.0f,
-                dark = 0xFF342E42, body = 0xFF4E4860, light = 0xFF726C88
-            ),
-            Prop(
-                PropShape.FELS, 0.026f, 0.4f,
-                dark = 0xFF2E3A4A, body = 0xFF46566C, light = 0xFF6C8098
+        backdrop = Backdrop(
+            BackdropKind.STERNENHIMMEL,
+            listOf(
+                0xFFFFFFFF, 0xFFFFE8A8, 0xFFA8D8FF, // Sterne: weiß, warm, kühl
+                0xFFFFF4D8,                         // Galaxienkern
+                0xFF7FA8E8, 0xFFE89AB8              // Arme: Blau, Rosé
             )
-        )
+        ),
+        ground = null,
+        props = emptyList()
     )
 
     /**
@@ -592,7 +652,7 @@ object ScenePaint {
     /**
      * Drei Farben für Vorschau-Kacheln: Tageshimmel, Boden (im Weltraum
      * ersatzweise die Nachtstufe) und die Körperfarbe der größten
-     * Requisite. Mehr braucht eine 36-dp-Kachel nicht, um erkennbar zu
+     * Requisite (im Weltraum, der keine hat, die Sternfarbe). Mehr braucht eine 36-dp-Kachel nicht, um erkennbar zu
      * sein — und weniger wäre nicht unterscheidbar.
      */
     fun chips(id: SceneId): List<Long> {
@@ -600,7 +660,7 @@ object ScenePaint {
         return listOf(
             scene.sky[0],
             scene.ground?.sand ?: scene.sky[6],
-            scene.props.first().body
+            scene.props.firstOrNull()?.body ?: scene.backdrop!!.colors[0]
         )
     }
 

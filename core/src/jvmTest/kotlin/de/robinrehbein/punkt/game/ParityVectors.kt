@@ -460,6 +460,12 @@ object ParityVectors {
                 } ?: arrayOf("-")
             )
             line("scene.chips.${id.name}", *ScenePaint.chips(id).map { argb(it) }.toTypedArray())
+            line(
+                "scene.backdrop.${id.name}",
+                *scene.backdrop?.let { b ->
+                    arrayOf(b.kind.name) + b.colors.map { argb(it) }.toTypedArray()
+                } ?: arrayOf("-")
+            )
             // Requisiten: Form, Größe, Schwingen und die drei Farbstufen.
             // Der Stiel und die Akzente hängen daran, dass ein Renderer sie
             // überhaupt kennt — deshalb stehen sie mit in der Zeile.

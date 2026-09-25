@@ -88,6 +88,9 @@ fun DrawScope.drawTimingWorld(
         val sky = Color(kulisse.sky[SkinPaint.skyStage(game.score)])
         drawRect(color = sky, topLeft = Offset(-40f, -40f), size = Size(w + 80f, h + 80f))
 
+        // Hinter allem: Gebirge (BERG) oder Sternenhimmel (WELTRAUM).
+        drawBackdrop(kulisse.backdrop, game.elapsed, cell)
+
         // Langsam driftende Wolken. Im Vakuum gibt es keine — dann bleibt
         // der Himmel leer, statt graue Attrappen zu zeigen.
         kulisse.cloud?.let { cloud ->
@@ -148,12 +151,21 @@ internal fun DrawScope.drawScenery(game: TimingGame, cell: Float, props: List<Pr
     // wird danach gezeichnet und verdeckt die Wurzeln sauber.
     val groundY = ScenePaint.groundY(h) + cell * 2f
 
+    // Im WELTRAUM treibt vor den Sternen nichts.
+    if (props.isEmpty()) return
+
     val drift = game.elapsed * h * 0.016f
-    val spacing = w * 0.26f
-    val count = (w / spacing).toInt() + 3
+    // Locker gestellt: zwei, höchstens drei Requisiten zugleich im Bild.
+    // Die Abstände schwanken je Platz etwas, damit die Reihe nicht wie
+    // gestempelt aussieht. Die Anzahl ist ein Vielfaches der Liste, sonst
+    // stünden am Umbruch zwei gleiche Requisiten nebeneinander.
+    val spacing = w * PROP_SPACING
+    var count = props.size
+    while (count * spacing < w + spacing * 2f) count += props.size
     val total = spacing * count
     for (k in 0 until count) {
-        val x = ((k * spacing - drift) % total + total) % total - spacing
+        val jitter = PROP_JITTER[k % PROP_JITTER.size] * spacing
+        val x = ((k * spacing + jitter - drift) % total + total) % total - spacing
         val wind = sin(game.elapsed * 1.4f + k * 1.7f) * cell * 0.6f
         val prop = props[k % props.size]
         val accent = if (prop.accents.isEmpty()) {
@@ -164,6 +176,12 @@ internal fun DrawScope.drawScenery(game: TimingGame, cell: Float, props: List<Pr
         drawProp(prop, x, groundY, h * prop.size, wind * prop.sway, cell, accent)
     }
 }
+
+/** Abstand der Requisiten als Anteil der Bildbreite (früher 0,26: zu voll). */
+private const val PROP_SPACING = 0.42f
+
+/** Feste Versätze je Platz, als Anteil des Abstands. */
+private val PROP_JITTER = listOf(0f, 0.18f, -0.12f, 0.08f, -0.2f, 0.14f, -0.05f, 0.1f)
 
 /** Verteilt eine Requisite auf die Zeichnung ihrer Form. */
 internal fun DrawScope.drawProp(
@@ -187,7 +205,7 @@ internal fun DrawScope.drawProp(
         PropShape.KAKTUS -> drawPixelCactus(cx, groundY, s, sway, cell, dark, body, light, accent)
         PropShape.WELLE -> drawPixelWave(cx, groundY, s, sway, cell, dark, body, light, accent)
         PropShape.NADELBAUM ->
-            drawPixelFir(cx, groundY, s, sway, cell, dark, body, light, stem, stemShade)
+            drawPixelFir(cx, groundY, s, sway, cell, dark, body, light, stem, stemShade, accent)
         PropShape.HOCHHAUS -> drawPixelTower(cx, groundY, s, cell, dark, body, light, accent)
         PropShape.FELS ->
             drawBlockParts(ScenePaint.ROCK_PARTS, cx, groundY, s, sway, cell,
@@ -195,6 +213,8 @@ internal fun DrawScope.drawProp(
         PropShape.LATERNE ->
             drawBlockParts(ScenePaint.LANTERN_PARTS, cx, groundY, s, sway, cell,
                 dark, body, light, accent)
+        PropShape.INSEL ->
+            drawPixelIsland(cx, groundY, s, sway, cell, dark, body, light, stem, stemShade, accent)
     }
 }
 
@@ -493,7 +513,10 @@ internal fun DrawScope.drawPixelWave(
     drawRect(color = foam, topLeft = Offset(lx + s * 0.2f, layerTop + u), size = Size(u, u))
 }
 
-/** Nadelbaum: schmaler Stamm, drei spitze Lagen, helle Spitze obendrauf. */
+/**
+ * Nadelbaum: schmaler Stamm, drei spitze Lagen, helle Spitze obendrauf.
+ * Mit [snow] liegt auf jeder Lage ein Schneestreifen.
+ */
 internal fun DrawScope.drawPixelFir(
     cx: Float,
     groundY: Float,
@@ -504,7 +527,8 @@ internal fun DrawScope.drawPixelFir(
     body: Color,
     light: Color,
     stem: Color,
-    stemShade: Color
+    stemShade: Color,
+    snow: Color = Color.Transparent
 ) {
     val trunkW = s * 0.22f
     val trunkH = s * 0.30f
@@ -540,6 +564,15 @@ internal fun DrawScope.drawPixelFir(
             size = Size(lw + cell * 2f, lh + cell * 2f)
         )
         drawRect(color = color, topLeft = Offset(lx - lw / 2f, layerTop), size = Size(lw, lh))
+        // Schnee auf der Lage (BERG): ein Streifen an der Oberkante,
+        // links länger, als wäre er von rechts angeweht.
+        if (snow != Color.Transparent) {
+            drawRect(
+                color = snow,
+                topLeft = Offset(lx - lw / 2f, layerTop),
+                size = Size(lw * 0.7f, maxOf(cell, lh * 0.22f))
+            )
+        }
     }
 
     val tw = s * 0.24f
