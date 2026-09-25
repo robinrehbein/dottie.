@@ -15,6 +15,7 @@ import de.robinrehbein.punkt.ui.data.fixedCalendarForTools
 import de.robinrehbein.punkt.ui.platform.GameFeedback
 import de.robinrehbein.punkt.ui.platform.GameSounds
 import de.robinrehbein.punkt.ui.screens.GameScreen
+import de.robinrehbein.punkt.ui.screens.ProbeScene
 import java.io.File
 import kotlin.random.Random
 import kotlin.test.Test
@@ -62,6 +63,10 @@ class ScreenshotRenderer {
     fun render() {
         val dir = System.getProperty("shots.dir") ?: System.getenv("SHOTS_DIR") ?: return
         renderSet(File(dir), width = 1080, height = 2400, density = 2.625f, seed = SEED)
+        // == AP-31 release ==
+        // Derselbe Ablauf auf einem kleinen Telefon (360x640 dp).
+        renderSet(File(dir, "720x1280"), width = 720, height = 1280, density = 2f, seed = SEED)
+        // == /AP-31 ==
     }
 
     // == AP-22 start ==
@@ -226,33 +231,17 @@ class ScreenshotRenderer {
         val w = width
         val h = height
         val d = density
-        var now = 0L
-        fun ImageComposeScene.step(seconds: Double, everyMs: Long = 16) {
-            val until = now + (seconds * 1_000_000_000L).toLong()
-            while (now < until) {
-                now += everyMs * 1_000_000L
-                render(now)
-            }
-        }
-        fun ImageComposeScene.tap(x: Float, y: Float) {
-            sendPointerEvent(PointerEventType.Press, Offset(x, y))
-            step(0.05)
-            sendPointerEvent(PointerEventType.Release, Offset(x, y))
-            step(0.05)
-        }
-        fun ImageComposeScene.save(name: String) {
-            val img = render(now)
-            val data = img.encodeToData(EncodedImageFormat.PNG)!!
-            File(dir, name).writeBytes(data.bytes)
-            println("-> $name")
-        }
+        // == AP-31 release ==
+        // Die Szene aus den Sammlungs-Bildern (AP-15): Sie zeichnet in eine
+        // einzige Fläche, statt je Bild ein Skia-Bild anzulegen (Speicher,
+        // Wunsch AP-22), und findet Knöpfe über ihre Beschriftung. So trifft
+        // HILFE in den Einstellungen auch auf 720x1280, ohne abgezählte Pixel.
+        fun ProbeScene.tap(x: Float, y: Float) = tapAt(Offset(x, y))
+        fun ProbeScene.save(name: String) = save(File(dir, name))
+        // == /AP-31 ==
 
         val game = TimingGame(Random(seed))
-        ImageComposeScene(
-            width = w,
-            height = h,
-            density = Density(d)
-        ) {
+        ProbeScene(w, h, d) {
             GameScreen(
                 store = GameStore(FakeKeyValueStore()),
                 sounds = NoSounds(),
@@ -289,14 +278,6 @@ class ScreenshotRenderer {
             scene.save("03-gameover.png")
             // == /AP-14 ==
 
-            // Hilfe aus dem Game-Over: "?" oben rechts (16dp Rand, 48dp Knopf)
-            scene.tap(w - (16 + 24) * d, (16 + 24) * d)
-            scene.step(0.6)
-            scene.save("04-help.png")
-            // Hilfe schliessen (Tap konsumiert, kein Neustart)
-            scene.tap(w / 2f, h * 0.85f)
-            scene.step(0.3)
-
             // == AP-14 bedienung ==
             // Zurueck ins Menue: MENUE in der Leiste am unteren Rand, links
             // (ohne TEILEN ueber die ganze Breite).
@@ -305,30 +286,26 @@ class ScreenshotRenderer {
             // == /AP-14 ==
             scene.save("05-menu-back.png")
 
-            // Einstellungen: Regler-Knopf oben rechts im READY
-            scene.tap(w - (16 + 24) * d, (16 + 24) * d)
+            // == AP-31 release ==
+            // Einstellungen: Regler-Knopf oben rechts im READY. Die Hilfe
+            // gibt es nur noch hier (das „?“ im Game-Over ist weg, Plan 7.3).
+            scene.tap("EINSTELLUNGEN")
             scene.step(0.6)
             scene.save("06-settings.png")
-            scene.tap(w / 2f, 200f)
+            scene.tap("HILFE")
+            scene.step(0.6)
+            scene.save("04-help.png")
+            // Hilfe über das X schließen: zurück im Startbildschirm.
+            scene.tap("SCHLIESSEN")
             scene.step(0.3)
 
             // Sammlung: Taster-Leiste unten, mittleres Drittel
             scene.tap(w / 2f, h - 32 * d)
             scene.step(0.8)
-            scene.save("07-skins.png")
-            // Tief in die Liste ziehen: die Skin-Familien unterhalb der
-            // Rahmen — der lange Mittelteil der Sammlung.
-            repeat(40) {
-                scene.sendPointerEvent(
-                    PointerEventType.Scroll,
-                    Offset(w / 2f, h / 2f),
-                    scrollDelta = Offset(0f, 10f)
-                )
-                scene.step(0.05)
-            }
-            scene.save("07b-skins-scrolled.png")
-            scene.tap(w / 2f, 150f)
+            scene.save("07-sammlung.png")
+            scene.tap("SCHLIESSEN")
             scene.step(0.3)
+            // == /AP-31 ==
 
             // Statistik: Taster-Leiste unten, rechtes Drittel
             scene.tap(w * 5f / 6f, h - 32 * d)

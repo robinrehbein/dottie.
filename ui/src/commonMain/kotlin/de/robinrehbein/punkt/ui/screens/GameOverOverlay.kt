@@ -72,24 +72,10 @@ import de.robinrehbein.punkt.ui.world.TextDark
 import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
 
-// Das Game-Over mit Hilfe-Ecke und Spott-Texten. Bis v2.27 Teil von
-// GameOverlays.kt (aufgeteilt nach Plan 8.4).
-
-/** Kleiner "?"-Knopf oben rechts, öffnet die Spiel-Erklärung. */
-@Composable
-private fun HelpCornerButton(onHelp: () -> Unit, modifier: Modifier = Modifier) {
-    PixelButton(
-        text = "?",
-        onClick = onHelp,
-        backgroundColor = PanelSand,
-        borderColor = TextDark,
-        textColor = TextDark,
-        width = 48.dp,
-        height = 48.dp,
-        borderWidth = 3.dp,
-        modifier = modifier
-    )
-}
+// Das Game-Over mit Spott-Texten. Bis v2.27 Teil einer gemeinsamen
+// Overlay-Datei (aufgeteilt nach Plan 8.4). Das „?“ oben rechts ist weg
+// (Plan 7.3): Todesursache und Twist-Lektion erklären den Tod, die Hilfe
+// liegt in den Einstellungen.
 
 @Composable
 fun GameOverOverlay(
@@ -113,7 +99,6 @@ fun GameOverOverlay(
     /** null = diese Plattform kann nicht teilen; dann faellt der Knopf weg. */
     onShare: (() -> Unit)?,
     onMenu: () -> Unit,
-    onHelp: () -> Unit,
     /**
      * Der Rahmen um die Punkte-Box — der, den auch die geteilte Karte
      * traegt. Die Vorgabe ist der Bestand: Wer diese Zeile nicht setzt,
@@ -150,13 +135,6 @@ fun GameOverOverlay(
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
         ) {
-            HelpCornerButton(
-                onHelp = onHelp,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-            )
-
             // Oben verankert statt zentriert: Jede Zusatzzeile (Medaille, Skin,
             // Twist, Ziel) wächst nach unten und schiebt nichts mehr, was man
             // sich merken muss. Alles hier oben heißt „nochmal“.

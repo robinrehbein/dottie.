@@ -284,12 +284,11 @@ class BedienungTest {
                 newTwist = null,
                 goal = null,
                 onShare = {},
-                onMenu = {},
-                onHelp = {}
+                onMenu = {}
             )
         }
-        // MENÜ, TEILEN und das „?“
-        assertButtonsOrSwitches(roles, expected = 3)
+        // Nur MENÜ und TEILEN; das „?“ ist seit AP-31 weg (Plan 7.3).
+        assertButtonsOrSwitches(roles, expected = 2)
         assertTrue(roles.any { it.first in setOf("MENÜ", "MENU") }, "$roles")
         assertTrue(roles.any { it.first in setOf("TEILEN", "SHARE") }, "$roles")
     }

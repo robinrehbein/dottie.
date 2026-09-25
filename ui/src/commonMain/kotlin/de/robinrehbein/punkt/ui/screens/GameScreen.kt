@@ -911,7 +911,6 @@ private fun GameScreenContent(
                         }
                     },
                     onMenu = { backToMenu() },
-                    onHelp = { showHelp = true },
                     cause = {
                         // == AP-11 todesursache ==
                         DeathCauseSmall(deathCause)
