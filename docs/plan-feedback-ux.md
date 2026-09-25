@@ -148,15 +148,26 @@ Hinweise zur Umsetzung:
   (`SHOTS_DIR=… ./gradlew :ui:jvmTest`). Twists lassen sich über
   `TimingGame.twistOverride` erzwingen.
 
-## 5. Offene Entscheidungen
+## 5. Entscheidungen
 
-1. **BLIND! +1** einführen (Punktewertung) oder nur Nebel ohne Bonus?
-2. **Stützräder:** Zone leuchtet in den ersten 5 Läufen. Ist 5 richtig?
-3. **Ersatzfarbe** für den Himmel bei Score 10 in allen Kulissen.
-4. **Welches Lila** meinen die Tester? Klärt der Test in Phase 6.
-5. **Wear OS:** Bomben, Lauflicht und Nebel auch auf der Uhr, oder dort
-   vereinfacht?
-6. **Summen im Nebel gedämpft:** später oder gar nicht?
+Alle Vorschläge aus diesem Plan sind angenommen (25.09.2026). Im Einzelnen:
+
+1. **BLIND! +1** kommt (Treffer, solange der Punkt im Nebel ist).
+2. **Stützräder:** Zone leuchtet in den ersten 5 Läufen.
+3. **Himmel bei Score 10** bekommt in allen Kulissen einen Ton ohne Lila
+   (tieferes Blau), mit neu gerechneter `MIN_SKY_SIGNAL_DISTANCE`.
+4. **Wear OS** zieht bei Regeländerungen mit (Startregel, Nebel) und
+   übernimmt Bomben und Nebel vereinfacht, soweit das kleine Display es
+   zulässt.
+5. **Summen im Nebel gedämpft:** später, nicht Teil dieser Runde.
+6. **Welten-Schwellen:** WÜSTE 100 Läufe, MEER 2.500 Punkte, BERG 1 Daily,
+   STADT Rekord 100, mit Bestandsschutz (Abschnitt 7).
+7. **Gesperrte Töne** sind probehörbar.
+8. **Game-Over:** TEILEN und MENÜ in der festen Leiste, 0,8 s gesperrt.
+9. **Keine Pause** im laufenden Spiel; Zurück tut dort nichts.
+
+Noch offen bleibt nur, welches Lila die Tester meinten. Das klärt der Test
+in Abschnitt 6, die Umsetzung hängt nicht davon ab.
 
 ## 6. Test mit neuen Spielern
 
@@ -256,15 +267,33 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
   Kulissen“), die alle Welten voraussetzen. Die Schwellen sind in
   `Progress.kt` (ab Zeile 100) gespiegelt und müssen dort mitgeändert werden.
 
-  **Achtung Bestandsschutz:** Freischaltungen werden nicht gespeichert,
-  sondern jedes Mal aus den Statistiken berechnet (`ScenePaint.isUnlocked`,
-  auch beim Sync-Merge in `GameStore.kt:562`). Wer heute Rekord 85–99 hat,
-  würde STADT mit dem Update verlieren, und eine gewählte STADT fiele auf
-  WIESE zurück. Lösung: beim ersten Start nach dem Update einen gespeicherten
-  Merker „STADT besessen“ setzen, wenn `bestScore >= 85`, und in
-  `isUnlocked` berücksichtigen (auch für WELTRAUM und KASKADE). Der Merker
-  muss mitsynchronisiert werden (Uhr, zweites Gerät). Beim Update können
-  außerdem mehrere Welten auf einmal aufgehen, dann gesammelt feiern.
+  **Bestandsschutz (entschieden):** Freischaltungen werden heute nicht
+  gespeichert, sondern bei jedem Aufruf aus den Statistiken berechnet
+  (`ScenePaint.isUnlocked`, auch beim Sync-Merge in `GameStore.kt:562`). Wer
+  Rekord 85–99 hat, würde STADT mit dem Update verlieren. Lösung:
+
+  1. **Besitz-Menge statt nur Regel.** Neue gespeicherte Menge „Welten im
+     Besitz“ in `GameStore`, gespeichert über die **Namen** (wie
+     `TwistLessons`, nicht über Ordinale). Offen ist eine Welt, wenn sie in
+     der Menge steht **oder** die neue Regel erfüllt ist. Sobald die Regel
+     greift, kommt die Welt dauerhaft in die Menge.
+  2. **Einmalige Übernahme beim ersten Start nach dem Update:** Mit den
+     **alten** Schwellen (eine eingefrorene Funktion `legacyUnlocked`, nur
+     für diesen Schritt) alle Welten in die Menge schreiben, die der Spieler
+     heute schon hat. Ein Versionsmerker verhindert eine Wiederholung.
+  3. **Sync:** Die Menge wandert in `SyncState` mit und wird als
+     Vereinigung zusammengeführt, passend zu den übrigen Regeln dort
+     (`maxOf` für Rekord und Läufe, `SyncState.kt:96–130`). So verliert
+     auch die Uhr oder ein zweites Gerät nichts.
+  4. **Abhängige Regeln** (WELTRAUM „alle anderen“, Rahmen KASKADE „alle
+     Kulissen“) fragen die Besitz-Menge statt der Regel.
+  5. **Tests:** Rekord 90 vor dem Update behält STADT; frischer Spieler mit
+     Rekord 90 bekommt sie nicht; Merge zweier Geräte vereinigt; die gewählte
+     Welt fällt nicht auf WIESE zurück.
+
+  Dasselbe Muster lässt sich später für Skins, Töne und Rahmen nutzen, falls
+  deren Schwellen je geändert werden. Beim Update können mehrere Welten auf
+  einmal aufgehen, dann gesammelt feiern.
 
 ### 7.3 Schnell
 
@@ -289,10 +318,8 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
 6. DAILY zurücknehmen und beim ersten Mal erklären, zusammen mit dem neuen
    Startbildschirm (Phase 4).
 
-### 7.5 Offen
+### 7.5 Entschieden
 
-
-- Braucht das Game-Over TEILEN überhaupt in der Leiste, oder nur nach einem
-  neuen Rekord?
-- 0,8 s Sperre für die Leiste: im Test mit echten Wut-Taps prüfen.
-- Soll es im laufenden Spiel eine Pause geben (dann würde Zurück pausieren)?
+- TEILEN steht immer in der Leiste, nicht nur nach einem Rekord.
+- 0,8 s Sperre für die Leiste; im Test mit echten Wut-Taps nachmessen.
+- Keine Pause im laufenden Spiel; Zurück tut dort nichts.
