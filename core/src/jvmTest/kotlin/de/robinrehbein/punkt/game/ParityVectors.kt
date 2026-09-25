@@ -220,6 +220,7 @@ object ParityVectors {
         line("const.SPEED_PER_HIT", f(TimingGame.SPEED_PER_HIT))
         line("const.MAX_SPEED", f(TimingGame.MAX_SPEED))
         line("const.READY_SPEED", f(TimingGame.READY_SPEED))
+        line("const.READY_ZONE_CENTER", f(TimingGame.READY_ZONE_CENTER))
         line("const.BASE_ZONE_HALF", f(TimingGame.BASE_ZONE_HALF))
         line("const.ZONE_SHRINK_PER_HIT", f(TimingGame.ZONE_SHRINK_PER_HIT))
         line("const.MIN_ZONE_HALF", f(TimingGame.MIN_ZONE_HALF))
@@ -241,8 +242,9 @@ object ParityVectors {
         line("const.PULSE_SPEED", f(TimingGame.PULSE_SPEED))
         line("const.PULSE_MIN_SHARE", f(TimingGame.PULSE_MIN_SHARE))
         line("const.DRIFT_SPEED", f(TimingGame.DRIFT_SPEED))
-        line("const.GHOST_BLINK_SPEED", f(TimingGame.GHOST_BLINK_SPEED))
-        line("const.GHOST_VISIBLE_SHARE", f(TimingGame.GHOST_VISIBLE_SHARE))
+        // NEBEL (Twist.GHOST): Bank vor der Zone statt Blinken nach der Uhr.
+        line("const.FOG_SECONDS", f(TimingGame.FOG_SECONDS))
+        line("const.FOG_END_SHARE", f(TimingGame.FOG_END_SHARE))
         line("const.FAKE_MIN_DISTANCE", f(TimingGame.FAKE_MIN_DISTANCE))
         line("const.CHAIN_LENGTH", TimingGame.CHAIN_LENGTH.toString())
         line("const.CHAIN_MIN_DISTANCE", f(TimingGame.CHAIN_MIN_DISTANCE))
@@ -774,6 +776,30 @@ object ParityVectors {
             death.framesToSettle.toString(),
             f(death.angleAtDeath),
             f(death.zoneCenterAtDeath)
+        )
+
+        // Startregel: Der erste Tap im Grün ist Treffer 1. Vorher ein Tap
+        // daneben, der nichts kosten darf (NotYet, gleiche Zone, gleicher
+        // Zufall). Danach spielt der Bot perfekt weiter.
+        val ready = ParityBot.playReadyHit(SEED, maxHits = 12)
+        line(
+            "trace.ready.notYet",
+            ready.notYetEvent,
+            ready.notYetDelivered.joinToString("+").ifEmpty { "-" },
+            f(ready.notYetZoneCenter)
+        )
+        line("trace.ready.frames", ready.framesToHit.toString())
+        line("trace.ready.events", ready.startEvents.joinToString("+"))
+        line("trace.ready.hits", ready.snapshots.size.toString())
+        ready.snapshots.forEachIndexed { index, snap -> line("trace.ready.$index", *fields(snap)) }
+
+        // Start am Zonenrand: normaler Treffer, +1.
+        val edge = ParityBot.playReadyEdge(SEED + 7)
+        line(
+            "trace.ready.edge",
+            edge.framesToHit.toString(),
+            edge.startEvents.joinToString("+"),
+            *fields(edge.snapshots.first())
         )
         appendLine()
     }
