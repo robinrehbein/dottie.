@@ -1,11 +1,9 @@
 package de.robinrehbein.punkt.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,9 +14,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.Twist
+import de.robinrehbein.punkt.ui.components.MineIcon
 import de.robinrehbein.punkt.ui.text.twistLesson
 import de.robinrehbein.punkt.ui.theme.Bytesized
-import de.robinrehbein.punkt.ui.world.FakeZoneColor
 import de.robinrehbein.punkt.ui.world.OutlineColor
 
 // Die einmalige Twist-Erklärung im Game-Over. Bis v2.27 Teil von
@@ -29,12 +27,12 @@ import de.robinrehbein.punkt.ui.world.OutlineColor
  * Dieselben zwei Farben, aus denen im Game-Over ohnehin alles gebaut ist
  * — der Pixelrahmen der Punkte-Tafel und die Feier-Zeilen darunter.
  *
- * Das Farbquadrat gibt es nur bei der FALLE, und es steht VOR der Zeile
- * statt mitten im Satz: Genauso zeigt die Hilfe ihre Twists (siehe
+ * Die Mine ([MineIcon]) gibt es nur bei der FALLE, und sie steht VOR der
+ * Zeile statt mitten im Satz: Genauso zeigt die Hilfe ihre Twists (siehe
  * [TwistHelpRow]), und die Stelle hängt an keiner Wortstellung, die sich
- * zwischen Deutsch und Englisch verschiebt. Die Warnung hängt damit an
- * der Farbe, nicht am Wort "violett" — und wer die Zone im nächsten Lauf
- * sieht, erkennt sie wieder.
+ * zwischen Deutsch und Englisch verschiebt. Die Warnung hängt damit am
+ * Bild der Bombe, nicht an einer Farbe — und wer die Minen im nächsten
+ * Lauf sieht, erkennt sie wieder.
  */
 @Composable
 internal fun TwistLessonShield(twist: Twist) {
@@ -46,11 +44,7 @@ internal fun TwistLessonShield(twist: Twist) {
             .padding(horizontal = 12.dp, vertical = 7.dp)
     ) {
         if (twist == Twist.FAKE) {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .background(FakeZoneColor)
-            )
+            MineIcon(size = 16.dp)
             Spacer(modifier = Modifier.width(8.dp))
         }
         Text(

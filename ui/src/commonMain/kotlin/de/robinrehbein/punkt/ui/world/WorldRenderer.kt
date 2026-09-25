@@ -114,6 +114,7 @@ fun DrawScope.drawTimingWorld(
             drawUnlockBurst(fx.celebrateTime, cx, cy, radius, cell)
         }
         // == AP-12 bomben ==
+        drawTrapBoom(game, fx.deathTime, cx, cy, radius, cell)
         // == /AP-12 ==
     }
 
@@ -677,7 +678,8 @@ internal fun DrawScope.drawGroundStrip(cell: Float, ground: Ground) {
 
 /**
  * Die Kreisbahn als Kette blockiger Zellen. Die Zielzone ist grün mit
- * hellem Perfekt-Kern, die Fallen-Zone violett — alles im Pixel-Raster.
+ * hellem Perfekt-Kern, die Falle eine Kette aus Minen mit rotem Lauflicht
+ * (siehe MineField.kt) — alles im Pixel-Raster.
  */
 internal fun DrawScope.drawTrack(
     game: TimingGame,
@@ -691,6 +693,13 @@ internal fun DrawScope.drawTrack(
     // bleiben durch ihre größeren Blöcke bewusst ein durchgehendes Band.
     val segments = 60
     val zoneHalf = game.effectiveZoneHalf()
+    val mines = trapMines(game, segments, zoneHalf)
+    // Minen in Blockgröße, aber nie so groß, dass sie sich überdecken
+    // (unter PULS rückt die Kette zusammen). Ihre Mitten auf dem Bild
+    // braucht die Schleife, um Sandblöcke unter den Minen frei zu lassen.
+    val minePx = trapMinePixel(game, segments, radius, cell)
+    val mineHalf = mineHalfExtent(minePx)
+    val mineCenters = mines.map { Offset(cx + cos(it.angle) * radius, cy + sin(it.angle) * radius) }
     for (k in 0 until segments) {
         val a = k.toFloat() / segments * (2f * PI.toFloat())
         val px = cx + cos(a) * radius
@@ -705,19 +714,22 @@ internal fun DrawScope.drawTrack(
         val inPerfectCore = abs(relativeZone) <= coreHalf
 
         val fakeHalf = game.fakeZoneHalf()
-        val inFake = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= fakeHalf
-        val inFakeCore = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= coreHalf
+        val relativeFake = TimingGame.wrapToPi(a - game.fakeZoneCenter)
+        val inFake = game.hasFakeZone && abs(relativeFake) <= fakeHalf
 
-        val highlighted = inZone || inFake
-        val outer = if (highlighted) cell * 5f else cell * 3f
-        val inner = if (highlighted) cell * 3.4f else cell * 1.8f
+        // Die Falle ist eine Kette aus Minen statt aus Blöcken: Hier
+        // bleibt die Bahn frei, die Minen kommen nach der Schleife.
+        // Liegt die Falle auf der Zone, gewinnt die Zone: Grün bleibt Grün.
+        if (inFake && !inZone) continue
+
+        val outer = if (inZone) cell * 5f else cell * 3f
+        // Die Minen liegen nicht auf dem Segment-Raster: Ein Sandblock am
+        // Rand der Falle, den eine Mine berühren würde, bleibt ebenfalls frei.
+        if (!inZone && blockHitsMine(px, py, outer / 2f, mineCenters, mineHalf)) continue
+        val inner = if (inZone) cell * 3.4f else cell * 1.8f
         val innerColor = when {
             inPerfectCore -> GrassLight
             inZone -> GrassDark
-            inFakeCore -> FakeZoneCoreColor
-            inFake -> FakeZoneColor
             else -> GroundSandShade
         }
 
@@ -731,6 +743,17 @@ internal fun DrawScope.drawTrack(
             topLeft = Offset(px - inner / 2f, py - inner / 2f),
             size = Size(inner, inner)
         )
+    }
+
+    // Die Minen der Falle: so viele, wie TrapPaint.count aus der
+    // Grundbreite ergibt, verteilt über die Breite fakeZoneHalf() (8.7).
+    // Erst alle Ränder, dann alle Kugeln: Benachbarte Minen teilen sich
+    // ihren Rand, die Kugeln berühren sich nie (trapMinePixel).
+    for (c in mineCenters) {
+        drawMineRim(c.x, c.y, minePx)
+    }
+    for ((i, mine) in mines.withIndex()) {
+        drawMineBody(mineCenters[i].x, mineCenters[i].y, minePx, mine.red)
     }
 }
 
