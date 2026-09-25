@@ -42,7 +42,12 @@ internal object WearSyncMerge {
         // Maske — also erst verodern, dann die Bits zählen.
         monthsPlayed = Integer.bitCount(before.monthsPlayed or incoming.monthsPlayed),
         seasonEarned = before.seasonEarned or incoming.seasonEarned,
-        patronOwned = patronOwned
+        patronOwned = patronOwned,
+        // Die Besitz-Menge der Welten wird vereinigt, wie in
+        // SyncState.mergedWith: Eine STADT, die das Telefon aus dem
+        // Bestand behält, darf die Uhr nicht an der neuen Schwelle
+        // abweisen.
+        ownedScenes = before.ownedScenes + incoming.ownedScenes
     )
 
     /**
@@ -53,9 +58,10 @@ internal object WearSyncMerge {
      *
      * Die Uhr wählt selbst nie eine Kulisse (sie spiegelt nur das
      * Telefon), trotzdem lohnt die Prüfung: Für WELTRAUM ("alle anderen
-     * Kulissen gesammelt") zählen dieselben Achsen wie bei den Skins, und
+     * Welten gesammelt") zählen dieselben Achsen wie bei den Skins, und
      * die Uhr kennt die zusammengeführten Stände hier oft eher als die
-     * eigenen Prefs sie schon zeigen.
+     * eigenen Prefs sie schon zeigen. Die Besitz-Menge beider Seiten
+     * zählt mit (Bestandsschutz der Welten-Leiter).
      */
     fun sceneToAdopt(
         before: SyncState,

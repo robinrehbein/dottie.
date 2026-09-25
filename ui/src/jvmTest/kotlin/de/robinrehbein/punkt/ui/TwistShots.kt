@@ -70,6 +70,27 @@ class TwistShots {
         TimingGame(Random(seed)).apply { twistOverride = twists }
 
     // == AP-13 welten ==
+    /**
+     * Der Himmel ab Score 10 in allen sechs Welten — die Stufe, die bis
+     * zur Welten-Leiter Lila war und für die Falle gehalten wurde. Ohne
+     * Twist, der Punkt kurz vor der Zone.
+     */
+    @Test
+    fun himmelBeiScore10() {
+        val dir = shotsDir() ?: return
+        SceneId.entries.forEach { scene ->
+            val game = seededGame(emptySet())
+            var runde = 0
+            while (game.score < 10) {
+                check(playTo(game, game.hits + 1)) { "Bot ist in $scene vor Score 10 gestorben" }
+                check(++runde < 20) { "Score 10 wird in $scene nicht erreicht" }
+            }
+            val stufe = de.robinrehbein.punkt.game.SkinPaint.skyStage(game.score)
+            check(stufe == 2) { "Score ${game.score} liegt auf Stufe $stufe statt 2" }
+            approachZone(game)
+            shoot(dir, "himmel-10-${scene.name.lowercase()}.png", game, scene = scene)
+        }
+    }
     // == /AP-13 ==
 
     /**
