@@ -15,9 +15,8 @@ import kotlin.math.sqrt
  */
 class ScenePaintTest {
 
-    /** Zielzone (Perfekt-Kern und Band) und Fallen-Zone. */
+    /** Zielzone (Perfekt-Kern und Band). */
     private val zielzone = listOf(0xFF74BF2EL, 0xFF9DE85AL)
-    private val falle = 0xFFB44FD8L
 
     private val maxStats = SkinStats(
         bestScore = 999,
@@ -44,11 +43,12 @@ class ScenePaintTest {
     }
 
     @Test
-    fun `keine Kulissenfarbe kommt der Zielzone oder der Falle nahe`() {
+    fun `keine Kulissenfarbe kommt der Zielzone nahe`() {
         // Die Kulisse ist die verkäufliche Fläche, die Bahn nicht. Damit
         // das trägt, darf keine Kulissenfarbe aussehen wie das, worauf
-        // getippt wird (grün) oder worauf niemals getippt werden darf
-        // (violett) — sonst verkauft die Kulisse Verwirrung.
+        // getippt wird (grün) — sonst verkauft die Kulisse Verwirrung.
+        // Die Falle ist eine Kette von Minen und keine Farbfläche mehr;
+        // ihren Kontrast prüft `jede Mine hebt sich von jedem Himmel ab`.
         //
         // Der Bestand der WIESE reißt diese Grenze selbst: Buschgrün liegt
         // 13 Schritte neben der Zonenfarbe, die Grasnarbe trägt sie exakt.
@@ -74,10 +74,6 @@ class ScenePaintTest {
                         abstand(farbe, zone) >= ScenePaint.MIN_ZONE_DISTANCE
                     )
                 }
-                assertTrue(
-                    "$id trägt ${hex(farbe)} — nur ${abstand(farbe, falle)} von der Falle entfernt",
-                    abstand(farbe, falle) >= ScenePaint.MIN_ZONE_DISTANCE
-                )
             }
         }
     }
@@ -95,22 +91,19 @@ class ScenePaintTest {
     }
 
     @Test
-    fun `kein Himmel verschluckt die Signale der Bahn`() {
-        // Zone, Perfekt-Kern, Falle und Fallen-Kern sind die einzigen
-        // Flaechen im Bild, an denen eine Entscheidung haengt. Ein Himmel,
-        // der eine davon schluckt, nimmt dem Lauf seine Grundlage — und
-        // mit sechs Kulissen mal sieben Stufen gibt es jetzt 42
-        // Hintergruende, vor denen das passieren kann.
+    fun `kein Himmel verschluckt die Zonensignale der Bahn`() {
+        // Zone und Perfekt-Kern sind die Flächen im Bild, an denen eine
+        // Entscheidung hängt. Ein Himmel, der eine davon schluckt, nimmt
+        // dem Lauf seine Grundlage — und mit sechs Kulissen mal sieben
+        // Stufen gibt es 42 Hintergründe, vor denen das passieren kann.
         //
         // Die Schwelle ist der Bestand selbst (siehe MIN_SKY_SIGNAL_DISTANCE):
-        // Das knappste ausgelieferte Paar ist der Fallen-Kern vor dem
-        // Stadt-Himmel der zweiten Stufe. Der Test sagt damit nicht "das
-        // ist gut", sondern "nichts Neues darf schlechter werden".
+        // Das knappste Paar ist die helle Zone vor der WÜSTE, Stufe 1. Der
+        // Test sagt damit nicht "das ist gut", sondern "nichts Neues darf
+        // schlechter werden". Die Minen der Falle prüft der nächste Test.
         val signale = mapOf(
             "Zone hell" to 0xFF9DE85AL,
-            "Zone dunkel" to 0xFF74BF2EL,
-            "Falle" to 0xFFB44FD8L,
-            "Fallen-Kern" to 0xFF8A2FB0L
+            "Zone dunkel" to 0xFF74BF2EL
         )
         SceneId.entries.forEach { id ->
             ScenePaint.sky(id).forEachIndexed { stufe, himmel ->
@@ -123,6 +116,40 @@ class ScenePaintTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun `jede Mine hebt sich von jedem Himmel ab`() {
+        // Die Falle ist eine Kette von Minen: schwarze Kugel mit hellem
+        // Rand. Vor hellen Himmeln trägt die Kugel, vor dunklen der Rand.
+        // Es reicht, wenn eine der beiden klar absticht — aber eine muss
+        // es, in jeder Welt und auf jeder Stufe.
+        SceneId.entries.forEach { id ->
+            ScenePaint.sky(id).forEachIndexed { stufe, himmel ->
+                val kugel = abstand(himmel, TrapPaint.BALL)
+                val rand = abstand(himmel, TrapPaint.RIM)
+                assertTrue(
+                    "$id Stufe $stufe (${hex(himmel)}): Kugel $kugel, Rand $rand — " +
+                        "die Mine geht im Himmel unter",
+                    maxOf(kugel, rand) >= MINE_CONTRAST
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `kein Himmel ist mehr lila`() {
+        // Die Tester haben den lila Himmel ab Score 10 für die Falle
+        // gehalten. Die alten Töne dürfen nicht zurückkommen.
+        val alt = setOf(0xFF7B6FD0L, 0xFF7B6B9EL, 0xFF3E1A78L, 0xFF6A1E6EL)
+        SceneId.entries.forEach { id ->
+            ScenePaint.sky(id).forEach { himmel ->
+                assertFalse("$id trägt wieder ${hex(himmel)}", himmel in alt)
+            }
+        }
+        assertEquals(0xFF3F6FC4L, ScenePaint.sky(SceneId.WIESE)[2])
+        assertEquals(0xFF4A6AA8L, ScenePaint.sky(SceneId.STADT)[2])
+        assertEquals(0xFF243A8CL, ScenePaint.sky(SceneId.WELTRAUM)[2])
     }
 
     @Test
@@ -208,11 +235,13 @@ class ScenePaintTest {
     @Test
     fun `die WIESE ist Pixel fuer Pixel der Bestand`() {
         // Die Messlatte des ganzen Umbaus: Wer die Umstellung sieht, hat
-        // sie falsch gemacht. Die Werte hier stammen aus GameOverlays.kt
-        // und TimingGameScreen.kt vor der Einführung der Kulissen.
+        // sie falsch gemacht. Die Werte hier stammen aus dem alten
+        // Overlay-Code und TimingGameScreen.kt vor der Einführung der
+        // Kulissen. Einzige gewollte Änderung: Stufe 2 ist tiefes Blau
+        // statt Lila (Tester hielten den Himmel für die Falle).
         assertEquals(
             listOf(
-                0xFF4EC0CAL, 0xFF5B9BD5L, 0xFF7B6FD0L, 0xFFC0616FL,
+                0xFF4EC0CAL, 0xFF5B9BD5L, 0xFF3F6FC4L, 0xFFC0616FL,
                 0xFFD98A3DL, 0xFF3D4A8CL, 0xFF2A2640L
             ),
             ScenePaint.sky(SceneId.WIESE).toList()
@@ -436,21 +465,35 @@ class ScenePaintTest {
 
     @Test
     fun `jede Kulisse haengt an ihrer eigenen Achse`() {
-        // Der Sinn der Streuung: Wer nur Rekorde jagt, bekommt trotzdem
-        // nicht alle Kulissen, und wer nur täglich spielt, auch nicht.
-        assertTrue(ScenePaint.isUnlocked(SceneId.WUESTE, SkinStats(0, 0, 0, runCount = 500)))
-        assertFalse(ScenePaint.isUnlocked(SceneId.WUESTE, SkinStats(0, 0, 0, runCount = 499)))
-        assertTrue(ScenePaint.isUnlocked(SceneId.MEER, SkinStats(0, 0, 0, totalScore = 10_000)))
-        assertFalse(ScenePaint.isUnlocked(SceneId.MEER, SkinStats(0, 0, 0, totalScore = 9_999)))
-        assertTrue(ScenePaint.isUnlocked(SceneId.BERG, SkinStats(0, 0, 30)))
-        assertFalse(ScenePaint.isUnlocked(SceneId.BERG, SkinStats(0, 0, 29)))
-        assertTrue(ScenePaint.isUnlocked(SceneId.STADT, SkinStats(85, 0, 0)))
-        assertFalse(ScenePaint.isUnlocked(SceneId.STADT, SkinStats(84, 0, 0)))
+        // Die Welten-Leiter: je Welt eine Achse, alle früh erreichbar.
+        assertTrue(ScenePaint.isUnlocked(SceneId.WUESTE, SkinStats(0, 0, 0, runCount = 100)))
+        assertFalse(ScenePaint.isUnlocked(SceneId.WUESTE, SkinStats(0, 0, 0, runCount = 99)))
+        assertTrue(ScenePaint.isUnlocked(SceneId.MEER, SkinStats(0, 0, 0, totalScore = 2_500)))
+        assertFalse(ScenePaint.isUnlocked(SceneId.MEER, SkinStats(0, 0, 0, totalScore = 2_499)))
+        assertTrue(ScenePaint.isUnlocked(SceneId.BERG, SkinStats(0, 0, 1)))
+        assertFalse(ScenePaint.isUnlocked(SceneId.BERG, SkinStats(0, 0, 0)))
+        assertTrue(ScenePaint.isUnlocked(SceneId.STADT, SkinStats(100, 0, 0)))
+        assertFalse(ScenePaint.isUnlocked(SceneId.STADT, SkinStats(99, 0, 0)))
+    }
+
+    @Test
+    fun `WUESTE und MEER fallen mit TIGER und BASKETBALL zusammen`() {
+        // Gewollt (Plan 8.6 #11): Welt und Skin werden gemeinsam gefeiert.
+        val laeufe = SkinStats(0, 0, 0, runCount = 100)
+        assertTrue(SkinPaint.isUnlocked(SkinId.TIGER, laeufe))
+        assertTrue(ScenePaint.isUnlocked(SceneId.WUESTE, laeufe))
+        assertFalse(SkinPaint.isUnlocked(SkinId.TIGER, laeufe.copy(runCount = 99)))
+        assertFalse(ScenePaint.isUnlocked(SceneId.WUESTE, laeufe.copy(runCount = 99)))
+        val punkte = SkinStats(0, 0, 0, totalScore = 2_500)
+        assertTrue(SkinPaint.isUnlocked(SkinId.BASKETBALL, punkte))
+        assertTrue(ScenePaint.isUnlocked(SceneId.MEER, punkte))
+        assertFalse(SkinPaint.isUnlocked(SkinId.BASKETBALL, punkte.copy(totalScore = 2_499)))
+        assertFalse(ScenePaint.isUnlocked(SceneId.MEER, punkte.copy(totalScore = 2_499)))
     }
 
     @Test
     fun `der Weltraum schliesst die Kulissen-Sammlung ab`() {
-        val fastAlles = maxStats.copy(bestScore = 84)
+        val fastAlles = maxStats.copy(bestScore = 99)
         assertFalse(
             "Solange die STADT fehlt, bleibt der WELTRAUM zu",
             ScenePaint.isUnlocked(SceneId.WELTRAUM, fastAlles)
@@ -460,6 +503,61 @@ class ScenePaintTest {
 
         // Und er hängt an keinem Kauf: maxStats hat patronOwned = false.
         assertFalse(maxStats.patronOwned)
+    }
+
+    // ===== Bestandsschutz (Besitz-Menge) =====
+
+    @Test
+    fun `eine Welt in der Besitz-Menge bleibt offen, auch unter ihrer Schwelle`() {
+        val rekord90 = SkinStats(90, 0, 0)
+        assertFalse(
+            "Rekord 90 reicht nach der neuen Regel nicht",
+            ScenePaint.isUnlocked(SceneId.STADT, rekord90)
+        )
+        val mitBesitz = rekord90.copy(ownedScenes = setOf(SceneId.STADT.name))
+        assertTrue(ScenePaint.isUnlocked(SceneId.STADT, mitBesitz))
+        assertFalse("Die Regel selbst bleibt streng", ScenePaint.ruleMet(SceneId.STADT, mitBesitz))
+        assertEquals(2, ScenePaint.unlockedCount(mitBesitz))
+    }
+
+    @Test
+    fun `der Weltraum fragt die Besitz-Menge`() {
+        // Alle anderen Welten aus dem Bestand, keine davon nach der
+        // heutigen Regel: Der WELTRAUM muss trotzdem aufgehen.
+        val alleAnderen = SceneId.entries.filter { it != SceneId.WELTRAUM }.map { it.name }.toSet()
+        val stand = SkinStats(0, 0, 0, ownedScenes = alleAnderen)
+        assertTrue(ScenePaint.isUnlocked(SceneId.WELTRAUM, stand))
+        assertEquals(SceneId.entries.size, ScenePaint.unlockedCount(stand))
+    }
+
+    @Test
+    fun `unbekannte Namen in der Besitz-Menge schaden nicht`() {
+        val stand = SkinStats(0, 0, 0, ownedScenes = setOf("WOLKENKUCKUCKSHEIM"))
+        assertEquals(1, ScenePaint.unlockedCount(stand))
+        assertEquals(listOf(SceneId.WIESE.name), ScenePaint.unlockedNames(stand))
+    }
+
+    @Test
+    fun `legacyUnlocked kennt die alten Schwellen und ignoriert den Besitz`() {
+        assertTrue(ScenePaint.legacyUnlocked(SceneId.WUESTE, SkinStats(0, 0, 0, runCount = 500)))
+        assertFalse(ScenePaint.legacyUnlocked(SceneId.WUESTE, SkinStats(0, 0, 0, runCount = 499)))
+        assertTrue(ScenePaint.legacyUnlocked(SceneId.MEER, SkinStats(0, 0, 0, totalScore = 10_000)))
+        assertFalse(ScenePaint.legacyUnlocked(SceneId.MEER, SkinStats(0, 0, 0, totalScore = 9_999)))
+        assertTrue(ScenePaint.legacyUnlocked(SceneId.BERG, SkinStats(0, 0, 30)))
+        assertFalse(ScenePaint.legacyUnlocked(SceneId.BERG, SkinStats(0, 0, 29)))
+        assertTrue(ScenePaint.legacyUnlocked(SceneId.STADT, SkinStats(85, 0, 0)))
+        assertFalse(ScenePaint.legacyUnlocked(SceneId.STADT, SkinStats(84, 0, 0)))
+        val alt = SkinStats(85, 0, 30, runCount = 500, totalScore = 10_000)
+        assertTrue(ScenePaint.legacyUnlocked(SceneId.WELTRAUM, alt))
+        assertFalse(ScenePaint.legacyUnlocked(SceneId.WELTRAUM, alt.copy(bestScore = 84)))
+        assertFalse(
+            "Die Übernahme fragt allein den alten Stand",
+            ScenePaint.legacyUnlocked(SceneId.STADT, SkinStats(0, 0, 0, ownedScenes = setOf("STADT")))
+        )
+        assertEquals(
+            listOf("WIESE", "STADT"),
+            ScenePaint.legacyUnlockedNames(SkinStats(90, 0, 0))
+        )
     }
 
     @Test
@@ -480,6 +578,12 @@ class ScenePaintTest {
         }
         return sqrt(sum)
     }
+
+    /**
+     * Mindestabstand, den Kugel oder Rand einer Mine zu jedem Himmel
+     * halten muss (Plan 8.5, AP-13).
+     */
+    private val MINE_CONTRAST = 150f
 
     /** Float-Vergleich für die Spiegelprobe — Tabellenwerte in 1/100. */
     private fun nah(a: Float, b: Float) = kotlin.math.abs(a - b) < 1e-4f

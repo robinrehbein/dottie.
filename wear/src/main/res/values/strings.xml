@@ -3,6 +3,8 @@
 <resources>
     <string name="app_name" translatable="false">Dottie.</string>
     <string name="tap">TAP</string>
+    <!-- Tap daneben im Start: Der Lauf beginnt erst mit einem Tap im Grün. -->
+    <string name="not_yet">NOT YET</string>
     <string name="best">BEST: %1$d</string>
     <string name="sound_on">SOUND: ON</string>
     <string name="sound_off">SOUND: OFF</string>

@@ -13,7 +13,15 @@
   dort; seit die Karte in :ui gezeichnet wird, stehen sie hier.
 -->
 <resources>
-    <string name="ready_hint">STOP THE DOT IN THE GREEN ZONE</string>
+    <string name="ready_hint">TAP WHEN THE DOT IS IN THE GREEN</string>
+    <!-- == AP-22 start == -->
+    <string name="start_not_yet">NOT YET</string>
+    <string name="start_daily_armed">DAILY: ON</string>
+    <string name="daily_intro_title">DAILY RUN</string>
+    <string name="daily_intro_text">THE SAME FOR EVERYONE TODAY. YOUR BEST TRY COUNTS.</string>
+    <string name="daily_intro_how">IT STARTS WITH YOUR FIRST TAP IN THE GREEN. TAP DAILY AGAIN TO SWITCH IT OFF.</string>
+    <string name="daily_intro_start">START</string>
+    <!-- == /AP-22 == -->
     <string name="sound_on">SOUND: ON</string>
     <string name="sound_off">SOUND: OFF</string>
     <string name="reminder_on">REMINDER: ON</string>
@@ -22,6 +30,21 @@
     <string name="leaderboard">LEADERBOARD</string>
     <string name="daily">DAILY</string>
     <string name="skins">SKINS</string>
+    <string name="collection">COLLECTION</string>
+    <!-- == AP-15 sammlung == -->
+    <string name="tab_bird">BIRD</string>
+    <string name="tab_world">WORLD</string>
+    <string name="tab_sound">SOUND</string>
+    <string name="tab_frame">FRAME</string>
+    <string name="collection_new">NEW</string>
+    <string name="collection_new_world">NEW WORLD: %1$s</string>
+    <string name="collection_new_worlds">NEW WORLDS: %1$s</string>
+    <string name="collection_unlocked">UNLOCKED</string>
+    <string name="collection_locked">LOCKED</string>
+    <string name="collection_locked_preview">PREVIEW · LOCKED</string>
+    <string name="collection_progress">%1$d/%2$d %3$s</string>
+    <string name="collection_hear">LISTEN</string>
+    <!-- == /AP-15 == -->
     <string name="today_score">TODAY: %1$d</string>
     <string name="streak_one">STREAK: 1 DAY</string>
     <string name="streak_many">STREAK: %1$d DAYS</string>
@@ -31,6 +54,13 @@
     <string name="banner_record">RECORD BROKEN!</string>
     <string name="banner_stage">NEW STAGE!</string>
     <string name="game_over">GAME OVER</string>
+    <!-- == AP-11 todesursache == -->
+    <string name="death_early">TOO EARLY</string>
+    <string name="death_late">TOO LATE</string>
+    <string name="death_missed">MISSED</string>
+    <string name="death_trap">BOOM!</string>
+    <string name="death_bomb_lesson">BOMB = NEVER TAP</string>
+    <!-- == /AP-11 == -->
     <string name="medal">MEDAL</string>
     <string name="medal_bronze">BRONZE</string>
     <string name="medal_silver">SILVER</string>
@@ -49,12 +79,21 @@
     -->
     <string name="twist_learned_pulse">NEW THIS RUN: PULSE — THE ZONE BREATHES</string>
     <string name="twist_learned_drift">NEW THIS RUN: DRIFT — THE ZONE WANDERS</string>
-    <string name="twist_learned_ghost">NEW THIS RUN: GHOST — THE DOT BLINKS AWAY</string>
-    <string name="twist_learned_fake">NEW THIS RUN: TRAP — NEVER TAP INTO IT</string>
+    <string name="twist_learned_ghost">NEW THIS RUN: FOG — THE DOT VANISHES INTO THE CLOUD</string>
+    <string name="twist_learned_fake">NEW THIS RUN: BOMBS — NEVER TAP INTO THEM</string>
+    <!-- == AP-12 bomben == -->
+    <!-- == /AP-12 == -->
     <string name="twist_learned_chain">NEW THIS RUN: CHAIN — TWO ZONES IN A ROW</string>
     <string name="tap_retry">TAP = RETRY</string>
     <string name="share">SHARE</string>
     <string name="menu">MENU</string>
+    <!-- == AP-14 bedienung == -->
+    <!-- Beschriftungen der Schalterzeilen: der Zustand steht am Schalter, nicht im Text. -->
+    <string name="ctl_sound">SOUND</string>
+    <string name="ctl_reminder">REMINDER</string>
+    <!-- Vorlesetext des X-Knopfs oben rechts in den Overlays. -->
+    <string name="ctl_close">CLOSE</string>
+    <!-- == /AP-14 == -->
     <string name="remove_ads">REMOVE ADS — %1$s</string>
     <string name="ad_privacy">AD PRIVACY SETTINGS</string>
     <string-array name="taunts_zero">
@@ -90,16 +129,17 @@
     <string name="twist_pulse_text">THE ZONE BREATHES — GROWS AND SHRINKS.</string>
     <string name="twist_drift_title">DRIFT (AT 10)</string>
     <string name="twist_drift_text">THE ZONE SLOWLY WANDERS ALONG THE TRACK.</string>
-    <string name="twist_ghost_title">GHOST (AT 15)</string>
-    <string name="twist_ghost_text">THE DOT BLINKS AWAY — KEEP THE TRACK IN YOUR HEAD.</string>
-    <string name="twist_fake_title">TRAP (AT 20)</string>
-    <string name="twist_fake_text">PURPLE DECOY ZONE: NEVER TAP INTO IT!</string>
+    <string name="twist_ghost_title">FOG (AT 15)</string>
+    <string name="twist_ghost_text">A FOG BANK LIES BEFORE THE ZONE — THE DOT FLIES ON UNSEEN. HIT IT BLIND: +1.</string>
+    <!-- == AP-23 nebel == -->
+    <string name="fog_blind_plus">BLIND! +%1$d</string>
+    <!-- == /AP-23 == -->
+    <string name="twist_fake_title">BOMBS (AT 20)</string>
+    <string name="twist_fake_text">A CHAIN OF BOMBS NEXT TO THE ZONE: NEVER TAP INTO IT!</string>
     <string name="twist_chain_title">CHAIN (AT 25)</string>
     <string name="twist_chain_text">TWO ZONES IN A ROW — SAME DIRECTION.</string>
     <string name="help_max_twists">AT MOST TWO TWISTS AT ONCE — RANDOMLY MIXED.</string>
-    <string name="tap_to_close">TAP TO CLOSE</string>
     <string name="skin_selected">SELECTED</string>
-    <string name="skin_tap_select">TAP TO SELECT</string>
     <string name="skin_family_einfarbig">SOLID</string>
     <string name="skin_family_gemustert">PATTERNED</string>
     <string name="skin_family_bewegt">ANIMATED</string>
@@ -200,25 +240,24 @@
     <string name="skin_hint_herz">FEBRUARY: PLAY ON 3 DAYS</string>
     <string name="skin_hint_osterei">APRIL: PLAY ON 5 DAYS</string>
     <string name="skin_hint_goenner">PATRON PACK</string>
-    <string name="scenes">SCENES</string>
+    <string name="scenes">WORLDS</string>
     <string name="scene_wiese">MEADOW</string>
     <string name="scene_wueste">DESERT</string>
     <string name="scene_meer">SEA</string>
     <string name="scene_berg">MOUNTAIN</string>
     <string name="scene_stadt">CITY</string>
     <string name="scene_weltraum">SPACE</string>
-    <string name="scene_hint_wueste">500 RUNS</string>
-    <string name="scene_hint_meer">10,000 POINTS TOTAL</string>
-    <string name="scene_hint_berg">DAILY STREAK: 30 DAYS</string>
-    <string name="scene_hint_stadt">BEST 85</string>
-    <string name="scene_hint_weltraum">COLLECT EVERY OTHER SCENE</string>
+    <string name="scene_hint_wueste">100 RUNS</string>
+    <string name="scene_hint_meer">2,500 POINTS TOTAL</string>
+    <string name="scene_hint_berg">1 DAILY PLAYED</string>
+    <string name="scene_hint_stadt">BEST 100</string>
+    <string name="scene_hint_weltraum">ALL OTHER WORLDS</string>
     <string name="sounds">SOUNDS</string>
     <string name="sound_klassik">CLASSIC</string>
     <string name="sound_glocke">BELL</string>
     <string name="sound_amboss">ANVIL</string>
     <string name="sound_hint_glocke">PERFECT STREAK: 20</string>
     <string name="sound_hint_amboss">25,000 POINTS TOTAL</string>
-    <string name="sound_tap_hear">TAP TO HEAR</string>
     <string name="stats">STATS</string>
     <string name="stats_runs">RUNS</string>
     <string name="stats_total_score">TOTAL POINTS</string>
@@ -232,7 +271,7 @@
     <!-- Kartenrahmen und Ziel-Zeilen (aus main, v2.25) -->
     <string name="frame_doppellinie">DOUBLE LINE</string>
     <string name="frame_hint_doppellinie">COLLECT 10 SKINS</string>
-    <string name="frame_hint_kaskade">SPLENDOUR AND EVERY SCENE</string>
+    <string name="frame_hint_kaskade">SPLENDOUR AND EVERY WORLD</string>
     <string name="frame_hint_krone">PEARL BAND AND EVERY SKIN</string>
     <string name="frame_hint_perlenkranz">CASCADE AND EVERY SOUND</string>
     <string name="frame_hint_pracht">COLLECT 33 SKINS</string>
@@ -244,16 +283,15 @@
     <string name="frame_pracht">SPLENDOUR</string>
     <string name="frame_schlicht">PLAIN</string>
     <string name="frame_zinnen">BATTLEMENT</string>
-    <string name="frames">FRAMES</string>
     <string name="goal_axis_days">DAYS</string>
     <string name="goal_axis_months">MONTHS</string>
     <string name="goal_axis_perfect">PERFECTS IN A ROW</string>
     <string name="goal_axis_points">POINTS</string>
     <string name="goal_axis_runs">RUNS</string>
-    <string name="goal_axis_scenes">SCENES</string>
+    <string name="goal_axis_scenes">WORLDS</string>
     <string name="goal_axis_skins">SKINS</string>
     <string name="goal_axis_total">POINTS TOTAL</string>
-    <string name="goal_next_scene">NEXT SCENE: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_next_scene">NEXT WORLD: %1$s — %2$d/%3$d %4$s</string>
     <string name="goal_next_skin">NEXT SKIN: %1$s — %2$d/%3$d %4$s</string>
     <string name="goal_next_sound">NEXT SOUND: %1$s — %2$d/%3$d %4$s</string>
     <string name="help">HELP</string>
@@ -265,7 +303,7 @@
          Android-Schale. -->
     <string name="card_daily">DAILY CHALLENGE</string>
     <string name="card_points">POINTS</string>
-    <string name="card_scene">SCENE: %1$s</string>
+    <string name="card_scene">WORLD: %1$s</string>
     <string name="card_daily_streak">DAILY STREAK: %1$d DAYS</string>
     <string name="card_record">BEST: %1$d</string>
     <string name="card_challenge">CAN YOU BEAT IT?</string>

@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.27.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.28.
 
 ## Checkliste
 
@@ -134,9 +134,10 @@ wird öffentlich sichtbar.
 > **Ein Punkt. Ein Daumen. Kein Erbarmen.**
 >
 > DOTTIE. ist pures Timing: Ein Punkt kreist auf seiner Bahn — tippe
-> genau dann, wenn er die grüne Zone durchquert. Triffst du, geht es
-> weiter. Verpasst du, ist der Run sofort vorbei. Kein Tutorial-Kram,
-> keine Wartezeiten: Der nächste Versuch ist einen Tap entfernt.
+> genau dann, wenn er die grüne Zone durchquert. Schon der erste Tap im
+> Grün zählt. Triffst du, geht es weiter. Verpasst du, ist der Run sofort
+> vorbei, und du siehst, warum: zu früh, zu spät, verpasst oder BOOM!
+> Keine Wartezeiten: Der nächste Versuch ist einen Tap entfernt.
 >
 > **PERFEKT gibt's obendrauf**
 > Die helle Zonen-Mitte zählt als PERFEKT und startet eine Serie:
@@ -147,8 +148,8 @@ wird öffentlich sichtbar.
 > **Mit dem Score kommen die Twists**
 > ▪ PULS — die Zone atmet, wird größer und kleiner
 > ▪ DRIFT — die Zone wandert über die Bahn
-> ▪ GEIST — der Punkt blinkt weg, behalte die Bahn im Kopf
-> ▪ FALLE — violette Köder-Zone: bloß nicht hineintippen
+> ▪ NEBEL — der Punkt fliegt durch eine Wolke, triff ihn blind: +1
+> ▪ BOMBEN — eine Kette aus Bomben neben der Zone: bloß nicht hineintippen
 > ▪ KETTE — zwei Zonen direkt nacheinander
 > Maximal zwei Twists gleichzeitig, fair gemischt.
 >
@@ -182,9 +183,10 @@ wird öffentlich sichtbar.
 > **One dot. One thumb. No mercy.**
 >
 > DOTTIE. is pure timing: a dot circles its track — tap exactly when it
-> crosses the green zone. Hit it and you keep going. Miss it and the run
-> is over on the spot. No tutorials, no waiting: the next attempt is one
-> tap away.
+> crosses the green zone. Your very first tap in the green already
+> counts. Hit it and you keep going. Miss it and the run is over on the
+> spot, and you see why: too early, too late, missed or BOOM! No
+> waiting: the next attempt is one tap away.
 >
 > **PERFECT pays extra**
 > The bright center of the zone counts as PERFECT and starts a streak:
@@ -194,8 +196,8 @@ wird öffentlich sichtbar.
 > **The twists arrive with your score**
 > ▪ PULSE — the zone breathes, growing and shrinking
 > ▪ DRIFT — the zone wanders along the track
-> ▪ GHOST — the dot blinks away, keep the track in your head
-> ▪ TRAP — a purple decoy zone: never tap into it
+> ▪ FOG — the dot flies through a cloud, hit it blind: +1
+> ▪ BOMBS — a chain of bombs next to the zone: never tap into it
 > ▪ CHAIN — two zones back to back
 > At most two twists at once, fairly mixed.
 >
@@ -222,10 +224,10 @@ wird öffentlich sichtbar.
 
   | Datei | Motiv |
   |---|---|
-  | `01-gameplay` | Kernmechanik, Punktzahl in der Bahn |
-  | `02-twists` | Fallen-Zone am Lila-Himmel |
-  | `03-daily` | Daily Challenge samt Tages-Serie |
-  | `04-skins` | Skin-Menü, seit v2.20 nach Familien gegliedert |
+  | `01-gameplay` | Startbildschirm: Punkt im Grün, Hand drückt, Hinweis — der erste Tap zählt (seit v2.28) |
+  | `02-twists` | Bomben mit rotem Lauflicht am Abendhimmel, „BOMBE = NIE TIPPEN“ |
+  | `03-daily` | Daily Challenge samt Tages-Serie, Nebelbank vor der Zone |
+  | `04-sammlung` | Sammlung mit Reitern VOGEL/WELT/TON/RAHMEN und Kachel-Raster (seit v2.28) |
   | `05-gallery` | **alle 42 Skins** in ihren sechs Familien |
   | `06-collect` | Ausdauer-Achsen (Läufe, Punkte, Tage, Monate) und die vier Saison-Skins |
 
@@ -234,7 +236,10 @@ wird öffentlich sichtbar.
   ist eine Portierung von `SkinPaint.kt` und liefert jedem der 13×13
   Rasterfelder dieselbe Farbe wie das Spiel; `store/pixel_dot.py`
   zeichnet daraus den Vogel wie `drawTimingDot`. Auch die Beschriftungen
-  im Skin-Menü kommen aus den echten String-Ressourcen der App.
+  in der Sammlung kommen aus den echten String-Ressourcen der App
+  (`ui/src/commonMain/composeResources`). Mine, Start-Hand und
+  Nebelfarben liest `store/twist_paint.py` aus `TrapPaint.kt`,
+  `StartCoach.kt` und `FogRenderer.kt`.
   `python3 store/check_skin_paint.py` übersetzt `SkinPaint.kt` mit dem
   Kotlin-Compiler aus dem Gradle-Cache und vergleicht alle 42 Skins Feld
   für Feld gegen die Portierung — vor jeder Neuauslieferung einmal laufen
@@ -541,7 +546,9 @@ Einrichtung in der Play Console (einmalig):
    das `wear-release.aab` hochladen — die Console ordnet es am
    `<uses-feature android.hardware.type.watch>` automatisch Wear zu.
 3. Fürs Listing verlangt Play mindestens einen **Wear-Screenshot**
-   (rund dargestellt, min. 384×384 px, Format 1:1).
+   (rund dargestellt, min. 384×384 px, Format 1:1). Fünf Motive je
+   Sprache liegen unter `store/screenshots/wear/` (Spiel, Start, Bomben,
+   Game-Over, Nebel; Generator: `python3 store/generate_wear_screenshots.py`).
 4. Installiert wird auf der Uhr über den **Play Store auf der Uhr**
    (gleiches Google-Konto wie der Tester); die App ist standalone
    (`com.google.android.wearable.standalone`), das Telefon ist egal.
@@ -553,8 +560,34 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 36` / `versionName
-"2.27"`. Vor jedem Store-Upload beides anheben und committen.
+(`app/build.gradle.kts`). Aktuell: `versionCode 37` / `versionName
+"2.28"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
+und committen.
+
+### Release-Notes 2.28 (Erstkontakt, Nebel, Bomben)
+
+Telefon, Uhr und iOS erscheinen am selben Tag (Plan 8.6 #19), denn die
+Startregel gilt überall gleich.
+
+Deutsch:
+
+> Erster Tap im Grün zählt, Daily-Ergebnisse ab heute nicht mit älteren
+> vergleichbar.
+> ▪ Neu: Todesursache nach jedem Aus (ZU FRÜH, ZU SPÄT, VERPASST, BOOM!)
+> ▪ Statt Blinken jetzt NEBEL: Treffer im Nebel geben +1
+> ▪ Die Falle ist jetzt eine Kette aus Bomben, der Himmel ohne Lila
+> ▪ Welten früher erreichbar, alles Freigeschaltete bleibt
+> ▪ SAMMLUNG mit Reitern, Zurück-Geste, feste Game-Over-Leiste
+
+English:
+
+> First tap in the green counts; Daily results from today on are not
+> comparable with older ones.
+> ▪ New: see why each run ended (TOO EARLY, TOO LATE, MISSED, BOOM!)
+> ▪ GHOST becomes FOG: hits inside the fog score +1
+> ▪ The trap is now a chain of bombs, the sky has no more purple
+> ▪ Worlds unlock earlier, everything you own stays unlocked
+> ▪ COLLECTION with tabs, back gesture, fixed game-over bar
 
 Achtung: `versionCode 28` wurde bereits zweimal gebaut — einmal mit
 Skins und Himmel-Umlauf (Build 101), einmal zusätzlich mit dem

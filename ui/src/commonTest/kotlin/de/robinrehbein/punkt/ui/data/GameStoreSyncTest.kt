@@ -1,10 +1,12 @@
 package de.robinrehbein.punkt.ui.data
 
 import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.SyncState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -97,7 +99,7 @@ class GameStoreSyncTest {
     @Test
     fun `eine noch ungedeckte Kulisse kommt spaeter erneut an`() {
         val store = store()
-        // STADT haengt an Rekord 85 — den kennt hier noch niemand.
+        // STADT haengt an Rekord 100 — den kennt hier noch niemand.
         val vonDerUhr = SyncState(
             bestScore = 50,
             scene = SceneId.STADT.name,
@@ -111,10 +113,113 @@ class GameStoreSyncTest {
 
         // Der Rekord kommt nach — beim naechsten Abgleich ist die Kulisse
         // gedeckt und wird uebernommen.
-        store.submitRun(score = 85, epochDay = 20_000L, month = 6, year = 2026)
+        store.submitRun(score = 100, epochDay = 20_000L, month = 6, year = 2026)
         store.applySync(vonDerUhr)
 
         assertEquals(SceneId.STADT, store.selectedScene)
         assertEquals(7_000L, store.syncState().sceneChangedAt)
+    }
+
+    // ===== Bestandsschutz der Welten (AP-13) =====
+
+    /**
+     * Ein Speicher, wie ihn die App vor der Welten-Leiter hinterlassen
+     * hat: Rekord 90, die STADT gewählt, kein Versionsmerker.
+     */
+    private fun bestandMitRekord90(): FakeKeyValueStore = FakeKeyValueStore().apply {
+        edit {
+            putInt("best_score_timing", 90)
+            putInt("run_count_timing", 40)
+            putString("selected_scene", SceneId.STADT.name)
+            putLong("scene_changed_at", 3_000L)
+        }
+    }
+
+    @Test
+    fun `Rekord 90 vor dem Update behaelt die STADT, und sie bleibt gewaehlt`() {
+        val store = GameStore(bestandMitRekord90())
+
+        assertTrue(SceneId.STADT.name in store.ownedScenes)
+        assertTrue(ScenePaint.isUnlocked(SceneId.STADT, store.stats()))
+        assertEquals(SceneId.STADT, store.selectedScene)
+        // Die Wahl gilt auch im Austausch als gedeckt, sonst fiele die Uhr
+        // auf die WIESE zurück.
+        assertEquals(SceneId.STADT.name, store.syncState().scene)
+        assertEquals(3_000L, store.syncState().sceneChangedAt)
+    }
+
+    @Test
+    fun `ein frischer Spieler mit Rekord 90 bekommt die STADT nicht`() {
+        val store = store()
+        store.submitRun(score = 90, epochDay = 20_000L, month = 6, year = 2026)
+
+        assertFalse(ScenePaint.isUnlocked(SceneId.STADT, store.stats()))
+        assertFalse(SceneId.STADT.name in store.ownedScenes)
+
+        // Auch ein Neustart holt die alte Regel nicht zurück.
+        val prefs = FakeKeyValueStore()
+        GameStore(prefs).submitRun(score = 90, epochDay = 20_000L, month = 6, year = 2026)
+        assertFalse(ScenePaint.isUnlocked(SceneId.STADT, GameStore(prefs).stats()))
+    }
+
+    @Test
+    fun `die Uebernahme laeuft genau einmal`() {
+        val prefs = bestandMitRekord90()
+        GameStore(prefs)
+        assertEquals(setOf(SceneId.WIESE.name, SceneId.STADT.name), GameStore(prefs).ownedScenes)
+
+        // Jemand räumt die Menge leer (etwa ein kaputtes Backup): Ein
+        // zweiter Start darf die Übernahme nicht wiederholen, der Merker
+        // steht.
+        prefs.edit { putString("owned_scenes", "") }
+        assertEquals(emptySet<String>(), GameStore(prefs).ownedScenes)
+        assertFalse(ScenePaint.isUnlocked(SceneId.STADT, GameStore(prefs).stats()))
+    }
+
+    @Test
+    fun `eine erfuellte Regel kommt dauerhaft in die Menge`() {
+        val store = store()
+        store.submitRun(score = 100, epochDay = 20_000L, month = 6, year = 2026)
+
+        assertTrue(ScenePaint.isUnlocked(SceneId.STADT, store.stats()))
+        assertTrue(SceneId.STADT.name in store.ownedScenes, "Die Welt steht jetzt im Besitz")
+    }
+
+    @Test
+    fun `der Abgleich zweier Geraete vereinigt die Mengen`() {
+        val telefon = GameStore(bestandMitRekord90())
+        val uhr = SyncState(
+            bestScore = 20,
+            ownedScenes = setOf(SceneId.BERG.name, "AUS_EINER_NEUEREN_VERSION")
+        )
+
+        assertTrue(telefon.applySync(telefon.syncState().mergedWith(uhr)))
+
+        assertEquals(
+            setOf(SceneId.WIESE.name, SceneId.STADT.name, SceneId.BERG.name, "AUS_EINER_NEUEREN_VERSION"),
+            telefon.ownedScenes
+        )
+        assertTrue(ScenePaint.isUnlocked(SceneId.BERG, telefon.stats()))
+        // Und die Gegenseite bekommt die STADT über dieselbe Vereinigung.
+        val zurueck = uhr.mergedWith(telefon.syncState())
+        assertTrue(SceneId.STADT.name in zurueck.ownedScenes)
+        assertEquals(zurueck, telefon.syncState().mergedWith(uhr), "kommutativ")
+        assertEquals(zurueck, zurueck.mergedWith(zurueck), "idempotent")
+    }
+
+    @Test
+    fun `eine Welt aus dem Besitz der Gegenseite darf gewaehlt uebernommen werden`() {
+        val store = store()
+        val vonDerUhr = SyncState(
+            bestScore = 90,
+            scene = SceneId.STADT.name,
+            sceneChangedAt = 8_000L,
+            ownedScenes = setOf(SceneId.STADT.name)
+        )
+
+        store.applySync(vonDerUhr)
+
+        assertEquals(SceneId.STADT, store.selectedScene)
+        assertEquals(8_000L, store.syncState().sceneChangedAt)
     }
 }

@@ -245,6 +245,31 @@ class ProgressTest {
     }
 
     @Test
+    fun `die Welten-Leiter steht so in der Zieltabelle`() {
+        val ziele = Progress.goals(leer).filter { it.scene != null && it.scene != SceneId.WELTRAUM }
+        assertEquals(
+            mapOf(
+                SceneId.WUESTE to (GoalAxis.RUN_COUNT to 100),
+                SceneId.MEER to (GoalAxis.TOTAL_SCORE to 2_500),
+                SceneId.BERG to (GoalAxis.DAILY_STREAK to 1),
+                SceneId.STADT to (GoalAxis.BEST_SCORE to 100)
+            ),
+            ziele.associate { it.scene!! to (it.axis to it.target) }
+        )
+    }
+
+    @Test
+    fun `eine Welt aus der Besitz-Menge ist kein Ziel mehr`() {
+        // Rekord 90 aus der Zeit vor der Welten-Leiter: Die STADT ist
+        // offen, obwohl ihre Regel heute 100 verlangt. Ein Ziel "90/100"
+        // wäre eine Lüge.
+        val bestand = leer.copy(bestScore = 90, ownedScenes = setOf(SceneId.STADT.name))
+        assertTrue(Progress.goals(bestand).none { it.scene == SceneId.STADT })
+        val weltraum = Progress.goals(bestand).first { it.scene == SceneId.WELTRAUM }
+        assertEquals(2, weltraum.current)
+    }
+
+    @Test
     fun `nextGoals kuerzt auf die Seitenlaenge`() {
         assertEquals(Progress.PAGE_GOALS, Progress.nextGoals(leer).size)
         assertEquals(1, Progress.nextGoals(leer, limit = 1).size)

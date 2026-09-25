@@ -137,8 +137,9 @@ Controller und der iOS-Einstieg").
 
 Eine Besonderheit dieses Projekts macht die radikale Variante überhaupt
 erst denkbar: **Die Android-App zeichnet alles im Code.** Keine Layouts,
-keine Bild-Assets — `TimingGameScreen.kt`, `GameOverlays.kt` und
-`PixelButton.kt` malen Rechtecke auf ein Compose-Canvas. Genau das läuft
+keine Bild-Assets — `TimingGameScreen.kt`, `GameOverlays.kt` (seit v2.28
+auf `ReadyOverlay.kt`, `GameOverOverlay.kt`, `CollectionOverlay.kt` und
+weitere Dateien aufgeteilt) und `PixelButton.kt` malen Rechtecke auf ein Compose-Canvas. Genau das läuft
 mit Compose Multiplatform auch auf iOS (über Skia).
 
 ### Gebaut: `:ui` traegt die Oberflaeche
@@ -151,8 +152,9 @@ Controller:
 - **Die Spielwelt** — Himmel, Wolken, Kulisse, Boden, Perlenketten-Bahn
   und Pixel-Vogel (813 Zeilen `DrawScope`), dazu die Retro-Palette, die
   Pixel-Bausteine und der Effekt-Zustand.
-- **Die Overlays** — `GameOverlays`, `StatsOverlay`, `PixelButton`,
-  Theme und Typografie.
+- **Die Overlays** — `ReadyOverlay`, `GameOverOverlay`, `HelpOverlay`,
+  `SettingsOverlay`, `CollectionOverlay`, `StatsOverlay`, `Panels`,
+  `PixelButton`, Theme und Typografie.
 - **Die geteilte Score-Karte** — seit v2.26 auch sie: eine
   `DrawScope`-Routine (`share/ScoreCardRenderer.kt`), die den Bauplan
   aus `:core` (`CardPlan`) in ein `ImageBitmap` von 1080 mal 1350 Pixeln

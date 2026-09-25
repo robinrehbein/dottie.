@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.GameEventDied
 import de.robinrehbein.punkt.game.GameEventHit
+import de.robinrehbein.punkt.game.GameEventNotYet
 import de.robinrehbein.punkt.game.GameEventPerfectHit
 import de.robinrehbein.punkt.game.GameEventSettled
 import de.robinrehbein.punkt.game.GameEventStarted
@@ -109,6 +110,15 @@ private const val KEY_SEASON_LAST_DAY = "season_last_day"
  * sofort Bescheid weiß, genau wie adsRemoved im Phone-Store.
  */
 private const val KEY_PATRON = "patron_owned"
+
+/**
+ * Besitz-Menge der Welten (Bestandsschutz der Welten-Leiter), als Namen
+ * wie SyncState.ownedScenes. Die Uhr füllt sie nicht selbst: Sie kommt
+ * über den Abgleich vom Telefon, wird hier nur aufbewahrt und
+ * zurückgemeldet — sonst verlöre ein Abgleich die STADT eines
+ * Bestandsspielers, sobald die Uhr ihren Stand schickt.
+ */
+private const val KEY_OWNED_SCENES = "owned_scenes"
 
 /**
  * Zustands-Holder außerhalb der Composition. MainActivity braucht ihn in
@@ -243,9 +253,21 @@ internal class WearGameController(context: Context) {
     var frameTick by mutableLongStateOf(0L)
         private set
 
-    /** Eigene Uhr für die TAP-Blink-Animation (siehe WearGameScreen). */
-    var blinkClock by mutableFloatStateOf(0f)
+    /**
+     * Restzeit des „NOCH NICHT“ nach einem Tap daneben in READY, 0 =
+     * ausgeblendet. Gilt für jeden Eingabeweg (Touch, Taste, Drehring),
+     * weil alle über [tap] laufen (siehe [WearNotYet]).
+     */
+    var notYetTimeLeft by mutableFloatStateOf(0f)
         private set
+
+    /**
+     * Haptik-Tick für „NOCH NICHT“. MainActivity hängt daran das
+     * System-Feedback der Ansicht, damit der Tick der Einstellung für
+     * Berührungs-Feedback folgt (Plan 8.6 Punkt 17) — der Controller
+     * selbst kennt keine View.
+     */
+    var onNotYetTick: (() -> Unit)? = null
 
     init {
         audio.muted = !soundOn
@@ -272,11 +294,11 @@ internal class WearGameController(context: Context) {
      * Event doppelt verarbeitet wird.
      */
     fun tap() {
-        // Ein Tap in READY/OVER startet gleich einen Lauf — vorher Tag und
-        // Seed für den aktuellen Modus setzen (wie prepareRun am Phone).
-        if (game.phase == GamePhase.READY || game.phase == GamePhase.OVER) {
-            prepareRun()
-        }
+        // Ein Tap, der gleich einen Lauf startet, braucht vorher Tag und
+        // Seed für den aktuellen Modus (wie prepareRun am Phone). In READY
+        // startet nur ein Tap im Grün; daneben kommt GameEventNotYet und
+        // der Lauf beginnt nicht.
+        if (WearNotYet.startsRun(game)) prepareRun()
         game.tap()
     }
 
@@ -346,8 +368,13 @@ internal class WearGameController(context: Context) {
         // SkinStats will die ANZAHL der Monate, nicht die Maske.
         monthsPlayed = Integer.bitCount(prefs.getInt(KEY_MONTHS_PLAYED, 0)),
         seasonEarned = prefs.getInt(KEY_SEASON_EARNED, 0),
-        patronOwned = patronOwned
+        patronOwned = patronOwned,
+        ownedScenes = ownedScenes()
     )
+
+    /** Die gespeicherte Besitz-Menge der Welten, als Kopie (siehe [KEY_OWNED_SCENES]). */
+    private fun ownedScenes(): Set<String> =
+        prefs.getStringSet(KEY_OWNED_SCENES, null)?.toSet() ?: emptySet()
 
     /**
      * Öffnet den Skin-Wähler. Die Liste wird hier einmal frisch aus den
@@ -453,7 +480,10 @@ internal class WearGameController(context: Context) {
         // sie hat: Sonst hielte sie beim nächsten Abgleich die Wahl des
         // Telefons für neu und würde sie endlos zurückspiegeln.
         sound = soundSet.name,
-        soundChangedAt = prefs.getLong(KEY_SOUND_CHANGED, 0L)
+        soundChangedAt = prefs.getLong(KEY_SOUND_CHANGED, 0L),
+        // Die Besitz-Menge der Welten geht so zurück, wie sie gekommen
+        // ist: SyncState.mergedWith vereinigt, verloren geht nichts.
+        ownedScenes = ownedScenes()
     )
 
     /**
@@ -502,6 +532,10 @@ internal class WearGameController(context: Context) {
         if (months != before.monthsPlayed) editor.putInt(KEY_MONTHS_PLAYED, months)
         val seasons = before.seasonEarned or state.seasonEarned
         if (seasons != before.seasonEarned) editor.putInt(KEY_SEASON_EARNED, seasons)
+        // Die Besitz-Menge der Welten wird vereinigt wie in
+        // SyncState.mergedWith: Eine Welt, die eine Seite besitzt, bleibt.
+        val owned = before.ownedScenes + state.ownedScenes
+        if (owned != before.ownedScenes) editor.putStringSet(KEY_OWNED_SCENES, owned)
         if (state.skinChangedAt > before.skinChangedAt) {
             // Freischaltungen leitet die Uhr aus den Ständen ab — mit den
             // zusammengeführten Zahlen, nicht mit den alten (siehe
@@ -556,14 +590,21 @@ internal class WearGameController(context: Context) {
 
     /** Ein Frame der Spiel-Loop; wird aus WearGameScreens LaunchedEffect gerufen. */
     fun update(dt: Float) {
-        blinkClock += dt
+        notYetTimeLeft = WearNotYet.after(notYetTimeLeft, dt)
         refreshClock()
         recordBannerTimeLeft = (recordBannerTimeLeft - dt).coerceAtLeast(0f)
         val events = game.update(dt)
         var twistUnlockedThisFrame = false
         events.forEach { event ->
             when (event) {
+                GameEventNotYet -> {
+                    // Tap daneben in READY: kostet nichts, aber man soll
+                    // spüren und lesen, dass er angekommen ist.
+                    notYetTimeLeft = WearNotYet.SECONDS
+                    onNotYetTick?.invoke()
+                }
                 GameEventStarted -> {
+                    notYetTimeLeft = 0f
                     lastStage = 0
                     recordCelebrated = false
                     recordBannerTimeLeft = 0f
@@ -668,6 +709,7 @@ internal class WearGameController(context: Context) {
             score = 0
             recordBannerTimeLeft = 0f
         }
+        notYetTimeLeft = 0f
     }
 
     /**
@@ -775,7 +817,7 @@ internal class WearGameController(context: Context) {
     }
 
     /**
-     * Spott-Text pro Tod, gleiche Logik wie pickTaunt in GameOverlays.kt:
+     * Spott-Text pro Tod, gleiche Logik wie rememberTaunter in ui/.../screens/GameOverOverlay.kt:
      * Pool nach Situation (Null-Runde, knapp dran, weit drunter, sonst),
      * Auswahl deterministisch über score+best statt echtem Zufall — fühlt
      * sich zufällig an, bleibt aber testbar. Die Wear-Arrays sind eine
@@ -802,5 +844,45 @@ internal class WearGameController(context: Context) {
 
         /** Wie oft Stunde und Monat der Geräte-Uhr neu geholt werden. */
         const val CLOCK_REFRESH_MS = 60_000L
+    }
+}
+
+/**
+ * Die Startregel auf der Uhr (Plan 3.1, 8.5 AP-24), ohne Android-Dienste
+ * und damit prüfbar: Erster Tap im Grün ist Treffer 1, ein Tap daneben
+ * kostet nichts und zeigt 0,7 s „NOCH NICHT“ mit kurzem Wackeln. Keine
+ * Hand, keine Todesursache — dafür ist das Display zu klein.
+ */
+internal object WearNotYet {
+
+    /** Wie lange „NOCH NICHT“ steht und wackelt, wie am Telefon. */
+    const val SECONDS = 0.7f
+
+    /** Ausschlag des Wackelns je Sekunde Restzeit, in Vogel-Pixeln (Mockup: 4). */
+    const val WOBBLE_PER_SECOND = 4f
+
+    /**
+     * Startet dieser Tap einen Lauf? In READY nur im Grün, in OVER immer
+     * (die Engine prüft dort selbst die Neustart-Sperre, ein gesperrter
+     * Tap startet dann eben nichts). Dann muss vorher der Seed stehen.
+     */
+    fun startsRun(game: TimingGame): Boolean = when (game.phase) {
+        GamePhase.READY -> game.isInZone
+        GamePhase.OVER -> true
+        else -> false
+    }
+
+    /** Restzeit nach einem Frame von [dt] Sekunden, nie unter 0. */
+    fun after(timeLeft: Float, dt: Float): Float = (timeLeft - dt).coerceAtLeast(0f)
+
+    /**
+     * Seitlicher Versatz des Vogels in Vogel-Pixeln bei [timeLeft]
+     * Sekunden Restzeit: `sin(t·40)·4·t`, wie im Mockup
+     * (feedback-check.html, `nope`). Klingt zum Ende hin aus, bei 0 steht
+     * der Vogel wieder auf seiner Bahn.
+     */
+    fun wobble(timeLeft: Float): Float {
+        val t = timeLeft.coerceIn(0f, SECONDS)
+        return kotlin.math.sin(t * 40f) * WOBBLE_PER_SECOND * t
     }
 }

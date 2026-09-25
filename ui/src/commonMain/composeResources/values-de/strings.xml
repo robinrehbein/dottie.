@@ -13,7 +13,15 @@
   dort; seit die Karte in :ui gezeichnet wird, stehen sie hier.
 -->
 <resources>
-    <string name="ready_hint">STOPPE DEN PUNKT IN DER GRUENEN ZONE</string>
+    <string name="ready_hint">TIPPE, WENN DER PUNKT IM GRÜNEN IST</string>
+    <!-- == AP-22 start == -->
+    <string name="start_not_yet">NOCH NICHT</string>
+    <string name="start_daily_armed">DAILY: AN</string>
+    <string name="daily_intro_title">TAGESLAUF</string>
+    <string name="daily_intro_text">HEUTE FÜR ALLE GLEICH. DEIN BESTER VERSUCH ZÄHLT.</string>
+    <string name="daily_intro_how">LOS GEHT ES MIT DEM ERSTEN TAP IM GRÜNEN. NOCH EIN TAP AUF DAILY SCHALTET AB.</string>
+    <string name="daily_intro_start">START</string>
+    <!-- == /AP-22 == -->
     <string name="sound_on">TON: AN</string>
     <string name="sound_off">TON: AUS</string>
     <string name="reminder_on">ERINNERUNG: AN</string>
@@ -22,6 +30,21 @@
     <string name="leaderboard">RANGLISTE</string>
     <string name="daily">DAILY</string>
     <string name="skins">SKINS</string>
+    <string name="collection">SAMMLUNG</string>
+    <!-- == AP-15 sammlung == -->
+    <string name="tab_bird">VOGEL</string>
+    <string name="tab_world">WELT</string>
+    <string name="tab_sound">TON</string>
+    <string name="tab_frame">RAHMEN</string>
+    <string name="collection_new">NEU</string>
+    <string name="collection_new_world">NEUE WELT: %1$s</string>
+    <string name="collection_new_worlds">NEUE WELTEN: %1$s</string>
+    <string name="collection_unlocked">FREIGESCHALTET</string>
+    <string name="collection_locked">GESPERRT</string>
+    <string name="collection_locked_preview">VORSCHAU · GESPERRT</string>
+    <string name="collection_progress">%1$d/%2$d %3$s</string>
+    <string name="collection_hear">HÖRPROBE</string>
+    <!-- == /AP-15 == -->
     <string name="today_score">HEUTE: %1$d</string>
     <string name="streak_one">SERIE: 1 TAG</string>
     <string name="streak_many">SERIE: %1$d TAGE</string>
@@ -31,6 +54,13 @@
     <string name="banner_record">REKORD GEKNACKT!</string>
     <string name="banner_stage">NEUE STUFE!</string>
     <string name="game_over">GAME OVER</string>
+    <!-- == AP-11 todesursache == -->
+    <string name="death_early">ZU FRÜH</string>
+    <string name="death_late">ZU SPÄT</string>
+    <string name="death_missed">VERPASST</string>
+    <string name="death_trap">BOOM!</string>
+    <string name="death_bomb_lesson">BOMBE = NIE TIPPEN</string>
+    <!-- == /AP-11 == -->
     <string name="medal">MEDAILLE</string>
     <string name="medal_bronze">BRONZE</string>
     <string name="medal_silver">SILBER</string>
@@ -49,19 +79,28 @@
     -->
     <string name="twist_learned_pulse">NEU IN DIESEM LAUF: PULS — DIE ZONE ATMET</string>
     <string name="twist_learned_drift">NEU IN DIESEM LAUF: DRIFT — DIE ZONE WANDERT</string>
-    <string name="twist_learned_ghost">NEU IN DIESEM LAUF: GEIST — DER PUNKT BLINKT WEG</string>
-    <string name="twist_learned_fake">NEU IN DIESEM LAUF: FALLE — NIE HINEINTIPPEN</string>
+    <string name="twist_learned_ghost">NEU IN DIESEM LAUF: NEBEL — DER PUNKT TAUCHT IN DIE WOLKE</string>
+    <string name="twist_learned_fake">NEU IN DIESEM LAUF: BOMBEN — NIE HINEINTIPPEN</string>
+    <!-- == AP-12 bomben == -->
+    <!-- == /AP-12 == -->
     <string name="twist_learned_chain">NEU IN DIESEM LAUF: KETTE — ZWEI ZONEN NACHEINANDER</string>
     <string name="tap_retry">TIPPEN = NOCHMAL</string>
     <string name="share">TEILEN</string>
-    <string name="menu">MENUE</string>
+    <string name="menu">MENÜ</string>
+    <!-- == AP-14 bedienung == -->
+    <!-- Beschriftungen der Schalterzeilen: der Zustand steht am Schalter, nicht im Text. -->
+    <string name="ctl_sound">TON</string>
+    <string name="ctl_reminder">ERINNERUNG</string>
+    <!-- Vorlesetext des X-Knopfs oben rechts in den Overlays. -->
+    <string name="ctl_close">SCHLIESSEN</string>
+    <!-- == /AP-14 == -->
     <string name="remove_ads">WERBUNG ENTFERNEN — %1$s</string>
     <string name="ad_privacy">DATENSCHUTZ-EINSTELLUNGEN</string>
     <string-array name="taunts_zero">
         <item>ERNSTHAFT?</item>
         <item>DAS GING SCHNELL.</item>
         <item>WAR DAS ABSICHT?</item>
-        <item>AUFWAERMEN ZAEHLT NICHT.</item>
+        <item>AUFWÄRMEN ZÄHLT NICHT.</item>
     </string-array>
     <string-array name="taunts_close">
         <item>SO NAH! NUR %1$d GEFEHLT!</item>
@@ -81,33 +120,34 @@
     </string-array>
     <string name="help_title">SO GEHT STOPP</string>
     <string name="help_line1">DER PUNKT KREIST VON ALLEIN.</string>
-    <string name="help_line2">TIPPE, WENN ER IN DER GRUENEN ZONE IST — DANEBEN GETIPPT ODER ZONE VERPASST = AUS.</string>
+    <string name="help_line2">TIPPE, WENN ER IN DER GRÜNEN ZONE IST — DANEBEN GETIPPT ODER ZONE VERPASST = AUS.</string>
     <string name="help_line3">HELLE MITTE DER ZONE = PERFEKT: +2 PUNKTE.</string>
     <string name="help_line4">PERFEKT IN SERIE? +3, +4, BIS ZU +5 PRO TREFFER!</string>
     <string name="help_line5">MEDAILLEN: BRONZE AB 10, SILBER AB 20, GOLD AB 30, PLATIN AB 40.</string>
     <string name="help_twists">DIE TWISTS</string>
     <string name="twist_pulse_title">PULS (AB 5)</string>
-    <string name="twist_pulse_text">DIE ZONE ATMET — WIRD GROESSER UND KLEINER.</string>
+    <string name="twist_pulse_text">DIE ZONE ATMET — WIRD GRÖSSER UND KLEINER.</string>
     <string name="twist_drift_title">DRIFT (AB 10)</string>
-    <string name="twist_drift_text">DIE ZONE WANDERT LANGSAM UEBER DIE BAHN.</string>
-    <string name="twist_ghost_title">GEIST (AB 15)</string>
-    <string name="twist_ghost_text">DER PUNKT BLINKT WEG — BAHN IM KOPF BEHALTEN.</string>
-    <string name="twist_fake_title">FALLE (AB 20)</string>
-    <string name="twist_fake_text">VIOLETTE KOEDER-ZONE: NIE HINEINTIPPEN!</string>
+    <string name="twist_drift_text">DIE ZONE WANDERT LANGSAM ÜBER DIE BAHN.</string>
+    <string name="twist_ghost_title">NEBEL (AB 15)</string>
+    <string name="twist_ghost_text">VOR DER ZONE LIEGT NEBEL — DER PUNKT FLIEGT UNSICHTBAR WEITER. BLIND GETROFFEN: +1.</string>
+    <!-- == AP-23 nebel == -->
+    <string name="fog_blind_plus">BLIND! +%1$d</string>
+    <!-- == /AP-23 == -->
+    <string name="twist_fake_title">BOMBEN (AB 20)</string>
+    <string name="twist_fake_text">EINE KETTE AUS BOMBEN NEBEN DER ZONE: NIE HINEINTIPPEN!</string>
     <string name="twist_chain_title">KETTE (AB 25)</string>
     <string name="twist_chain_text">ZWEI ZONEN NACHEINANDER — GLEICHE RICHTUNG.</string>
-    <string name="help_max_twists">MAXIMAL ZWEI TWISTS GLEICHZEITIG — ZUFAELLIG GEMISCHT.</string>
-    <string name="tap_to_close">TIPPEN ZUM SCHLIESSEN</string>
-    <string name="skin_selected">AUSGEWAEHLT</string>
-    <string name="skin_tap_select">TIPPEN ZUM WAEHLEN</string>
+    <string name="help_max_twists">MAXIMAL ZWEI TWISTS GLEICHZEITIG — ZUFÄLLIG GEMISCHT.</string>
+    <string name="skin_selected">AUSGEWÄHLT</string>
     <string name="skin_family_einfarbig">EINFARBIG</string>
     <string name="skin_family_gemustert">GEMUSTERT</string>
     <string name="skin_family_bewegt">BEWEGT</string>
     <string name="skin_family_reagierend">REAGIEREND</string>
     <string name="skin_family_saison">SAISON</string>
-    <string name="skin_family_goenner">GOENNER</string>
-    <string name="patron_pack">GOENNER-PAKET — %1$s</string>
-    <string name="patron_pack_skins_only">GOENNER-PAKET: DREI SKINS — %1$s</string>
+    <string name="skin_family_goenner">GÖNNER</string>
+    <string name="patron_pack">GÖNNER-PAKET — %1$s</string>
+    <string name="patron_pack_skins_only">GÖNNER-PAKET: DREI SKINS — %1$s</string>
     <string name="patron_owned">DANKE!</string>
     <string name="skin_pass_today">HEUTE FREI</string>
     <string name="skin_pass_offer">HEUTE PER SPOT TESTEN</string>
@@ -125,7 +165,7 @@
     <string name="skin_hint_frost">REKORD 40 (PLATIN)</string>
     <string name="skin_hint_schatten">4 PERFEKTE IN SERIE</string>
     <string name="skin_hint_prisma">DAILY-SERIE: 3 TAGE</string>
-    <string name="skin_hint_matcha">5 LAEUFE</string>
+    <string name="skin_hint_matcha">5 LÄUFE</string>
     <string name="skin_biene">BIENE</string>
     <string name="skin_melone">MELONE</string>
     <string name="skin_pilz">FLIEGENPILZ</string>
@@ -137,7 +177,7 @@
     <string name="skin_magma">MAGMA</string>
     <string name="skin_neon">NEON</string>
     <string name="skin_chrom">CHROM</string>
-    <string name="skin_chamaeleon">CHAMAELEON</string>
+    <string name="skin_chamaeleon">CHAMÄLEON</string>
     <string name="skin_kombo">KOMBO</string>
     <string name="skin_tinte">TINTE</string>
     <string name="skin_hint_biene">6 PERFEKTE IN SERIE</string>
@@ -171,20 +211,20 @@
     <string name="skin_medaille">MEDAILLE</string>
     <string name="skin_tageszeit">TAGESZEIT</string>
     <string name="skin_jahreszeit">JAHRESZEIT</string>
-    <string name="skin_kuerbis">KUERBIS</string>
+    <string name="skin_kuerbis">KÜRBIS</string>
     <string name="skin_zuckerstange">ZUCKERSTANGE</string>
     <string name="skin_herz">HERZ</string>
     <string name="skin_osterei">OSTEREI</string>
     <string name="skin_diamant">DIAMANT</string>
-    <string name="skin_phoenix">PHOENIX</string>
+    <string name="skin_phoenix">PHÖNIX</string>
     <string name="skin_onyx">ONYX</string>
-    <string name="skin_hint_ei">25 LAEUFE</string>
-    <string name="skin_hint_tiger">100 LAEUFE</string>
+    <string name="skin_hint_ei">25 LÄUFE</string>
+    <string name="skin_hint_tiger">100 LÄUFE</string>
     <string name="skin_hint_pinguin">REKORD 65</string>
-    <string name="skin_hint_fussball">300 LAEUFE</string>
+    <string name="skin_hint_fussball">300 LÄUFE</string>
     <string name="skin_hint_donut">1.000 PUNKTE INSGESAMT</string>
     <string name="skin_hint_toffifee">100 PUNKTE INSGESAMT</string>
-    <string name="skin_hint_tennisball">50 LAEUFE</string>
+    <string name="skin_hint_tennisball">50 LÄUFE</string>
     <string name="skin_hint_basketball">2.500 PUNKTE INSGESAMT</string>
     <string name="skin_hint_welle">REKORD 70</string>
     <string name="skin_hint_gewitter">15 PERFEKTE IN SERIE</string>
@@ -192,49 +232,48 @@
     <string name="skin_hint_disco">DAILY-SERIE: 21 TAGE</string>
     <string name="skin_hint_holo">REKORD 80</string>
     <string name="skin_hint_thermo">REKORD 75</string>
-    <string name="skin_hint_medaille">200 LAEUFE</string>
+    <string name="skin_hint_medaille">200 LÄUFE</string>
     <string name="skin_hint_tageszeit">AN 7 TAGEN GESPIELT</string>
     <string name="skin_hint_jahreszeit">IN 3 MONATEN GESPIELT</string>
     <string name="skin_hint_kuerbis">IM OKTOBER AN 5 TAGEN SPIELEN</string>
     <string name="skin_hint_zuckerstange">IM DEZEMBER AN 5 TAGEN SPIELEN</string>
     <string name="skin_hint_herz">IM FEBRUAR AN 3 TAGEN SPIELEN</string>
     <string name="skin_hint_osterei">IM APRIL AN 5 TAGEN SPIELEN</string>
-    <string name="skin_hint_goenner">GOENNER-PAKET</string>
-    <string name="scenes">KULISSEN</string>
+    <string name="skin_hint_goenner">GÖNNER-PAKET</string>
+    <string name="scenes">WELTEN</string>
     <string name="scene_wiese">WIESE</string>
-    <string name="scene_wueste">WUESTE</string>
+    <string name="scene_wueste">WÜSTE</string>
     <string name="scene_meer">MEER</string>
     <string name="scene_berg">BERG</string>
     <string name="scene_stadt">STADT</string>
     <string name="scene_weltraum">WELTRAUM</string>
-    <string name="scene_hint_wueste">500 LAEUFE</string>
-    <string name="scene_hint_meer">10.000 PUNKTE INSGESAMT</string>
-    <string name="scene_hint_berg">DAILY-SERIE: 30 TAGE</string>
-    <string name="scene_hint_stadt">REKORD 85</string>
-    <string name="scene_hint_weltraum">ALLE ANDEREN KULISSEN SAMMELN</string>
-    <string name="sounds">TOENE</string>
+    <string name="scene_hint_wueste">100 LÄUFE</string>
+    <string name="scene_hint_meer">2.500 PUNKTE INSGESAMT</string>
+    <string name="scene_hint_berg">1 DAILY GESPIELT</string>
+    <string name="scene_hint_stadt">REKORD 100</string>
+    <string name="scene_hint_weltraum">ALLE ANDEREN WELTEN</string>
+    <string name="sounds">TÖNE</string>
     <string name="sound_klassik">KLASSIK</string>
     <string name="sound_glocke">GLOCKE</string>
     <string name="sound_amboss">AMBOSS</string>
     <string name="sound_hint_glocke">PERFEKT-SERIE: 20</string>
     <string name="sound_hint_amboss">25.000 PUNKTE INSGESAMT</string>
-    <string name="sound_tap_hear">ANTIPPEN ZUM HOEREN</string>
     <string name="stats">STATISTIK</string>
-    <string name="stats_runs">LAEUFE</string>
+    <string name="stats_runs">LÄUFE</string>
     <string name="stats_total_score">PUNKTE INSGESAMT</string>
     <string name="stats_days">TAGE GESPIELT</string>
     <string name="stats_months">MONATE GESPIELT</string>
     <string name="stats_perfect">BESTE PERFEKT-SERIE</string>
     <string name="stats_daily_streak">DAILY-SERIE</string>
-    <string name="stats_goals">NAECHSTE ZIELE</string>
+    <string name="stats_goals">NÄCHSTE ZIELE</string>
     <string name="goal_progress">%1$s %2$d/%3$d</string>
 
     <!-- Kartenrahmen und Ziel-Zeilen (aus main, v2.25) -->
     <string name="frame_doppellinie">DOPPELLINIE</string>
     <string name="frame_hint_doppellinie">10 SKINS SAMMELN</string>
-    <string name="frame_hint_kaskade">PRACHT UND ALLE KULISSEN</string>
+    <string name="frame_hint_kaskade">PRACHT UND ALLE WELTEN</string>
     <string name="frame_hint_krone">PERLENKRANZ UND ALLE SKINS</string>
-    <string name="frame_hint_perlenkranz">KASKADE UND ALLE TOENE</string>
+    <string name="frame_hint_perlenkranz">KASKADE UND ALLE TÖNE</string>
     <string name="frame_hint_pracht">33 SKINS SAMMELN</string>
     <string name="frame_hint_zinnen">20 SKINS SAMMELN</string>
     <string name="frame_kaskade">KASKADE</string>
@@ -244,18 +283,17 @@
     <string name="frame_pracht">PRACHT</string>
     <string name="frame_schlicht">SCHLICHT</string>
     <string name="frame_zinnen">ZINNEN</string>
-    <string name="frames">RAHMEN</string>
     <string name="goal_axis_days">TAGE</string>
     <string name="goal_axis_months">MONATE</string>
     <string name="goal_axis_perfect">PERFEKTE IN FOLGE</string>
     <string name="goal_axis_points">PUNKTE</string>
-    <string name="goal_axis_runs">LAEUFE</string>
-    <string name="goal_axis_scenes">KULISSEN</string>
+    <string name="goal_axis_runs">LÄUFE</string>
+    <string name="goal_axis_scenes">WELTEN</string>
     <string name="goal_axis_skins">SKINS</string>
     <string name="goal_axis_total">PUNKTE INSGESAMT</string>
-    <string name="goal_next_scene">NAECHSTE KULISSE: %1$s — %2$d/%3$d %4$s</string>
-    <string name="goal_next_skin">NAECHSTER SKIN: %1$s — %2$d/%3$d %4$s</string>
-    <string name="goal_next_sound">NAECHSTER TON: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_next_scene">NÄCHSTE WELT: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_next_skin">NÄCHSTER SKIN: %1$s — %2$d/%3$d %4$s</string>
+    <string name="goal_next_sound">NÄCHSTER TON: %1$s — %2$d/%3$d %4$s</string>
     <string name="help">HILFE</string>
     <string name="settings">EINSTELLUNGEN</string>
 
@@ -265,7 +303,7 @@
          Android-Schale. -->
     <string name="card_daily">DAILY-CHALLENGE</string>
     <string name="card_points">PUNKTE</string>
-    <string name="card_scene">KULISSE: %1$s</string>
+    <string name="card_scene">WELT: %1$s</string>
     <string name="card_daily_streak">DAILY-SERIE: %1$d TAGE</string>
     <string name="card_record">REKORD: %1$d</string>
     <string name="card_challenge">SCHAFFST DU MEHR?</string>

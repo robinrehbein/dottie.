@@ -113,6 +113,11 @@ internal enum class WearDotSkin(val id: SkinId) {
      * und spiegelt ihn lokal — er hängt am Google-Konto, nicht am Gerät.
      * Ohne Play (seitlich installiert, keine Play-Dienste) bleibt er
      * false und die drei Gönner-Skins damit gesperrt.
+     *
+     * [ownedScenes] ist die Besitz-Menge der Welten (Bestandsschutz der
+     * Welten-Leiter), wie sie über den Abgleich vom Telefon kommt. Die
+     * Uhr wählt selbst keine Welt, sie prüft damit nur, welche Wahl des
+     * Telefons sie übernehmen darf (WearSyncMerge.sceneToAdopt).
      */
     data class Stats(
         val bestScore: Int,
@@ -123,7 +128,8 @@ internal enum class WearDotSkin(val id: SkinId) {
         val daysPlayed: Int = 0,
         val monthsPlayed: Int = 0,
         val seasonEarned: Int = 0,
-        val patronOwned: Boolean = false
+        val patronOwned: Boolean = false,
+        val ownedScenes: Set<String> = emptySet()
     ) {
         /** Übersetzung ins Format von :core — dort liegen die Schwellen. */
         fun toSkinStats(): SkinStats = SkinStats(
@@ -135,7 +141,8 @@ internal enum class WearDotSkin(val id: SkinId) {
             daysPlayed = daysPlayed,
             monthsPlayed = monthsPlayed,
             seasonEarned = seasonEarned,
-            patronOwned = patronOwned
+            patronOwned = patronOwned,
+            ownedScenes = ownedScenes
         )
     }
 

@@ -69,6 +69,15 @@ kotlin {
             }
         }
 
+        // Die Zurück-Geste auf Android: PlatformBackHandler.android.kt
+        // nutzt androidx.activity.compose.BackHandler. iOS und die JVM
+        // haben kein Gegenstück (CMP 1.7.3), dort tut der Handler nichts.
+        val androidMain by getting {
+            dependencies {
+                implementation(libs.androidx.activity.compose)
+            }
+        }
+
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))

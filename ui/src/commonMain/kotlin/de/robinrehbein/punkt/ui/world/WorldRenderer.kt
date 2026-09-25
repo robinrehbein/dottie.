@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.unit.dp
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.Ground
 import de.robinrehbein.punkt.game.Prop
@@ -42,6 +43,20 @@ import kotlin.math.sin
  * gehoert, rechnet [SkinPaint.skyStage] — der Zaehler laeuft im Umlauf,
  * nach der Nacht geht es zurueck Richtung Tag.
  */
+
+/**
+ * Lage der Kreisbahn im Bild: Mitte und Radius. Eine Quelle für alles,
+ * was sich am Ring ausrichten muss (Todesursache, Hinweis, Hand) — damit
+ * niemand die Zahlen aus [drawTimingWorld] abschreibt.
+ */
+data class RingGeometry(val cx: Float, val cy: Float, val radius: Float)
+
+/** Die Kreisbahn für eine Bildgröße: Mitte bei 44 % der Höhe, Radius min(0,36 w; 0,28 h). */
+fun ringGeometry(size: Size): RingGeometry = RingGeometry(
+    cx = size.width / 2f,
+    cy = size.height * 0.44f,
+    radius = min(size.width * 0.36f, size.height * 0.28f)
+)
 
 fun DrawScope.drawTimingWorld(
     game: TimingGame,
@@ -87,16 +102,26 @@ fun DrawScope.drawTimingWorld(
         // Kreisbahn mit Zielzone, ggf. Fallen-Zone und Punkt. Sie zieht
         // ihre Farben bewusst NICHT aus der Kulisse: Worauf getippt wird,
         // sieht überall gleich aus — sonst wäre die Kulisse ein Vorteil.
-        val cx = w / 2f
-        val cy = h * 0.44f
-        val radius = min(w * 0.36f, h * 0.28f)
+        val (cx, cy, radius) = ringGeometry(size)
         drawTrack(game, cx, cy, radius, cell)
+        // == AP-22 start ==
+        drawStartCoach(game, fx, cx, cy, radius, cell)
+        // == /AP-22 ==
         if (game.isDotVisible) {
             drawTimingDot(game, fx, cx, cy, radius, skin, hour, month)
         }
+        // == AP-23 nebel ==
+        // Die Nebelbank liegt über dem Vogel: Er gleitet an ihrer Kontur
+        // hinein und heraus. Grenzen allein aus der Engine.
+        drawFogBank(game, cx, cy, radius, game.fogStart(), game.fogEnd())
+        drawFogPuffs(game, fx, cx, cy, radius)
+        // == /AP-23 ==
         if (fx.celebrateTime > 0f) {
             drawUnlockBurst(fx.celebrateTime, cx, cy, radius, cell)
         }
+        // == AP-12 bomben ==
+        drawTrapBoom(game, fx.deathTime, cx, cy, radius, cell)
+        // == /AP-12 ==
     }
 
     // Weißer Blitz beim Aufprall
@@ -659,7 +684,8 @@ internal fun DrawScope.drawGroundStrip(cell: Float, ground: Ground) {
 
 /**
  * Die Kreisbahn als Kette blockiger Zellen. Die Zielzone ist grün mit
- * hellem Perfekt-Kern, die Fallen-Zone violett — alles im Pixel-Raster.
+ * hellem Perfekt-Kern, die Falle eine Kette aus Minen mit rotem Lauflicht
+ * (siehe MineField.kt) — alles im Pixel-Raster.
  */
 internal fun DrawScope.drawTrack(
     game: TimingGame,
@@ -673,6 +699,13 @@ internal fun DrawScope.drawTrack(
     // bleiben durch ihre größeren Blöcke bewusst ein durchgehendes Band.
     val segments = 60
     val zoneHalf = game.effectiveZoneHalf()
+    val mines = trapMines(game, segments, zoneHalf)
+    // Minen in Blockgröße, aber nie so groß, dass sie sich überdecken
+    // (unter PULS rückt die Kette zusammen). Ihre Mitten auf dem Bild
+    // braucht die Schleife, um Sandblöcke unter den Minen frei zu lassen.
+    val minePx = trapMinePixel(game, segments, radius, cell)
+    val mineHalf = mineHalfExtent(minePx)
+    val mineCenters = mines.map { Offset(cx + cos(it.angle) * radius, cy + sin(it.angle) * radius) }
     for (k in 0 until segments) {
         val a = k.toFloat() / segments * (2f * PI.toFloat())
         val px = cx + cos(a) * radius
@@ -687,19 +720,22 @@ internal fun DrawScope.drawTrack(
         val inPerfectCore = abs(relativeZone) <= coreHalf
 
         val fakeHalf = game.fakeZoneHalf()
-        val inFake = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= fakeHalf
-        val inFakeCore = game.hasFakeZone &&
-            abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= coreHalf
+        val relativeFake = TimingGame.wrapToPi(a - game.fakeZoneCenter)
+        val inFake = game.hasFakeZone && abs(relativeFake) <= fakeHalf
 
-        val highlighted = inZone || inFake
-        val outer = if (highlighted) cell * 5f else cell * 3f
-        val inner = if (highlighted) cell * 3.4f else cell * 1.8f
+        // Die Falle ist eine Kette aus Minen statt aus Blöcken: Hier
+        // bleibt die Bahn frei, die Minen kommen nach der Schleife.
+        // Liegt die Falle auf der Zone, gewinnt die Zone: Grün bleibt Grün.
+        if (inFake && !inZone) continue
+
+        val outer = if (inZone) cell * 5f else cell * 3f
+        // Die Minen liegen nicht auf dem Segment-Raster: Ein Sandblock am
+        // Rand der Falle, den eine Mine berühren würde, bleibt ebenfalls frei.
+        if (!inZone && blockHitsMine(px, py, outer / 2f, mineCenters, mineHalf)) continue
+        val inner = if (inZone) cell * 3.4f else cell * 1.8f
         val innerColor = when {
             inPerfectCore -> GrassLight
             inZone -> GrassDark
-            inFakeCore -> FakeZoneCoreColor
-            inFake -> FakeZoneColor
             else -> GroundSandShade
         }
 
@@ -713,6 +749,17 @@ internal fun DrawScope.drawTrack(
             topLeft = Offset(px - inner / 2f, py - inner / 2f),
             size = Size(inner, inner)
         )
+    }
+
+    // Die Minen der Falle: so viele, wie TrapPaint.count aus der
+    // Grundbreite ergibt, verteilt über die Breite fakeZoneHalf() (8.7).
+    // Erst alle Ränder, dann alle Kugeln: Benachbarte Minen teilen sich
+    // ihren Rand, die Kugeln berühren sich nie (trapMinePixel).
+    for (c in mineCenters) {
+        drawMineRim(c.x, c.y, minePx)
+    }
+    for ((i, mine) in mines.withIndex()) {
+        drawMineBody(mineCenters[i].x, mineCenters[i].y, minePx, mine.red)
     }
 }
 
@@ -759,6 +806,9 @@ internal fun DrawScope.drawUnlockBurst(
     }
 }
 
+/** Radius des Vogels relativ zur Bildhöhe — auch für alles, was ihm ausweichen muss. */
+internal const val DOT_RADIUS_SHARE = 0.026f
+
 internal fun DrawScope.drawTimingDot(
     game: TimingGame,
     fx: FxState,
@@ -770,9 +820,15 @@ internal fun DrawScope.drawTimingDot(
     month: Int
 ) {
     val h = size.height
-    val px = cx + cos(game.angle) * radius
+    // == AP-31 release ==
+    // Nach NOCH NICHT wackelt der Vogel 0,7 s seitlich (Plan 8.7, Mockup
+    // feedback-check.html:605), wie Hand und Schriftzug (AP-22). Nur in
+    // READY: Ein Start-Treffer beendet das Wackeln sofort.
+    val wobble = if (game.phase == GamePhase.READY) notYetWobble(fx.notYetTime, 1.dp.toPx()) else 0f
+    val px = cx + cos(game.angle) * radius + wobble
+    // == /AP-31 ==
     var py = cy + sin(game.angle) * radius
-    val r = h * 0.026f
+    val r = h * DOT_RADIUS_SHARE
 
     // Mario-Tod: Während des Todes-Freeze bleibt der Vogel stehen, dann
     // hüpft er nach oben, dreht sich dabei auf den Rücken und fällt
@@ -867,4 +923,32 @@ internal fun DrawScope.drawTimingDot(
     } else {
         drawBird(px, py)
     }
+
+    // Todesmarker (Plan 3.2): Im Freeze steht ein weißer Pixelrahmen um
+    // den Vogel — genau dort ist es passiert. Mit dem Hüpfer ist er weg,
+    // dann steht die Ursache als Text unter dem Ring.
+    if (fx.deathTime >= 0f && fx.deathTime < TimingGame.DEATH_FREEZE_SECONDS) {
+        drawDeathFrame(px, py, r, floor(h / 220f).coerceAtLeast(2f))
+    }
+}
+
+/**
+ * Weißer Rahmen um den Vogel, gezeichnet als vier Pixelbalken im
+ * Raster der Bahn ([cell]), mit dunkler Kontur außen herum, damit er auch
+ * vor hellem Himmel steht.
+ */
+private fun DrawScope.drawDeathFrame(px: Float, py: Float, r: Float, cell: Float) {
+    val half = r + cell * 2f
+    val stroke = cell
+    fun frame(inset: Float, width: Float, color: Color) {
+        val left = px - half - inset
+        val top = py - half - inset
+        val side = (half + inset) * 2f
+        drawRect(color, Offset(left, top), Size(side, width))
+        drawRect(color, Offset(left, top + side - width), Size(side, width))
+        drawRect(color, Offset(left, top), Size(width, side))
+        drawRect(color, Offset(left + side - width, top), Size(width, side))
+    }
+    frame(inset = stroke * 0.5f, width = stroke * 2f, color = OutlineColor)
+    frame(inset = 0f, width = stroke, color = Color.White)
 }

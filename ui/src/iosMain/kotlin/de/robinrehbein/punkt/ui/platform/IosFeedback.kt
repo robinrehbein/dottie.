@@ -4,6 +4,7 @@ import platform.UIKit.UIImpactFeedbackGenerator
 import platform.UIKit.UIImpactFeedbackStyle
 import platform.UIKit.UINotificationFeedbackGenerator
 import platform.UIKit.UINotificationFeedbackType
+import platform.UIKit.UISelectionFeedbackGenerator
 
 /**
  * [GameFeedback] ueber die Taptic Engine.
@@ -20,6 +21,7 @@ class IosFeedback : GameFeedback {
     private val medium = UIImpactFeedbackGenerator(UIImpactFeedbackStyle.UIImpactFeedbackStyleMedium)
     private val heavy = UIImpactFeedbackGenerator(UIImpactFeedbackStyle.UIImpactFeedbackStyleHeavy)
     private val notice = UINotificationFeedbackGenerator()
+    private val selection = UISelectionFeedbackGenerator()
 
     override fun score() = light.impactOccurred()
 
@@ -34,4 +36,11 @@ class IosFeedback : GameFeedback {
 
     override fun newRecord() =
         notice.notificationOccurred(UINotificationFeedbackType.UINotificationFeedbackTypeSuccess)
+
+    /**
+     * Der Knopf-Tick: der leichteste Ausschlag, den iOS kennt, derselbe
+     * wie beim Drehen einer Auswahlrolle. Mit „Systemhaptik“ aus bleibt
+     * er stumm.
+     */
+    override fun tap() = selection.selectionChanged()
 }

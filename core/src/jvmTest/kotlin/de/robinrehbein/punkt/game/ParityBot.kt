@@ -74,7 +74,7 @@ object ParityBot {
      */
     fun playPerfect(seed: Long, maxHits: Int): List<Snapshot> {
         val game = TimingGame(Random(seed))
-        game.tap() // READY -> RUNNING
+        game.start() // READY -> RUNNING
         val out = mutableListOf<Snapshot>()
         var frames = 0
         while (out.size < maxHits && frames < MAX_FRAMES) {
@@ -92,7 +92,7 @@ object ParityBot {
     /** Startet den Lauf und tappt nie wieder — Tod durch Überfahren. */
     fun playPassive(seed: Long): Death {
         val game = TimingGame(Random(seed))
-        game.tap()
+        game.start()
         var frames = 0
         var angle = game.angle
         var zoneCenter = game.zoneCenter
@@ -110,6 +110,78 @@ object ParityBot {
         }
         return Death(framesToDeath, settle, angle, zoneCenter)
     }
+
+    /** Ergebnis eines Laufs, der mit der Startregel beginnt. */
+    data class ReadyRun(
+        /** Event des Taps daneben in READY (vor dem Start). */
+        val notYetEvent: String,
+        /** Was das update() danach aus dem Puffer ausliefert. */
+        val notYetDelivered: List<String>,
+        /** Zonenmitte nach dem Tap daneben — muss [TimingGame.READY_ZONE_CENTER] bleiben. */
+        val notYetZoneCenter: Float,
+        /** Frames in READY bis zum Start-Treffer. */
+        val framesToHit: Int,
+        /** Was das erste update() nach dem Start-Treffer ausliefert. */
+        val startEvents: List<String>,
+        val snapshots: List<Snapshot>
+    )
+
+    /**
+     * Startregel mit Perfekt-Treffer: ein Tap daneben (NotYet), dann bis
+     * tief in den Kern der READY-Zone warten und tappen. Das ist Treffer 1.
+     * Danach geht es weiter wie in [playPerfect], bis [maxHits]
+     * Schnappschüsse (inklusive des Start-Treffers) beisammen sind.
+     */
+    fun playReadyHit(seed: Long, maxHits: Int): ReadyRun {
+        val game = TimingGame(Random(seed))
+        val notYet = game.tap()
+        val notYetZone = game.zoneCenter
+        val notYetDelivered = game.update(0f).map { name(it) }
+        var frames = 0
+        while (game.phase == GamePhase.READY && frames < MAX_FRAMES) {
+            frames++
+            game.update(DT)
+            if (abs(game.relativeToZone()) <= game.zoneHalfWidth * TAP_WINDOW) {
+                game.tap()
+                break
+            }
+        }
+        val out = mutableListOf(snapshot(game))
+        val startEvents = game.update(DT).map { name(it) }
+        var guard = 0
+        while (out.size < maxHits && guard++ < MAX_FRAMES) {
+            game.update(DT)
+            if (game.phase != GamePhase.RUNNING) break
+            if (abs(game.relativeToZone()) <= game.zoneHalfWidth * TAP_WINDOW) {
+                game.tap()
+                out.add(snapshot(game))
+            }
+        }
+        return ReadyRun(name(notYet), notYetDelivered, notYetZone, frames, startEvents, out)
+    }
+
+    /**
+     * Startregel am Zonenrand: Der Bot tappt im ersten Frame, in dem der
+     * Punkt in der READY-Zone steht. Das ergibt einen normalen Treffer.
+     * Die READY-Zone pulsiert nicht, die Entscheidung hängt an keinem `sin`.
+     */
+    fun playReadyEdge(seed: Long): ReadyRun {
+        val game = TimingGame(Random(seed))
+        var frames = 0
+        while (game.phase == GamePhase.READY && frames < MAX_FRAMES) {
+            frames++
+            game.update(DT)
+            if (game.isInZone) {
+                game.tap()
+                break
+            }
+        }
+        val snap = snapshot(game)
+        val startEvents = game.update(DT).map { name(it) }
+        return ReadyRun("-", emptyList(), game.zoneCenter, frames, startEvents, listOf(snap))
+    }
+
+    private fun name(event: GameEvent?): String = event?.let { it::class.simpleName } ?: "-"
 
     private fun snapshot(game: TimingGame) = Snapshot(
         score = game.score,

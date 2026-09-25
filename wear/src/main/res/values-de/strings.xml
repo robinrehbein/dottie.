@@ -2,6 +2,8 @@
 <resources>
     <string name="app_name" translatable="false">Dottie.</string>
     <string name="tap">TIPP</string>
+    <!-- Tap daneben im Start: Der Lauf beginnt erst mit einem Tap im Grün. -->
+    <string name="not_yet">NOCH NICHT</string>
     <string name="best">REKORD: %1$d</string>
     <string name="sound_on">TON: AN</string>
     <string name="sound_off">TON: AUS</string>
@@ -21,7 +23,7 @@
          einsprachig (siehe dort). %1$d = verdient, %2$d = erreichbar —
          Saison- und Goenner-Skins zaehlen nicht mit. -->
     <string name="skins">SKINS %1$d/%2$d</string>
-    <string name="back">ZURUECK</string>
+    <string name="back">ZURÜCK</string>
 
     <!-- Medaillen-Namen, identisch zum Phone-Modul -->
     <string name="medal_bronze">BRONZE</string>

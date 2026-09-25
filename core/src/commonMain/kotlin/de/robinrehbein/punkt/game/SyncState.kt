@@ -80,7 +80,19 @@ data class SyncState(
      * Entscheidung neben Skin und Kulisse, und deshalb dieselbe Regel:
      * neuer gewinnt, nicht größer.
      */
-    val soundChangedAt: Long = 0L
+    val soundChangedAt: Long = 0L,
+    /**
+     * Besitz-Menge der Welten als Namen (siehe [SkinStats.ownedScenes]).
+     * Sie wird vereinigt, nicht maximiert: Eine Welt, die eine Seite aus
+     * dem Bestand mitgebracht hat, darf beim Zusammenführen nicht
+     * verlorengehen, auch wenn die Zahlen der anderen Seite sie heute
+     * nicht mehr hergäben. Vereinigung ist wie Oder kommutativ und
+     * idempotent.
+     *
+     * Fehlt das Feld, weil die Gegenseite eine ältere App fährt, bleibt
+     * die Menge leer — verloren geht dadurch nichts.
+     */
+    val ownedScenes: Set<String> = emptySet()
 ) {
 
     /**
@@ -145,7 +157,8 @@ data class SyncState(
             scene = if (sceneFromOther) other.scene else scene,
             sceneChangedAt = maxOf(sceneChangedAt, other.sceneChangedAt),
             sound = if (soundFromOther) other.sound else sound,
-            soundChangedAt = maxOf(soundChangedAt, other.soundChangedAt)
+            soundChangedAt = maxOf(soundChangedAt, other.soundChangedAt),
+            ownedScenes = ownedScenes + other.ownedScenes
         )
     }
 

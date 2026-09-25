@@ -10,13 +10,51 @@ package de.robinrehbein.punkt.ui.world
  */
 class FxState {
     var flashAlpha = 0f
+    // == AP-11 todesursache ==
+    // == /AP-11 ==
     var shakeTime = 0f
+    // == AP-12 bomben ==
+    // == /AP-12 ==
 
     /** Restzeit der Freischalt-Zelebration (goldener Ring + Schimmer). */
     var celebrateTime = 0f
+    // == AP-22 start ==
+
+    /**
+     * Stützräder an (Hand, Leuchten, Plan 8.6 #2)? Kein Effekt, sondern
+     * Einstellung aus GameScreen: [reset] lässt ihn stehen.
+     */
+    var trainingWheels = false
+
+    /** Restzeit von „NOCH NICHT“ nach einem Tap daneben in READY. */
+    var notYetTime = 0f
+
+    /** Drückt die Hand gerade (Punkt im Grün)? */
+    var handPressed = false
+
+    /** Sekunden seit dem Echo an der Fingerspitze, negativ = keins. */
+    var handEchoTime = -1f
+
+    /** Die laufenden Tipp-Echos, ältestes zuerst. */
+    val tapEchoes = ArrayList<TapEcho>()
+    // == /AP-22 ==
 
     /** Sekunden seit dem Tod (Mario-Huepfer), negativ = kein Tod aktiv. */
     var deathTime = -1f
+    // == AP-23 nebel ==
+
+    /**
+     * Wölkchen beim Ein- und Austritt in den Nebel (siehe trackFog):
+     * Sekunden seit dem Wechsel (negativ = keins) und Bahnwinkel des Punkts.
+     */
+    var fogInTime = -1f
+    var fogInAngle = 0f
+    var fogOutTime = -1f
+    var fogOutAngle = 0f
+
+    /** War der Punkt im letzten Frame im Nebel? 1 = ja, 0 = nein, -1 = unbekannt. */
+    var fogWasIn = -1
+    // == /AP-23 ==
 
     /**
      * Alle Effekte auf den Ruhezustand — noetig ueberall dort, wo ein Lauf
@@ -26,8 +64,23 @@ class FxState {
      */
     fun reset() {
         flashAlpha = 0f
+        // == AP-11 todesursache ==
+        // == /AP-11 ==
         shakeTime = 0f
+        // == AP-12 bomben ==
+        // == /AP-12 ==
         celebrateTime = 0f
+        // == AP-22 start ==
+        notYetTime = 0f
+        handPressed = false
+        handEchoTime = -1f
+        tapEchoes.clear()
+        // == /AP-22 ==
         deathTime = -1f
+        // == AP-23 nebel ==
+        fogInTime = -1f
+        fogOutTime = -1f
+        fogWasIn = -1
+        // == /AP-23 ==
     }
 }

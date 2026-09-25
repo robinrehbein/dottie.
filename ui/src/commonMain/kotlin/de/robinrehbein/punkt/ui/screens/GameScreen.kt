@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -35,6 +37,7 @@ import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.GameEventChainNext
 import de.robinrehbein.punkt.game.GameEventDied
 import de.robinrehbein.punkt.game.GameEventHit
+import de.robinrehbein.punkt.game.GameEventNotYet
 import de.robinrehbein.punkt.game.GameEventPerfectHit
 import de.robinrehbein.punkt.game.GameEventSettled
 import de.robinrehbein.punkt.game.GameEventStarted
@@ -56,8 +59,11 @@ import de.robinrehbein.punkt.game.Twist
 import de.robinrehbein.punkt.ui.data.GameStore
 import de.robinrehbein.punkt.ui.data.deviceCalendar
 import de.robinrehbein.punkt.ui.data.deviceHourAndMonth
+import de.robinrehbein.punkt.ui.components.LocalPressFeedback
+import de.robinrehbein.punkt.ui.components.PressFeedback
 import de.robinrehbein.punkt.ui.platform.GameFeedback
 import de.robinrehbein.punkt.ui.platform.GameSounds
+import de.robinrehbein.punkt.ui.platform.PlatformBackHandler
 import de.robinrehbein.punkt.ui.platform.PlatformHooks
 import de.robinrehbein.punkt.ui.platform.ShareRequest
 import de.robinrehbein.punkt.ui.resources.Res
@@ -75,6 +81,7 @@ import de.robinrehbein.punkt.ui.resources.perfect_plus
 import de.robinrehbein.punkt.ui.resources.ready_hint
 import de.robinrehbein.punkt.ui.resources.share_text
 import de.robinrehbein.punkt.ui.resources.share_text_daily
+import de.robinrehbein.punkt.ui.resources.start_not_yet
 import de.robinrehbein.punkt.ui.share.ScoreCardContent
 import de.robinrehbein.punkt.ui.share.renderScoreCard
 import de.robinrehbein.punkt.ui.text.sceneTitle
@@ -82,6 +89,12 @@ import de.robinrehbein.punkt.ui.theme.Bytesized
 import de.robinrehbein.punkt.ui.world.CELEBRATE_SECONDS
 import de.robinrehbein.punkt.ui.world.FxState
 import de.robinrehbein.punkt.ui.world.drawTimingWorld
+import de.robinrehbein.punkt.ui.world.NOT_YET_SECONDS
+import de.robinrehbein.punkt.ui.world.addTapEcho
+import de.robinrehbein.punkt.ui.world.advanceStartCoach
+import de.robinrehbein.punkt.ui.world.drawNotYet
+import de.robinrehbein.punkt.ui.world.drawTapEchoes
+import de.robinrehbein.punkt.ui.world.startCoachActive
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
@@ -144,12 +157,12 @@ private class RunState {
     }
 }
 
+// == AP-14 bedienung ==
 /**
- * Spielprinzip "STOPP": Der Punkt kreist automatisch auf einer Bahn.
- * Ein Tap, während er in der Zielzone ist, zählt — daneben getappt oder
- * die Zone überfahren ist sofort das Ende. Präzision statt Dauerfeuer.
- * Mit steigendem Score schalten sich Twists frei (Puls, Drift, Geist,
- * Falle, Kette), die pro Zone zufällig gemischt werden.
+ * Der Spielbildschirm. Hängt den Haptik-Tick der Knöpfe an
+ * [GameFeedback.tap] (über [LocalPressFeedback]), damit jeder Pixel-Knopf,
+ * Taster und Schalter darunter beim Drücken kurz tickt (Plan 7.2), und
+ * zeichnet dann [GameScreenContent].
  */
 @Composable
 fun GameScreen(
@@ -157,13 +170,42 @@ fun GameScreen(
     sounds: GameSounds,
     feedback: GameFeedback,
     hooks: PlatformHooks = PlatformHooks(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Das Spiel selbst. Von außen nur für Werkzeuge (ScreenshotRenderer)
+    // gesetzt, die ein geseedetes Spiel brauchen.
+    game: TimingGame = remember { TimingGame() },
+    // Fester Seed für freie Läufe, sonst echter Zufall. Nur für
+    // reproduzierbare Screenshots; die Daily behält ihren Tages-Seed.
+    runSeed: Long? = null
+) {
+    val pressFeedback = remember(feedback) { PressFeedback { feedback.tap() } }
+    CompositionLocalProvider(LocalPressFeedback provides pressFeedback) {
+        GameScreenContent(store, sounds, feedback, hooks, modifier, game, runSeed)
+    }
+}
+// == /AP-14 ==
+
+/**
+ * Spielprinzip "STOPP": Der Punkt kreist automatisch auf einer Bahn.
+ * Ein Tap, während er in der Zielzone ist, zählt — daneben getappt oder
+ * die Zone überfahren ist sofort das Ende. Präzision statt Dauerfeuer.
+ * Mit steigendem Score schalten sich Twists frei (Puls, Drift, Nebel,
+ * Bomben, Kette), die pro Zone zufällig gemischt werden.
+ */
+@Composable
+private fun GameScreenContent(
+    store: GameStore,
+    sounds: GameSounds,
+    feedback: GameFeedback,
+    hooks: PlatformHooks,
+    modifier: Modifier,
+    game: TimingGame,
+    runSeed: Long?
 ) {
     remember(sounds) {
         sounds.muted = store.soundMuted
         sounds.soundSet = store.selectedSound
     }
-    val game = remember { TimingGame() }
     val fx = remember { FxState() }
     val bannerState = remember { BannerState() }
     // Schon beim Aufbau die Uhr lesen: Der Vogel kreist auch im
@@ -176,7 +218,7 @@ fun GameScreen(
     var patronOwned by remember { mutableStateOf(store.patronOwned) }
     // Ebenfalls als Zustand: Wer waehrend der Sitzung werbefrei kauft,
     // soll die Goenner-Zeile sofort in ihrer ehrlichen Fassung sehen
-    // (siehe SkinOverlay) — nicht erst beim naechsten Start.
+    // (siehe CollectionOverlay) — nicht erst beim naechsten Start.
     var adsRemoved by remember { mutableStateOf(store.adsRemoved) }
 
     // Texte, die in Ereignis-Handlern gebraucht werden: Lesen geht nur
@@ -193,6 +235,18 @@ fun GameScreen(
     // Einstellungs-Overlay hinter dem Zahnrad: Ton, Erinnerung, Hilfe,
     // Werbe-Kauf und Datenschutz.
     var showSettings by remember { mutableStateOf(false) }
+    // == AP-14 bedienung ==
+    // Die Game-Over-Leiste ist gesperrt, solange OVER jünger ist als
+    // GAME_OVER_BAR_LOCK_SECONDS. Gemessen an der Spielzeit (game.elapsed),
+    // nicht an der Uhr (Plan 8.7). frameTick hält die Rechnung im Takt der
+    // Frames; neu gezeichnet wird nur, wenn der Wert wirklich kippt.
+    val overBarLocked by remember {
+        derivedStateOf {
+            frameTick
+            phase == GamePhase.OVER && game.elapsed < GAME_OVER_BAR_LOCK_SECONDS
+        }
+    }
+    // == /AP-14 ==
     // Der Rahmen der Score-Karte als vierte Sammlung. null heisst "nie
     // gewaehlt" und ist etwas anderes als SCHLICHT: Ohne Wahl traegt die
     // Karte automatisch die hoechste verdiente Stufe.
@@ -200,11 +254,40 @@ fun GameScreen(
     var isNewRecord by remember { mutableStateOf(false) }
     var taunt by remember { mutableStateOf("") }
     var showPerfect by remember { mutableStateOf(false) }
+    // == AP-23 nebel ==
+    // BLIND!-Pop nach einem gewerteten Blindtreffer, mit dessen Punkten.
+    var showBlind by remember { mutableStateOf(false) }
+    var blindPoints by remember { mutableIntStateOf(1) }
+    // Wo getroffen wurde (Winkel) und bei welchem Treffer: Der Pop bleibt
+    // an der Trefferstelle stehen, während der Vogel weiterfliegt.
+    var blindAngle by remember { mutableStateOf(0f) }
+    var blindHits by remember { mutableIntStateOf(-1) }
+    // == /AP-23 ==
     var perfectPoints by remember { mutableIntStateOf(2) }
     var bannerText by remember { mutableStateOf("") }
     var showHelp by remember { mutableStateOf(false) }
     var soundOn by remember { mutableStateOf(!store.soundMuted) }
     var dailyMode by remember { mutableStateOf(false) }
+    // == AP-22 start ==
+    // dailyMode heißt seit AP-22 „DAILY ist scharf“: DAILY schaltet nur
+    // noch um, gestartet wird per Tap im Grün (Plan 8.6 #4).
+    // Die einmalige DAILY-Karte (DailyIntroCard).
+    var showDailyIntro by remember { mutableStateOf(false) }
+    // Stützräder (Hand, Leuchten, keine Zielzeile) für die ersten
+    // START_COACH_RUNS Läufe. Nachgezogen bei jedem Phasenwechsel (ein
+    // Lauf wurde gezählt) und nach jedem Abgleich (die Uhr zählt mit).
+    var trainingWheels by remember { mutableStateOf(startCoachActive(store.runCount)) }
+    LaunchedEffect(phase, store.syncRevision) {
+        trainingWheels = startCoachActive(store.runCount)
+    }
+    val notYetText = stringResource(Res.string.start_not_yet)
+    val notYetMeasurer = rememberTextMeasurer()
+    val notYetStyle = ScoreShadowStyle.copy(
+        fontFamily = Bytesized,
+        fontSize = 22.sp,
+        color = Color.White
+    )
+    // == /AP-22 ==
     var skin by remember { mutableStateOf(store.selectedSkin) }
     // Die Kulisse ist die zweite Sammlung: kein Tagespass, kein
     // Verfallsdatum — deshalb reicht ein schlichter Zustand.
@@ -223,6 +306,24 @@ fun GameScreen(
         mutableStateOf(store.skinPassFor(deviceCalendar().epochDay))
     }
     var showSkins by remember { mutableStateOf(false) }
+    // Liegt in der Sammlung etwas Neues, das noch niemand angesehen hat?
+    // Gefüllt ab AP-15, bis dahin immer false (Plan 8.3).
+    var collectionHasNew by remember { mutableStateOf(false) }
+    // == AP-15 sammlung ==
+    // Die NEU-Kacheln der Sammlung (siehe CollectionSeen): Sie tragen den
+    // roten Punkt am Taster, das Banner „NEUE WELTEN“ und die Schilder im
+    // Raster. Nachgezogen bei jedem Phasenwechsel (ein Lauf kann etwas
+    // freigeschaltet haben) und nach jedem Abgleich (die Uhr auch).
+    var collectionNew by remember { mutableStateOf(emptySet<String>()) }
+    // Mit welchem Reiter die Sammlung aufgeht: VOGEL über den Taster, WELT
+    // über das Banner.
+    var collectionTab by remember { mutableStateOf(CollectionTab.VOGEL) }
+    fun refreshCollection() {
+        collectionNew = store.collectionNew()
+        collectionHasNew = collectionNew.isNotEmpty()
+    }
+    LaunchedEffect(phase, store.syncRevision) { refreshCollection() }
+    // == /AP-15 ==
     // Statistik-Seite: Zahlen und Ziele werden beim Öffnen einmal
     // gerechnet und festgehalten. Pro Frame nachzurechnen wäre für eine
     // Seite, die stillsteht, solange sie offen ist, reine Verschwendung.
@@ -241,6 +342,14 @@ fun GameScreen(
     // nichts Neues gebracht hat oder alles Neue schon einmal erklärt
     // wurde. Gefüllt beim Tod, siehe GameEventDied.
     var twistToExplain by remember { mutableStateOf<Twist?>(null) }
+    // == AP-11 todesursache ==
+    // Warum der letzte Lauf endete — ein Spiegel von game.lastDeathCause,
+    // den die Game-Loop pro Frame nachzieht. Als Compose-Zustand, weil
+    // die Anzeige am Ring und im Game-Over sonst nicht neu zeichnet.
+    var deathCause by remember { mutableStateOf(de.robinrehbein.punkt.game.DeathCause.NONE) }
+    // Steht bei diesem Tod "BOMBE = NIE TIPPEN" dabei? Einmal pro Gerät.
+    var bombLesson by remember { mutableStateOf(false) }
+    // == /AP-11 ==
     var dailyBestToday by remember {
         mutableIntStateOf(store.dailyBestFor(deviceCalendar().epochDay))
     }
@@ -334,7 +443,11 @@ fun GameScreen(
         val today = runState.epochDay
         // Jeder Lauf-Start ist auch der Moment, den Tagespass nachzuziehen.
         refreshSkinPass(today)
-        if (dailyMode) game.reseed(DailyChallenge.seedFor(today)) else game.reseedSystem()
+        when {
+            dailyMode -> game.reseed(DailyChallenge.seedFor(today))
+            runSeed != null -> game.reseed(runSeed)
+            else -> game.reseedSystem()
+        }
     }
 
     // Banner mit Priorität: Ein wichtigeres Banner ("REKORD GEKNACKT!")
@@ -346,6 +459,23 @@ fun GameScreen(
         bannerState.priority = priority
     }
 
+    // == AP-14 bedienung ==
+    // Zurück in den Startbildschirm: MENÜ in der Game-Over-Leiste und die
+    // Zurück-Geste im Game-Over rufen dasselbe.
+    fun backToMenu() {
+        dailyMode = false
+        game.reset()
+        // Auch die Effekte zurücksetzen — sonst läuft die
+        // Sturz-Animation weiter und der Vogel fehlt im
+        // Startbild, obwohl er dort wieder kreisen soll.
+        fx.reset()
+        bannerState.timeLeft = 0f
+        bannerText = ""
+        bannerState.lastStage = 0
+        bannerState.recordCelebrated = false
+    }
+    // == /AP-14 ==
+
     // Game-Loop: ein Update pro gerendertem Frame.
     LaunchedEffect(Unit) {
         var lastFrameNanos = 0L
@@ -356,8 +486,29 @@ fun GameScreen(
 
                 val events = game.update(dt)
                 fx.flashAlpha = (fx.flashAlpha - dt * 3.5f).coerceAtLeast(0f)
+                // == AP-11 todesursache ==
+                // Gleiche Werte lösen keine Neuzusammensetzung aus.
+                deathCause = game.lastDeathCause
+                // == /AP-11 ==
                 fx.shakeTime = (fx.shakeTime - dt).coerceAtLeast(0f)
+                // == AP-22 start ==
+                fx.trainingWheels = trainingWheels
+                advanceStartCoach(fx, game, dt)
+                // Die Zielzeile fällt während der Stützräder weg, auch im
+                // Game-Over (Plan 8.6 #7). Gleiche Werte lösen keine
+                // Neuzusammensetzung aus.
+                if (trainingWheels) nextGoal = null
+                // == /AP-22 ==
                 fx.celebrateTime = (fx.celebrateTime - dt).coerceAtLeast(0f)
+                // == AP-23 nebel ==
+                de.robinrehbein.punkt.ui.world.trackFog(fx, game, dt)
+                showBlind = de.robinrehbein.punkt.ui.world.isBlindPopShown(game)
+                if (showBlind && blindHits != game.hits) {
+                    blindHits = game.hits
+                    blindAngle = game.angle
+                    blindPoints = blindBonusPoints(game)
+                }
+                // == /AP-23 ==
                 if (fx.deathTime >= 0f) fx.deathTime += dt
                 bannerState.timeLeft = (bannerState.timeLeft - dt).coerceAtLeast(0f)
                 if (bannerState.timeLeft <= 0f && bannerText.isNotEmpty()) {
@@ -380,8 +531,24 @@ fun GameScreen(
                             newMedalThisRun = false
                             twistToExplain = null
                             fx.deathTime = -1f
-                            sounds.start()
+                            // == AP-22 start ==
+                            // Beim READY-Treffer spielt der Treffer-Ton,
+                            // nicht zusätzlich der Start (Plan 8.5 AP-22).
+                            // Der Sofort-Neustart aus dem Game-Over hat
+                            // keinen Treffer und behält den Start-Ton.
+                            if (events.none { it is GameEventHit || it is GameEventPerfectHit }) {
+                                sounds.start()
+                            }
+                            // == /AP-22 ==
                         }
+                        // == AP-22 start ==
+                        is GameEventNotYet -> {
+                            // Tap daneben im Startbildschirm: kostet nichts,
+                            // sagt aber „NOCH NICHT“ und tickt (Plan 3.1).
+                            fx.notYetTime = NOT_YET_SECONDS
+                            feedback.tap()
+                        }
+                        // == /AP-22 ==
                         is GameEventHit -> {
                             feedback.score()
                             sounds.hit(game.score)
@@ -419,6 +586,11 @@ fun GameScreen(
                             fx.shakeTime = 0.4f
                             fx.celebrateTime = 0f
                             fx.deathTime = 0f
+                            // == AP-11 todesursache ==
+                            deathCause = game.lastDeathCause
+                            bombLesson = deathCause == de.robinrehbein.punkt.game.DeathCause.TRAP &&
+                                store.takeBombLesson()
+                            // == /AP-11 ==
                             val previousBest = store.bestScore
                             newMedalThisRun = MedalPaint.isUpgrade(game.score, previousBest)
                             // Gezählt wird, was VERDIENT ist: Saison zählt
@@ -456,7 +628,10 @@ fun GameScreen(
                             // wartet auf die nächsten Tode — das Game-Over
                             // bleibt ruhig. Die Daily zählt dabei wie
                             // jeder andere Lauf.
-                            twistToExplain = store.twistToExplain(runState.unlockedTwists)
+                            twistToExplain = store.twistToExplain(
+                                runState.unlockedTwists,
+                                diedInTrap = game.lastDeathCause == de.robinrehbein.punkt.game.DeathCause.TRAP
+                            )
                             twistToExplain?.let { store.markTwistExplained(it) }
                             // Jeder beendete Lauf ist ein moeglicher neuer
                             // Stand fuer die Uhr. Ohne Aenderung ist der
@@ -533,10 +708,16 @@ fun GameScreen(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                detectTapGestures(onPress = {
-                    // Ein Tap in READY/OVER startet gleich einen Lauf —
-                    // vorher Seed und Tag für den aktuellen Modus setzen.
-                    if (game.phase == GamePhase.READY ||
+                detectTapGestures(onPress = { position ->
+                    // == AP-22 start ==
+                    // Jeder freie Tap hinterlässt ein Echo, in allen Phasen.
+                    fx.addTapEcho(position)
+                    // == /AP-22 ==
+                    // Seed und Tag für den aktuellen Modus setzen, bevor ein
+                    // Tap einen Lauf startet: in READY nur, wenn er im Grün
+                    // liegt (sonst kommt NOCH NICHT, und der Lauf beginnt
+                    // erst später), aus OVER immer (Sofort-Neustart).
+                    if ((game.phase == GamePhase.READY && game.isInZone) ||
                         game.phase == GamePhase.OVER
                     ) {
                         prepareRun()
@@ -550,7 +731,18 @@ fun GameScreen(
             // Stunde und Monat kommen aus dem Lauf-Zustand, nicht frisch
             // von der Uhr — sie werden je Lauf einmal abgelesen.
             drawTimingWorld(game, fx, skin, scene, runState.hour, runState.month)
+            // == AP-22 start ==
+            drawNotYet(fx, notYetText, notYetMeasurer, notYetStyle)
+            drawTapEchoes(fx)
+            // == /AP-22 ==
         }
+
+        // == AP-23 nebel ==
+        // BLIND! +1 am Ring, an der Trefferstelle (Plan 8.6 #1).
+        if (showBlind) {
+            BlindPop(bonus = blindPoints, angle = blindAngle)
+        }
+        // == /AP-23 ==
 
         // Positionen relativ zur Bildhöhe: Die Bahn endet spätestens bei
         // 72% der Höhe, der Perfekt-Text sitzt knapp darunter — auf jedem
@@ -566,6 +758,12 @@ fun GameScreen(
                     .padding(top = maxHeight * 0.74f)
             )
         }
+        // == AP-11 todesursache ==
+        // Die Ursache am Ring, solange der Vogel stürzt (Freeze und Fall).
+        if (phase == GamePhase.DYING) {
+            DeathCauseLabel(cause = deathCause, bombLesson = bombLesson)
+        }
+        // == /AP-11 ==
 
         when (phase) {
             GamePhase.READY -> ReadyOverlay(
@@ -573,11 +771,23 @@ fun GameScreen(
                 hint = stringResource(Res.string.ready_hint),
                 dailyStreak = dailyStreak,
                 goal = nextGoal,
+                // == AP-22 start ==
+                // DAILY schaltet nur noch um (Plan 8.6 #4): beim ersten Mal
+                // die Karte, danach aus ↔ scharf. Gestartet wird per Tap im
+                // Grün, prepareRun() setzt dann den Tages-Seed.
                 onDaily = {
-                    dailyMode = true
-                    prepareRun()
-                    game.tap()
+                    when (dailyTap(armed = dailyMode, introSeen = store.dailyIntroSeen)) {
+                        DailyTap.SHOW_INTRO -> {
+                            store.markDailyIntroSeen()
+                            showDailyIntro = true
+                        }
+                        DailyTap.ARM -> dailyMode = true
+                        DailyTap.DISARM -> dailyMode = false
+                    }
                 },
+                dailyArmed = dailyMode,
+                goalHidden = trainingWheels,
+                // == /AP-22 ==
                 onSkins = {
                     // Vor dem Öffnen nachziehen: Der Startscreen kann seit
                     // dem letzten Lauf einen Tageswechsel gesehen haben.
@@ -586,6 +796,8 @@ fun GameScreen(
                     // das Tagespass-Angebot ist — sie kann nachladen, was
                     // beim Start nicht geklappt hat.
                     hooks.onSkinsOpened()
+                    refreshCollection()
+                    collectionTab = CollectionTab.VOGEL
                     showSkins = true
                 },
                 onStats = {
@@ -603,7 +815,24 @@ fun GameScreen(
                 },
                 onSettings = { showSettings = true },
                 diagnostics = if (showDiagnostics) hooks.diagnostics else null,
-                onToggleDiagnostics = { showDiagnostics = !showDiagnostics }
+                onToggleDiagnostics = { showDiagnostics = !showDiagnostics },
+                collectionHasNew = collectionHasNew,
+                banner = {
+                    // == AP-15 sammlung ==
+                    // Neue Welten bekommen ein Banner unter dem Rekord:
+                    // Eine Welt ändert das ganze Bild, sie soll nicht nur
+                    // als roter Punkt am Taster warten. Tippen öffnet die
+                    // Sammlung im Reiter WELT.
+                    NewWorldsBanner(
+                        de.robinrehbein.punkt.ui.data.CollectionSeen.newScenes(collectionNew)
+                    ) {
+                        refreshSkinPass(deviceCalendar().epochDay)
+                        hooks.onSkinsOpened()
+                        collectionTab = CollectionTab.WELT
+                        showSkins = true
+                    }
+                    // == /AP-15 ==
+                }
             )
             GamePhase.RUNNING, GamePhase.DYING ->
                 ScoreHud(
@@ -689,22 +918,28 @@ fun GameScreen(
                             )
                         }
                     },
-                    onMenu = {
-                        dailyMode = false
-                        game.reset()
-                        // Auch die Effekte zurücksetzen — sonst läuft die
-                        // Sturz-Animation weiter und der Vogel fehlt im
-                        // Startbild, obwohl er dort wieder kreisen soll.
-                        fx.reset()
-                        bannerState.timeLeft = 0f
-                        bannerText = ""
-                        bannerState.lastStage = 0
-                        bannerState.recordCelebrated = false
+                    onMenu = { backToMenu() },
+                    cause = {
+                        // == AP-11 todesursache ==
+                        DeathCauseSmall(deathCause)
+                        // == /AP-11 ==
                     },
-                    onHelp = { showHelp = true }
+                    barLocked = overBarLocked
                 )
             }
         }
+
+        // == AP-22 start ==
+        if (showDailyIntro && phase == GamePhase.READY) {
+            DailyIntroCard(
+                onStart = {
+                    showDailyIntro = false
+                    dailyMode = true
+                },
+                onClose = { showDailyIntro = false }
+            )
+        }
+        // == /AP-22 ==
 
         if (showSettings) {
             SettingsOverlay(
@@ -740,6 +975,35 @@ fun GameScreen(
         if (showHelp) {
             HelpOverlay(onClose = { showHelp = false })
         }
+        // == AP-14 bedienung ==
+        // Die Zurück-Geste (Plan 7.1): schließt das oberste Overlay, führt
+        // aus dem Game-Over ins Menü und tut im Lauf nichts. Im
+        // Startbildschirm ohne Overlay bleibt sie beim System (App zu).
+        val zurueck = backAction(
+            showHelp = showHelp,
+            showSettings = showSettings,
+            showStats = showStats,
+            showSkins = showSkins,
+            // == AP-22 start ==
+            showDailyIntro = showDailyIntro,
+            // == /AP-22 ==
+            phase = phase
+        )
+        PlatformBackHandler(enabled = zurueck != BackAction.NOT_HANDLED) {
+            when (zurueck) {
+                BackAction.CLOSE_HELP -> showHelp = false
+                BackAction.CLOSE_SETTINGS -> showSettings = false
+                BackAction.CLOSE_STATS -> showStats = false
+                BackAction.CLOSE_COLLECTION -> showSkins = false
+                BackAction.TO_MENU -> backToMenu()
+                // == AP-22 start ==
+                BackAction.CLOSE_DAILY_INTRO -> showDailyIntro = false
+                // == /AP-22 ==
+                BackAction.CONSUME,
+                BackAction.NOT_HANDLED -> Unit
+            }
+        }
+        // == /AP-14 ==
 
         if (showStats) {
             StatsOverlay(
@@ -750,12 +1014,23 @@ fun GameScreen(
         }
 
         if (showSkins) {
-            SkinOverlay(
+            // Saison-Fenster für die Balken der Saison-Skins: einmal je
+            // Öffnen abgelesen, nicht pro Frame.
+            val jetzt = remember { deviceCalendar() }
+            CollectionOverlay(
                 // patronOwned wird hier bewusst noch einmal gelesen: Erst
-                // dieser Zugriff lässt die Liste nach dem Kauf neu zeichnen.
+                // dieser Zugriff lässt die Sammlung nach dem Kauf neu zeichnen.
                 stats = store.stats().copy(patronOwned = patronOwned),
-                // Wer schon werbefrei ist, liest am Goenner-Angebot, was
-                // fuer ihn wirklich neu ist — sonst zahlt er die
+                month = jetzt.month,
+                seasonDays = store.seasonDaysFor(jetzt.month, jetzt.year),
+                newKeys = collectionNew,
+                onSeen = { key ->
+                    store.markCollectionSeen(listOf(key))
+                    refreshCollection()
+                },
+                initialTab = collectionTab,
+                // Wer schon werbefrei ist, liest am Gönner-Angebot, was
+                // für ihn wirklich neu ist — sonst zahlt er die
                 // Werbefreiheit ein zweites Mal, ohne es zu merken.
                 adsAlreadyRemoved = adsRemoved,
                 selected = skin,
@@ -764,49 +1039,49 @@ fun GameScreen(
                     sound = it
                     store.selectedSound = it
                     sounds.soundSet = it
-                    // Die Hörprobe ist der ganze Sinn der Zeile: Ohne sie
-                    // waehlt man einen Klang nach seinem Namen.
-                    sounds.preview(it)
-                    // Wie Skin- und Kulissen-Wahl eine Entscheidung: Sie
-                    // muss sofort raus, sonst ueberschreibt sie beim
-                    // naechsten Abgleich die juengere Wahl der Gegenseite.
+                    // Wie Skin- und Welten-Wahl eine Entscheidung: Sie
+                    // muss sofort raus, sonst überschreibt sie beim
+                    // nächsten Abgleich die jüngere Wahl der Gegenseite.
                     hooks.onPublishSync()
                 },
+                // Die Hörprobe gibt es für jedes Set, auch gesperrt: Wer
+                // es hört, will es haben (Plan 7.1).
+                onPreviewSound = { sounds.preview(it) },
                 selectedCardFrame = cardFrame,
                 onSelectCardFrame = { gewaehlt ->
                     // Der Rahmen ist die einzige Sammlung, die andere
                     // Leute zu sehen bekommen. Er wird nicht mit der Uhr
                     // abgeglichen — die hat keine Score-Karte —, deshalb
-                    // faellt hier auch kein onPublishSync an.
+                    // fällt hier auch kein onPublishSync an.
                     cardFrame = gewaehlt
                     store.selectedCardFrame = gewaehlt
                 },
                 selectedScene = scene,
+                // Eine Auswahl schließt die Sammlung nicht (Plan 8.6 #12):
+                // Man sieht sie im Schaufenster und wählt weiter.
                 onSelectScene = {
                     scene = it
                     store.selectedScene = it
-                    // Wie die Skin-Wahl eine Entscheidung: Sie muss sofort
-                    // raus, sonst ueberschreibt sie beim naechsten
-                    // Abgleich die juengere Wahl auf der Gegenseite.
                     hooks.onPublishSync()
-                    showSkins = false
                 },
                 onSelect = {
                     skin = it
                     store.selectedSkin = it
                     // Die Skin-Wahl ist der einzige Wert, bei dem "neuer
                     // gewinnt" gilt — sie muss deshalb sofort raus, sonst
-                    // ueberschreibt sie beim naechsten Abgleich die
-                    // juengere Wahl auf der Uhr.
+                    // überschreibt sie beim nächsten Abgleich die
+                    // jüngere Wahl auf der Uhr.
                     hooks.onPublishSync()
-                    showSkins = false
                 },
-                onClose = { showSkins = false },
+                onClose = {
+                    showSkins = false
+                    refreshCollection()
+                },
                 skinPass = skinPass,
                 adOfferReady = hooks.adsEnabled && hooks.rewardedReady,
                 onWatchAdFor = { wanted ->
                     // Erst der bestätigte Spot, dann der Pass: Bei Abbruch
-                    // passiert nichts, das Overlay bleibt stehen.
+                    // passiert nichts, die Sammlung bleibt stehen.
                     hooks.onWatchAdFor(wanted) {
                         store.grantSkinPass(deviceCalendar().epochDay, wanted)
                         skinPass = wanted

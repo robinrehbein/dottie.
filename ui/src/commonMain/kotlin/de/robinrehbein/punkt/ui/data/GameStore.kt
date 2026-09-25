@@ -219,9 +219,12 @@ class GameStore(private val prefs: KeyValueStore) {
      * Der Twist, den dieser Lauf erklaeren soll — null, wenn er nichts
      * Neues gebracht hat. Die Daily zaehlt dabei wie jeder andere Lauf:
      * Auch dort ist die Falle beim ersten Mal neu.
+     *
+     * [diedInTrap]: Der Lauf endete in den Bomben. Dann darf die
+     * Bomben-Erklärung vordrängeln (Plan 3.4, [TwistLessons.next]).
      */
-    fun twistToExplain(unlockedThisRun: List<Twist>): Twist? =
-        TwistLessons.next(unlockedThisRun, explainedTwists)
+    fun twistToExplain(unlockedThisRun: List<Twist>, diedInTrap: Boolean = false): Twist? =
+        TwistLessons.next(unlockedThisRun, explainedTwists, diedInTrap)
 
     /**
      * Merkt sich einen erklaerten Twist. Geschrieben wird an den
@@ -236,6 +239,26 @@ class GameStore(private val prefs: KeyValueStore) {
             putString(KEY_TWISTS_EXPLAINED, TwistLessons.encode(known + twist.name))
         }
     }
+
+    // == AP-11 todesursache ==
+    /**
+     * Hat dieses Gerät „BOMBE = NIE TIPPEN“ schon gezeigt? Rein lokal wie
+     * die Twist-Erklärungen und bewusst nicht im SyncState: Es ist
+     * Didaktik, kein Fortschritt (Plan 8.6 #9).
+     */
+    val bombLessonSeen: Boolean
+        get() = prefs.boolean(KEY_BOMB_LESSON_SEEN, false)
+
+    /**
+     * Die Bomben-Lektion für diesen Tod: true genau beim ersten Mal, dann
+     * ist sie gemerkt und kommt auf diesem Gerät nie wieder.
+     */
+    fun takeBombLesson(): Boolean {
+        if (bombLessonSeen) return false
+        prefs.edit { putBoolean(KEY_BOMB_LESSON_SEEN, true) }
+        return true
+    }
+    // == /AP-11 ==
 
     // ===== Daily Challenge =====
 
@@ -267,6 +290,21 @@ class GameStore(private val prefs: KeyValueStore) {
     /** Tagesbest für einen konkreten Tag — 0, wenn der Tag nicht passt. */
     fun dailyBestFor(epochDay: Long): Int =
         if (dailyDay == epochDay) dailyBest else 0
+
+    // == AP-22 start ==
+    /**
+     * Hat dieses Gerät die DAILY-Karte schon gezeigt (Plan 7.2, 8.6 #4)?
+     * Rein lokal wie die Bomben-Lektion und bewusst nicht im SyncState:
+     * Es ist eine Erklärung, kein Fortschritt.
+     */
+    val dailyIntroSeen: Boolean
+        get() = prefs.boolean(KEY_DAILY_INTRO_SEEN, false)
+
+    /** Merkt, dass die DAILY-Karte gezeigt wurde. Sie kommt nie wieder. */
+    fun markDailyIntroSeen() {
+        prefs.edit { putBoolean(KEY_DAILY_INTRO_SEEN, true) }
+    }
+    // == /AP-22 ==
 
     /**
      * Die Serie, wie sie ein Daily-Lauf HEUTE fortschreiben würde. Für die
@@ -405,8 +443,89 @@ class GameStore(private val prefs: KeyValueStore) {
         // Monate — deshalb hier die gesetzten Bits zählen.
         monthsPlayed = monthsPlayedMask.countOneBits(),
         seasonEarned = seasonEarned,
-        patronOwned = patronOwned
+        patronOwned = patronOwned,
+        // == AP-13 welten ==
+        ownedScenes = rememberOwnedScenes(),
+        // == /AP-13 ==
     )
+
+    // == AP-13 welten ==
+
+    // ===== Welten im Besitz (Bestandsschutz) =====
+
+    init {
+        adoptLegacyScenes()
+    }
+
+    /**
+     * Die Welten im Besitz, als Namen (siehe SkinStats.ownedScenes).
+     *
+     * Bis zur Welten-Leiter wurden Freischaltungen nicht gespeichert,
+     * sondern bei jedem Aufruf aus den Zahlen berechnet. Seit die STADT
+     * Rekord 100 statt 85 verlangt, hält diese Menge fest, was einmal
+     * offen war: Offen ist eine Welt, wenn sie hier steht ODER ihre Regel
+     * erfüllt ist, und greift die Regel, kommt sie dauerhaft hinzu
+     * ([rememberOwnedScenes]).
+     *
+     * Gelesen wird roh; ein Name, den diese Version nicht kennt (eine
+     * Welt aus einer neueren), bleibt beim Schreiben erhalten.
+     */
+    val ownedScenes: Set<String>
+        get() = decodeScenes(prefs.string(KEY_OWNED_SCENES))
+
+    /**
+     * Die einmalige Übernahme beim ersten Start nach dem Update: Alle
+     * Welten, die der Spieler nach den ALTEN Schwellen schon hatte
+     * (ScenePaint.legacyUnlocked), kommen in die Besitz-Menge. Der
+     * Versionsmerker verhindert eine Wiederholung — sonst bekäme ein
+     * frischer Spieler, der später Rekord 90 erreicht, die STADT beim
+     * nächsten Start doch noch nach der alten Regel.
+     *
+     * Bei einer Neuinstallation läuft sie genauso, findet aber nur die
+     * WIESE: Der Merker steht danach, und die alte Regel ist für immer
+     * vorbei.
+     */
+    private fun adoptLegacyScenes() {
+        if (prefs.int(KEY_OWNED_SCENES_VERSION, 0) >= OWNED_SCENES_VERSION) return
+        val legacy = ScenePaint.legacyUnlockedNames(sceneAxes(emptySet()))
+        prefs.edit {
+            putString(KEY_OWNED_SCENES, encodeScenes(ownedScenes + legacy))
+            putInt(KEY_OWNED_SCENES_VERSION, OWNED_SCENES_VERSION)
+        }
+    }
+
+    /**
+     * Die Besitz-Menge samt allem, was die heutige Regel dazu hergibt —
+     * und was neu dazukommt, wird gleich gespeichert. Geschrieben wird
+     * nur, wenn die Menge wächst, also höchstens einmal je Welt.
+     */
+    private fun rememberOwnedScenes(): Set<String> {
+        val stored = ownedScenes
+        val all = stored + ScenePaint.unlockedNames(sceneAxes(stored))
+        if (all != stored) prefs.edit { putString(KEY_OWNED_SCENES, encodeScenes(all)) }
+        return all
+    }
+
+    /**
+     * Die Achsen, an denen Welten hängen, ohne den Rest von [stats] —
+     * [stats] selbst fragt [rememberOwnedScenes] und kann deshalb hier
+     * nicht benutzt werden.
+     */
+    private fun sceneAxes(owned: Set<String>): SkinStats = SkinStats(
+        bestScore = bestScore,
+        bestPerfectStreak = bestPerfectStreak,
+        bestDailyStreak = bestDailyStreak,
+        runCount = runCount,
+        totalScore = totalScore,
+        ownedScenes = owned
+    )
+
+    private fun encodeScenes(names: Set<String>): String =
+        names.filter { it.isNotBlank() }.sorted().joinToString(",")
+
+    private fun decodeScenes(raw: String?): Set<String> =
+        raw?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
+    // == /AP-13 ==
 
     // ===== Abgleich mit der Uhr =====
 
@@ -474,7 +593,12 @@ class GameStore(private val prefs: KeyValueStore) {
             // Freischaltungen selbst aus den Ständen ab und würde ein
             // ungedecktes Set ohnehin abweisen.
             sound = if (soundShared) selectedSound.name else "",
-            soundChangedAt = if (soundShared) prefs.long(KEY_SOUND_CHANGED, 0L) else 0L
+            soundChangedAt = if (soundShared) prefs.long(KEY_SOUND_CHANGED, 0L) else 0L,
+            // == AP-13 welten ==
+            // Die Besitz-Menge wandert mit und wird drüben vereinigt: So
+            // verliert auch die Uhr oder ein zweites Gerät keine Welt.
+            ownedScenes = rememberOwnedScenes(),
+            // == /AP-13 ==
         )
     }
 
@@ -572,6 +696,14 @@ class GameStore(private val prefs: KeyValueStore) {
                 putLong(KEY_SOUND_CHANGED, state.soundChangedAt)
             }
         }
+        // == AP-13 welten ==
+        // Die Besitz-Menge wird vereinigt (wie in SyncState.mergedWith),
+        // dazu kommt, was die zusammengeführten Zahlen hergeben. Gegen den
+        // ROHEN Stand geprüft: Nur wer wirklich dazulernt, schreibt.
+        val scenes = before.ownedScenes + state.ownedScenes +
+            ScenePaint.unlockedNames(mergedStats(state, before))
+        if (scenes != ownedScenes) putString(KEY_OWNED_SCENES, encodeScenes(scenes))
+        // == /AP-13 ==
         }
         // Erst ganz am Ende, wenn alles geschrieben ist: Wer auf den
         // Zähler hört, liest gleich darauf die Werte — und soll dabei den
@@ -598,8 +730,49 @@ class GameStore(private val prefs: KeyValueStore) {
         // Der Kauf steht nicht im Austauschformat, also gilt hier der
         // lokale Spiegel — sonst fiele ein Gönner-Skin beim Abgleich
         // stumm auf KLASSIK zurück.
-        patronOwned = patronOwned
+        patronOwned = patronOwned,
+        // == AP-13 welten ==
+        ownedScenes = before.ownedScenes + state.ownedScenes,
+        // == /AP-13 ==
     )
+
+    // == AP-15 sammlung ==
+
+    // ===== Sammlung: schon angesehen (NEU-Markierung) =====
+
+    /**
+     * Die schon angesehenen Kacheln der Sammlung (siehe [CollectionSeen]).
+     * Rein lokal, nicht im [SyncState].
+     *
+     * Die zweite Migration nach der Besitz-Menge der Welten (AP-13): Beim
+     * ersten Lesen gibt es den Schlüssel noch nicht, dann gilt alles
+     * Offene als gesehen — außer dem, was erst die Welten-Leiter geöffnet
+     * hat (CollectionSeen.migrated). Die alten Schwellen fragt sie an den
+     * rohen Zahlen, genau wie die Übernahme der Besitz-Menge.
+     */
+    val collectionSeen: Set<String>
+        get() {
+            prefs.string(KEY_COLLECTION_SEEN)?.let { return CollectionSeen.decode(it) }
+            val legacy = ScenePaint.legacyUnlockedNames(sceneAxes(emptySet())).toSet()
+            val seen = CollectionSeen.migrated(stats(), legacy)
+            prefs.edit { putString(KEY_COLLECTION_SEEN, CollectionSeen.encode(seen)) }
+            return seen
+        }
+
+    /** Was in der Sammlung gerade NEU ist (offen, noch nicht angesehen). */
+    fun collectionNew(): Set<String> = CollectionSeen.newKeys(stats(), collectionSeen)
+
+    /**
+     * Merkt sich angesehene Kacheln. Angehängt an den gespeicherten Stand,
+     * nicht aus den Aufzählungen neu gebaut: Ein Schlüssel aus einer
+     * neueren Version überlebt so das Schreiben.
+     */
+    fun markCollectionSeen(keys: Collection<String>) {
+        val known = collectionSeen
+        if (known.containsAll(keys)) return
+        prefs.edit { putString(KEY_COLLECTION_SEEN, CollectionSeen.encode(known + keys)) }
+    }
+    // == /AP-15 ==
 
     private companion object {
         const val PREFS_NAME = "punkt_scores"
@@ -631,12 +804,32 @@ class GameStore(private val prefs: KeyValueStore) {
         // Fenster, Tageszähler und letzter gezählter Tag der laufenden
         // Saison; nur KEY_SEASON_EARNED überlebt den Monat.
         const val KEY_SEASON_WINDOW = "season_window"
+        // == AP-22 start ==
+        /** Die DAILY-Karte wurde gezeigt (lokal, nicht im Abgleich). */
+        const val KEY_DAILY_INTRO_SEEN = "daily_intro_seen"
+        // == /AP-22 ==
         const val KEY_SEASON_DAYS = "season_days"
         const val KEY_SEASON_LAST_DAY = "season_last_day"
         const val KEY_SEASON_EARNED = "season_earned"
+        // == AP-13 welten ==
+        // Welten im Besitz als Namensliste ("STADT,WIESE"), siehe ownedScenes.
+        const val KEY_OWNED_SCENES = "owned_scenes"
+        // Versionsmerker der einmaligen Übernahme nach den alten Schwellen.
+        const val KEY_OWNED_SCENES_VERSION = "owned_scenes_version"
+        const val OWNED_SCENES_VERSION = 1
+        // == /AP-13 ==
         const val KEY_PATRON = "patron_owned"
+        // == AP-15 sammlung ==
+        // Die schon angesehenen Kacheln der Sammlung ("SCENE:WUESTE,SKIN:MINZE"),
+        // siehe CollectionSeen. Lokal, nicht im Sync.
+        const val KEY_COLLECTION_SEEN = "collection_seen"
+        // == /AP-15 ==
         // Die schon erklaerten Twists als Namensliste ("FAKE,CHAIN"),
         // siehe TwistLessons. Rein lokal — kein Fortschritt, nur Didaktik.
         const val KEY_TWISTS_EXPLAINED = "twists_explained"
+        // == AP-11 todesursache ==
+        // Ob „BOMBE = NIE TIPPEN“ schon einmal kam. Lokal, nicht im Sync.
+        const val KEY_BOMB_LESSON_SEEN = "bomb_lesson_seen"
+        // == /AP-11 ==
     }
 }

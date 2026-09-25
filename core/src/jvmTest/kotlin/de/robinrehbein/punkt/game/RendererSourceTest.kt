@@ -86,4 +86,33 @@ class RendererSourceTest {
 
         assertTrue("Es wurde kein Renderer geprüft", geprueft == renderer.size)
     }
+
+    /**
+     * Die Nebelbank ist Spielregel: Wo der Punkt verschwindet, entscheidet
+     * [TimingGame.isInFog] mit [TimingGame.fogStart]/[TimingGame.fogEnd].
+     * Zeichnet eine Wolke ihre Grenzen selbst aus [TimingGame.FOG_SECONDS],
+     * liegt sie beim nächsten Regel-Dreh neben dem Nebel, der wirklich
+     * verdeckt — dieselbe Falle wie beim PERFEKT-Kern.
+     */
+    @Test
+    fun `nebel kommt aus der Engine`() {
+        val wurzel = wurzel()
+        val wurzeln = listOf("ui/src", "wear/src").map { File(wurzel, it) }
+        wurzeln.forEach { assertTrue("${it.path} nicht gefunden", it.isDirectory) }
+
+        wurzeln.flatMap { dir -> dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
+            .forEach { datei ->
+                val quelle = datei.readText()
+                if (!quelle.contains("drawFog")) return@forEach
+                val pfad = datei.relativeTo(wurzel).path
+                assertTrue(
+                    "$pfad zeichnet Nebel und muss die Grenzen aus der Engine ziehen (fogStart)",
+                    quelle.contains("fogStart(")
+                )
+                assertTrue(
+                    "$pfad darf die Nebelbank nicht selbst aus FOG_SECONDS rechnen",
+                    !quelle.contains("FOG_SECONDS")
+                )
+            }
+    }
 }

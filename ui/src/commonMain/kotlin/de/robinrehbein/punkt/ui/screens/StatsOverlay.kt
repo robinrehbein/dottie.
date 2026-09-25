@@ -68,7 +68,6 @@ import de.robinrehbein.punkt.ui.resources.stats_months
 import de.robinrehbein.punkt.ui.resources.stats_perfect
 import de.robinrehbein.punkt.ui.resources.stats_runs
 import de.robinrehbein.punkt.ui.resources.stats_total_score
-import de.robinrehbein.punkt.ui.resources.tap_to_close
 import de.robinrehbein.punkt.ui.text.familyTitle
 import de.robinrehbein.punkt.ui.text.medalName
 import de.robinrehbein.punkt.ui.text.sceneHint
@@ -85,6 +84,9 @@ import de.robinrehbein.punkt.ui.world.PanelSand
 import de.robinrehbein.punkt.ui.world.TextDark
 import kotlin.math.max
 import org.jetbrains.compose.resources.stringResource
+// AP-14: X-Knopf der Statistik (am Ende, damit AP-15 oben ungestört ergänzt).
+import de.robinrehbein.punkt.ui.components.OverlayCloseButton
+import de.robinrehbein.punkt.ui.resources.ctl_close
 
 /**
  * Die Statistik-Seite: alle Zähler auf einen Blick und darunter die
@@ -178,14 +180,17 @@ fun StatsOverlay(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = stringResource(Res.string.tap_to_close),
-                fontFamily = Bytesized,
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.6f)
-            )
         }
+
+        // Der sichtbare Ausgang statt „TIPPEN ZUM SCHLIESSEN“ (Plan 7.2).
+        // Tippen daneben schließt weiterhin.
+        OverlayCloseButton(
+            onClose = onClose,
+            contentDescription = stringResource(Res.string.ctl_close),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+        )
     }
 }
 
@@ -274,8 +279,10 @@ private fun goalName(goal: Goal): String {
 /**
  * Worauf ein Ziel zählt. Bewusst eine Zuordnung statt eines abgeleiteten
  * Namens: Drei Achsen zählen Tage und teilen sich deshalb dasselbe Wort.
+ * `internal`, weil die Kacheln der Sammlung dieselben Wörter tragen
+ * (AP-15).
  */
-private fun goalAxisText(axis: GoalAxis) = when (axis) {
+internal fun goalAxisText(axis: GoalAxis) = when (axis) {
     GoalAxis.BEST_SCORE -> Res.string.goal_axis_points
     GoalAxis.TOTAL_SCORE -> Res.string.goal_axis_total
     GoalAxis.PERFECT_STREAK -> Res.string.goal_axis_perfect

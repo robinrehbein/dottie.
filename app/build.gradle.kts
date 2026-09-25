@@ -33,8 +33,8 @@ android {
         //
         // v2.19: Abgleich mit der Uhr ueber den Wearable Data Layer.
         // v2.20: Versteckte Diagnose-Zeile (langer Druck auf den Titel).
-        versionCode = 36
-        versionName = "2.27"
+        versionCode = 37
+        versionName = "2.28"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

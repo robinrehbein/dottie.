@@ -8,6 +8,12 @@ Dieses Dokument hält alles fest, was bis hier entschieden ist, damit bei der
 Umsetzung nichts verloren geht. Abschnitt 7 enthält die Prüfung der
 Bedienelemente.
 
+**Stand 25.09.2026 (AP-31):** Umgesetzt auf
+`claude/interactive-ui-suggestions-eez0aj` als Version 2.28. Abschnitte
+3–7 sind an Abschnitt 8 angeglichen (8.6 Entscheidungen, 8.7
+Korrekturen). Was noch ein Mensch am Gerät prüfen muss, steht am Ende in
+Abschnitt 9.
+
 ---
 
 ## 1. Ziel und Rahmen
@@ -41,8 +47,10 @@ Unklar: Welches Lila die Tester meinen. Beim nächsten Test beide Bilder zeigen
 
 - **Erster Tap im Grün ist Treffer 1** und startet den Lauf genau dort (normal
   oder PERFEKT, wie im Lauf).
-- **Tap daneben kostet nichts:** Punkt wackelt kurz (0,7 s), über dem Ring
-  steht „NOCH NICHT“, der Punkt kreist weiter.
+- **Tap daneben kostet nichts:** Punkt und Hand wackeln kurz (0,7 s,
+  `dx += sin(t·40)·4·t`), im Ring über der Hand (bei cy − 0,45 R) steht
+  „NOCH NICHT“, dazu ein Haptik-Tick. Der Punkt kreist weiter, keine
+  Zufallszahl wird gezogen. Eine Spät-Gnade gibt es in READY nicht.
 - **Neuer Hinweis:** „TIPPE, WENN DER PUNKT IM GRÜNEN IST“, ohne Blinken,
   unterhalb des Rings und ohne Überlappung mit Ring oder Zone.
 - **Pixel-Hand** in der Ringmitte (16×17-Raster, Zeigefinger nach oben,
@@ -51,23 +59,41 @@ Unklar: Welches Lila die Tester meinen. Beim nächsten Test beide Bilder zeigen
   dann, wenn der Punkt im Grün ist (2 Pixel nach unten, Fingerspitze gelblich),
   mit Tipp-Echo an der Fingerspitze, und lässt los, wenn der Punkt draußen ist.
   Sprite steht in `docs/feedback-check.html` (`HAND`).
-- **Tipp-Echo überall:** kurzes weißes Quadrat an jeder Tippstelle, damit klar
-  wird, dass man überall tippen kann.
+- **Tipp-Echo überall:** ein wachsender weißer Umriss (8→38 px, Strich
+  3 px, 0,45 s) an jeder Tippstelle, in allen Phasen, damit klar wird,
+  dass man überall tippen kann.
 - **Zone leuchtet**, solange der Punkt drin ist (Kern `#E4FFC4`, Zone
-  `#B8F27A`, weiße Kontur). Nur als Stützräder in den ersten 5 Läufen.
-- **Zielzeile** („NÄCHSTE KULISSE: WELTRAUM · 1/5 KULISSEN“) in den ersten
-  Läufen ausblenden.
+  `#B8F27A`, weiße Kontur). Nur als Stützräder in den ersten 5 Läufen nach
+  `GameStore.runCount` (Uhr- und Daily-Läufe zählen mit), in READY **und**
+  RUNNING, denn nach dem Aus startet ein Tap sofort neu (OVER → RUNNING),
+  READY sieht man nur beim App-Start und nach MENÜ. Die Hand nur in READY.
+- **Zielzeile** („NÄCHSTE WELT: WELTRAUM — 1/5 WELTEN“) während der
+  Stützräder ausblenden, im Startbildschirm und im Game-Over.
+- **Engine:** `tap()` in READY bei `isInZone` startet den Lauf und zählt
+  als Treffer; `GameEventStarted` steht vor `Hit`/`PerfectHit`. Sonst
+  `GameEventNotYet`. Die Parität bleibt über `TimingGame.start()` (altes
+  READY-Verhalten) für ParityBot und Tests, die Startregel hat eigene
+  `trace.ready.*`-Zeilen (8.7).
+- **DAILY** zieht mit (7.2): Der Taster schaltet scharf, gestartet wird per
+  Tap im Grün.
 
 ### 3.2 Todesursache nach jedem Aus
 
 - Am Ring, im Freeze-Moment: **ZU FRÜH**, **ZU SPÄT**, **VERPASST**,
   **BOOM!** (Falle), dazu ein weißer Rahmen um den Punkt.
-- Wird beim `GameEventDied` aus dem Spielzustand gelesen (Winkel, Zone,
-  Fallen-Zone). Die Engine bleibt unverändert.
+- Die Ursache hält die Engine im Moment des Taps fest
+  (`TimingGame.lastDeathCause`, `DeathCause` in `:core`): Aus dem Zustand
+  beim späteren `GameEventDied` ließe sie sich nicht sicher ablesen (8.7).
+  Die Fallenprüfung zuerst.
   - Punkt in der Fallen-Zone → BOOM!
   - Tap mit `relativeToZone() < 0` → ZU FRÜH
   - Tap danach → ZU SPÄT
   - Tod in `update()` durch Überfahren → VERPASST
+- Unter PULS wird die Pulsbreite in `die()` eingefroren, damit der Vogel im
+  Freeze nicht im Grün steht, obwohl ZU FRÜH angezeigt wird. Die Vektoren
+  bleiben gleich.
+- Angezeigt während DYING (Freeze und Sturz, etwa 1,5 s) unter dem Ring,
+  danach klein im Game-Over unter dem Titel. Nicht auf der Uhr.
 
 ### 3.3 GEIST wird NEBEL
 
@@ -88,19 +114,29 @@ Unklar: Welches Lila die Tester meinen. Beim nächsten Test beide Bilder zeigen
   9,6 px auf einem 2400-px-Display, die Wolke ist dann etwa 25 Vogelpixel
   lang. Im Mockup ist der Punkt nur ein Klötzchen, dort stimmt das Verhältnis
   nicht.
-- Die Wolke endet dort, wo der Nebelbereich endet, und quillt nicht über die
-  Zone. Der Punkt muss über die ganze Länge vollständig verdeckt sein
-  (am Anfang, in der Mitte und am Ende geprüft).
+- Die Wolke ist nur Bild: Vollständig verdecken und zugleich nicht über
+  die Zone quellen geht geometrisch nicht (8.7). Verdeckt wird über
+  `isDotVisible` (Uhr, Tests) bzw. am Telefon durch einen Clip: Der Vogel
+  gleitet an der Wolke hinein und heraus. Geprüft wird, dass er bei
+  `fogStart`, in der Mitte und bei `fogEnd` unsichtbar ist. Bauschradien
+  8–12 u, feste Form je Zone mit Seed aus `hits` und `direction` (nicht
+  aus `zoneCenter`, sonst flackert sie unter DRIFT). Die Wolke
+  verschwindet beim Tod.
 - **Rollt beim Erscheinen ein** (0,18 s), damit man sofort sieht, dass diese
   Zone Nebel hat.
 - **Wölkchen beim Ein- und Austritt** (6 Pixel, 0,35 s): zeigt, wann der
   Punkt verschwindet, nicht wo er dazwischen ist.
-- **Optional BLIND! +1:** Treffer, solange der Punkt noch im Nebel ist, gibt
-  einen Punkt extra. Das ist eine Änderung an der Punktewertung (siehe
-  offene Entscheidungen).
+- **BLIND! +1 (entschieden, 8.6 #1):** Ein gültiger Treffer, solange der
+  Punkt noch im Nebel ist, gibt einen Punkt extra (1 + 1). `inFog` wird vor
+  `registerHit` festgehalten, ein Fehltap im Nebel bleibt ein Fehltap, und
+  die Perfekt-Serie bleibt erhalten. Der Pop „BLIND! +1“ steht am Ring an
+  der Trefferstelle.
 - **Später denkbar:** Summen des Punkts im Nebel gedämpft.
-- **Sofortmaßnahme** vor dem Umbau, ohne Regeländerung: GEIST weich ein- und
-  ausblenden statt hart schalten.
+- ~~Sofortmaßnahme: GEIST weich ein- und ausblenden~~ entfällt, der Nebel
+  kommt im selben Release (8.2, 8.6 #18).
+- `Twist.GHOST` behält im Code den Namen (persistiert, Textschlüssel,
+  Vektoren). Nur die Texte sagen NEBEL.
+- Uhr: einfaches Nebelband über `fogStart()`/`fogEnd()`, keine Wolke.
 
 ### 3.4 FALLE wird Bomben
 
@@ -111,17 +147,25 @@ Unklar: Welches Lila die Tester meinen. Beim nächsten Test beide Bilder zeigen
 - **Rotes Lauflicht:** alle 0,09 s ein Schritt. Erst eine Bombe rot
   (`#E53935`), dann zwei, bis die halbe Kette rot ist, danach wandert der rote
   Block weiter (schwarz-rot-schwarz) und läuft am anderen Ende hinaus, dann von
-  vorn. Richtung pro Falle zufällig. Beispiel bei 6 Bomben:
+  vorn. Richtung pro Falle fest, abgeleitet aus `fakeZoneCenter` (kein
+  Engine-RNG, kein `Random.Default`). Zahl und Maske aus `zoneHalfWidth`,
+  gezeichnet in der Breite `fakeZoneHalf()`, damit unter PULS nichts
+  springt. Beispiel bei 6 Bomben:
   `R·····  RR····  RRR···  ·RRR··  ··RRR·  ···RRR  ····RR  ·····R  ······`
-- **Explosion beim Hineintippen:** weißer Blitz (0,08 s), 12 Pixel-Funken,
-  erst gelb/orange, dann rot/grau, über 0,45 s. Am Ring „BOOM!“ und beim
-  ersten Mal „BOMBE = NIE TIPPEN“.
+- **Explosion beim Hineintippen:** 12 Pixel-Funken, erst gelb/orange, dann
+  rot/grau, über 0,45 s. Kein eigener Blitz, den setzt schon jeder Tod.
+  Am Ring „BOOM!“ und beim ersten Mal „BOMBE = NIE TIPPEN“ (lokaler
+  Merker `bomb_lesson_seen`, einmal pro Gerät). Kein neuer Sound. Auf der
+  Uhr Minen ohne Lauflicht.
 - **Erklärung beim ersten Fallen-Tod:** Die Falle darf in `TwistLessons`
   vordrängeln, die übrige Reihenfolge bleibt.
-- **Lila raus:** Himmelsstufe bei Score 10 (`ScenePaint.kt:326`, `#7B6FD0`)
-  in einen Ton ohne Verwechslung verschieben, zum Beispiel ein tieferes Blau.
-  Alle Kulissen prüfen (z. B. STADT Stufe 2 `#7B6B9E`) und die Zusicherung
-  `MIN_SKY_SIGNAL_DISTANCE` neu rechnen lassen.
+- **Lila raus (umgesetzt):** WIESE-2 `#3F6FC4`, STADT-2 `#4A6AA8`,
+  WELTRAUM-2 `#243A8C`, WELTRAUM-3 ein dunkles Blau statt `#6A1E6E`, auch in
+  `SkinPaint.SKY_STAGES` und `store/skin_paint.py`. Die Fallenfarben sind
+  aus `Palette`, `TwistLessonShield`, `StopHelpContent` und der Uhr
+  entfernt. `MIN_SKY_SIGNAL_DISTANCE` gilt nur noch für Zonensignale; für
+  die Mine gilt `max(abstand(Kugel), abstand(Rand)) ≥ 150` vor jedem
+  Himmel.
 - Verworfen: Stacheln (bleiben nur als Vergleich im Mockup).
 
 ## 4. Umsetzung in Phasen
@@ -142,22 +186,30 @@ Sortiert nach Wirkung pro Aufwand. Phase 1–3 ändern keine Spielregel.
 Hinweise zur Umsetzung:
 
 - **Phase 4 und 5** betreffen die Parität: `parity/golden-vectors.txt` neu
-  erzeugen und prüfen, Daily-Seeds bleiben gleich, aber Verläufe ändern sich.
-  `WearGameController.kt` nutzt dieselbe Engine und muss mitziehen.
+  erzeugen und prüfen. Daily-Seeds und alle bisherigen `trace`-Zeilen
+  bleiben gleich (ParityBot startet mit `TimingGame.start()`), neu sind
+  `trace.ready.*`, `const.READY_ZONE_CENTER` und `const.FOG_*`, entfallen
+  sind `const.GHOST_*` (8.7). `WearGameController.kt` nutzt dieselbe
+  Engine und zieht mit.
+- **Phase 3 entfällt** (8.6 #18).
 - Neue Typen in `:core` auf oberster Ebene anlegen (Objective-C-Export,
   siehe Kommentar in `TimingGame.kt`).
 - Für Screenshots ohne Emulator gibt es `ui/src/jvmTest/.../ScreenshotRenderer.kt`
-  (`SHOTS_DIR=… ./gradlew :ui:jvmTest`). Twists lassen sich über
-  `TimingGame.twistOverride` erzwingen.
+  (`SHOTS_DIR=… ./gradlew :ui:jvmTest --rerun`, ohne `--rerun` ist der Lauf
+  UP-TO-DATE). Twists mit erzwungenem `twistOverride` zeichnet `TwistShots.kt`
+  direkt über `drawTimingWorld`, die Sammlung `CollectionShots.kt`.
 
 ## 5. Entscheidungen
 
 Alle Vorschläge aus diesem Plan sind angenommen (25.09.2026). Im Einzelnen:
 
-1. **BLIND! +1** kommt (Treffer, solange der Punkt im Nebel ist).
-2. **Stützräder:** Zone leuchtet in den ersten 5 Läufen.
-3. **Himmel bei Score 10** bekommt in allen Kulissen einen Ton ohne Lila
-   (tieferes Blau), mit neu gerechneter `MIN_SKY_SIGNAL_DISTANCE`.
+1. **BLIND! +1** kommt (gültiger Treffer, solange der Punkt im Nebel ist;
+   die Perfekt-Serie bleibt erhalten).
+2. **Stützräder:** Zone leuchtet in den ersten 5 Läufen (READY und
+   RUNNING), die Hand nur in READY.
+3. **Himmel bei Score 10** bekommt in allen Welten einen Ton ohne Lila
+   (tieferes Blau, dazu WELTRAUM-3), `MIN_SKY_SIGNAL_DISTANCE` nur noch für
+   Zonensignale, für die Mine ein eigener Abstand.
 4. **Wear OS** zieht bei Regeländerungen mit (Startregel, Nebel) und
    übernimmt Bomben und Nebel vereinfacht, soweit das kleine Display es
    zulässt.
@@ -167,6 +219,7 @@ Alle Vorschläge aus diesem Plan sind angenommen (25.09.2026). Im Einzelnen:
 7. **Gesperrte Töne** sind probehörbar.
 8. **Game-Over:** TEILEN und MENÜ in der festen Leiste, 0,8 s gesperrt.
 9. **Keine Pause** im laufenden Spiel; Zurück tut dort nichts.
+10. Alle weiteren Entscheidungen der Umsetzung stehen in 8.6.
 
 Noch offen bleibt nur, welches Lila die Tester meinten. Das klärt der Test
 in Abschnitt 6, die Umsetzung hängt nicht davon ab.
@@ -186,8 +239,10 @@ Fünf Leute, Handy in die Hand, nichts erklären, 60 Sekunden zuschauen.
 Geprüft am 25.09.2026. Spielbare Vorschau: `docs/bedienelemente.html`
 (Artefakt: https://claude.ai/artifact/XGqtpxgMGUg969nbUQGsvf).
 
-Tippflächen sind überall mindestens 48 dp groß, die Taster-Leiste ist gut zu
-treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
+Die Knöpfe und die Taster-Leiste sind mindestens 48 dp groß und gut zu
+treffen. Ausnahme waren die Text-Links in den Einstellungen (26–30 dp,
+ohne Rolle, 8.7); sie sind jetzt 48 dp hoch mit `Role.Button`. Die
+Probleme liegen bei Position, Zeitpunkt und Zurück.
 
 ### 7.1 Muss
 
@@ -197,19 +252,22 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
   „TIPPEN = NOCHMAL“ und sind sofort aktiv (`GameOverlays.kt:776–789`). Die
   Spalte ist senkrecht zentriert, jede Zusatzzeile verschiebt die Knöpfe.
   → MENÜ und TEILEN in eine feste Leiste am unteren Rand (Stil der
-  Taster-Leiste), in den ersten 0,8 s blass und gesperrt. Alles darüber
-  heißt „nochmal“. Inhalt oben verankert statt zentriert.
+  Taster-Leiste), in den ersten 0,8 s blass und gesperrt. Gemessen an
+  `game.elapsed`; gesperrt schluckt die Leiste Taps selbst, denn
+  `clickable(enabled = false)` ließe sie als Neustart durchfallen (8.7).
+  Alles darüber heißt „nochmal“. Inhalt oben verankert statt zentriert.
 - **Zurück-Geste beendet die App.** Weder `:ui` noch `:app` fangen Zurück ab.
   → Zurück schließt das oberste Overlay (Hilfe, Einstellungen, Sammlung,
   Statistik), im Game-Over geht es zum Startbildschirm, im laufenden Spiel
   passiert nichts, im Startbildschirm ohne Overlay schließt die App.
-  Umsetzung: `expect`/`actual` in `:ui`, Android mit
-  `androidx.activity.compose.BackHandler`, iOS ohne Wirkung (CMP 1.7.3 hat
-  noch keinen gemeinsamen BackHandler).
+  Umsetzung: `expect`/`actual` in `:ui` mit drei actuals (android, ios,
+  jvm), Android mit `androidx.activity.compose.BackHandler`, iOS und JVM
+  ohne Wirkung (CMP 1.7.3 hat noch keinen gemeinsamen BackHandler).
+  Zurück beachtet die Sperre der Game-Over-Leiste nicht.
 
-- **Sammlung (heute „SKINS“) umbauen.** Eine Liste mit 62 Zeilen: 6
+- **Sammlung (bis v2.27 „SKINS“) umbauen.** Eine Liste mit 62 Zeilen: 6
   Kulissen, 3 Töne, 7 Rahmen, 46 Skins in 6 Familien
-  (`GameOverlays.kt:1294–1600`). Keine Vorschau im Spielbild, gesperrte
+  (damals `GameOverlays.kt:1294–1605`, heute `CollectionOverlay.kt`). Keine Vorschau im Spielbild, gesperrte
   Zeilen sind nicht antippbar und zeigen keinen Fortschritt (obwohl
   `Progress.goals` ihn schon rechnet, `Progress.kt:245–254`), frisch
   Freigeschaltetes wird nicht markiert.
@@ -228,6 +286,10 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
   → „Kulissen“ heißen im Spiel künftig **Welten**.
   → **Entschieden:** Auch gesperrte Töne sind probehörbar (Anreiz), auswählen
   lassen sie sich erst nach dem Freischalten.
+  → Eine Auswahl schließt die Sammlung nicht. Neue Welten meldet ein Banner
+  im Startbildschirm. Saison- und Gönner-Skins bekommen keine
+  NEU-Markierung. Fortschritt je Kachel über `CollectionProgress` (eigene
+  Abfrage pro ID; `Progress.goals` liefert nur offene Ziele ohne Rahmen).
 
 ### 7.2 Sollte
 
@@ -235,7 +297,8 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
   sofort einen Tageslauf (`GameScreen.kt:576–580`). → Sandfarben wie die
   anderen, hervorgehoben nur durch das Serien-Abzeichen. Beim ersten Tap eine
   einmalige Karte: „TAGESLAUF: HEUTE FÜR ALLE GLEICH. DEIN BESTER VERSUCH
-  ZÄHLT.“ mit START.
+  ZÄHLT.“ mit START. Danach ist DAILY ein Umschalter (aus ↔ scharf),
+  gestartet wird per Tap im Grün, MENÜ schaltet ab (8.6 #4).
 - **Ein Druck-Stil:** Nur der Regler-Knopf hat Schatten und sinkt ein
   (`PixelButton.kt:101–140`). Text-Knöpfe und Taster zeigen die runde
   Material-Welle. → Alle Knöpfe mit 4-dp-Pixelschatten, beim Drücken
@@ -251,7 +314,8 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
 - **Welten früher erreichbar (entschieden).** Heute braucht die erste neue
   Welt 500 Läufe, 10.000 Punkte, eine 30-Tage-Daily-Serie oder Rekord 85
   (`ScenePaint.kt:610–615`). Skins kommen dagegen früh (MATCHA nach 5
-  Läufen). Neue Schwellen:
+  Läufen). Neue Schwellen (WÜSTE fällt mit TIGER, MEER mit BASKETBALL
+  zusammen; gewollt, beides wird gemeinsam gefeiert):
 
   | Welt | Heute | Neu |
   |---|---|---|
@@ -267,7 +331,8 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
   (`Progress`), Tests, die Schwellen festnageln. STADT wird schwerer als
   heute, damit auch WELTRAUM und der Rahmen KASKADE („Pracht und alle
   Kulissen“), die alle Welten voraussetzen. Die Schwellen sind in
-  `Progress.kt` (ab Zeile 100) gespiegelt und müssen dort mitgeändert werden.
+  `Progress.SCENE_THRESHOLDS` (damals `Progress.kt:153-158`) gespiegelt und
+  müssen dort mitgeändert werden.
 
   **Bestandsschutz (entschieden):** Freischaltungen werden heute nicht
   gespeichert, sondern bei jedem Aufruf aus den Statistiken berechnet
@@ -299,15 +364,19 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
 
 ### 7.3 Schnell
 
-- **Umlaute:** `bytesized_regular.ttf` enthält Ä, Ö, Ü, ß. 38 Zeilen in
-  `values-de/strings.xml` schreiben trotzdem UE/AE/OE (MENUE, GRUENEN,
-  WAEHLEN, SCHLIESSEN).
+- **Umlaute:** `bytesized_regular.ttf` enthält Ä, Ö, Ü, ß. 34 Zeilen in
+  `values-de/strings.xml` (dazu `back` in der Uhr) schrieben trotzdem
+  UE/AE/OE (MENUE, GRUENEN, WAEHLEN). SS in Großschrift bleibt
+  (SCHLIESSEN), NEUE/NEUER sind richtig.
 - **„?“ im Game-Over** entfernen, sobald Todesursache und Erklärung beim
   ersten Fallen-Tod da sind. Hilfe bleibt in den Einstellungen.
+  (Umgesetzt in AP-31.)
 - **Vorlesen:** `role = Role.Button` für `PixelButton` und Taster, „?“ als
   „Hilfe“ beschriften.
 - **MENÜ 6 dp neben der Mitte**, wenn TEILEN fehlt: Der Abstandhalter in der
-  Knopfzeile bleibt stehen.
+  Knopfzeile bleibt stehen. Auf Android und iOS nicht sichtbar (beide
+  setzen `onShare`); mit der festen Leiste erledigt, MENÜ nimmt dann die
+  ganze Breite.
 
 ### 7.4 Reihenfolge
 
@@ -676,3 +745,44 @@ Wo diese Liste Abschnitt 3–7 widerspricht, gilt die Liste (und Abschnitt 8).
 - 7.2 STADT auf Rekord 100 erzwingt Merker, SyncState-Feld, StatsSync, WearSyncMerge/WearDotSkin und eine Migration. **Entschieden: STADT 100 bleibt**, der Aufwand ist in AP-13 eingeplant.
 - 7.2: Einen Zähler für 'Tage mit Daily' gibt es nicht. Ausdrückbar ist nur bestDailyStreak.
 - Allgemein: main steht auf c5742c9, der Plan (809f8fc) liegt auf claude/interactive-ui-suggestions-eez0aj. CI (build-apk.yml, build-ios.yml) läuft nur auf main und claude/**. Ein Push auf main erzeugt ein Prerelease.
+
+## 9. Stand der Umsetzung
+
+Stand 25.09.2026, Version 2.28 (versionCode 37, Uhr 100011). Alle Pakete
+aus 8.2 sind auf `claude/interactive-ui-suggestions-eez0aj` gemergt, AP-31
+hat integriert. Vektoren ein letztes Mal erzeugt: Der Diff ist leer.
+Automatisch geprüft (lokal und in `build-apk.yml`/`build-ios.yml`):
+`:core:jvmTest testDebugUnitTest :ui:jvmTest`, der vollständige
+Screenshot-Satz ist erzeugt und angesehen (1080×2400 und 720×1280).
+
+Kleine Korrekturen aus dem Review in AP-31:
+
+- Das „?“ im Game-Over ist weg, die Hilfe liegt unter Einstellungen → HILFE.
+- Der BLIND!-Pop zeigt den Bonus („BLIND! +1“, vorher „+2“) und steht am
+  Ring an der Trefferstelle statt über der Landschaft.
+- Der Vogel wackelt nach NOCH NICHT mit (0,7 s).
+- Ungenutzte Texte (`tap_to_close`, `skin_tap_select`, `sound_tap_hear`,
+  `frames`) entfernt.
+
+**Nur ein Mensch am Gerät kann prüfen:**
+
+1. Zurück-Geste auf Android: schließt Hilfe, Einstellungen, Statistik,
+   Sammlung und DAILY-Karte, führt aus dem Game-Over ins Menü, tut im Lauf
+   nichts, schließt im Startbildschirm die App.
+2. Haptik am Telefon: kurzer Tick bei Knöpfen und bei NOCH NICHT; mit
+   abgeschaltetem Berührungs-Feedback in den Systemeinstellungen bleibt er
+   weg.
+3. NOCH NICHT an der Uhr über Touch, Taste (STEM) und Drehring: Text im
+   Ring, Vogel wackelt, Haptik-Tick.
+4. Tick an der Uhr: spürbar, und bei abgeschaltetem Berührungs-Feedback weg.
+5. Minen unter FAKE+PULS auf der Uhr lesbar (schwarz mit hellem Rand vor
+   jedem Himmel).
+6. Nebelband und Minen auf der Uhr allgemein: Man sieht, wo der Vogel
+   verschwindet, und die Minen lesen sich nicht als Zone.
+7. Schalter ERINNERUNG auf Android sichtbar und schaltet (Berechtigung ab
+   Android 13).
+8. Die gesperrte MENÜ-Leiste im Game-Over (erste 0,8 s, Deckkraft 0,35)
+   ist sichtbar genug, und echte Wut-Taps landen nicht im Menü.
+9. Test mit 5 neuen Spielern nach Abschnitt 6 (erster Treffer, wohin sie
+   tippen, Todesursache, beide Lila-Bilder, Nebel und Bomben ohne
+   Erklärung).

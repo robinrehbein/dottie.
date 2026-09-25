@@ -33,7 +33,7 @@ import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.TimingGame
 import kotlinx.coroutines.isActive
 
-/** Rot fürs "neuer Rekord"-Feedback, wie RecordRed in GameOverlays.kt. */
+/** Rot fürs "neuer Rekord"-Feedback, wie RecordRed in ui/.../world/Palette.kt. */
 private val WearRecordRed = Color(0xFFE53935)
 
 /** Banner-Orange und Feier-Gold, wie in ScoreHud/GameOverOverlay am Phone. */
@@ -76,11 +76,6 @@ internal fun WearGameScreen(controller: WearGameController) {
         }
     }
 
-    // Blinken über einen eigenen, im Frame-Takt mitlaufenden Zähler statt
-    // rememberInfiniteTransition/animateFloat — spart die Abhängigkeit auf
-    // androidx.compose.animation, die dieses Modul sonst nicht braucht.
-    val blinkVisible = (controller.blinkClock * 1.6f) % 1f < 0.65f
-
     MaterialTheme {
         Box(
             modifier = Modifier
@@ -99,13 +94,14 @@ internal fun WearGameScreen(controller: WearGameController) {
                     skin = controller.skin,
                     hour = controller.clockHour,
                     month = controller.clockMonth,
-                    scene = controller.scene
+                    scene = controller.scene,
+                    dotWobble = WearNotYet.wobble(controller.notYetTimeLeft)
                 )
             }
 
             when (controller.phase) {
                 GamePhase.READY -> WearReadyOverlay(
-                    blinkVisible = blinkVisible,
+                    notYet = controller.notYetTimeLeft > 0f,
                     bestScore = controller.bestScore,
                     soundOn = controller.soundOn,
                     onToggleSound = { controller.toggleSound() },
@@ -133,7 +129,6 @@ internal fun WearGameScreen(controller: WearGameController) {
                     isNewRecord = controller.isNewRecord,
                     taunt = controller.taunt,
                     tapHintVisible = controller.phaseElapsed >= TimingGame.RESTART_LOCK_SECONDS,
-                    blinkVisible = blinkVisible,
                     dailyMode = controller.dailyMode,
                     dailyBestToday = controller.dailyBestToday,
                     dailyStreak = controller.dailyStreak,
@@ -280,7 +275,7 @@ private fun WearSkinRow(
 
 @Composable
 private fun WearReadyOverlay(
-    blinkVisible: Boolean,
+    notYet: Boolean,
     bestScore: Int,
     soundOn: Boolean,
     onToggleSound: () -> Unit,
@@ -295,12 +290,28 @@ private fun WearReadyOverlay(
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = stringResource(R.string.tap),
-                color = Color.White.copy(alpha = if (blinkVisible) 1f else 0.25f),
-                fontSize = 26.sp,
-                fontFamily = WearBytesized
-            )
+            // TIPP steht ruhig (Plan 8.5 AP-24): Der Lauf startet erst mit
+            // einem Tap im Grün, ein blinkendes TIPP lockte zum Tap zur
+            // falschen Zeit. Ein Tap daneben ersetzt es 0,7 s lang durch
+            // NOCH NICHT, auf jedem Eingabeweg. Feste Zeilenhöhe, damit
+            // der Wechsel die Zeilen darunter nicht verschiebt.
+            Box(modifier = Modifier.height(34.dp), contentAlignment = Alignment.Center) {
+                if (notYet) {
+                    Text(
+                        text = stringResource(R.string.not_yet),
+                        color = WearBannerOrange,
+                        fontSize = 20.sp,
+                        fontFamily = WearBytesized
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.tap),
+                        color = Color.White,
+                        fontSize = 26.sp,
+                        fontFamily = WearBytesized
+                    )
+                }
+            }
             if (dailyMode) {
                 // Im DAILY-Modus zählen die Tages-Stände statt des
                 // Classic-Rekords: Tagesbest und Serie in einer Zeile —
@@ -459,7 +470,6 @@ private fun WearOverOverlay(
     isNewRecord: Boolean,
     taunt: String,
     tapHintVisible: Boolean,
-    blinkVisible: Boolean,
     dailyMode: Boolean,
     dailyBestToday: Int,
     dailyStreak: Int,
@@ -526,14 +536,14 @@ private fun WearOverOverlay(
                     fontFamily = WearBytesized
                 )
             }
-            // Erst nach RESTART_LOCK blinken (statt nur ein/aus schalten),
-            // sonst wirkt ein Wut-Tap direkt nach dem Tod wie eine
-            // funktionslose Anzeige statt wie eine echte Sperre.
+            // Erst nach RESTART_LOCK zeigen, sonst wirkt ein Wut-Tap direkt
+            // nach dem Tod wie eine funktionslose Anzeige statt wie eine
+            // echte Sperre. Ohne Blinken, wie im READY.
             if (tapHintVisible) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = stringResource(R.string.tap),
-                    color = Color.White.copy(alpha = if (blinkVisible) 1f else 0.25f),
+                    color = Color.White,
                     fontSize = 16.sp,
                     fontFamily = WearBytesized
                 )
