@@ -82,17 +82,25 @@ class ScreenshotRenderer {
             renderStartSet(File(dir, "720x1280"), 720, 1280, 2f)
         } finally {
             fixedCalendarForTools = vorher
+            // Die geschlossenen Szenen geben ihren nativen Speicher erst
+            // frei, wenn die JVM aufräumt. Die übrigen Screenshot-Tests
+            // laufen im selben Prozess und sollen ihn nicht erben.
+            System.gc()
         }
     }
 
     private fun renderStartSet(dir: File, w: Int, h: Int, d: Float) {
         dir.mkdirs()
         var now = 0L
+        // Jedes Zwischenbild sofort schließen: Die Skia-Bilder liegen im
+        // nativen Speicher, den die JVM nicht sieht. Ohne close() wuchs der
+        // Test-Executor bei den Warteschleifen auf über 7 GB und wurde
+        // vom System beendet (Exit 137).
         fun ImageComposeScene.step(seconds: Double) {
             val until = now + (seconds * 1_000_000_000L).toLong()
             while (now < until) {
                 now += 16L * 1_000_000L
-                render(now)
+                render(now).close()
             }
         }
         fun ImageComposeScene.tap(x: Float, y: Float) {
@@ -102,8 +110,14 @@ class ScreenshotRenderer {
             step(0.05)
         }
         fun ImageComposeScene.save(name: String) {
-            val data = render(now).encodeToData(EncodedImageFormat.PNG)!!
-            File(dir, name).writeBytes(data.bytes)
+            val img = render(now)
+            try {
+                val data = img.encodeToData(EncodedImageFormat.PNG)!!
+                File(dir, name).writeBytes(data.bytes)
+                data.close()
+            } finally {
+                img.close()
+            }
             println("-> ${dir.name}/$name")
         }
 
@@ -125,6 +139,7 @@ class ScreenshotRenderer {
             // Tap daneben (links neben dem Ring): NOCH NICHT und Echo.
             scene.tap(w * 0.3f, h * 0.44f)
             scene.step(0.1)
+            check(game.phase == GamePhase.READY) { "der Tap daneben hat einen Lauf gestartet" }
             scene.save("21-noch-nicht.png")
             // Bei 1,35 s steht der Punkt im Grün: Hand gedrückt, Zone
             // leuchtet, Echo an der Fingerspitze.
@@ -168,8 +183,17 @@ class ScreenshotRenderer {
         }.use { scene ->
             scene.step(1.5)
             scene.save("26-start-bestand.png")
+            // NOCH NICHT ohne Stützräder: Bei 1,5 s steht der Punkt im
+            // Grün, ein Tap dort würde starten. Erst warten, bis er das
+            // Grün verlassen hat, dann daneben tippen.
+            var frames = 0
+            while (game2.isInZone && frames++ < 1_000) scene.step(0.016)
+            scene.step(0.1)
+            check(!game2.isInZone) { "der Punkt steht noch im Grün" }
             scene.tap(w * 0.3f, h * 0.44f)
             scene.step(0.1)
+            check(game2.phase == GamePhase.READY) { "der Tap daneben hat einen Lauf gestartet" }
+            check(game2.score == 0) { "der Tap daneben hat gezählt" }
             scene.save("27-bestand-noch-nicht.png")
         }
     }

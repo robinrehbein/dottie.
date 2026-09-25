@@ -758,48 +758,6 @@ internal fun DrawScope.drawTrack(
     }
 }
 
-/** Das Leuchten der Zone während der Stützräder (feedback-check.html:589-595). */
-internal val GlowCore = Color(0xFFE4FFC4)
-internal val GlowZone = Color(0xFFB8F27A)
-internal val GlowEdge = Color(0xFFFFFFFF)
-
-/**
- * Die Zone leuchtet (Plan 3.1): dieselben Blöcke wie in [drawTrack],
- * heller gefüllt und mit weißer Kontur. Nur als Stützräder, solange der
- * Punkt im Grün ist (siehe drawStartCoach). Liegt die Falle auf der
- * Zone, gewinnt wie in [drawTrack] die Zone.
- */
-internal fun DrawScope.drawZoneGlow(
-    game: TimingGame,
-    cx: Float,
-    cy: Float,
-    radius: Float,
-    cell: Float
-) {
-    val segments = 60
-    val zoneHalf = game.effectiveZoneHalf()
-    val coreHalf = game.perfectHalf()
-    val outer = cell * 5f
-    val inner = cell * 3.4f
-    for (k in 0 until segments) {
-        val a = k.toFloat() / segments * (2f * PI.toFloat())
-        val relativeZone = abs(TimingGame.wrapToPi(a - game.zoneCenter))
-        if (relativeZone > zoneHalf) continue
-        val px = cx + cos(a) * radius
-        val py = cy + sin(a) * radius
-        drawRect(
-            color = GlowEdge,
-            topLeft = Offset(px - outer / 2f, py - outer / 2f),
-            size = Size(outer, outer)
-        )
-        drawRect(
-            color = if (relativeZone <= coreHalf) GlowCore else GlowZone,
-            topLeft = Offset(px - inner / 2f, py - inner / 2f),
-            size = Size(inner, inner)
-        )
-    }
-}
-
 /**
  * Freischalt-Zelebration: ein goldener Ring aus Pixel-Blöcken, der von der
  * Bahn nach außen aufsteigt und dabei verblasst — plus kurzer Goldschimmer

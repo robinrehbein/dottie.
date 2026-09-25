@@ -83,17 +83,9 @@ class BackActionTest {
     }
 
     // == AP-22 start ==
-    @Test
-    fun dailyKarteSchliesstVorDerPhase() {
-        // Die DAILY-Karte liegt über dem Startbildschirm (AP-22): Zurück
-        // schließt sie, statt die App zu beenden.
-        assertEquals(BackAction.CLOSE_DAILY_INTRO, action(dailyIntro = true, phase = GamePhase.READY))
-        // Die übrigen Overlays liegen darüber und schließen zuerst.
-        assertEquals(BackAction.CLOSE_HELP, action(help = true, dailyIntro = true))
-        assertEquals(BackAction.CLOSE_SETTINGS, action(settings = true, dailyIntro = true))
-        assertEquals(BackAction.CLOSE_STATS, action(stats = true, dailyIntro = true))
-        assertEquals(BackAction.CLOSE_COLLECTION, action(skins = true, dailyIntro = true))
-    }
+    // Der Platzhalter dailyKarteBleibtBisAp22OhneWirkung galt nur bis
+    // AP-22 (Plan 8.4). Die Zurück-Geste über der DAILY-Karte prüft jetzt
+    // DailyIntroTest (`Zurück schließt die Karte vor der Phase`).
     // == /AP-22 ==
 
     @Test

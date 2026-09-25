@@ -1,5 +1,6 @@
 package de.robinrehbein.punkt.ui.screens
 
+import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.ui.data.FakeKeyValueStore
 import de.robinrehbein.punkt.ui.data.GameStore
 import kotlin.test.Test
@@ -35,7 +36,10 @@ class DailyIntroTest {
             armed = true
         }
 
-        /** MENÜ im Game-Over (backToMenu). */
+        /**
+         * MENÜ im Game-Over (backToMenu). Den echten Weg durch GameScreen
+         * prüft DailyMenuTest (jvmTest).
+         */
         fun menu() {
             armed = false
         }
@@ -121,5 +125,32 @@ class DailyIntroTest {
         telefon.applySync(uhr.syncState())
 
         assertFalse(telefon.dailyIntroSeen)
+    }
+
+    /** Die Zurück-Geste, während die DAILY-Karte offen ist. */
+    private fun backMitKarte(
+        help: Boolean = false,
+        settings: Boolean = false,
+        stats: Boolean = false,
+        skins: Boolean = false
+    ) = backAction(
+        showHelp = help,
+        showSettings = settings,
+        showStats = stats,
+        showSkins = skins,
+        showDailyIntro = true,
+        phase = GamePhase.READY
+    )
+
+    @Test
+    fun `Zurück schließt die Karte vor der Phase`() {
+        // Die Karte liegt über dem Startbildschirm: Zurück schließt sie,
+        // statt die App zu beenden.
+        assertEquals(BackAction.CLOSE_DAILY_INTRO, backMitKarte())
+        // Die übrigen Overlays liegen darüber und schließen zuerst.
+        assertEquals(BackAction.CLOSE_HELP, backMitKarte(help = true))
+        assertEquals(BackAction.CLOSE_SETTINGS, backMitKarte(settings = true))
+        assertEquals(BackAction.CLOSE_STATS, backMitKarte(stats = true))
+        assertEquals(BackAction.CLOSE_COLLECTION, backMitKarte(skins = true))
     }
 }
