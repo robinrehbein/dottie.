@@ -57,7 +57,7 @@
     <string name="twist_learned_pulse">NEU IN DIESEM LAUF: PULS — DIE ZONE ATMET</string>
     <string name="twist_learned_drift">NEU IN DIESEM LAUF: DRIFT — DIE ZONE WANDERT</string>
     <string name="twist_learned_ghost">NEU IN DIESEM LAUF: GEIST — DER PUNKT BLINKT WEG</string>
-    <string name="twist_learned_fake">NEU IN DIESEM LAUF: FALLE — NIE HINEINTIPPEN</string>
+    <string name="twist_learned_fake">NEU IN DIESEM LAUF: BOMBEN — NIE HINEINTIPPEN</string>
     <!-- == AP-12 bomben == -->
     <!-- == /AP-12 == -->
     <string name="twist_learned_chain">NEU IN DIESEM LAUF: KETTE — ZWEI ZONEN NACHEINANDER</string>
@@ -105,8 +105,8 @@
     <string name="twist_ghost_text">DER PUNKT BLINKT WEG — BAHN IM KOPF BEHALTEN.</string>
     <!-- == AP-23 nebel == -->
     <!-- == /AP-23 == -->
-    <string name="twist_fake_title">FALLE (AB 20)</string>
-    <string name="twist_fake_text">VIOLETTE KÖDER-ZONE: NIE HINEINTIPPEN!</string>
+    <string name="twist_fake_title">BOMBEN (AB 20)</string>
+    <string name="twist_fake_text">EINE KETTE AUS BOMBEN NEBEN DER ZONE: NIE HINEINTIPPEN!</string>
     <string name="twist_chain_title">KETTE (AB 25)</string>
     <string name="twist_chain_text">ZWEI ZONEN NACHEINANDER — GLEICHE RICHTUNG.</string>
     <string name="help_max_twists">MAXIMAL ZWEI TWISTS GLEICHZEITIG — ZUFÄLLIG GEMISCHT.</string>

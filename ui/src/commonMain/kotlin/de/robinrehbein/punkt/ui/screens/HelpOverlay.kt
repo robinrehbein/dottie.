@@ -26,6 +26,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.game.TrapPaint
+import de.robinrehbein.punkt.ui.components.MineIcon
 import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.help_line1
 import de.robinrehbein.punkt.ui.resources.help_line2
@@ -128,9 +130,10 @@ private fun StopHelpContent() {
         stringResource(Res.string.twist_ghost_text)
     )
     TwistHelpRow(
-        Color(0xFFB44FD8),
+        Color(TrapPaint.RED),
         stringResource(Res.string.twist_fake_title),
-        stringResource(Res.string.twist_fake_text)
+        stringResource(Res.string.twist_fake_text),
+        icon = { MineIcon(size = 16.dp) }
     )
     TwistHelpRow(
         Color(0xFFFF8A3C),
@@ -165,19 +168,33 @@ private fun HelpLine(text: String, color: Color = Color.White) {
     )
 }
 
+/**
+ * Eine Zeile der Twist-Liste: Symbol, Titel in der Farbe des Twists,
+ * darunter der Satz. Das Symbol ist ein Farbquadrat, außer ein Twist
+ * bringt ein eigenes Bild mit ([icon], etwa die Mine der Falle).
+ */
 @Composable
-private fun TwistHelpRow(color: Color, title: String, text: String) {
+private fun TwistHelpRow(
+    color: Color,
+    title: String,
+    text: String,
+    icon: (@Composable () -> Unit)? = null
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 40.dp, vertical = 5.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(16.dp)
-                .background(color)
-        )
+        if (icon != null) {
+            icon()
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .background(color)
+            )
+        }
         Spacer(modifier = Modifier.width(12.dp))
         Column {
             Text(

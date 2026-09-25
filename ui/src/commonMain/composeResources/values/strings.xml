@@ -57,7 +57,7 @@
     <string name="twist_learned_pulse">NEW THIS RUN: PULSE — THE ZONE BREATHES</string>
     <string name="twist_learned_drift">NEW THIS RUN: DRIFT — THE ZONE WANDERS</string>
     <string name="twist_learned_ghost">NEW THIS RUN: GHOST — THE DOT BLINKS AWAY</string>
-    <string name="twist_learned_fake">NEW THIS RUN: TRAP — NEVER TAP INTO IT</string>
+    <string name="twist_learned_fake">NEW THIS RUN: BOMBS — NEVER TAP INTO THEM</string>
     <!-- == AP-12 bomben == -->
     <!-- == /AP-12 == -->
     <string name="twist_learned_chain">NEW THIS RUN: CHAIN — TWO ZONES IN A ROW</string>
@@ -105,8 +105,8 @@
     <string name="twist_ghost_text">THE DOT BLINKS AWAY — KEEP THE TRACK IN YOUR HEAD.</string>
     <!-- == AP-23 nebel == -->
     <!-- == /AP-23 == -->
-    <string name="twist_fake_title">TRAP (AT 20)</string>
-    <string name="twist_fake_text">PURPLE DECOY ZONE: NEVER TAP INTO IT!</string>
+    <string name="twist_fake_title">BOMBS (AT 20)</string>
+    <string name="twist_fake_text">A CHAIN OF BOMBS NEXT TO THE ZONE: NEVER TAP INTO IT!</string>
     <string name="twist_chain_title">CHAIN (AT 25)</string>
     <string name="twist_chain_text">TWO ZONES IN A ROW — SAME DIRECTION.</string>
     <string name="help_max_twists">AT MOST TWO TWISTS AT ONCE — RANDOMLY MIXED.</string>

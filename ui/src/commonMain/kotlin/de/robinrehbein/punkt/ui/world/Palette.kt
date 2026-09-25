@@ -33,6 +33,6 @@ val PanelSand = Color(0xFFDED895)
 val TextDark = Color(0xFF543847)
 val RecordRed = Color(0xFFE53935)
 
-/** Fallen-Zone: klar als Gefahr lesbar, aber unter Zeitdruck verwechselbar. */
-val FakeZoneColor = Color(0xFFB44FD8)
-val FakeZoneCoreColor = Color(0xFF8A2FB0)
+// Die Falle hat keine eigene Farbe mehr: Sie ist eine Kette aus Minen,
+// Sprite und Farben stehen in :core (TrapPaint), gezeichnet wird sie in
+// MineField.kt. Das frühere Lila war mit dem Himmel verwechselbar.
