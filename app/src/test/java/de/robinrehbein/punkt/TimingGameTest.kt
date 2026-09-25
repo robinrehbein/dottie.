@@ -384,21 +384,42 @@ class TimingGameTest {
     }
 
     @Test
-    fun `ghost twist blinks the dot while running`() {
+    fun `ghost twist hides the dot in the fog bank in front of the zone`() {
+        // NEBEL: Sichtbarkeit hängt an der Bahn, nicht an der Uhr.
+        // Unsichtbar genau dann, wenn der Punkt in der Nebelbank steckt.
         val game = newGame()
         game.twistOverride = setOf(Twist.GHOST)
         game.start()
 
         var visibleSeen = false
         var hiddenSeen = false
-        repeat(180) {
-            game.update(1f / 60f)
-            if (game.phase != GamePhase.RUNNING) return@repeat
+        var time = 0f
+        while (game.phase == GamePhase.RUNNING && time < 5f) {
+            assertEquals(!game.isInFog, game.isDotVisible)
             if (game.isDotVisible) visibleSeen = true else hiddenSeen = true
+            // Im PERFEKT-Kern ist der Punkt immer zu sehen.
+            if (abs(game.relativeToZone()) <= game.perfectHalf()) assertTrue(game.isDotVisible)
+            game.update(1f / 240f)
+            time += 1f / 240f
         }
 
         assertTrue(visibleSeen)
-        assertTrue("Punkt sollte zeitweise unsichtbar sein", hiddenSeen)
+        assertTrue("Punkt sollte im Nebel unsichtbar sein", hiddenSeen)
+    }
+
+    @Test
+    fun `fog without the ghost twist keeps the dot visible`() {
+        val game = newGame()
+        game.start()
+        var fogSeen = false
+        var time = 0f
+        while (game.phase == GamePhase.RUNNING && time < 5f) {
+            if (game.isInFog) fogSeen = true
+            assertTrue(game.isDotVisible)
+            game.update(1f / 240f)
+            time += 1f / 240f
+        }
+        assertTrue(fogSeen)
     }
 
     @Test
@@ -406,6 +427,19 @@ class TimingGameTest {
         val game = newGame()
         game.twistOverride = setOf(Twist.GHOST)
         assertTrue(game.isDotVisible) // READY
+
+        // Tod mitten in der Nebelbank: In DYING und OVER ist der Punkt
+        // trotzdem zu sehen, obwohl er geometrisch im Nebel steht.
+        game.start()
+        while (game.phase == GamePhase.RUNNING && !(game.isInFog && !game.isInZone)) {
+            game.update(1f / 240f)
+        }
+        assertEquals(GameEventDied, game.tap())
+        assertTrue(game.isInFog)
+        assertTrue(game.isDotVisible) // DYING
+        game.tick(TimingGame.DEATH_FREEZE_SECONDS + TimingGame.DEATH_FALL_SECONDS + 0.1f)
+        assertEquals(GamePhase.OVER, game.phase)
+        assertTrue(game.isDotVisible) // OVER
     }
 
     @Test

@@ -126,13 +126,19 @@ class ScreenshotRenderer {
                 runSeed = seed
             )
         }.use { scene ->
-            // READY: kurz laufen lassen, damit Vogel und Blinken stehen
-            scene.step(1.2)
+            // READY: kurz laufen lassen, damit Vogel und Blinken stehen.
+            // Nach 1,5 s steht der Vogel mitten im Grün (READY_SPEED 1,2
+            // rad/s, Zone bei 1,8 ± 0,4): Unter der Startregel zählt nur
+            // ein Tap im Grün. Bei 1,2 s läge er am Zonenrand.
+            scene.step(1.5)
             scene.save("01-ready.png")
 
-            // Lauf starten, ~1 s kreisen lassen
+            // Lauf starten (Treffer 1), 0,5 s kreisen lassen. Der Start
+            // ist jetzt ein Treffer, die neue Zone liegt 1,1-2,8 rad voraus:
+            // Nach 1 s wäre der Vogel je nach Seed schon vorbei und das Bild
+            // zeigte den Todesblitz. Frühestens nach ≈ 0,69 s ist er vorbei.
             scene.tap(w / 2f, h * 0.5f)
-            scene.step(1.0)
+            scene.step(0.5)
             scene.save("02-running.png")
 
             // Sterben: Zone einfach nicht antippen und ueberfahren lassen,
