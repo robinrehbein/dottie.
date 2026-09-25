@@ -65,6 +65,11 @@
     <string name="share">SHARE</string>
     <string name="menu">MENU</string>
     <!-- == AP-14 bedienung == -->
+    <!-- Beschriftungen der Schalterzeilen: der Zustand steht am Schalter, nicht im Text. -->
+    <string name="ctl_sound">SOUND</string>
+    <string name="ctl_reminder">REMINDER</string>
+    <!-- Vorlesetext des X-Knopfs oben rechts in den Overlays. -->
+    <string name="ctl_close">CLOSE</string>
     <!-- == /AP-14 == -->
     <string name="remove_ads">REMOVE ADS — %1$s</string>
     <string name="ad_privacy">AD PRIVACY SETTINGS</string>
