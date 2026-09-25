@@ -14,7 +14,20 @@ wieder ein Versuch: kurze Runs, hoher Rage-Faktor, Highscore-Jagd.
 
 Der Punkt kreist von allein auf einer Bahn. Ein Tap, während er in der
 grünen Zone ist, zählt — daneben getippt oder die Zone überfahren ist
-sofort das Ende. Die helle Zonen-Mitte zählt als PERFEKT: +2 Punkte,
+sofort das Ende.
+
+**Startregel (ab v2.28):** Schon der erste Tap im Startbildschirm ist ein
+Treffer, wenn der Punkt im Grün steht, und startet den Lauf genau dort
+(normal oder PERFEKT). Ein Tap daneben kostet nichts: „NOCH NICHT“
+erscheint im Ring, Punkt und Hand wackeln kurz, der Punkt kreist weiter.
+In den ersten fünf Läufen (Uhr- und Daily-Läufe zählen mit) macht eine
+Pixel-Hand in der Ringmitte den Takt vor, und die Zone leuchtet, solange
+der Punkt darin ist. Nach dem Aus bleibt der Sofort-Neustart: Ein Tap im
+Game-Over startet direkt den nächsten Lauf.
+
+Nach jedem Aus steht am Ring, **warum**: ZU FRÜH, ZU SPÄT, VERPASST oder
+BOOM! (Bombe), danach klein im Game-Over unter dem Titel. Die Ursache
+hält die Engine im Moment des Taps fest (`TimingGame.lastDeathCause`). Die helle Zonen-Mitte zählt als PERFEKT: +2 Punkte,
 und in Serie steigt der Bonus auf +3, +4 bis maximal +5 pro Treffer
 (ein normaler Treffer setzt die Serie zurück, ohne Strafe).
 
@@ -30,11 +43,32 @@ gemischt werden (maximal zwei gleichzeitig):
 |---|---|---|
 | PULS | 5 | Die Zone atmet — wird größer und kleiner |
 | DRIFT | 10 | Die Zone wandert langsam über die Bahn |
-| GEIST | 15 | Der Punkt blinkt weg — Bahn im Kopf behalten |
-| FALLE | 20 | Violette Köder-Zone: nie hineintippen |
+| NEBEL | 15 | Vor der Zone liegt eine Nebelbank, der Punkt fliegt darin unsichtbar weiter |
+| BOMBEN | 20 | Eine Kette aus Bomben neben der Zone: nie hineintippen |
 | KETTE | 25 | Zwei Zonen nacheinander in gleicher Richtung |
 
-Kuratierte Ausnahme: GEIST + FALLE erscheinen nie gleichzeitig —
+**Nebel (ab v2.28):** Bis v2.27 blinkte der Punkt unter diesem Twist hart weg.
+Seit v2.28 hängt die Sichtbarkeit an der Bahn,
+nicht mehr an einer Uhr. Die Nebelbank beginnt 0,12 s Laufzeit vor der
+Zone und reicht bis ins erste Viertel der Zone (`fogStart()`/`fogEnd()`
+in `TimingGame`). Der PERFEKT-Kern liegt nie im Nebel, und der Punkt
+taucht kurz vor der hellen Mitte wieder auf. Wer trifft, solange er noch
+im Nebel steckt, bekommt **BLIND! +1** (ein normaler Treffer plus ein
+Punkt, die Perfekt-Serie bleibt erhalten). Am Telefon gleitet der Vogel
+in eine Pixel-Wolke hinein, auf der Uhr steht ein einfaches Nebelband.
+Im Code heißt der Twist weiter `Twist.GHOST`: Der Name wird gespeichert
+und steht in den Paritäts-Vektoren.
+
+**Bomben (ab v2.28, vorher FALLE):** Jeder Block der Falle ist eine
+Minesweeper-Mine (7×7, schwarze Kugel mit hellem Rand für dunkle Himmel,
+`TrapPaint` in `:core`). Ein rotes Lauflicht wandert alle 0,09 s über die
+Kette, die Richtung ergibt sich aus der Lage der Falle, nicht aus dem
+Zufall. Wer hineintippt, sieht 12 Pixel-Funken und „BOOM!“, beim ersten
+Mal zusätzlich „BOMBE = NIE TIPPEN“. Nach dem ersten Bomben-Tod darf die
+Bomben-Erklärung im Game-Over vordrängeln. Auf der Uhr stehen die Minen
+ohne Lauflicht.
+
+Kuratierte Ausnahme: NEBEL + BOMBEN erscheinen nie gleichzeitig —
 unsichtbarer Punkt plus tödliche Köder-Zone wäre Zufalls-Tod statt
 Skill. Alle anderen Kombinationen bleiben erlaubt.
 
@@ -42,7 +76,7 @@ Im Lauf kündigt sich ein frisch freigeschalteter Twist nur mit Fanfare
 und Haptik an, ohne Text: Während der Punkt kreist, klebt der Blick am
 Ring — das Banner las dort niemand, und für Stammspieler war es in jedem
 Lauf dasselbe Rauschen. Erklärt wird stattdessen im Game-Over, in einer
-Zeile („NEU IN DIESEM LAUF: FALLE — NIE HINEINTIPPEN") und genau einmal
+Zeile („NEU IN DIESEM LAUF: BOMBEN — NIE HINEINTIPPEN") und genau einmal
 je Twist; wer in einem Lauf zwei neue erlebt, bekommt den zweiten beim
 nächsten Tod. Was schon erklärt wurde, merkt sich das Gerät lokal (siehe
 `TwistLessons` in `:ui`) — es ist Didaktik, kein Fortschritt, und wird
@@ -50,8 +84,10 @@ deshalb nicht mit der Uhr abgeglichen.
 
 Dazu: Himmel färbt sich pro 5er-Stufe Richtung Nacht — und wieder
 zurück zum Tag, ein voller Umlauf sind 60 Punkte —, Medaillen ab
-10/20/30/40 Punkten, Spott-Texte beim Tod, Haptik-Feedback, „?"-Button
-mit Spielerklärung. Wer den eigenen Rekord im Lauf überholt, bekommt
+10/20/30/40 Punkten, Spott-Texte beim Tod, Haptik-Feedback und die
+Spielerklärung unter HILFE in den Einstellungen (das „?“ im Game-Over ist
+seit v2.28 weg: Todesursache und Twist-Erklärung sagen dort, was passiert
+ist). Wer den eigenen Rekord im Lauf überholt, bekommt
 das sofort gefeiert („REKORD GEKNACKT!") — nicht erst beim Tod.
 
 ## Retention & Teilen (ab v2.8)
@@ -81,10 +117,10 @@ Wachstum ein:
   hingen 14 von 21 Skins am Rekord, der letzte bei 60 Punkten. Wer bei
   Rekord 25 stehenbleibt, sammelte nie wieder etwas; jetzt fällt der
   erste zusätzliche Skin nach 25 Läufen. Der Regenbogen kommt weiterhin
-  zuletzt, wenn alle anderen gesammelt sind. Auswahl über den
-  SKINS-Button, nach Familien gegliedert; gesperrte Skins zeigen ihre
-  Bedingung — und lassen sich dort per freiwilligem Spot einen Tag lang
-  ausprobieren (siehe Monetarisierung).
+  zuletzt, wenn alle anderen gesammelt sind. Auswahl seit v2.28 in der
+  SAMMLUNG (Reiter VOGEL, nach Familien gegliedert); gesperrte Skins
+  zeigen Bedingung und Fortschritt — und lassen sich dort per freiwilligem
+  Spot einen Tag lang ausprobieren (siehe Monetarisierung).
 
   **Saison-Skins** (Kürbis im Oktober, Zuckerstange im Dezember, Herz im
   Februar, Osterei im April) sind nur in ihrem Monat verdienbar, dafür
@@ -183,23 +219,42 @@ nachzubauen — und weil beide Tabellen im Paritäts-Vertrag stehen
 (`scene.rock.*`, `scene.lantern.*`), fällt ein davonlaufender Port auf,
 bevor jemand das Bild vergleicht.
 
-Freigeschaltet wird über je eine eigene Achse, mit bewusst hohen
-Schwellen — eine Kulisse ist der seltene große Wechsel, kein Stufenziel:
+Im Spiel heißen die Kulissen seit v2.28 **Welten**. Freigeschaltet wird
+über je eine eigene Achse. Bis v2.27 lagen die Schwellen so hoch, dass
+die erste neue Welt erst nach 500 Läufen fiel, während Skins schon nach
+fünf Läufen kamen. Seit v2.28 gilt die **Welten-Leiter**:
 
-| Kulisse | Bedingung |
-|---|---|
-| WIESE | von Anfang an |
-| WÜSTE | 500 Läufe |
-| MEER | 10.000 Punkte insgesamt |
-| BERG | Daily-Serie 30 Tage |
-| STADT | Rekord 85 |
-| WELTRAUM | alle anderen Kulissen gesammelt |
+| Welt | Bedingung (ab v2.28) | bis v2.27 |
+|---|---|---|
+| WIESE | von Anfang an | von Anfang an |
+| WÜSTE | 100 Läufe | 500 Läufe |
+| MEER | 2.500 Punkte insgesamt | 10.000 Punkte insgesamt |
+| BERG | 1 Daily gespielt (`bestDailyStreak ≥ 1`) | Daily-Serie 30 Tage |
+| STADT | Rekord 100 | Rekord 85 |
+| WELTRAUM | alle anderen Welten im Besitz | alle anderen Kulissen |
+
+WÜSTE fällt mit dem Skin TIGER (100 Läufe) und MEER mit BASKETBALL
+(2.500 Punkte) zusammen. Das ist gewollt, beides wird gemeinsam gefeiert.
+
+**Bestandsschutz:** STADT wird schwerer (Rekord 100 statt 85). Damit
+niemand mit dem Update eine Welt verliert, sind Welten seit v2.28 ein
+**Besitz** (`ownedScenes`, gespeichert über die Namen): Offen ist eine
+Welt, wenn sie in der Menge steht oder die Regel erfüllt ist; greift die
+Regel, kommt sie dauerhaft in die Menge. Beim ersten Start nach dem
+Update übernimmt `ScenePaint.legacyUnlocked` einmalig alles, was nach den
+alten Schwellen offen war (geschützt durch einen Versionsmerker). Die
+Menge wandert im Abgleich mit und wird dort vereinigt, so verliert auch
+die Uhr nichts. WELTRAUM und der Rahmen KASKADE fragen die Besitz-Menge.
 
 Drei Regeln nagelt `:core` per Test fest (`ScenePaintTest`):
 
-- **Keine Kulissenfarbe kommt der Zielzone (`#74BF2E`/`#9DE85A`) oder der
-  Falle (`#B44FD8`) näher als 60 Schritte im RGB-Raum.** Sonst verkauft
-  die Kulisse Verwirrung. Mit **einer benannten Ausnahme**: Die Wiese
+- **Keine Kulissenfarbe kommt der Zielzone (`#74BF2E`/`#9DE85A`) näher
+  als 60 Schritte im RGB-Raum, und jede Mine hebt sich von jedem Himmel
+  ab** (Kugel `#1E1A22` oder Rand `#F4E9EC` mindestens 150 Schritte
+  entfernt). Sonst verkauft die Kulisse Verwirrung. Seit v2.28 gibt es
+  kein Lila mehr im Himmel: Die Stufe bei Score 10 ist in WIESE, STADT
+  und WELTRAUM ein tieferes Blau, damit sie nicht mit den Bomben (früher
+  die lila Falle) verwechselt wird. Mit **einer benannten Ausnahme**: Die Wiese
   reißt diese Grenze seit jeher selbst — ihr Buschgrün `#71C837` liegt 13
   Schritte neben der Zonenfarbe, ihre Grasnarbe trägt sie exakt. Diese
   Flächen liegen am unteren Bildrand, nie im Ringband (die Bahn endet bei
@@ -219,12 +274,12 @@ Drei Regeln nagelt `:core` per Test fest (`ScenePaintTest`):
   derselben Höhe endet wie überall sonst.
 
 Die Wiese ist dabei **Pixel für Pixel der Bestand**: Jeder Farbwert und
-jede Requisiten-Größe stammt unverändert aus `GameOverlays.kt` /
-`TimingGameScreen.kt`. Wer die Umstellung sieht, hat sie falsch gemacht.
+jede Requisiten-Größe stammt unverändert aus dem Bestand vor v2.21
+(damals `TimingGameScreen.kt`). Wer die Umstellung sieht, hat sie falsch gemacht.
 
-Gewählt wird im SKINS-Overlay, wo die Kulissen als eigener Abschnitt über
-den Skin-Familien stehen (Android, iOS); gesperrte zeigen ihre
-Bedingung. Die Wahl wird wie die Skin-Wahl gespeichert und steht auf der
+Gewählt wird in der **SAMMLUNG** im Reiter WELT (Android, iOS); gesperrte
+Welten lassen sich im Schaufenster ansehen und zeigen Bedingung und
+Fortschritt. Die Wahl wird wie die Skin-Wahl gespeichert und steht auf der
 Score-Card — sonst sähe sie niemand außer der Besitzerin. Die Uhr wählt
 keine Kulisse; sie zieht die Himmelsfarben nur lesend aus `ScenePaint`.
 
@@ -281,8 +336,8 @@ Was `:core` per Test festnagelt (`SoundSetTest`):
   Sample für Sample der alte. Wer die Umstellung hört, hat sie falsch
   gemacht.
 
-Gewählt wird im SKINS-Overlay, direkt hinter den Kulissen und vor den
-Skin-Familien — mit **Hörprobe beim Antippen** (die Fanfare des Sets: sie
+Gewählt wird in der **SAMMLUNG** im Reiter TON — mit **Hörprobe beim
+Antippen**, auch für noch gesperrte Sets (die Fanfare des Sets: sie
 zeigt Lage, Länge und Anschlag). Das Menü bleibt dabei offen: Wer eines
 hört, will das nächste hören. Die Uhr hat keinen eigenen Wähler; sie
 übernimmt die Wahl über den Abgleich und spielt sie dann auch — ein
@@ -349,8 +404,39 @@ nächste Lauf. Seit v2.23 sind es acht:
   allein liest sich als 199 von 200 Medaillen. Ist alles freigeschaltet,
   fällt die Zeile ersatzlos weg — der gewollte Endzustand.
 
-Unverändert bleiben Titel, REKORD-Zeile, der blinkende Hinweis und die
-drei Knöpfe in Form und Breite.
+Unverändert bleiben Titel, REKORD-Zeile und die drei Knöpfe in Form und
+Breite. Der Hinweis blinkt seit v2.28 nicht mehr (siehe unten).
+
+## Erstkontakt und Bedienung (ab v2.28)
+
+Neue Tester fragten „Wo muss ich hintippen?“, fanden das Flackern des
+Blink-Twists (ab Score 15) komisch und hielten zwei verschiedene Lilas (Himmel und
+Falle) für dasselbe. Plan und Begründung: `docs/plan-feedback-ux.md`.
+
+- **Startbildschirm:** Hinweis „TIPPE, WENN DER PUNKT IM GRÜNEN IST“
+  ohne Blinken unter dem Ring, Startregel und Hand wie oben beschrieben,
+  Tipp-Echo als wachsender Umriss an jeder Tippstelle. Die Zielzeile
+  fehlt während der ersten fünf Läufe.
+- **DAILY** ist sandfarben wie die anderen Taster. Der erste Tap zeigt
+  einmal eine Karte („TAGESLAUF: HEUTE FÜR ALLE GLEICH …“), danach ist
+  DAILY ein Umschalter: scharf geschaltet startet der nächste Tap im Grün
+  den Tageslauf, MENÜ schaltet ab.
+- **Game-Over:** Inhalt oben, MENÜ und TEILEN in einer festen Leiste am
+  unteren Rand. Die ersten 0,8 s ist sie blass und schluckt Taps, damit
+  Wut-Taps nicht im Menü landen.
+- **Zurück-Geste (Android):** schließt das oberste Overlay, führt aus dem
+  Game-Over ins Menü, tut im Lauf nichts und schließt im Startbildschirm
+  die App.
+- **SAMMLUNG** statt SKINS: vier Reiter VOGEL, WELT, TON und RAHMEN mit
+  Zähler, Schaufenster mit Vogel und Welt, Raster mit Fortschrittsbalken,
+  NEU-Markierung und rotem Punkt am Taster. Neue Welten meldet ein Banner
+  im Startbildschirm.
+- **Ein Druck-Stil:** Alle Knöpfe haben einen Pixelschatten, sinken beim
+  Drücken ein und geben einen kurzen Haptik-Tick über die Systemeinstellung
+  für Berührungs-Feedback. Overlays haben ein X oben rechts, TON und
+  ERINNERUNG sind Schalter.
+- **Umlaute:** Die deutschen Texte schreiben Ä, Ö und Ü (die Schrift hat
+  sie), SS bleibt.
 
 ## Abgleich zwischen Telefon und Uhr (ab v2.19)
 
@@ -561,7 +647,7 @@ Welcher Workflow wann läuft:
 
 | Workflow | Läuft bei | Prüft |
 |---|---|---|
-| `build-apk.yml` | Push auf `main` und `claude/**` | Kotlin-Tests (`:core` und `:app`), Debug-Build; auf `main` zusätzlich Release-Artefakte |
+| `build-apk.yml` | Push auf `main` und `claude/**` | Kotlin-Tests (`:core`, `:app` und `:ui`), Debug-Build; auf `main` zusätzlich Release-Artefakte |
 | `build-ios.yml` | Push mit Änderungen an `ios/`, `core/`, `ui/`, `parity/`; sonst manuell | XCFramework aus `:core`, Brücken-Tests im Simulator, Device- und Simulator-Build |
 | `deploy-pages.yml` | Push auf `main` mit Änderungen an `docs/` | veröffentlicht Datenschutzerklärung und `app-ads.txt` |
 

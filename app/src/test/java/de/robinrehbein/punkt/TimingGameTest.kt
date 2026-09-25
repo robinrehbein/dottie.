@@ -524,7 +524,7 @@ class TimingGameTest {
             ) {
                 game.hitZone() ?: break
                 assertFalse(
-                    "GEIST + FALLE gleichzeitig aktiv (Seed $seed, Score ${game.score})",
+                    "NEBEL + BOMBEN gleichzeitig aktiv (Seed $seed, Score ${game.score})",
                     game.activeTwists.contains(Twist.GHOST) &&
                         game.activeTwists.contains(Twist.FAKE)
                 )
