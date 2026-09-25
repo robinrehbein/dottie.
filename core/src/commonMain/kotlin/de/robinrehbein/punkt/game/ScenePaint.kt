@@ -217,7 +217,7 @@ object ScenePaint {
      * Zweitens: **Sie erfindet keine Farbe.** Das Glas trägt den Akzent
      * der Requisite, und der ist in der STADT dasselbe Fenstergelb, mit
      * dem die drei Hochhäuser schon leuchten. Der Kulissen-Test, der
-     * jede Farbe gegen Zielzone und Falle prüft, hat nichts Neues zu
+     * jede Farbe gegen die Zielzone prüft, hat nichts Neues zu
      * prüfen. Das Eisen ist dunkles Violettgrau und nicht Schwarz, weil
      * die Kontur 0xFF543847 immer der dunkelste Wert einer Requisite
      * ist — ein Körper, der sie unterbietet, kehrte das Verhältnis um
@@ -276,23 +276,21 @@ object ScenePaint {
     const val MIN_SKY_STEP = 40f
 
     /**
-     * Mindestabstand eines Himmels zu den Signalfarben der Bahn (Zone,
-     * Perfekt-Kern, Falle und Fallen-Kern).
+     * Mindestabstand eines Himmels zu den Zonensignalen der Bahn (Zone
+     * hell und Zone dunkel).
      *
-     * Der Wert ist bewusst der Bestand selbst: Das knappste ausgelieferte
-     * Paar ist der Fallen-Kern vor dem Stadt-Himmel der zweiten Stufe mit
-     * 64,4. Damit sagt die Zusicherung nicht "das ist gut", sondern "keine
-     * neue Kulisse darf schlechter sein als das Schlechteste, was wir
-     * heute zeigen" — und genau dafuer taugt sie.
+     * Der Wert ist bewusst der Bestand selbst: Das knappste Paar ist die
+     * helle Zone vor dem Sandschleier der WÜSTE (Stufe 1) mit 93,9. Damit
+     * sagt die Zusicherung nicht "das ist gut", sondern "keine neue
+     * Kulisse darf schlechter sein als das Schlechteste, was wir heute
+     * zeigen".
      *
-     * Der Bestand ist an dieser Stelle wirklich knapp: Die Falle vor dem
-     * lila Himmel (Score 10-14 und wieder 50-54) hebt sich kaum ab. Das
-     * ist bewusst so belassen — die Falle bleibt, wie sie ist. Die Folge
-     * ist aber keine Unfairness, sondern das Gegenteil: Eine Falle, die
-     * man kaum sieht, taeuscht auch niemanden. Der FALLE-Twist wirkt in
-     * diesen zehn Punkten also schwaecher als sonst.
+     * Die Falle steht hier nicht mehr: Sie ist eine Kette von Minen
+     * ([TrapPaint]) mit schwarzer Kugel und hellem Rand, keine Farbfläche.
+     * Für sie gilt eine eigene Regel (ScenePaintTest): Vor jedem Himmel
+     * muss mindestens eine der beiden Farben klar abstechen.
      */
-    const val MIN_SKY_SIGNAL_DISTANCE = 64f
+    const val MIN_SKY_SIGNAL_DISTANCE = 93f
 
     /**
      * Die Greens, die die WIESE seit jeher trägt: Buschfarbe, ihr
@@ -315,15 +313,20 @@ object ScenePaint {
     // ===== Die Kulissen =====
 
     /**
-     * Der Bestand. Jeder Wert stammt aus GameOverlays.kt bzw.
+     * Der Bestand. Jeder Wert stammt aus dem alten Overlay-Code bzw.
      * TimingGameScreen.kt und ist absichtlich unverändert: Wer die
      * Umstellung auf ScenePaint sieht, hat sie falsch gemacht.
+     *
+     * Mit einer Ausnahme: Die Stufe ab Score 10 war Lila (#7B6FD0) und
+     * wurde von Testern für die Falle gehalten. Sie ist jetzt ein tiefes
+     * Blau, das zwischen Blau (5+) und Altrosa (15+) noch klar als eigene
+     * Stufe zu sehen ist.
      */
     private val WIESE = Scene(
         sky = listOf(
             0xFF4EC0CA, // 0+  Tag (türkis)
             0xFF5B9BD5, // 5+  Blau
-            0xFF7B6FD0, // 10+ Lila
+            0xFF3F6FC4, // 10+ tiefes Blau (früher Lila, siehe oben)
             0xFFC0616F, // 15+ Altrosa
             0xFFD98A3D, // 20+ Sonnenuntergang
             0xFF3D4A8C, // 25+ Dämmerung
@@ -478,7 +481,7 @@ object ScenePaint {
      */
     private val STADT = Scene(
         sky = listOf(
-            0xFF9ED4E4, 0xFF5F9BC8, 0xFF7B6B9E, 0xFFC4707E,
+            0xFF9ED4E4, 0xFF5F9BC8, 0xFF4A6AA8, 0xFFC4707E,
             0xFFE8963C, 0xFF3A3F6E, 0xFF1A1A2E
         ),
         cloud = 0xFFE4E8F0,
@@ -525,10 +528,13 @@ object ScenePaint {
      */
     private val WELTRAUM = Scene(
         sky = listOf(
-            // Der Weltraum bleibt dunkel: Der Verlauf laeuft ueber Nebel-
-            // Toene bis zu dunklem Wein, nie bis ins Abendrot. Eine helle
+            // Der Weltraum bleibt dunkel: Der Verlauf läuft über Blau-
+            // Töne bis zu dunklem Wein, nie bis ins Abendrot. Eine helle
             // Stufe sah aus wie ein Sonnenuntergang mit Sternen daneben.
-            0xFF0E1430, 0xFF1A2A62, 0xFF3E1A78, 0xFF6A1E6E,
+            // Die Stufen 2 und 3 waren Violett und Magenta (#3E1A78,
+            // #6A1E6E) und damit mit der Falle verwechselbar; sie sind
+            // jetzt Blau und Nachtblau.
+            0xFF0E1430, 0xFF1A2A62, 0xFF243A8C, 0xFF1C2458,
             0xFF8A2C4A, 0xFF3A1A3E, 0xFF0A0716
         ),
         cloud = null,
@@ -601,27 +607,78 @@ object ScenePaint {
     // ===== Freischaltung =====
 
     /**
-     * Kulissen hängen an denselben Zahlen wie die Skins ([SkinStats]),
-     * aber an anderen Achsen: Wo Skins in dichten Stufen fallen, ist eine
-     * Kulisse ein seltener, großer Wechsel. Deshalb stehen hier hohe,
-     * weit auseinanderliegende Schwellen — je eine pro Achse, damit
-     * niemand alle sechs über denselben Weg bekommt.
+     * Ist diese Welt offen? Offen ist eine Welt, wenn sie in der
+     * Besitz-Menge steht ([SkinStats.ownedScenes]) **oder** ihre Regel
+     * erfüllt ist.
+     *
+     * Die Besitz-Menge ist der Bestandsschutz: Bis zur Welten-Leiter
+     * wurden Freischaltungen nicht gespeichert, sondern bei jedem Aufruf
+     * aus den Zahlen berechnet. Seit die STADT Rekord 100 statt 85
+     * verlangt, würde ein Spieler mit Rekord 90 sie mit dem Update
+     * verlieren. Die Menge hält fest, was einmal offen war, und die
+     * Regel ([ruleMet]) gilt nur noch für das, was neu hinzukommt.
      */
-    fun isUnlocked(id: SceneId, stats: SkinStats): Boolean = when (id) {
+    fun isUnlocked(id: SceneId, stats: SkinStats): Boolean =
+        id.name in stats.ownedScenes || ruleMet(id, stats)
+
+    /**
+     * Die Welten-Leiter: je Welt eine Achse, und alle früh genug, dass
+     * man die zweite Welt in den ersten Tagen sieht. WÜSTE fällt mit dem
+     * Skin TIGER (100 Läufe), MEER mit BASKETBALL (2.500 Punkte)
+     * zusammen — das ist gewollt, beides wird gemeinsam gefeiert.
+     *
+     * Der WELTRAUM ist der Abschluss der Sammlung, wie der REGENBOGEN bei
+     * den Skins: Er kommt erst, wenn alle anderen offen sind — gefragt
+     * über [isUnlocked], also samt Besitz-Menge. Wer die STADT aus dem
+     * Bestand behält, bekommt damit auch den WELTRAUM nicht
+     * weggenommen. Er selbst zählt nicht mit, sonst wäre die Bedingung
+     * zirkulär.
+     */
+    fun ruleMet(id: SceneId, stats: SkinStats): Boolean = when (id) {
+        SceneId.WIESE -> true
+        SceneId.WUESTE -> stats.runCount >= 100
+        SceneId.MEER -> stats.totalScore >= 2_500
+        SceneId.BERG -> stats.bestDailyStreak >= 1
+        SceneId.STADT -> stats.bestScore >= 100
+        SceneId.WELTRAUM -> SceneId.entries.all {
+            it == SceneId.WELTRAUM || isUnlocked(it, stats)
+        }
+    }
+
+    /**
+     * Die Schwellen vor der Welten-Leiter (500 Läufe, 10.000 Punkte,
+     * Daily-Serie 30, Rekord 85, WELTRAUM alle anderen) — eingefroren und
+     * nur für einen einzigen Schritt da: die einmalige Übernahme in die
+     * Besitz-Menge beim ersten Start nach dem Update (GameStore). Die
+     * Besitz-Menge spielt hier absichtlich keine Rolle, gefragt ist allein,
+     * was der alte Stand hergab.
+     *
+     * Nicht ändern: Diese Funktion beschreibt die Vergangenheit.
+     */
+    fun legacyUnlocked(id: SceneId, stats: SkinStats): Boolean = when (id) {
         SceneId.WIESE -> true
         SceneId.WUESTE -> stats.runCount >= 500
         SceneId.MEER -> stats.totalScore >= 10_000
         SceneId.BERG -> stats.bestDailyStreak >= 30
         SceneId.STADT -> stats.bestScore >= 85
-
-        // Der Weltraum ist der Abschluss der Kulissen-Sammlung, wie der
-        // REGENBOGEN bei den Skins: Er kommt erst, wenn alle anderen
-        // offen sind (er selbst zählt nicht mit, sonst wäre die Bedingung
-        // zirkulär).
         SceneId.WELTRAUM -> SceneId.entries.all {
-            it == SceneId.WELTRAUM || isUnlocked(it, stats)
+            it == SceneId.WELTRAUM || legacyUnlocked(it, stats)
         }
     }
+
+    /**
+     * Die Namen aller offenen Welten — das, was ein Speicher in die
+     * Besitz-Menge schreibt. Reihenfolge wie [ORDER].
+     */
+    fun unlockedNames(stats: SkinStats): List<String> =
+        ORDER.filter { isUnlocked(it, stats) }.map { it.name }
+
+    /**
+     * Die Namen aller Welten, die nach den alten Schwellen offen waren
+     * ([legacyUnlocked]) — die einmalige Übernahme.
+     */
+    fun legacyUnlockedNames(stats: SkinStats): List<String> =
+        ORDER.filter { legacyUnlocked(it, stats) }.map { it.name }
 
     /** Wie viele Kulissen offen sind — reine Leistungsanzeige. */
     fun unlockedCount(stats: SkinStats): Int =

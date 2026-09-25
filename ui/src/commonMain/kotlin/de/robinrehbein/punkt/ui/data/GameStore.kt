@@ -416,10 +416,86 @@ class GameStore(private val prefs: KeyValueStore) {
         seasonEarned = seasonEarned,
         patronOwned = patronOwned,
         // == AP-13 welten ==
+        ownedScenes = rememberOwnedScenes(),
         // == /AP-13 ==
     )
 
     // == AP-13 welten ==
+
+    // ===== Welten im Besitz (Bestandsschutz) =====
+
+    init {
+        adoptLegacyScenes()
+    }
+
+    /**
+     * Die Welten im Besitz, als Namen (siehe SkinStats.ownedScenes).
+     *
+     * Bis zur Welten-Leiter wurden Freischaltungen nicht gespeichert,
+     * sondern bei jedem Aufruf aus den Zahlen berechnet. Seit die STADT
+     * Rekord 100 statt 85 verlangt, hält diese Menge fest, was einmal
+     * offen war: Offen ist eine Welt, wenn sie hier steht ODER ihre Regel
+     * erfüllt ist, und greift die Regel, kommt sie dauerhaft hinzu
+     * ([rememberOwnedScenes]).
+     *
+     * Gelesen wird roh; ein Name, den diese Version nicht kennt (eine
+     * Welt aus einer neueren), bleibt beim Schreiben erhalten.
+     */
+    val ownedScenes: Set<String>
+        get() = decodeScenes(prefs.string(KEY_OWNED_SCENES))
+
+    /**
+     * Die einmalige Übernahme beim ersten Start nach dem Update: Alle
+     * Welten, die der Spieler nach den ALTEN Schwellen schon hatte
+     * (ScenePaint.legacyUnlocked), kommen in die Besitz-Menge. Der
+     * Versionsmerker verhindert eine Wiederholung — sonst bekäme ein
+     * frischer Spieler, der später Rekord 90 erreicht, die STADT beim
+     * nächsten Start doch noch nach der alten Regel.
+     *
+     * Bei einer Neuinstallation läuft sie genauso, findet aber nur die
+     * WIESE: Der Merker steht danach, und die alte Regel ist für immer
+     * vorbei.
+     */
+    private fun adoptLegacyScenes() {
+        if (prefs.int(KEY_OWNED_SCENES_VERSION, 0) >= OWNED_SCENES_VERSION) return
+        val legacy = ScenePaint.legacyUnlockedNames(sceneAxes(emptySet()))
+        prefs.edit {
+            putString(KEY_OWNED_SCENES, encodeScenes(ownedScenes + legacy))
+            putInt(KEY_OWNED_SCENES_VERSION, OWNED_SCENES_VERSION)
+        }
+    }
+
+    /**
+     * Die Besitz-Menge samt allem, was die heutige Regel dazu hergibt —
+     * und was neu dazukommt, wird gleich gespeichert. Geschrieben wird
+     * nur, wenn die Menge wächst, also höchstens einmal je Welt.
+     */
+    private fun rememberOwnedScenes(): Set<String> {
+        val stored = ownedScenes
+        val all = stored + ScenePaint.unlockedNames(sceneAxes(stored))
+        if (all != stored) prefs.edit { putString(KEY_OWNED_SCENES, encodeScenes(all)) }
+        return all
+    }
+
+    /**
+     * Die Achsen, an denen Welten hängen, ohne den Rest von [stats] —
+     * [stats] selbst fragt [rememberOwnedScenes] und kann deshalb hier
+     * nicht benutzt werden.
+     */
+    private fun sceneAxes(owned: Set<String>): SkinStats = SkinStats(
+        bestScore = bestScore,
+        bestPerfectStreak = bestPerfectStreak,
+        bestDailyStreak = bestDailyStreak,
+        runCount = runCount,
+        totalScore = totalScore,
+        ownedScenes = owned
+    )
+
+    private fun encodeScenes(names: Set<String>): String =
+        names.filter { it.isNotBlank() }.sorted().joinToString(",")
+
+    private fun decodeScenes(raw: String?): Set<String> =
+        raw?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
     // == /AP-13 ==
 
     // ===== Abgleich mit der Uhr =====
@@ -490,6 +566,9 @@ class GameStore(private val prefs: KeyValueStore) {
             sound = if (soundShared) selectedSound.name else "",
             soundChangedAt = if (soundShared) prefs.long(KEY_SOUND_CHANGED, 0L) else 0L,
             // == AP-13 welten ==
+            // Die Besitz-Menge wandert mit und wird drüben vereinigt: So
+            // verliert auch die Uhr oder ein zweites Gerät keine Welt.
+            ownedScenes = rememberOwnedScenes(),
             // == /AP-13 ==
         )
     }
@@ -589,6 +668,12 @@ class GameStore(private val prefs: KeyValueStore) {
             }
         }
         // == AP-13 welten ==
+        // Die Besitz-Menge wird vereinigt (wie in SyncState.mergedWith),
+        // dazu kommt, was die zusammengeführten Zahlen hergeben. Gegen den
+        // ROHEN Stand geprüft: Nur wer wirklich dazulernt, schreibt.
+        val scenes = before.ownedScenes + state.ownedScenes +
+            ScenePaint.unlockedNames(mergedStats(state, before))
+        if (scenes != ownedScenes) putString(KEY_OWNED_SCENES, encodeScenes(scenes))
         // == /AP-13 ==
         }
         // Erst ganz am Ende, wenn alles geschrieben ist: Wer auf den
@@ -618,6 +703,7 @@ class GameStore(private val prefs: KeyValueStore) {
         // stumm auf KLASSIK zurück.
         patronOwned = patronOwned,
         // == AP-13 welten ==
+        ownedScenes = before.ownedScenes + state.ownedScenes,
         // == /AP-13 ==
     )
 
@@ -660,6 +746,11 @@ class GameStore(private val prefs: KeyValueStore) {
         const val KEY_SEASON_LAST_DAY = "season_last_day"
         const val KEY_SEASON_EARNED = "season_earned"
         // == AP-13 welten ==
+        // Welten im Besitz als Namensliste ("STADT,WIESE"), siehe ownedScenes.
+        const val KEY_OWNED_SCENES = "owned_scenes"
+        // Versionsmerker der einmaligen Übernahme nach den alten Schwellen.
+        const val KEY_OWNED_SCENES_VERSION = "owned_scenes_version"
+        const val OWNED_SCENES_VERSION = 1
         // == /AP-13 ==
         const val KEY_PATRON = "patron_owned"
         // == AP-15 sammlung ==

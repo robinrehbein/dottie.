@@ -97,22 +97,22 @@ object ParityVectors {
             runCount = 300, totalScore = 5_000, daysPlayed = 7, monthsPlayed = 3,
             seasonEarned = 0b1111, patronOwned = true
         ),
-        // Die Kulissen (ScenePaint) hängen an denselben Achsen, aber an
-        // deutlich höheren Schwellen als die Skins — ohne eigene Proben
-        // wäre von ihnen nur "alles zu" geprüft. Je Kulisse einmal knapp
-        // darunter, einmal genau auf der Kante.
-        SkinStats(0, 0, 0, runCount = 499),
-        SkinStats(0, 0, 0, runCount = 500),
-        SkinStats(0, 0, 0, totalScore = 9_999),
-        SkinStats(0, 0, 0, totalScore = 10_000),
-        SkinStats(0, 0, 29),
-        SkinStats(0, 0, 30),
-        SkinStats(84, 0, 0),
-        SkinStats(85, 0, 0),
+        // Die Welten (ScenePaint) hängen an denselben Achsen, aber an
+        // eigenen Schwellen (Welten-Leiter) — ohne eigene Proben wäre von
+        // ihnen nur "alles zu" geprüft. Je Welt einmal knapp darunter,
+        // einmal genau auf der Kante.
+        SkinStats(0, 0, 0, runCount = 99),
+        SkinStats(0, 0, 0, runCount = 100),
+        SkinStats(0, 0, 0, totalScore = 2_499),
+        SkinStats(0, 0, 0, totalScore = 2_500),
+        SkinStats(0, 0, 0),
+        SkinStats(0, 0, 1),
+        SkinStats(99, 0, 0),
+        SkinStats(100, 0, 0),
         // Alle vier zusammen: erst hier fällt auch der WELTRAUM.
         SkinStats(
-            bestScore = 85, bestPerfectStreak = 0, bestDailyStreak = 30,
-            runCount = 500, totalScore = 10_000
+            bestScore = 100, bestPerfectStreak = 0, bestDailyStreak = 1,
+            runCount = 100, totalScore = 2_500
         ),
         // Die Ton-Sets (SoundBank) liegen noch einmal höher und auf
         // Zahlen, auf denen sonst nichts liegt — ohne eigene Proben wäre
@@ -127,20 +127,34 @@ object ParityVectors {
         // reicht keine Probe darüber — diese vier tun es, je eine knapp
         // unter einer der drei Vollständigkeiten und eine darüber.
         SkinStats(
-            bestScore = 84, bestPerfectStreak = 19, bestDailyStreak = 30,
+            bestScore = 99, bestPerfectStreak = 19, bestDailyStreak = 30,
             runCount = 500, totalScore = 25_000, daysPlayed = 7, monthsPlayed = 3
         ),
         SkinStats(
-            bestScore = 85, bestPerfectStreak = 19, bestDailyStreak = 30,
+            bestScore = 100, bestPerfectStreak = 19, bestDailyStreak = 30,
             runCount = 500, totalScore = 25_000, daysPlayed = 7, monthsPlayed = 3
         ),
         SkinStats(
-            bestScore = 85, bestPerfectStreak = 20, bestDailyStreak = 30,
+            bestScore = 100, bestPerfectStreak = 20, bestDailyStreak = 30,
             runCount = 500, totalScore = 25_000, daysPlayed = 7, monthsPlayed = 0
         ),
         SkinStats(
-            bestScore = 85, bestPerfectStreak = 20, bestDailyStreak = 30,
+            bestScore = 100, bestPerfectStreak = 20, bestDailyStreak = 30,
             runCount = 500, totalScore = 25_000, daysPlayed = 7, monthsPlayed = 3
+        ),
+        // Bestandsschutz: die Besitz-Menge der Welten (SkinStats.ownedScenes).
+        // Rekord 90 aus der Zeit vor der Welten-Leiter behält die STADT,
+        // ein unbekannter Name schadet nicht, wer alle anderen Welten aus
+        // dem Bestand hat, bekommt den WELTRAUM, und die STADT aus dem
+        // Bestand trägt auch die Kaskade (wie die Probe mit Rekord 99
+        // oben, nur mit Besitz).
+        SkinStats(90, 0, 0, ownedScenes = setOf("STADT")),
+        SkinStats(0, 0, 0, ownedScenes = setOf("WOLKENKUCKUCKSHEIM")),
+        SkinStats(0, 0, 0, ownedScenes = setOf("WIESE", "WUESTE", "MEER", "BERG", "STADT")),
+        SkinStats(
+            bestScore = 99, bestPerfectStreak = 19, bestDailyStreak = 30,
+            runCount = 500, totalScore = 25_000, daysPlayed = 7, monthsPlayed = 3,
+            ownedScenes = setOf("STADT")
         )
     )
 
@@ -370,8 +384,10 @@ object ParityVectors {
             "Freischaltungen. Je Probe zwei Zeilen: skin.probe.N traegt die\n" +
                 "# Bestleistungen (bestScore bestPerfectStreak bestDailyStreak\n" +
                 "# runCount totalScore daysPlayed monthsPlayed seasonEarned\n" +
-                "# patronOwned), skin.unlocked.N die Zahl der sammelbaren Skins,\n" +
-                "# dahinter alle offenen."
+                "# patronOwned ownedScenes), skin.unlocked.N die Zahl der\n" +
+                "# sammelbaren Skins, dahinter alle offenen. ownedScenes ist die\n" +
+                "# Besitz-Menge der Welten, sortiert und mit Komma getrennt,\n" +
+                "# '-' fuer leer."
         )
         UNLOCK_PROBES.forEachIndexed { index, stats ->
             line(
@@ -384,7 +400,8 @@ object ParityVectors {
                 stats.daysPlayed.toString(),
                 stats.monthsPlayed.toString(),
                 stats.seasonEarned.toString(),
-                if (stats.patronOwned) "1" else "0"
+                if (stats.patronOwned) "1" else "0",
+                owned(stats)
             )
             val open = SkinId.entries.filter { SkinPaint.isUnlocked(it, stats) }
             line(
@@ -650,7 +667,8 @@ object ParityVectors {
                 stats.seasonEarned.toString(),
                 if (stats.patronOwned) "1" else "0",
                 month.toString(),
-                seasonDays.toString()
+                seasonDays.toString(),
+                owned(stats)
             )
             val goals = Progress.goals(stats, month, seasonDays)
             line(
@@ -668,6 +686,10 @@ object ParityVectors {
         }
         appendLine()
     }
+
+    /** Die Besitz-Menge der Welten als ein Wort, "-" für leer. */
+    private fun owned(stats: SkinStats): String =
+        if (stats.ownedScenes.isEmpty()) "-" else stats.ownedScenes.sorted().joinToString(",")
 
     /** Ein Ziel als ein Wort: WAS:NAME|ACHSE|stand|ziel. */
     private fun goalToken(goal: Goal): String {

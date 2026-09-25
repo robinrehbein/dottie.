@@ -255,6 +255,8 @@ object CardStyle {
         CardFrame.DOPPELLINIE -> SkinPaint.unlockedCount(stats) >= FRAME_STEPS[0]
         CardFrame.ZINNEN -> SkinPaint.unlockedCount(stats) >= FRAME_STEPS[1]
         CardFrame.PRACHT -> SkinPaint.unlockedCount(stats) >= FRAME_STEPS[2]
+        // Über ScenePaint.isUnlocked, also samt Besitz-Menge: Wer eine
+        // Welt aus dem Bestand behält, verliert auch die Kaskade nicht.
         CardFrame.KASKADE -> ScenePaint.unlockedCount(stats) == SceneId.entries.size
         CardFrame.PERLENKRANZ -> SoundBank.unlockedCount(stats) == SoundSetId.entries.size
         CardFrame.KRONE -> SkinPaint.unlockedCount(stats) == SkinPaint.collectableCount()

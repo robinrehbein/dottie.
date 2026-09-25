@@ -183,6 +183,14 @@ class StatsSync(
         const val KEY_SOUND = "sound"
         const val KEY_SOUND_CHANGED = "sound_changed_at"
 
+        /**
+         * Welten im Besitz (Bestandsschutz der Welten-Leiter) als
+         * Namensliste. Fehlt der Schlüssel, weil die Gegenseite eine
+         * ältere App fährt, bleibt die Menge leer — das Zusammenführen
+         * vereinigt ohnehin, verloren geht dadurch nichts.
+         */
+        const val KEY_OWNED_SCENES = "owned_scenes"
+
         fun DataMap.putState(s: SyncState) {
             putInt(KEY_BEST, s.bestScore)
             putInt(KEY_RUNS, s.runCount)
@@ -202,6 +210,7 @@ class StatsSync(
             putLong(KEY_SCENE_CHANGED, s.sceneChangedAt)
             putString(KEY_SOUND, s.sound)
             putLong(KEY_SOUND_CHANGED, s.soundChangedAt)
+            putStringArrayList(KEY_OWNED_SCENES, ArrayList(s.ownedScenes.sorted()))
         }
 
         fun DataMap.toState() = SyncState(
@@ -228,7 +237,8 @@ class StatsSync(
             scene = getString(KEY_SCENE, ""),
             sceneChangedAt = getLong(KEY_SCENE_CHANGED, 0L),
             sound = getString(KEY_SOUND, ""),
-            soundChangedAt = getLong(KEY_SOUND_CHANGED, 0L)
+            soundChangedAt = getLong(KEY_SOUND_CHANGED, 0L),
+            ownedScenes = getStringArrayList(KEY_OWNED_SCENES)?.toSet() ?: emptySet()
         )
     }
 }
