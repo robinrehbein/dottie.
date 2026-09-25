@@ -213,6 +213,8 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
   → **NEU-Markierung** an frischen Kacheln, roter Punkt am Reiter und am
   Taster im Startbildschirm, bis man es angesehen hat.
   → „Kulissen“ heißen im Spiel künftig **Welten**.
+  → **Entschieden:** Auch gesperrte Töne sind probehörbar (Anreiz), auswählen
+  lassen sie sich erst nach dem Freischalten.
 
 ### 7.2 Sollte
 
@@ -272,7 +274,6 @@ treffen. Die Probleme liegen bei Position, Zeitpunkt und Zurück.
 
 - Welten-Leiter übernehmen? Und mit welchen Werten (echte Durchschnitte aus
   der Statistik wären besser als die Schätzung)?
-- Hörprobe auch für gesperrte Töne erlauben (als Anreiz)?
 
 - Braucht das Game-Over TEILEN überhaupt in der Leiste, oder nur nach einem
   neuen Rekord?
