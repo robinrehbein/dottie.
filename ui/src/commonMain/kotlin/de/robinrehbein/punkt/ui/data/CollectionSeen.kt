@@ -104,7 +104,7 @@ object CollectionSeen {
 
     /** Und zurück, sortiert, damit derselbe Stand immer dieselbe Zeichenkette ist. */
     fun encode(keys: Collection<String>): String =
-        keys.map { it.trim() }.filter { it.isNotEmpty() }.toSortedSet().joinToString(SEPARATOR)
+        keys.map { it.trim() }.filter { it.isNotEmpty() }.distinct().sorted().joinToString(SEPARATOR)
 
     private const val SEPARATOR = ","
 }
