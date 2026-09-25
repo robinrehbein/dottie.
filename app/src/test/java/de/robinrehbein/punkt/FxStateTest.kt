@@ -40,6 +40,9 @@ class FxStateTest {
         // == /AP-22 ==
         fx.deathTime = 0.2f
         // == AP-23 nebel ==
+        fx.fogInTime = 0.1f
+        fx.fogOutTime = 0.2f
+        fx.fogWasIn = 1
         // == /AP-23 ==
 
         fx.reset()
@@ -55,6 +58,9 @@ class FxStateTest {
         // == /AP-22 ==
         assertEquals(-1f, fx.deathTime, 0f)
         // == AP-23 nebel ==
+        assertTrue("Eintritts-Wölkchen bleibt", fx.fogInTime < 0f)
+        assertTrue("Austritts-Wölkchen bleibt", fx.fogOutTime < 0f)
+        assertEquals(-1, fx.fogWasIn)
         // == /AP-23 ==
     }
 
@@ -75,5 +81,17 @@ class FxStateTest {
     }
 
     // == AP-23 nebel ==
+    /**
+     * Ein frischer Zustand zeigt keine Nebel-Wölkchen, und der erste Frame
+     * eines Laufs darf keinen Wechsel in den Nebel melden (unbekannt).
+     */
+    @Test
+    fun `frischer Zustand ohne Nebel-Woelkchen`() {
+        val fx = FxState()
+
+        assertTrue(fx.fogInTime < 0f)
+        assertTrue(fx.fogOutTime < 0f)
+        assertEquals(-1, fx.fogWasIn)
+    }
     // == /AP-23 ==
 }

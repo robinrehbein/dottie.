@@ -386,6 +386,129 @@ class TwistShots {
     }
 
     // == AP-23 nebel ==
+    // Voll qualifizierte Namen statt neuer Importe, wie bei AP-12.
+
+    /**
+     * NEBEL (Plan 3.3): nach 15 Treffern der Vogel vor der Wolke, halb
+     * hineingeglitten, drin (unsichtbar) und beim Heraustreten — dazu
+     * dasselbe beim Höchsttempo und auf 720×1280.
+     */
+    @Test
+    fun nebel() {
+        val dir = shotsDir() ?: return
+        val maxHits = kotlin.math.ceil(
+            (TimingGame.MAX_SPEED - TimingGame.BASE_SPEED) / TimingGame.SPEED_PER_HIT
+        ).toInt()
+        listOf(
+            Triple(15, 1080 to 2400, "15"),
+            Triple(maxHits, 1080 to 2400, "max"),
+            Triple(15, 720 to 1280, "15-720x1280")
+        ).forEach { (hits, format, name) ->
+            val (w, h) = format
+            val u = de.robinrehbein.punkt.ui.world.fogUnit(h.toFloat()) /
+                de.robinrehbein.punkt.ui.world.ringGeometry(
+                    androidx.compose.ui.geometry.Size(w.toFloat(), h.toFloat())
+                ).radius
+            listOf<Pair<String, (TimingGame) -> Float>>(
+                "vor" to { g -> g.fogStart() - 18f * u },
+                "rein" to { g -> g.fogStart() - 8f * u },
+                "drin" to { g -> (g.fogStart() + g.fogEnd()) / 2f },
+                "raus" to { g -> g.fogEnd() + 3f * u }
+            ).forEach { (stand, target) ->
+                val game = seededGame(setOf(Twist.GHOST))
+                check(playTo(game, hits)) { "Bot ist vor $hits Treffern gestorben" }
+                runToRel(game, target(game))
+                println("   nebel-$name-$stand: tempo=${game.currentSpeed()} rel=${game.relativeToZone()}")
+                shoot(dir, "nebel-$name-$stand.png", game, width = w, height = h, density = if (w == 1080) 2.625f else 2f)
+            }
+        }
+    }
+
+    /** Einrollen einer neuen Nebelbank bei 0,05 s und 0,18 s nach dem Treffer. */
+    @Test
+    fun nebelEinrollen() {
+        val dir = shotsDir() ?: return
+        listOf(0.05f to "005", 0.18f to "018").forEach { (t, name) ->
+            val game = seededGame(setOf(Twist.GHOST))
+            check(playTo(game, 15)) { "Bot ist vor 15 Treffern gestorben" }
+            while (game.zoneAge < t) game.update(BOT_DT)
+            shoot(dir, "nebel-einrollen-$name.png", game)
+        }
+    }
+
+    /** NEBEL mit DRIFT: Die Zone wandert, die Wolke behält ihre Form. */
+    @Test
+    fun nebelDrift() {
+        val dir = shotsDir() ?: return
+        val game = seededGame(setOf(Twist.GHOST, Twist.DRIFT))
+        check(playTo(game, 15)) { "Bot ist vor 15 Treffern gestorben" }
+        while (game.zoneAge < 0.2f) game.update(BOT_DT)
+        shoot(dir, "nebel-drift-1.png", game)
+        repeat(60) { game.update(1f / 240f) }
+        check(game.phase == GamePhase.RUNNING)
+        shoot(dir, "nebel-drift-2.png", game)
+    }
+
+    /** Die Wölkchen kurz nach dem Eintritt in den Nebel. */
+    @Test
+    fun nebelWoelkchen() {
+        val dir = shotsDir() ?: return
+        val game = seededGame(setOf(Twist.GHOST))
+        check(playTo(game, 15)) { "Bot ist vor 15 Treffern gestorben" }
+        val fx = FxState()
+        var frames = 0
+        while (fx.fogInTime < 0.08f) {
+            game.update(BOT_DT)
+            de.robinrehbein.punkt.ui.world.trackFog(fx, game, BOT_DT)
+            check(++frames < MAX_BOT_FRAMES) { "Punkt erreicht den Nebel nicht" }
+        }
+        shoot(dir, "nebel-woelkchen.png", game, fx = fx)
+    }
+
+    /**
+     * BLIND! +2: getippt, solange der Punkt in der Zone, aber noch im
+     * Nebel steckt (blindBonus an). Der Pop steht, wo sonst PERFEKT steht.
+     */
+    @Test
+    fun nebelBlind() {
+        val dir = shotsDir() ?: return
+        val game = seededGame(setOf(Twist.GHOST)).apply { blindBonus = true }
+        check(playTo(game, 15)) { "Bot ist vor 15 Treffern gestorben" }
+        val zone = game.hits
+        var frames = 0
+        while (game.hits == zone) {
+            game.update(1f / 1000f)
+            check(game.phase == GamePhase.RUNNING) { "Blindtreffer verpasst" }
+            if (game.isInZone && game.isInFog) game.tap()
+            check(++frames < MAX_BOT_FRAMES) { "Kein Blindtreffer" }
+        }
+        check(game.lastHitBlind) { "Treffer war kein Blindtreffer" }
+        repeat(24) { game.update(BOT_DT) }
+        check(de.robinrehbein.punkt.ui.world.isBlindPopShown(game)) { "Pop steht nicht" }
+        println("   nebel-blind: punkte=${game.lastHitPoints} score=${game.score}")
+        ImageComposeScene(width = 1080, height = 2400, density = Density(2.625f)) {
+            androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawTimingWorld(game, FxState(), SkinId.KLASSIK, SceneId.WIESE, hour = 12, month = 6)
+                }
+                de.robinrehbein.punkt.ui.screens.BlindPop(points = game.lastHitPoints)
+            }
+        }.use { scene ->
+            val data = scene.render(0L).encodeToData(EncodedImageFormat.PNG)!!
+            File(dir, "nebel-blind.png").writeBytes(data.bytes)
+            println("-> twists/nebel-blind.png")
+        }
+    }
+
+    /** Lässt den Punkt ohne Tap bis [rel] (relativ zur Zone) laufen. */
+    private fun runToRel(game: TimingGame, rel: Float) {
+        var frames = 0
+        while (game.relativeToZone() < rel) {
+            game.update(1f / 2000f)
+            check(game.phase == GamePhase.RUNNING) { "Lauf endet vor rel=$rel" }
+            check(++frames < MAX_BOT_FRAMES) { "Punkt erreicht rel=$rel nicht" }
+        }
+    }
     // == /AP-23 ==
 
     /** Lässt den Punkt bis kurz vor die Zone laufen, ohne zu tippen. */
