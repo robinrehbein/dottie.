@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.unit.dp
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.Ground
 import de.robinrehbein.punkt.game.Prop
@@ -819,7 +820,13 @@ internal fun DrawScope.drawTimingDot(
     month: Int
 ) {
     val h = size.height
-    val px = cx + cos(game.angle) * radius
+    // == AP-31 release ==
+    // Nach NOCH NICHT wackelt der Vogel 0,7 s seitlich (Plan 8.7, Mockup
+    // feedback-check.html:605), wie Hand und Schriftzug (AP-22). Nur in
+    // READY: Ein Start-Treffer beendet das Wackeln sofort.
+    val wobble = if (game.phase == GamePhase.READY) notYetWobble(fx.notYetTime, 1.dp.toPx()) else 0f
+    val px = cx + cos(game.angle) * radius + wobble
+    // == /AP-31 ==
     var py = cy + sin(game.angle) * radius
     val r = h * DOT_RADIUS_SHARE
 
