@@ -247,6 +247,9 @@ private fun GameScreenContent(
     var taunt by remember { mutableStateOf("") }
     var showPerfect by remember { mutableStateOf(false) }
     // == AP-23 nebel ==
+    // BLIND!-Pop nach einem gewerteten Blindtreffer, mit dessen Punkten.
+    var showBlind by remember { mutableStateOf(false) }
+    var blindPoints by remember { mutableIntStateOf(2) }
     // == /AP-23 ==
     var perfectPoints by remember { mutableIntStateOf(2) }
     var bannerText by remember { mutableStateOf("") }
@@ -462,6 +465,9 @@ private fun GameScreenContent(
                 // == /AP-22 ==
                 fx.celebrateTime = (fx.celebrateTime - dt).coerceAtLeast(0f)
                 // == AP-23 nebel ==
+                de.robinrehbein.punkt.ui.world.trackFog(fx, game, dt)
+                showBlind = de.robinrehbein.punkt.ui.world.isBlindPopShown(game)
+                if (showBlind) blindPoints = game.lastHitPoints
                 // == /AP-23 ==
                 if (fx.deathTime >= 0f) fx.deathTime += dt
                 bannerState.timeLeft = (bannerState.timeLeft - dt).coerceAtLeast(0f)
@@ -674,6 +680,10 @@ private fun GameScreenContent(
         }
 
         // == AP-23 nebel ==
+        // BLIND! +2 an der Stelle von PERFEKT (beides zugleich gibt es nicht).
+        if (showBlind) {
+            BlindPop(points = blindPoints)
+        }
         // == /AP-23 ==
 
         // Positionen relativ zur Bildhöhe: Die Bahn endet spätestens bei

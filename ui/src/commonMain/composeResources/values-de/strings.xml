@@ -73,7 +73,7 @@
     -->
     <string name="twist_learned_pulse">NEU IN DIESEM LAUF: PULS — DIE ZONE ATMET</string>
     <string name="twist_learned_drift">NEU IN DIESEM LAUF: DRIFT — DIE ZONE WANDERT</string>
-    <string name="twist_learned_ghost">NEU IN DIESEM LAUF: GEIST — DER PUNKT BLINKT WEG</string>
+    <string name="twist_learned_ghost">NEU IN DIESEM LAUF: NEBEL — DER PUNKT TAUCHT IN DIE WOLKE</string>
     <string name="twist_learned_fake">NEU IN DIESEM LAUF: BOMBEN — NIE HINEINTIPPEN</string>
     <!-- == AP-12 bomben == -->
     <!-- == /AP-12 == -->
@@ -123,9 +123,10 @@
     <string name="twist_pulse_text">DIE ZONE ATMET — WIRD GRÖSSER UND KLEINER.</string>
     <string name="twist_drift_title">DRIFT (AB 10)</string>
     <string name="twist_drift_text">DIE ZONE WANDERT LANGSAM ÜBER DIE BAHN.</string>
-    <string name="twist_ghost_title">GEIST (AB 15)</string>
-    <string name="twist_ghost_text">DER PUNKT BLINKT WEG — BAHN IM KOPF BEHALTEN.</string>
+    <string name="twist_ghost_title">NEBEL (AB 15)</string>
+    <string name="twist_ghost_text">VOR DER ZONE LIEGT NEBEL — DER PUNKT FLIEGT UNSICHTBAR WEITER. BLIND GETROFFEN: +1.</string>
     <!-- == AP-23 nebel == -->
+    <string name="fog_blind_plus">BLIND! +%1$d</string>
     <!-- == /AP-23 == -->
     <string name="twist_fake_title">BOMBEN (AB 20)</string>
     <string name="twist_fake_text">EINE KETTE AUS BOMBEN NEBEN DER ZONE: NIE HINEINTIPPEN!</string>
