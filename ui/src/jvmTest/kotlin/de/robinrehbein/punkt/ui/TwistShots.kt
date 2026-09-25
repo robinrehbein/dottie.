@@ -466,8 +466,9 @@ class TwistShots {
     }
 
     /**
-     * BLIND! +2: getippt, solange der Punkt in der Zone, aber noch im
-     * Nebel steckt (blindBonus an). Der Pop steht, wo sonst PERFEKT steht.
+     * BLIND! +1: getippt, solange der Punkt in der Zone, aber noch im
+     * Nebel steckt (blindBonus an). Der Pop steht am Ring, an der
+     * Trefferstelle.
      */
     @Test
     fun nebelBlind() {
@@ -483,6 +484,7 @@ class TwistShots {
             check(++frames < MAX_BOT_FRAMES) { "Kein Blindtreffer" }
         }
         check(game.lastHitBlind) { "Treffer war kein Blindtreffer" }
+        val hitAngle = game.angle
         repeat(24) { game.update(BOT_DT) }
         check(de.robinrehbein.punkt.ui.world.isBlindPopShown(game)) { "Pop steht nicht" }
         println("   nebel-blind: punkte=${game.lastHitPoints} score=${game.score}")
@@ -491,7 +493,10 @@ class TwistShots {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     drawTimingWorld(game, FxState(), SkinId.KLASSIK, SceneId.WIESE, hour = 12, month = 6)
                 }
-                de.robinrehbein.punkt.ui.screens.BlindPop(points = game.lastHitPoints)
+                de.robinrehbein.punkt.ui.screens.BlindPop(
+                    bonus = de.robinrehbein.punkt.ui.screens.blindBonusPoints(game),
+                    angle = hitAngle
+                )
             }
         }.use { scene ->
             val data = scene.render(0L).encodeToData(EncodedImageFormat.PNG)!!

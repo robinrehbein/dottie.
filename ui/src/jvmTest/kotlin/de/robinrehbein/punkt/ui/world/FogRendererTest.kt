@@ -252,6 +252,57 @@ class FogRendererTest {
         assertTrue(!isBlindPopShown(normal), "Pop nach normalem Treffer")
     }
 
+    // == AP-31 release ==
+    @Test
+    fun `blind pop sagt plus eins und steht am ring statt ueber der landschaft`() {
+        val blind = fogGame(15)
+        val vorher = blind.score
+        blindHit(blind)
+        // Der Pop nennt den Bonus (+1, Plan 8.6 #1), nicht den ganzen Treffer (+2).
+        assertEquals(2, blind.score - vorher, "Blindtreffer zählt nicht 1 + 1")
+        assertEquals(1, de.robinrehbein.punkt.ui.screens.blindBonusPoints(blind))
+
+        formats.forEach { format ->
+            val w = format.width.toFloat()
+            val h = format.height.toFloat()
+            val ring = ringGeometry(androidx.compose.ui.geometry.Size(w, h))
+            listOf(0f, 0.5f, 1f, 1.5f).forEach { turns ->
+                val angle = turns * Math.PI.toFloat()
+                val box = popPixels(format, angle)
+                    ?: error("Pop nicht gezeichnet (${format.width}×${format.height}, $turns π)")
+                val where = "(${format.width}×${format.height}, Winkel $turns π, $box)"
+                // Im Quadrat des Rings, also nicht unten auf Bäumen und Boden
+                // (dort, bei 74 % der Höhe, stand er vorher).
+                assertTrue(box.bottom <= ring.cy + ring.radius, "Pop unter dem Ring $where")
+                assertTrue(box.top >= ring.cy - ring.radius, "Pop über dem Ring $where")
+                assertTrue(box.left >= ring.cx - ring.radius && box.right <= ring.cx + ring.radius, "Pop neben dem Ring $where")
+                assertTrue(box.bottom < h * 0.74f, "Pop auf der Höhe von PERFEKT $where")
+            }
+        }
+    }
+
+    /** Umriss der Pixel, die der Pop allein auf durchsichtigem Grund setzt. */
+    private fun popPixels(format: Format, angle: Float): androidx.compose.ui.geometry.Rect? {
+        val bitmap = ImageComposeScene(format.width, format.height, Density(format.width / 411f)) {
+            de.robinrehbein.punkt.ui.screens.BlindPop(bonus = 1, angle = angle)
+        }.use { scene -> Bitmap.makeFromImage(scene.render(0L)) }
+        var left = Int.MAX_VALUE
+        var top = Int.MAX_VALUE
+        var right = -1
+        var bottom = -1
+        for (y in 0 until format.height) for (x in 0 until format.width) {
+            if ((bitmap.getColor(x, y) ushr 24) != 0) {
+                if (x < left) left = x
+                if (x > right) right = x
+                if (y < top) top = y
+                if (y > bottom) bottom = y
+            }
+        }
+        if (right < 0) return null
+        return androidx.compose.ui.geometry.Rect(left.toFloat(), top.toFloat(), right + 1f, bottom + 1f)
+    }
+    // == /AP-31 ==
+
     // ---------- Helfer ----------
 
     /** Ein Lauf unter [twists], [hits] Treffer weit, direkt nach dem letzten Treffer. */
