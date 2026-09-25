@@ -13,8 +13,14 @@
   dort; seit die Karte in :ui gezeichnet wird, stehen sie hier.
 -->
 <resources>
-    <string name="ready_hint">STOPPE DEN PUNKT IN DER GRÜNEN ZONE</string>
+    <string name="ready_hint">TIPPE, WENN DER PUNKT IM GRÜNEN IST</string>
     <!-- == AP-22 start == -->
+    <string name="start_not_yet">NOCH NICHT</string>
+    <string name="start_daily_armed">DAILY: AN</string>
+    <string name="daily_intro_title">TAGESLAUF</string>
+    <string name="daily_intro_text">HEUTE FÜR ALLE GLEICH. DEIN BESTER VERSUCH ZÄHLT.</string>
+    <string name="daily_intro_how">LOS GEHT ES MIT DEM ERSTEN TAP IM GRÜNEN. NOCH EIN TAP AUF DAILY SCHALTET AB.</string>
+    <string name="daily_intro_start">START</string>
     <!-- == /AP-22 == -->
     <string name="sound_on">TON: AN</string>
     <string name="sound_off">TON: AUS</string>

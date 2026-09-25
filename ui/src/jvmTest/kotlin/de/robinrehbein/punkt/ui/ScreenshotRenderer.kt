@@ -64,6 +64,117 @@ class ScreenshotRenderer {
         renderSet(File(dir), width = 1080, height = 2400, density = 2.625f, seed = SEED)
     }
 
+    // == AP-22 start ==
+    /**
+     * Die Bilder des Startbildschirms (Plan 8.5 AP-22) bei 1080x2400 und
+     * 720x1280: Hand oben und gedrückt, NOCH NICHT, die DAILY-Karte,
+     * DAILY scharf, das Leuchten im Lauf und ein Bestandsspieler ohne
+     * Stützräder. Die kleinen Bilder liegen im Unterordner 720x1280.
+     */
+    @Test
+    fun renderStart() {
+        val dir = System.getProperty("shots.dir") ?: System.getenv("SHOTS_DIR") ?: return
+        java.util.Locale.setDefault(java.util.Locale.GERMANY)
+        val vorher = fixedCalendarForTools
+        fixedCalendarForTools = FIXED_CALENDAR
+        try {
+            renderStartSet(File(dir), 1080, 2400, 2.625f)
+            renderStartSet(File(dir, "720x1280"), 720, 1280, 2f)
+        } finally {
+            fixedCalendarForTools = vorher
+        }
+    }
+
+    private fun renderStartSet(dir: File, w: Int, h: Int, d: Float) {
+        dir.mkdirs()
+        var now = 0L
+        fun ImageComposeScene.step(seconds: Double) {
+            val until = now + (seconds * 1_000_000_000L).toLong()
+            while (now < until) {
+                now += 16L * 1_000_000L
+                render(now)
+            }
+        }
+        fun ImageComposeScene.tap(x: Float, y: Float) {
+            sendPointerEvent(PointerEventType.Press, Offset(x, y))
+            step(0.05)
+            sendPointerEvent(PointerEventType.Release, Offset(x, y))
+            step(0.05)
+        }
+        fun ImageComposeScene.save(name: String) {
+            val data = render(now).encodeToData(EncodedImageFormat.PNG)!!
+            File(dir, name).writeBytes(data.bytes)
+            println("-> ${dir.name}/$name")
+        }
+
+        // Neuer Spieler: Stützräder an (runCount 0).
+        val game = TimingGame(Random(SEED))
+        ImageComposeScene(width = w, height = h, density = Density(d)) {
+            GameScreen(
+                store = GameStore(FakeKeyValueStore()),
+                sounds = NoSounds(),
+                feedback = NoFeedback(),
+                game = game,
+                runSeed = SEED
+            )
+        }.use { scene ->
+            // READY_SPEED 1,2 rad/s ab Winkel 0, Zone 1,8 ± 0,4: Bei 0,4 s
+            // ist der Punkt weit vor dem Grün, die Hand oben.
+            scene.step(0.4)
+            scene.save("20-start-hand-oben.png")
+            // Tap daneben (links neben dem Ring): NOCH NICHT und Echo.
+            scene.tap(w * 0.3f, h * 0.44f)
+            scene.step(0.1)
+            scene.save("21-noch-nicht.png")
+            // Bei 1,35 s steht der Punkt im Grün: Hand gedrückt, Zone
+            // leuchtet, Echo an der Fingerspitze.
+            scene.step(1.35 - 0.4 - 0.2)
+            scene.save("22-start-hand-gedrueckt.png")
+            // DAILY: linkes Drittel der Taster-Leiste -> Karte
+            scene.tap(w / 6f, h - 32 * d)
+            scene.step(0.3)
+            scene.save("23-daily-karte.png")
+            // START auf der Karte (der Knopf sitzt unten im Panel).
+            scene.tap(w / 2f, h / 2f + DAILY_START_OFFSET_DP * d)
+            scene.step(0.3)
+            scene.save("24-daily-scharf.png")
+            // Start per Tap im Grün, dann im Lauf auf das nächste Grün warten.
+            var frames = 0
+            while (!game.isInZone && frames++ < 1_000) scene.step(0.016)
+            scene.tap(w / 2f, h * 0.5f)
+            frames = 0
+            while (game.phase == GamePhase.RUNNING && !game.isInZone && frames++ < 1_000) {
+                scene.step(0.016)
+            }
+            scene.step(0.03)
+            scene.save("25-lauf-leuchten.png")
+        }
+
+        // Bestandsspieler: fünf Läufe gezählt, Rekord 12. Keine Hand, kein
+        // Leuchten, die Zielzeile ist da.
+        val prefs = FakeKeyValueStore()
+        val bestand = GameStore(prefs)
+        repeat(5) { bestand.submitRun(score = 12, epochDay = FIXED_CALENDAR.epochDay, month = 6, year = 2026) }
+        now = 0L
+        val game2 = TimingGame(Random(SEED))
+        ImageComposeScene(width = w, height = h, density = Density(d)) {
+            GameScreen(
+                store = bestand,
+                sounds = NoSounds(),
+                feedback = NoFeedback(),
+                game = game2,
+                runSeed = SEED
+            )
+        }.use { scene ->
+            scene.step(1.5)
+            scene.save("26-start-bestand.png")
+            scene.tap(w * 0.3f, h * 0.44f)
+            scene.step(0.1)
+            scene.save("27-bestand-noch-nicht.png")
+        }
+    }
+    // == /AP-22 ==
+
     /**
      * Der Screenshot-Satz fuer eine Geraetegroesse. Breite und Hoehe in
      * Pixeln, [density] in Pixeln je dp — alle Tippstellen rechnen damit,
@@ -203,6 +314,11 @@ class ScreenshotRenderer {
     }
 
     private companion object {
+        // == AP-22 start ==
+        /** Abstand des START-Knopfs der DAILY-Karte unter der Bildmitte, in dp. */
+        const val DAILY_START_OFFSET_DP = 95f
+        // == /AP-22 ==
+
         /** Der Seed der Standard-Bilder. */
         const val SEED = 20260925L
 
