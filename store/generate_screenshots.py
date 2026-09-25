@@ -2,10 +2,11 @@
 """Generiert stilisierte Play-Store-Screenshots (1080x1920, 9:16) in
 Deutsch und Englisch — wie Feature-Grafik und App komplett aus Code.
 
-Sechs Motive: Kern-Gameplay, Twists, Daily Challenge, Skin-Menue,
-Skin-Galerie und die Ausdauer-/Saison-Achsen. Die Szenen spiegeln das
-echte Spiel (Palette, Bahn mit 60 Segmenten, Baeume/Blumen/Buesche der
-v2.11-Szenerie).
+Sechs Motive: Startbildschirm (erster Tap im Gruen zaehlt), Bomben,
+Daily Challenge im Nebel, Sammlung, Skin-Galerie und die Ausdauer-/
+Saison-Achsen. Die Szenen spiegeln das echte Spiel (Palette, Bahn mit 60
+Segmenten, Baeume/Blumen/Buesche der v2.11-Szenerie, Himmel ohne Lila
+seit v2.28).
 
 Zwei Dinge sind hier keine Nachbildung, sondern das Original:
 
@@ -13,9 +14,12 @@ Zwei Dinge sind hier keine Nachbildung, sondern das Original:
   deckungsgleiche Portierung von `SkinPaint.kt` — jedes der 13x13
   Felder bekommt dieselbe Farbe wie im Spiel. Gemalte Attrappen waeren
   im Store eine Falschangabe.
-* Die Beschriftungen im Skin-Menue (Namen, Freischalt-Hinweise,
-  Familien-Ueberschriften) liest der Generator aus den echten
-  String-Ressourcen der App, nicht aus einer zweiten Liste hier.
+* Die Beschriftungen im Spiel (Hinweis, Bomben-Lektion, Sammlung mit
+  Reitern, Namen, Freischalt-Hinweise, Familien-Ueberschriften) liest der
+  Generator aus den echten String-Ressourcen der App, nicht aus einer
+  zweiten Liste hier.
+* Mine, Hand und Nebelfarben liest `store/twist_paint.py` aus
+  `TrapPaint.kt`, `StartCoach.kt` und `FogRenderer.kt`.
 
 Die Werbe-Captions sind bewusst M-frei — der Bytesized-Font rendert das
 M wie ein N und macht es auf einem Store-Asset unleserlich. In den
@@ -37,6 +41,7 @@ from PIL import Image, ImageDraw, ImageFont
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import skin_paint as sp  # noqa: E402
+import twist_paint as tp  # noqa: E402
 from pixel_dot import OUTLINE, WHITE, paste_dot  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -60,8 +65,9 @@ BUSH = (0x71, 0xC8, 0x37)
 BUSH_SHADE = (0x5A, 0xA8, 0x2C)
 TRUNK = (0x9C, 0x6B, 0x3C)
 TRUNK_SHADE = (0x7A, 0x4E, 0x2A)
-FAKE = (0xB4, 0x4F, 0xD8)
-FAKE_CORE = (0x8A, 0x2F, 0xB0)
+# Leuchten der Zone waehrend der Stuetzraeder (StartCoach.kt).
+GLOW_CORE = (0xE4, 0xFF, 0xC4)
+GLOW_ZONE = (0xB8, 0xF2, 0x7A)
 ACCENT = (0xFF, 0x8A, 0x3C)
 RECORD_RED = (0xE5, 0x39, 0x35)
 GOLD = (0xFF, 0xD8, 0x47)
@@ -88,7 +94,7 @@ SHOWCASE = {
     # ersten Moment des Blitzes waere beides gelb und der Blitz weg.
     "GEWITTER": sp.SkinState(elapsed=0.2),
     "DIAMANT": sp.SkinState(elapsed=1.0),         # Funkeln ueber der Facette
-    "CHAMAELEON": sp.SkinState(score=12),         # Himmelsstufe Lila
+    "CHAMAELEON": sp.SkinState(score=12),         # Himmelsstufe 2 (Blau)
     "KOMBO": sp.SkinState(perfect_streak=3),      # halb aufgeladen
     "THERMO": sp.SkinState(score=30),             # aufgeheizt, noch nicht weiss
     "MEDAILLE": sp.SkinState(score=10),           # Bronze — kein zweites Gold
@@ -113,9 +119,10 @@ def _load_strings(path):
 
 
 STRINGS = {
-    "en": _load_strings(os.path.join(REPO, "app/src/main/res/values/strings.xml")),
-    "de": _load_strings(
-        os.path.join(REPO, "app/src/main/res/values-de/strings.xml")),
+    "en": _load_strings(os.path.join(
+        REPO, "ui/src/commonMain/composeResources/values/strings.xml")),
+    "de": _load_strings(os.path.join(
+        REPO, "ui/src/commonMain/composeResources/values-de/strings.xml")),
 }
 
 
@@ -291,8 +298,13 @@ class Scene:
 
     # ===== Bahn & Punkt =====
     def track(self, cx, cy, radius, zone_center, zone_half,
-              fake_center=None, fake_half=None):
+              mines=None, glow=False):
+        """Die Bahn wie drawTrack. [mines] = (Mitte, Halbbreite, Schritt
+        des Lauflichts): Wo die Falle liegt, steht statt des Blocks eine
+        Mine aus TrapPaint, das rote Lauflicht nach TrapPaint.redMask.
+        [glow]: die Zone leuchtet (Stuetzraeder im Startbildschirm)."""
         segments = 60
+        mine_slots = []
         for k in range(segments):
             a = k / segments * 2 * math.pi
             px = cx + math.cos(a) * radius
@@ -300,28 +312,69 @@ class Scene:
             rel = abs(wrap_pi(a - zone_center))
             in_zone = rel <= zone_half
             in_core = rel <= zone_half * 0.35
-            in_fake = in_fake_core = False
-            if fake_center is not None:
-                frel = abs(wrap_pi(a - fake_center))
-                in_fake = frel <= fake_half
-                in_fake_core = frel <= fake_half * 0.35
-            highlighted = in_zone or in_fake
-            outer = CELL * 5 if highlighted else CELL * 3
-            inner = CELL * 3.4 if highlighted else CELL * 1.8
+            if mines is not None and not in_zone:
+                if abs(wrap_pi(a - mines[0])) <= mines[1]:
+                    mine_slots.append((wrap_pi(a - mines[0]), px, py))
+                    continue
+            outer = CELL * 5 if in_zone else CELL * 3
+            inner = CELL * 3.4 if in_zone else CELL * 1.8
+            edge = OUTLINE
             if in_core:
-                color = GRASS_LIGHT
+                color = GLOW_CORE if glow else GRASS_LIGHT
             elif in_zone:
-                color = GRASS_DARK
-            elif in_fake_core:
-                color = FAKE_CORE
-            elif in_fake:
-                color = FAKE
+                color = GLOW_ZONE if glow else GRASS_DARK
             else:
                 color = SAND_SHADE
+            if glow and in_zone:
+                edge = WHITE
             self.d.rectangle([px - outer / 2, py - outer / 2,
-                              px + outer / 2, py + outer / 2], fill=OUTLINE)
+                              px + outer / 2, py + outer / 2], fill=edge)
             self.d.rectangle([px - inner / 2, py - inner / 2,
                               px + inner / 2, py + inner / 2], fill=color)
+        if mine_slots:
+            # In Laufrichtung des Lichts sortiert, Richtung wie im Spiel
+            # fest je Falle (hier: +1).
+            mine_slots.sort()
+            mask = tp.red_mask(len(mine_slots), mines[2])
+            px_size = max(2, int(CELL * 6 / 7))
+            for red, (_, px, py) in zip(mask, mine_slots):
+                tp.draw_mine(self.d, px, py, px_size, red=red)
+
+    def fog(self, cx, cy, radius, start, end, u):
+        """Die Nebelbank als Pixel-Wolke von [start] bis [end] (Winkel auf
+        der Bahn), u = ein Vogelpixel. Schichten wie FogRenderer.kt: unten
+        #A0BEDA, darueber #BED4EA und #D6E5F4, oben weiss, innen #F4F8FD.
+        Feste Bauschen, kein Zufall."""
+        bottom, low, mid, top, inner = tp.fog_layers()
+        steps = max(2, int(abs(end - start) * radius / (u * 2.5)))
+        puffs = []
+        for i in range(steps + 1):
+            a = start + (end - start) * i / steps
+            r = (7 + 2 * ((i * 7) % 3)) * u
+            # Die Enden laufen schmaler aus, wie die Bausche am Telefon.
+            if i in (0, steps):
+                r -= 2 * u
+            puffs.append((cx + math.cos(a) * radius, cy + math.sin(a) * radius, r))
+
+        def blob(dx, dy, shrink, color):
+            for x0, y0, r in puffs:
+                rr = r - shrink * u
+                if rr <= 0:
+                    continue
+                n = int(rr / u)
+                for gy in range(-n, n + 1):
+                    for gx in range(-n, n + 1):
+                        if (gx * gx + gy * gy) * u * u <= rr * rr:
+                            x = round((x0 + dx) / u) * u + gx * u
+                            y = round((y0 + dy) / u) * u + gy * u
+                            self.d.rectangle([x, y, x + u - 1, y + u - 1], fill=color)
+
+        blob(0, 0, -1, OUTLINE)
+        blob(0, u, 0, bottom)
+        blob(0, 0, 1, low)
+        blob(0, -u, 2, mid)
+        blob(0, -2 * u, 3.5, top)
+        blob(0, -u, 4.5, inner)
 
     def dot(self, cx, cy, r, skin="KLASSIK", state=None, facing_left=False,
             alpha=1.0, eye=True, target=None):
@@ -360,7 +413,16 @@ def caption(scene, line1, line2, y1=110, y2=235):
     scene.text_center(y2, line2, 72, GOLD)
 
 
-# ===== 01: Kern-Gameplay =====
+# ===== 01: Startbildschirm — der erste Tap im Gruen zaehlt =====
+#
+# Seit v2.28 ist schon der erste Tap ein Treffer, wenn der Punkt im Gruen
+# steht (Plan 3.1). Das Bild zeigt den Moment, in dem es passt: Die Zone
+# leuchtet (Stuetzraeder der ersten fuenf Laeufe), die Hand in der
+# Ringmitte drueckt, darunter der Hinweis aus dem Spiel.
+
+READY_ZONE = 1.8   # TimingGame.READY_ZONE_CENTER
+READY_HALF = 0.4   # Startbreite der Zone
+
 
 def gameplay(lang):
     s = Scene(SKY_STAGES[0])
@@ -368,51 +430,64 @@ def gameplay(lang):
     s.cloud(760, 560, 10)
     s.ground()
     s.scenery()
-    zone = -0.9
-    s.track(TRACK_CX, TRACK_CY, TRACK_R, zone, 0.5)
-    s.dot_on_track(zone - 1.7, DOT_R)
-    s.text_center(SCORE_Y, "7", 190, WHITE)
+    s.track(TRACK_CX, TRACK_CY, TRACK_R, READY_ZONE, READY_HALF, glow=True)
+    s.dot_on_track(READY_ZONE - 0.05, DOT_R)
+    u = max(1, int(TRACK_R / 30.6))  # StartCoach.handUnit
+    tp.draw_hand(s.d, TRACK_CX, TRACK_CY - u, u, OUTLINE, SKY_STAGES[0],
+                 pressed=True)
+    s.text_center(TRACK_CY + TRACK_R + 90, STRINGS[lang]["ready_hint"], 44,
+                  WHITE)
     if lang == "de":
-        caption(s, "EIN TAP ENTSCHEIDET.", "PERFEKT ODER VORBEI.")
-        s.text_center(1340, "PERFEKT! +2", 64, RECORD_YELLOW)
+        caption(s, "TIPPE INS GRÜNE.", "DER ERSTE TAP ZÄHLT.")
     else:
-        caption(s, "ONE TAP DECIDES.", "PERFECT OR IT'S OVER.")
-        s.text_center(1340, "PERFECT! +2", 64, RECORD_YELLOW)
+        caption(s, "TAP IN THE GREEN.", "THE FIRST TAP COUNTS.")
     return s
 
 
-# ===== 02: Twists =====
+# ===== 02: Bomben =====
+#
+# Die Falle ab Score 20 als Kette aus Minesweeper-Minen mit rotem
+# Lauflicht (Plan 3.4), vor dem Abendhimmel bei Score 22 (vorher stand
+# hier faelschlich die lila Stufe 2). Darunter die Lektion, die das Spiel
+# beim ersten Bomben-Tod zeigt.
 
 def twists(lang):
-    s = Scene(SKY_STAGES[2])
+    s = Scene(SKY_STAGES[4])
     s.cloud(120, 430, 11)
     s.ground()
     s.scenery()
     zone = -0.9
-    s.track(TRACK_CX, TRACK_CY, TRACK_R, zone, 0.45,
-            fake_center=2.2, fake_half=0.45)
+    s.track(TRACK_CX, TRACK_CY, TRACK_R, zone, 0.4, mines=(2.2, 0.4, 2))
     s.dot_on_track(zone - 1.7, DOT_R)
     s.text_center(SCORE_Y, "22", 190, WHITE)
+    s.text_center(SCORE_Y + 195, STRINGS[lang]["death_bomb_lesson"], 60, ACCENT)
     if lang == "de":
         caption(s, "JEDE STUFE", "EIN NEUER TWIST")
-        s.text_center(SCORE_Y + 195, "NEU: FALLEN-ZONE!", 60, ACCENT)
     else:
         caption(s, "NEW TWISTS", "AT EVERY STAGE")
-        s.text_center(SCORE_Y + 195, "NEW: TRAP ZONE!", 60, ACCENT)
     return s
 
 
-# ===== 03: Daily Challenge =====
+# ===== 03: Daily Challenge im Nebel =====
+#
+# Ab Score 15 liegt vor mancher Zone eine Nebelbank (Plan 3.3): Sie
+# beginnt 0,12 s Laufzeit vor der Zone und reicht bis ins erste Viertel.
+# Der Punkt kommt gleich an und verschwindet darin.
 
 def daily(lang):
-    s = Scene(SKY_STAGES[5])
+    s = Scene(SKY_STAGES[3])
     s.stars()
     s.ground()
     s.scenery()
     zone = 2.6
-    s.track(TRACK_CX, TRACK_CY, TRACK_R, zone, 0.5)
-    s.dot_on_track(zone - 1.3, DOT_R, "PRISMA")
-    s.text_center(SCORE_Y, "14", 190, WHITE)
+    half = 0.35
+    speed = 2.4 + 16 * 0.07   # TimingGame bei 16 Treffern
+    s.track(TRACK_CX, TRACK_CY, TRACK_R, zone, half)
+    u = max(2, round(2 * DOT_R / 13))
+    s.dot_on_track(zone - half - 0.12 * speed - 0.8, DOT_R, "PRISMA")
+    s.fog(TRACK_CX, TRACK_CY, TRACK_R, zone - half - 0.12 * speed,
+          zone - half * 0.5, u)
+    s.text_center(SCORE_Y, "17", 190, WHITE)
     s.text_center(SCORE_Y + 195, "DAILY", 64, GOLD)
     if lang == "de":
         caption(s, "JEDEN TAG EINE", "NEUE CHALLENGE")
@@ -423,18 +498,23 @@ def daily(lang):
     return s
 
 
-# ===== 04: Das Skin-Menue, wie es seit v2.20 aussieht =====
+# ===== 04: Die Sammlung, wie sie seit v2.28 aussieht =====
 #
-# Bei 46 Skins ist die reine Liste nicht mehr lesbar; das Menue gliedert
-# sie deshalb nach Familien (SkinOverlay in GameOverlays.kt). Das Motiv
-# zeigt den Anfang der Liste in echten Groessen — die letzte Zeile laeuft
-# unten aus dem Bild, weil die Liste genau das tut: sie geht weiter.
+# Vier Reiter mit Zaehler (VOGEL, WELT, TON, RAHMEN), oben das
+# Schaufenster-Info, darunter das Raster mit vier Kacheln je Zeile
+# (CollectionOverlay.kt). Gesperrte Kacheln sind blass und tragen einen
+# Fortschrittsbalken. Die letzte Zeile laeuft unten aus dem Bild, weil
+# das Raster genau das tut: es geht weiter.
 
 # Ein glaubhafter Zwischenstand: Rekord 30, vier perfekte in Serie, drei
 # Tage Daily-Serie. FROST (Rekord 40) und FLIEGENPILZ (35) fehlen noch.
 MENU_UNLOCKED = {"KLASSIK", "MINZE", "LAVA", "GOLD", "SCHATTEN", "PRISMA",
                  "BIENE", "MELONE"}
 MENU_SELECTED = "MELONE"
+TILE_BG = (0x4A, 0x36, 0x42)
+TILE_EDGE = (0x2A, 0x1E, 0x26)
+TAB_ACTIVE = SAND
+BAR = (0xDE, 0xD8, 0x95)
 
 
 def skin_menu(lang):
@@ -442,53 +522,78 @@ def skin_menu(lang):
     s.stars()
     s.ground()
     s.scenery()
-    # Das Menue liegt als fast deckende Kontur-Flaeche ueber dem Spiel
+    # Die Sammlung liegt als fast deckende Kontur-Flaeche ueber dem Spiel
     # (OutlineColor bei 92 %).
     s.img = Image.alpha_composite(
         s.img.convert("RGBA"), Image.new("RGBA", (W, H), OUTLINE + (235,)))
     ui = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(ui)
+    T = STRINGS[lang]
 
-    title = STRINGS[lang]["skins"]
-    size = int(32 * DP)
-    s.text_at((W - text_width(title, size)) / 2, int(32 * DP), title, size,
+    title = T["collection"]
+    size = int(24 * DP)
+    s.text_at((W - text_width(title, size)) / 2, int(18 * DP), title, size,
               WHITE + (255,), target=ui)
 
-    y = int(80 * DP)  # unter Titel und dessen 16dp-Abstand
-    left = int(48 * DP)
-    row_h = int(36 * DP) + int(20 * DP)
-    last_family = None
-    for skin in sp.ALL_SKINS:
-        # Angefangene Zeilen bleiben weg: Die Liste laeuft im Spiel unten
-        # aus dem Bild, ein halber Vogel sieht auf einem Store-Asset aber
-        # nach Fehler aus.
-        if y + row_h > H:
-            break
-        family = next(f for f, group in sp.FAMILIES if skin in group)
-        if family != last_family:
-            last_family = family
-            y += int(10 * DP)
-            s.text_at(left, y, family_title(family, lang), int(18 * DP),
-                      ACCENT + (255,), target=ui)
-            y += int(18 * DP) + int(12 * DP)
+    # Schaufenster-Info: Name und Stand der gewaehlten Kachel.
+    y = int(64 * DP)
+    s.dot(W / 2, y + 30 * DP, 30 * DP, MENU_SELECTED, target=ui)
+    y += int(68 * DP)
+    name = skin_name(MENU_SELECTED, lang)
+    s.text_at((W - text_width(name, int(18 * DP))) / 2, y, name, int(18 * DP),
+              WHITE + (255,), target=ui)
+    y += int(26 * DP)
+    sel = T["skin_selected"]
+    s.text_at((W - text_width(sel, int(12 * DP))) / 2, y, sel, int(12 * DP),
+              GOLD + (255,), shadow=False, target=ui)
+    y += int(28 * DP)
 
-        unlocked = skin in MENU_UNLOCKED
-        cy = y + row_h / 2
-        s.dot(left + 18 * DP, cy, 18 * DP, skin,
-              alpha=1.0 if unlocked else 0.3, target=ui)
-        text_x = left + int(52 * DP)
-        fade = 255 if unlocked else 115
-        s.text_at(text_x, y + int(8 * DP), skin_name(skin, lang), int(20 * DP),
-                  WHITE + (fade,), shadow=False, target=ui)
-        if skin == MENU_SELECTED:
-            sub, color = STRINGS[lang]["skin_selected"], GOLD + (255,)
-        elif unlocked:
-            sub, color = STRINGS[lang]["skin_tap_select"], WHITE + (180,)
-        else:
-            sub, color = skin_hint(skin, lang), WHITE + (115,)
-        s.text_at(text_x, y + int(30 * DP), sub, int(14 * DP), color,
-                  shadow=False, target=ui)
-        y += row_h
+    # Reiter mit Zaehler.
+    tabs = [(T["tab_bird"], "%d/46" % len(MENU_UNLOCKED)), (T["tab_world"], "1/6"),
+            (T["tab_sound"], "1/3"), (T["tab_frame"], "1/7")]
+    tab_w = W / 4
+    tab_h = int(46 * DP)
+    for k, (label, count) in enumerate(tabs):
+        x0 = k * tab_w
+        fill = TAB_ACTIVE if k == 0 else TILE_EDGE
+        d.rectangle([x0, y, x0 + tab_w - 3, y + tab_h], fill=fill + (255,))
+        color = OUTLINE if k == 0 else WHITE
+        for text, ty, sz in ((label, 8, 11), (count, 26, 9)):
+            px = int(sz * DP)
+            s.text_at(x0 + (tab_w - text_width(text, px)) / 2, y + ty * DP, text,
+                      px, color + (255,), shadow=False, target=ui)
+    y += tab_h + int(14 * DP)
+
+    # Raster: vier Kacheln je Zeile, Familien als Zwischenueberschriften.
+    gap = int(8 * DP)
+    tile = (W - 2 * int(12 * DP) - 3 * gap) / 4
+    left = int(12 * DP)
+    for family, group in sp.FAMILIES:
+        if y + 30 * DP > H:
+            break
+        head = family_title(family, lang)
+        s.text_at((W - text_width(head, int(14 * DP))) / 2, y, head,
+                  int(14 * DP), ACCENT + (255,), target=ui)
+        y += int(28 * DP)
+        for start in range(0, len(group), 4):
+            if y > H:
+                break
+            for k, skin in enumerate(group[start:start + 4]):
+                x0 = left + k * (tile + gap)
+                unlocked = skin in MENU_UNLOCKED
+                edge = GOLD if skin == MENU_SELECTED else TILE_EDGE
+                d.rectangle([x0, y, x0 + tile, y + tile], fill=edge + (255,))
+                b = int(3 * DP)
+                d.rectangle([x0 + b, y + b, x0 + tile - b, y + tile - b],
+                            fill=TILE_BG + (255,))
+                s.dot(x0 + tile / 2, y + tile / 2, tile * 0.24, skin,
+                      alpha=1.0 if unlocked else 0.3, target=ui)
+                if not unlocked:
+                    bar_y = y + tile - 10 * DP
+                    d.rectangle([x0 + 8 * DP, bar_y, x0 + tile - 8 * DP,
+                                 bar_y + 2 * DP], fill=BAR + (160,))
+            y += int(tile + gap)
+        y += int(8 * DP)
 
     s.img = Image.alpha_composite(s.img, ui)
     return s
@@ -584,7 +689,7 @@ MOTIFS = [
     ("01-gameplay", gameplay),
     ("02-twists", twists),
     ("03-daily", daily),
-    ("04-skins", skin_menu),
+    ("04-sammlung", skin_menu),
     ("05-gallery", gallery),
     ("06-collect", collect),
 ]
