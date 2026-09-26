@@ -28,7 +28,7 @@ import de.robinrehbein.punkt.ui.world.TextDark
  * die Schieber waren, gleich groß und mit demselben Schatten.
  *
  * Sichtbar 48 dp mit 4 dp Pixelschatten. Sandfläche, gerader dunkler
- * Rand, heller Glanzstreifen unter der Oberkante. Der Schatten ist
+ * Rand, innen eine Bevel-Kante (siehe [drawSandBevel]). Der Schatten ist
  * deckend, damit der Knopf auf hellem Himmel und auf dem dunklen Overlay
  * gleich aussieht. Sinkt beim Drücken ein und tickt über
  * [LocalPressFeedback].
@@ -92,9 +92,19 @@ val CORNER_BUTTON_PADDING = 16.dp
 private val CORNER_FACE = 48.dp
 private val CORNER_BORDER = 3.dp
 private val CornerShadow = Color(0xFF2D1E27)
-private val CornerHighlight = Color(0xFFEFE9C2)
+/**
+ * Helle Innenkante oben und links, dunkle unten und rechts: Das Licht
+ * fällt von oben links, genau gegenüber dem Pixelschatten unten rechts.
+ *
+ * Vorher lag hier ein heller Streifen in voller Rahmenstärke nur unter
+ * der Oberkante. Bündig am dunklen Rand las er sich als zweiter, heller
+ * Rahmen statt als Glanz. Die Bevel-Kante ist halb so stark und
+ * umläuft die Fläche, dadurch gehört sie sichtbar zur Sandfläche.
+ */
+internal val SandBevelLight = Color(0xFFEFE9C2)
+internal val SandBevelDark = Color(0xFFC5BB87)
 
-/** Dunkler gerader Rand, Sandfläche, Glanzstreifen unter der Oberkante. */
+/** Dunkler gerader Rand, Sandfläche, Bevel-Kante innen. */
 private fun DrawScope.drawCornerFace(border: Float) {
     drawRect(color = TextDark)
     drawRect(
@@ -102,9 +112,38 @@ private fun DrawScope.drawCornerFace(border: Float) {
         topLeft = Offset(border, border),
         size = Size(size.width - 2f * border, size.height - 2f * border)
     )
-    drawRect(
-        color = CornerHighlight,
+    drawSandBevel(
         topLeft = Offset(border, border),
-        size = Size(size.width - 2f * border, border)
+        size = Size(size.width - 2f * border, size.height - 2f * border),
+        edge = border / 2f
+    )
+}
+
+/**
+ * Die Bevel-Kante auf einer Sandfläche bei [topLeft] mit [size]:
+ * [edge] breit, hell oben und links, dunkel unten und rechts. Die helle
+ * Kante liegt zuletzt oben, damit die Ecken oben rechts und unten links
+ * je zur Hälfte hell und dunkel sind wie bei einem gedrehten Pixel-Knopf.
+ */
+internal fun DrawScope.drawSandBevel(topLeft: Offset, size: Size, edge: Float) {
+    drawRect(
+        color = SandBevelDark,
+        topLeft = Offset(topLeft.x, topLeft.y + size.height - edge),
+        size = Size(size.width, edge)
+    )
+    drawRect(
+        color = SandBevelDark,
+        topLeft = Offset(topLeft.x + size.width - edge, topLeft.y),
+        size = Size(edge, size.height)
+    )
+    drawRect(
+        color = SandBevelLight,
+        topLeft = topLeft,
+        size = Size(size.width - edge, edge)
+    )
+    drawRect(
+        color = SandBevelLight,
+        topLeft = topLeft,
+        size = Size(edge, size.height - edge)
     )
 }
