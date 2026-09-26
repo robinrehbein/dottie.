@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.28.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.29.
 
 ## Checkliste
 
@@ -560,9 +560,23 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 37` / `versionName
-"2.28"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
+(`app/build.gradle.kts`). Aktuell: `versionCode 38` / `versionName
+"2.29"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
 und committen.
+
+### Release-Notes 2.29 (Welten, Bomben, Bedienung)
+
+Deutsch:
+
+> ▪ Welten überarbeitet: Sternenhimmel, Gebirge und Inseln
+> ▪ Bomben mit mehr Abstand zur Bahn und klarerem Takt
+> ▪ Hörprobe-Absturz behoben, Eckknöpfe und Reiter vereinheitlicht
+
+English:
+
+> ▪ Refreshed worlds: starry sky, mountains, and islands
+> ▪ Bombs have more room beside the track and a clearer rhythm
+> ▪ Fixed a sound preview crash; refined corner buttons and tabs
 
 ### Release-Notes 2.28 (Erstkontakt, Nebel, Bomben)
 
