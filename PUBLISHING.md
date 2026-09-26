@@ -560,9 +560,23 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 39` / `versionName
-"2.30"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
+(`app/build.gradle.kts`). Aktuell: `versionCode 40` / `versionName
+"2.31"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
 und committen.
+
+### Release-Notes 2.31 (Zonen und Minen)
+
+Deutsch:
+
+> ▪ Grüne Zonen mit Blättern, Blüte und neuer Lichtkante
+> ▪ Zonenblöcke wachsen sanft zur Mitte hin
+> ▪ Größere Minen sind besser sichtbar; das Trefferfenster bleibt gleich
+
+English:
+
+> ▪ Green zones now feature leaves, a flower, and refined highlights
+> ▪ Zone blocks grow smoothly toward the center
+> ▪ Larger mines are easier to see; the hit window stays the same
 
 ### Release-Notes 2.30 (Ton-Sets, Bedienung)
 
