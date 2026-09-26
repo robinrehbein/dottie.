@@ -261,29 +261,36 @@ class MineFieldTest {
         }
     }
 
-    /** Kein gezeichneter Sandblock berührt eine Mine samt Rand. */
+    /**
+     * Kein gezeichneter Sandblock berührt die Kugel einer Mine, und der
+     * helle Rand reicht höchstens auf den dunklen Umriss des Blocks, nie
+     * auf seine Sandfläche (Kante 1,8 Zellen, wie in drawTrack).
+     */
     private fun assertSandClear(game: TimingGame, t: Track, trap: TrapLayout = layout(game, t)) {
         val px = trap.px
         val rim = mineRim(px).toFloat()
         val blockHalf = t.cell * 3f / 2f
+        val faceHalf = t.cell * 1.8f / 2f
         val centers = trap.mines.map { t.at(it.angle) }
         val reach = (TrapPaint.MINE_SIZE * px / 2f + rim + blockHalf) * 1.5f + 2f
+        // Ein Viertelpixel Luft: Block und Mine teilen sich keinen Bildpunkt.
+        fun square(c: Offset, half: Float) =
+            Rect(c.x - half - 0.25f, c.y - half - 0.25f, c.x + half + 0.25f, c.y + half + 0.25f)
         for (k in drawnSand(game, t, trap)) {
             val b = t.at(trackSlotAngle(k, segments))
-            // Ein Viertelpixel Luft: Block und Mine teilen sich keinen Bildpunkt.
-            val block = Rect(
-                b.x - blockHalf - 0.25f,
-                b.y - blockHalf - 0.25f,
-                b.x + blockHalf + 0.25f,
-                b.y + blockHalf + 0.25f
-            )
+            val block = square(b, blockHalf)
+            val face = square(b, faceHalf)
             for (c in centers) {
                 if ((c - b).getDistance() > reach) continue
                 for (m in bodyRects(c, px)) {
+                    assertTrue(
+                        !block.hits(m),
+                        "Sandblock $k unter einer Mine (${t.name}, px=$px, Breite ${game.fakeZoneHalf()})"
+                    )
                     val grown = Rect(m.left - rim, m.top - rim, m.right + rim, m.bottom + rim)
                     assertTrue(
-                        !block.hits(grown),
-                        "Sandblock $k unter einer Mine (${t.name}, px=$px, Breite ${game.fakeZoneHalf()})"
+                        !face.hits(grown),
+                        "Minenrand auf dem Sand von Block $k (${t.name}, px=$px)"
                     )
                 }
             }
@@ -432,6 +439,17 @@ class MineFieldTest {
                     "Mine ${TrapPaint.MINE_SIZE * px} px, Block $block px (${t.name})"
                 )
             }
+        }
+    }
+
+    @Test
+    fun `auf dem 1080x2340-Telefon ist eine Mine groesser als ein Sandblock`() {
+        // Robins Telefon: Früher schrumpften die Minen hier auf Sprite-Pixel
+        // 4 (28 px) und wirkten kleiner als der Sand (30 px). Seit der Rand
+        // auf dem Umriss des Sandblocks liegen darf, sind es 5 (35 px).
+        val t = screens.first { it.name == "1080x2340" }
+        eachTrapFrame(setOf(Twist.FAKE), seeds = 1L..10L) { game, _ ->
+            assertEquals(5, layout(game, t).px, "Sprite-Pixel der Minen")
         }
     }
 

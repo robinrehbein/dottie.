@@ -21,6 +21,19 @@ val GroundSand = Color(0xFFDED895)
 val GroundSandShade = Color(0xFFD3C87E)
 val GrassLight = Color(0xFF9DE85A)
 val GrassDark = Color(0xFF74BF2E)
+
+// Die Zonenblöcke (drawZoneBlock): Licht oben links, Schatten unten
+// rechts wie bei den Knöpfen, Blätter wie bei den Büschen. Je ein Ton für
+// die Zone und einer für den Perfekt-Kern.
+val GrassShine = Color(0xFFA8E070)
+val GrassShineCore = Color(0xFFD8FFB0)
+val GrassEdge = Color(0xFF579A1F)
+val GrassEdgeCore = Color(0xFF6FC23A)
+val GrassLeafCore = Color(0xFFC8F58F)
+val GrassDeep = Color(0xFF5AA82C)
+val BlossomPink = Color(0xFFE8607A)
+/** Goldener Saum um den Perfekt-Kern, wie der helle Rand der Minen. */
+val ZoneCoreHalo = Color(0xFFFFF6B0)
 val OutlineColor = Color(0xFF543847)
 val BlockBody = Color(0xFFE0862E)
 val BlockLight = Color(0xFFF2A959)

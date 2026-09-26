@@ -69,20 +69,24 @@ private const val SQRT2 = 1.4142135f
 /**
  * Wie weit (Bildpunkte, beliebige Richtung) die Mitte einer Mine mit
  * Sprite-Pixeln [px] von der Mitte eines Sandblocks der halben Kante
- * [blockHalf] mindestens entfernt sein muss, damit Mine samt Rand den
+ * [blockHalf] mindestens entfernt sein muss, damit die Kugel der Mine den
  * Block nicht berührt.
  *
  * Die Mine ist ein 5×5-Kern mit je einem Zacken oben, unten, links und
- * rechts, jeder Pixel mit Rand. Mit dem Block zusammen ergibt das drei
- * Rechtecke um die Minenmitte (Kern, senkrechter und waagrechter Zacken),
- * die die Blockmitte nicht treffen darf — in welcher Richtung auch immer
- * der Block liegt. Ein Bildpunkt Luft für das Runden auf ganze Pixel.
+ * rechts. Mit dem Block zusammen ergibt das drei Rechtecke um die
+ * Minenmitte (Kern, senkrechter und waagrechter Zacken), die die
+ * Blockmitte nicht treffen darf — in welcher Richtung auch immer der
+ * Block liegt. Ein Bildpunkt Luft für das Runden auf ganze Pixel.
+ *
+ * Der helle Rand der Mine zählt hier bewusst nicht mit: Er darf auf dem
+ * dunklen Umriss des Sandblocks liegen (Umriss 0,6 Zellen, Rand höchstens
+ * 0,36 Zellen breit), nur die Kugel nie. Mit Rand schrumpften die Minen
+ * auf einem 1080×2340-Telefon auf 28 px und wirkten kleiner als der Sand.
  */
 internal fun mineBlockDistance(px: Int, blockHalf: Float): Float {
-    val rim = mineRim(px)
-    val core = 2.5f * px + rim + blockHalf + 1f
-    val thin = 0.5f * px + rim + blockHalf + 1f
-    val long = 3.5f * px + rim + blockHalf + 1f
+    val core = 2.5f * px + blockHalf + 1f
+    val thin = 0.5f * px + blockHalf + 1f
+    val long = 3.5f * px + blockHalf + 1f
     return max(SQRT2 * core, sqrt(thin * thin + long * long))
 }
 
@@ -199,16 +203,16 @@ internal fun trapChain(
 }
 
 /**
- * Berührt eine Mine mit Sprite-Pixeln [px] einen Sandblock der halben
- * Kante [blockHalf], dessen Mitte um ([dx], [dy]) Bildpunkte neben der
- * Minenmitte liegt? Dieselben drei Rechtecke wie in [mineBlockDistance],
- * hier für die tatsächliche Lage statt für jede Richtung.
+ * Berührt die Kugel einer Mine mit Sprite-Pixeln [px] einen Sandblock der
+ * halben Kante [blockHalf], dessen Mitte um ([dx], [dy]) Bildpunkte neben
+ * der Minenmitte liegt? Dieselben drei Rechtecke wie in
+ * [mineBlockDistance], hier für die tatsächliche Lage statt für jede
+ * Richtung; der Rand zählt auch hier nicht.
  */
 internal fun mineTouchesBlock(dx: Float, dy: Float, px: Int, blockHalf: Float): Boolean {
-    val rim = mineRim(px)
-    val core = 2.5f * px + rim + blockHalf + 1f
-    val thin = 0.5f * px + rim + blockHalf + 1f
-    val long = 3.5f * px + rim + blockHalf + 1f
+    val core = 2.5f * px + blockHalf + 1f
+    val thin = 0.5f * px + blockHalf + 1f
+    val long = 3.5f * px + blockHalf + 1f
     val x = abs(dx)
     val y = abs(dy)
     return (x < core && y < core) || (x < thin && y < long) || (x < long && y < thin)
@@ -230,7 +234,7 @@ internal fun trapEndGap(px: Int, radius: Float, cell: Float, segments: Int): Flo
 /**
  * Sprite-Pixelmaß der Minen der aktuellen Falle (Plan 3.4: Mine in
  * Blockgröße). Höchstens [minePixel] ([cell]), und so klein, dass sich
- * weder zwei Minen ([minesFit]) noch Mine und Sandblock
+ * weder zwei Minen ([minesFit]) noch Kugel und Sandblock
  * ([mineBlockDistance]) je berühren, auch nicht an der engsten Stelle
  * unter PULS. Geprüft wird die Kette ([trapChain]) über alle Breiten, die
  * die Falle in dieser Runde annehmen kann; so bleibt die Größe beim Atmen
