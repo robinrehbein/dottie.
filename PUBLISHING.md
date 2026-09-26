@@ -560,9 +560,23 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 38` / `versionName
-"2.29"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
+(`app/build.gradle.kts`). Aktuell: `versionCode 39` / `versionName
+"2.30"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
 und committen.
+
+### Release-Notes 2.30 (Ton-Sets, Bedienung)
+
+Deutsch:
+
+> ▪ Fünf neue Ton-Sets: Trommel, Orgel, Pfeife, Laser und Roboter
+> ▪ Neue Freischaltungen für Läufe, Serie, Rekord, Spieltage und Gesamtpunkte
+> ▪ Eckknöpfe und Sammlungs-Reiter mit überarbeiteter Lichtkante
+
+English:
+
+> ▪ Five new sound sets: Drum, Organ, Flute, Laser, and Robot
+> ▪ New unlocks for runs, daily streak, record, play days, and total points
+> ▪ Refined highlights on corner buttons and collection tabs
 
 ### Release-Notes 2.29 (Welten, Bomben, Bedienung)
 
