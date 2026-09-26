@@ -574,7 +574,7 @@ Deutsch:
 
 English:
 
-> ▪ Five new sound sets: Drum, Organ, Flute, Laser, and Robot
+> ▪ Five new sound sets: Drum, Organ, Whistle, Laser, and Robot
 > ▪ New unlocks for runs, daily streak, record, play days, and total points
 > ▪ Refined highlights on corner buttons and collection tabs
 
