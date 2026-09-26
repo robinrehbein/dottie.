@@ -81,6 +81,7 @@ import de.robinrehbein.punkt.ui.components.CORNER_BUTTON_PADDING
 import de.robinrehbein.punkt.ui.components.OverlayCloseButton
 import de.robinrehbein.punkt.ui.components.PIXEL_SHADOW
 import de.robinrehbein.punkt.ui.components.PixelButton
+import de.robinrehbein.punkt.ui.components.drawSandBevel
 import de.robinrehbein.punkt.ui.components.pixelPressable
 import de.robinrehbein.punkt.ui.data.CollectionSeen
 import de.robinrehbein.punkt.ui.data.deviceHourAndMonth
@@ -847,7 +848,7 @@ private fun CollectionTabs(
 ) {
     // Eine Leiste im Pixel-Stil wie die Kacheln darunter: gemeinsamer
     // dunkler Rahmen, dunkle Trennstriche, der aktive Reiter sandfarben
-    // mit Glanzkante wie die Knöpfe. Seitlich bündig mit dem Raster.
+    // mit derselben Bevel-Kante wie die Eckknöpfe. Seitlich bündig mit dem Raster.
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -895,7 +896,7 @@ private fun CollectionTabs(
                     .background(if (active) PanelSand else TileBackground)
                     .drawBehind {
                         if (active) {
-                            drawRect(TabHighlight, size = Size(size.width, TAB_BORDER.toPx()))
+                            drawSandBevel(Offset.Zero, size, edge = TAB_BORDER.toPx() / 2f)
                         }
                     }
                     .pixelPressable(role = Role.Tab) { onTab(t) }
@@ -932,7 +933,6 @@ private fun CollectionTabs(
 
 private val TAB_HEIGHT = 52.dp
 private val TAB_BORDER = 3.dp
-private val TabHighlight = Color(0xFFEFE9C2)
 
 private data class TabData(val label: String, val count: Int, val total: Int, val prefix: String)
 

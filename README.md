@@ -289,8 +289,8 @@ keine Kulisse; sie zieht die Himmelsfarben nur lesend aus `ScenePaint`.
 
 ## Ton-Sets (ab v2.23)
 
-Die dritte Sammlung neben Skins und Kulissen: **drei Klangwelten** —
-Klassik, Glocke, Amboss. Ein Ton-Set beschreibt dieselben acht Ereignisse
+Die dritte Sammlung neben Skins und Kulissen: **acht Klangwelten** —
+Klassik, Glocke, Amboss, Trommel, Orgel, Pfeife, Laser, Roboter. Ein Ton-Set beschreibt dieselben acht Ereignisse
 (Start, Treffer, Perfekt, Kette, Freischaltung, Rekord, Tod, Aufschlag)
 noch einmal in einem anderen Charakter:
 
@@ -299,6 +299,16 @@ noch einmal in einem anderen Charakter:
 | KLASSIK | der Bestand: NES-Blips, mittlere Lage, volle Pulsbreite, kurzes perkussives Abklingen |
 | GLOCKE | weich und rund: eine Oktave höher, alles klingt lange nach, **kein Rauschen** — auch der Tod nicht, hier zerbricht nichts, hier geht das Licht aus |
 | AMBOSS | hart, tief und sparsam: jeder Ton unter 450 Hz, Pulsbreite höchstens ein Viertel, nichts hallt nach; Treffer und Tod bekommen Rauschen, das aus dem Ton einen Schlag macht |
+| TROMMEL | ganz unten, weiche Dreiecke als Kessel und bei **jedem** Ereignis ein kurzer Rauschanteil als Fell |
+| ORGEL | tief-mittlere Lage, volle Pulsbreite, kaum Abklingen: Die Töne stehen, statt zu verklingen |
+| PFEIFE | jeder Ton gleitet als Dreieck nach oben, nur der Tod lang nach unten |
+| LASER | hoch, jeder Ton ein kurzer Gleitton nach unten („Piu“), Rauschen nur beim Tod |
+| ROBOTER | ganz oben, Achtel-Pulsbreite, Stakkato aus sehr kurzen, leisen Pieps |
+
+Damit sich acht Sets bei jedem Ereignis um mindestens eine Quarte
+unterscheiden, hat jedes eine feste Spur im Tonumfang: Trommel < Amboss <
+Orgel < Pfeife < Klassik < Glocke < Laser < Roboter (bei Kette und
+Aufschlag leicht verschoben).
 
 **Warum ein Ton-Set verdient werden darf.** Wie die Kulisse entscheidet
 es nie über einen Treffer: Die Zone bleibt gleich breit, das
@@ -315,15 +325,20 @@ Ports werfen dieselbe Tabelle in denselben Baukasten aus `ChipSynth`;
 ohne diese Trennung müsste jedes neue Set in vier Sprachen nachgebaut
 werden und liefe in vieren auseinander.
 
-Freigeschaltet wird über je eine eigene Achse — Können und Ausdauer:
+Freigeschaltet wird über eigene Schwellen auf allen Achsen:
 
 | Set | Bedingung |
 |---|---|
 | KLASSIK | von Anfang an |
 | GLOCKE | Perfekt-Serie 20 |
 | AMBOSS | 25.000 Punkte insgesamt |
+| TROMMEL | 150 Läufe |
+| ORGEL | Daily-Serie 10 Tage |
+| PFEIFE | Rekord 90 |
+| LASER | an 30 Tagen gespielt |
+| ROBOTER | 10.000 Punkte insgesamt |
 
-Beide Schwellen liegen bewusst auf Zahlen, auf denen sonst **nichts**
+Alle Schwellen liegen bewusst auf Zahlen, auf denen sonst **nichts**
 liegt: Fiele ein Ton-Set zusammen mit einem Skin oder einer Kulisse,
 hörte niemand das neue Set — er sähe den neuen Vogel und hielte den Klang
 für dessen Beiwerk.

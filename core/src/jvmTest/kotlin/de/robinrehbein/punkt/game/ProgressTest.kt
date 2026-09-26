@@ -138,7 +138,7 @@ class ProgressTest {
             }
             geprueft++
         }
-        assertEquals("alle Zahlen-Ziele geprüft", 43, geprueft)
+        assertEquals("alle Zahlen-Ziele geprüft", 48, geprueft)
     }
 
     @Test
@@ -178,7 +178,12 @@ class ProgressTest {
         // Ziel-Liste sagt genau das auch.
         listOf(
             Triple(SoundSetId.GLOCKE, GoalAxis.PERFECT_STREAK, 20),
-            Triple(SoundSetId.AMBOSS, GoalAxis.TOTAL_SCORE, 25_000)
+            Triple(SoundSetId.AMBOSS, GoalAxis.TOTAL_SCORE, 25_000),
+            Triple(SoundSetId.TROMMEL, GoalAxis.RUN_COUNT, 150),
+            Triple(SoundSetId.ORGEL, GoalAxis.DAILY_STREAK, 10),
+            Triple(SoundSetId.PFEIFE, GoalAxis.BEST_SCORE, 90),
+            Triple(SoundSetId.LASER, GoalAxis.DAYS_PLAYED, 30),
+            Triple(SoundSetId.ROBOTER, GoalAxis.TOTAL_SCORE, 10_000)
         ).forEach { (id, axis, target) ->
             val ziel = Progress.goals(leer).first { it.sound == id }
             assertEquals(axis, ziel.axis)

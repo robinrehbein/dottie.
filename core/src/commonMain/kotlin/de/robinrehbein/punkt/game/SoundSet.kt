@@ -27,7 +27,7 @@ import kotlin.math.log2
  * in Unit-Tests prüfbar.
  */
 enum class SoundSetId {
-    KLASSIK, GLOCKE, AMBOSS
+    KLASSIK, GLOCKE, AMBOSS, TROMMEL, ORGEL, PFEIFE, LASER, ROBOTER
 }
 
 /**
@@ -319,6 +319,212 @@ object SoundBank {
         )
     )
 
+    /*
+     * Die fünf Sets nach Glocke und Amboss. Damit sich acht Sets bei
+     * jedem Ereignis um mindestens eine Quarte unterscheiden
+     * ([MIN_PITCH_RATIO]), hat jedes eine feste Spur im Tonumfang:
+     *
+     *   TROMMEL < AMBOSS < ORGEL < PFEIFE < KLASSIK < GLOCKE < LASER < ROBOTER
+     *
+     * Beim Aufschlag (THUD) und in der Kette (CHAIN) weicht die Spur ab,
+     * weil der Bestand dort zu dicht an Amboss oder Glocke liegt. Die
+     * Tonhöhe allein trägt den Charakter aber nicht: Jedes Set hat
+     * zusätzlich eine eigene Form (Rauschen, Länge, Gleitrichtung,
+     * Pulsbreite), die SoundSetTest festhält.
+     */
+
+    /**
+     * Der Fell-Anschlag der TROMMEL: kurz, mittellaut, schnell weg. Steht
+     * vor der Tabelle, weil ein object von oben nach unten initialisiert:
+     * weiter unten wäre er beim Aufbau der TROMMEL noch null.
+     */
+    private val fell = Noise(0.05f, 0.2f, 30f)
+
+    /**
+     * Trommel: ganz unten, jedes Ereignis mit Rauschen. Weiche Dreiecke
+     * geben dem Schlag den Kessel, das Rauschen das Fell. Kurz und
+     * trocken, damit schnelle Treffer wie ein Wirbel klingen.
+     */
+    private val TROMMEL = SoundSet(
+        mapOf(
+            SoundEvent.START to voice(dreieck(80f, 0.08f, 0.4f, 20f), noise = fell),
+            SoundEvent.HIT to voice(dreieck(150f, 0.06f, 0.42f, 24f), noise = fell),
+            SoundEvent.PERFECT to voice(
+                dreieck(247f, 0.05f, 0.38f, 22f),
+                dreieck(330f, 0.1f, 0.4f, 16f),
+                noise = fell
+            ),
+            SoundEvent.CHAIN to voice(
+                dreieck(196f, 0.04f, 0.36f, 26f),
+                dreieck(262f, 0.06f, 0.36f, 22f),
+                noise = fell
+            ),
+            // Der Wirbel: vier gleiche Schläge und ein tieferer Schluss.
+            SoundEvent.UNLOCK to voice(
+                dreieck(110f, 0.05f, 0.36f, 26f),
+                dreieck(110f, 0.05f, 0.36f, 26f),
+                dreieck(110f, 0.05f, 0.36f, 26f),
+                dreieck(165f, 0.2f, 0.42f, 10f),
+                noise = Noise(0.2f, 0.16f, 12f)
+            ),
+            SoundEvent.RECORD to voice(
+                dreieck(147f, 0.06f, 0.36f, 22f),
+                dreieck(147f, 0.06f, 0.36f, 22f),
+                dreieck(196f, 0.06f, 0.36f, 22f),
+                dreieck(220f, 0.3f, 0.42f, 8f),
+                noise = Noise(0.3f, 0.18f, 10f)
+            ),
+            SoundEvent.DEATH to voice(
+                glide(196f, 55f, 0.4f, 0.44f, 5f, Wave.DREIECK),
+                noise = Noise(0.25f, 0.34f, 10f)
+            ),
+            SoundEvent.THUD to voice(dreieck(55f, 0.14f, 0.55f, 12f), noise = fell)
+        )
+    )
+
+    /**
+     * Orgel: tief-mittlere Lage, volle Pulsbreite und kaum Abklingen.
+     * Die Töne stehen, statt zu verklingen. Das einzige Set, dessen
+     * Klänge man hält und nicht anschlägt.
+     */
+    private val ORGEL = SoundSet(
+        mapOf(
+            SoundEvent.START to voice(tone(175f, 0.2f, 0.2f, 3f)),
+            SoundEvent.HIT to voice(tone(294f, 0.14f, 0.24f, 4f)),
+            SoundEvent.PERFECT to voice(
+                tone(440f, 0.1f, 0.22f, 3f),
+                tone(587f, 0.24f, 0.24f, 2f)
+            ),
+            SoundEvent.CHAIN to voice(
+                tone(349f, 0.1f, 0.22f, 3f),
+                tone(440f, 0.14f, 0.22f, 3f)
+            ),
+            SoundEvent.UNLOCK to voice(
+                tone(196f, 0.14f, 0.2f, 2f),
+                tone(247f, 0.14f, 0.2f, 2f),
+                tone(294f, 0.14f, 0.2f, 2f),
+                tone(392f, 0.5f, 0.24f, 1.5f)
+            ),
+            SoundEvent.RECORD to voice(
+                tone(262f, 0.16f, 0.2f, 2f),
+                tone(330f, 0.16f, 0.2f, 2f),
+                tone(392f, 0.16f, 0.2f, 2f),
+                tone(523f, 0.6f, 0.24f, 1f)
+            ),
+            SoundEvent.DEATH to voice(glide(392f, 98f, 0.7f, 0.26f, 1.5f)),
+            SoundEvent.THUD to voice(tone(131f, 0.3f, 0.28f, 4f))
+        )
+    )
+
+    /**
+     * Pfeife: Jeder Ton gleitet nach oben wie eine Lotusflöte, weich als
+     * Dreieck. Nur der Tod gleitet lang nach unten: die Pfeife, der die
+     * Luft ausgeht.
+     */
+    private val PFEIFE = SoundSet(
+        mapOf(
+            SoundEvent.START to voice(glide(262f, 392f, 0.12f, 0.26f, 6f, Wave.DREIECK)),
+            SoundEvent.HIT to voice(glide(392f, 587f, 0.09f, 0.3f, 8f, Wave.DREIECK)),
+            SoundEvent.PERFECT to voice(
+                glide(587f, 784f, 0.07f, 0.28f, 6f, Wave.DREIECK),
+                glide(784f, 1175f, 0.14f, 0.3f, 5f, Wave.DREIECK)
+            ),
+            SoundEvent.CHAIN to voice(
+                glide(523f, 659f, 0.06f, 0.26f, 8f, Wave.DREIECK),
+                glide(659f, 880f, 0.08f, 0.26f, 7f, Wave.DREIECK)
+            ),
+            SoundEvent.UNLOCK to voice(
+                glide(262f, 523f, 0.14f, 0.26f, 4f, Wave.DREIECK),
+                glide(523f, 1047f, 0.28f, 0.3f, 3f, Wave.DREIECK)
+            ),
+            SoundEvent.RECORD to voice(
+                glide(392f, 523f, 0.1f, 0.26f, 5f, Wave.DREIECK),
+                glide(523f, 784f, 0.1f, 0.26f, 5f, Wave.DREIECK),
+                glide(784f, 1568f, 0.34f, 0.3f, 3f, Wave.DREIECK)
+            ),
+            SoundEvent.DEATH to voice(glide(523f, 131f, 0.6f, 0.3f, 2.5f, Wave.DREIECK)),
+            SoundEvent.THUD to voice(glide(175f, 110f, 0.12f, 0.34f, 10f, Wave.DREIECK))
+        )
+    )
+
+    /**
+     * Laser: hoch und abwärts. Jeder Ton ist ein kurzer Gleitton von oben
+     * nach unten, das „Piu“ aus Weltraum-Automaten. Der Tod bekommt als
+     * einziges Ereignis Rauschen: die Explosion.
+     */
+    private val LASER = SoundSet(
+        mapOf(
+            SoundEvent.START to voice(glide(1047f, 523f, 0.08f, 0.2f, 14f)),
+            SoundEvent.HIT to voice(glide(1319f, 440f, 0.07f, 0.24f, 16f)),
+            SoundEvent.PERFECT to voice(
+                glide(1760f, 880f, 0.06f, 0.22f, 14f),
+                glide(2093f, 784f, 0.12f, 0.24f, 10f)
+            ),
+            SoundEvent.CHAIN to voice(
+                glide(1175f, 587f, 0.05f, 0.22f, 18f),
+                glide(1568f, 659f, 0.07f, 0.22f, 16f)
+            ),
+            SoundEvent.UNLOCK to voice(
+                glide(1047f, 523f, 0.06f, 0.2f, 14f),
+                glide(1319f, 659f, 0.06f, 0.2f, 14f),
+                glide(1568f, 784f, 0.2f, 0.24f, 8f)
+            ),
+            SoundEvent.RECORD to voice(
+                glide(1319f, 659f, 0.07f, 0.2f, 12f),
+                glide(1568f, 784f, 0.07f, 0.2f, 12f),
+                glide(2093f, 523f, 0.3f, 0.24f, 6f)
+            ),
+            SoundEvent.DEATH to voice(
+                glide(1319f, 65f, 0.5f, 0.3f, 4f),
+                noise = Noise(0.3f, 0.34f, 8f)
+            ),
+            SoundEvent.THUD to voice(glide(294f, 73f, 0.12f, 0.4f, 12f))
+        )
+    )
+
+    /**
+     * Roboter: ganz oben, dünn und im Stakkato. Achtel-Pulsbreite (der
+     * nasalste Klang, den der Baukasten hat), sehr kurze Töne, schnelles
+     * Abklingen und dafür mehr Töne pro Ereignis als jedes andere Set.
+     * Leise gestimmt, weil hohe Blips sonst stechen.
+     */
+    private val ROBOTER = SoundSet(
+        mapOf(
+            SoundEvent.START to voice(
+                tone(1319f, 0.03f, 0.16f, 30f, duty = 0.125f),
+                tone(1760f, 0.03f, 0.16f, 30f, duty = 0.125f)
+            ),
+            SoundEvent.HIT to voice(tone(1760f, 0.035f, 0.18f, 32f, duty = 0.125f)),
+            SoundEvent.PERFECT to voice(
+                tone(2349f, 0.03f, 0.16f, 30f, duty = 0.125f),
+                tone(1760f, 0.03f, 0.16f, 30f, duty = 0.125f),
+                tone(2349f, 0.05f, 0.18f, 26f, duty = 0.125f)
+            ),
+            SoundEvent.CHAIN to voice(
+                tone(1976f, 0.03f, 0.16f, 32f, duty = 0.125f),
+                tone(1976f, 0.03f, 0.16f, 32f, duty = 0.125f)
+            ),
+            SoundEvent.UNLOCK to voice(
+                tone(1319f, 0.03f, 0.16f, 28f, duty = 0.125f),
+                tone(1568f, 0.03f, 0.16f, 28f, duty = 0.125f),
+                tone(1760f, 0.03f, 0.16f, 28f, duty = 0.125f),
+                tone(2093f, 0.03f, 0.16f, 28f, duty = 0.125f),
+                tone(2349f, 0.08f, 0.18f, 20f, duty = 0.125f)
+            ),
+            SoundEvent.RECORD to voice(
+                tone(1760f, 0.03f, 0.16f, 28f, duty = 0.125f),
+                tone(2093f, 0.03f, 0.16f, 28f, duty = 0.125f),
+                tone(1760f, 0.03f, 0.16f, 28f, duty = 0.125f),
+                tone(2093f, 0.03f, 0.16f, 28f, duty = 0.125f),
+                tone(2349f, 0.12f, 0.18f, 16f, duty = 0.125f)
+            ),
+            // Abschalten: ein schneller Gleitton nach unten, wie ein
+            // Roboter, dem der Strom ausgeht.
+            SoundEvent.DEATH to voice(glide(1760f, 220f, 0.35f, 0.2f, 6f)),
+            SoundEvent.THUD to voice(tone(392f, 0.04f, 0.24f, 30f, duty = 0.125f))
+        )
+    )
+
     /** Das komplette Set. */
     /** Alle Ton-Sets in Sammlungs-Reihenfolge (siehe [SkinPaint.ORDER]). */
     val ORDER: List<SoundSetId> = SoundSetId.entries.toList()
@@ -330,6 +536,11 @@ object SoundBank {
         SoundSetId.KLASSIK -> KLASSIK
         SoundSetId.GLOCKE -> GLOCKE
         SoundSetId.AMBOSS -> AMBOSS
+        SoundSetId.TROMMEL -> TROMMEL
+        SoundSetId.ORGEL -> ORGEL
+        SoundSetId.PFEIFE -> PFEIFE
+        SoundSetId.LASER -> LASER
+        SoundSetId.ROBOTER -> ROBOTER
     }
 
     /** Der Klang eines Ereignisses — der Weg, den alle Ports gehen. */
@@ -363,11 +574,22 @@ object SoundBank {
      * längste Serien-Wert im Spiel), der Amboss an der Ausdauer (25.000
      * Punkte insgesamt, das Zweieinhalbfache der MEER-Schwelle). Wer nur
      * eines von beidem betreibt, bekommt genau ein neues Set.
+     *
+     * Die fünf späteren Sets verteilen sich auf die übrigen Achsen:
+     * Trommel an 150 Läufen, Orgel an einer Daily-Serie von 10, Pfeife an
+     * Rekord 90, Laser an 30 Spieltagen, Roboter an 10.000 Punkten
+     * insgesamt. Keine dieser Zahlen trägt schon einen Skin oder eine
+     * Welt.
      */
     fun isUnlocked(id: SoundSetId, stats: SkinStats): Boolean = when (id) {
         SoundSetId.KLASSIK -> true
         SoundSetId.GLOCKE -> stats.bestPerfectStreak >= 20
         SoundSetId.AMBOSS -> stats.totalScore >= 25_000
+        SoundSetId.TROMMEL -> stats.runCount >= 150
+        SoundSetId.ORGEL -> stats.bestDailyStreak >= 10
+        SoundSetId.PFEIFE -> stats.bestScore >= 90
+        SoundSetId.LASER -> stats.daysPlayed >= 30
+        SoundSetId.ROBOTER -> stats.totalScore >= 10_000
     }
 
     /** Wie viele Ton-Sets offen sind — reine Leistungsanzeige. */
