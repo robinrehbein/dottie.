@@ -2,11 +2,16 @@ package de.robinrehbein.punkt.ui.world
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.dp
+import de.robinrehbein.punkt.game.BackdropKind
+import de.robinrehbein.punkt.game.DayCycle
 import de.robinrehbein.punkt.game.DeathCause
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.Ground
@@ -91,30 +96,68 @@ fun DrawScope.drawTimingWorld(
 
     translate(shake.x, shake.y) {
         // Himmel färbt sich mit jeder 5er-Stufe weiter Richtung Nacht —
-        // welche sieben Töne das sind, sagt die Kulisse.
-        val sky = Color(kulisse.sky[SkinPaint.skyStage(game.score)])
+        // welche sieben Töne das sind, sagt die Kulisse. Alles andere in
+        // der Welt folgt dem Himmel über DayCycle: Dunst, Wolkentönung,
+        // Sonne und Mond, Sterne, Lichter und der Schleier der Nacht.
+        val stage = SkinPaint.skyStage(game.score)
+        val night = DayCycle.night(stage)
+        val time = game.elapsed
+        val sky = Color(kulisse.sky[stage])
         drawRect(color = sky, topLeft = Offset(-40f, -40f), size = Size(w + 80f, h + 80f))
 
-        // Hinter allem: Gebirge (BERG) oder Sternenhimmel (WELTRAUM).
-        drawBackdrop(kulisse.backdrop, game.elapsed, cell)
+        val ring = ringGeometry(size)
+        val frame = worldFrame(time, cell, night, ring, ScenePaint.groundY(h), sky)
 
-        // Langsam driftende Wolken. Im Vakuum gibt es keine — dann bleibt
-        // der Himmel leer, statt graue Attrappen zu zeigen.
-        kulisse.cloud?.let { cloud ->
-            val drift = game.elapsed * h * 0.01f
-            drawCloud(w * 0.1f - drift % (w * 1.4f), h * 0.16f, cell, Color(cloud))
-            drawCloud(w * 0.75f - drift % (w * 1.4f), h * 0.24f, cell, Color(cloud))
+        // Im WELTRAUM stehen eigene Sterne und keine Sonne.
+        if (kulisse.backdrop?.kind != BackdropKind.STERNENHIMMEL) {
+            drawNightStars(night, time, cell)
+            drawSkyBody(stage, sky, time, cell)
         }
+        // Hinter allem: die ferne Ebene der Welt, im Dunst der Stufe.
+        drawBackdrop(kulisse.backdrop, DayCycle.backdrop(scene, stage), time, cell, night)
+        drawLife(kulisse.life, LifeLayer.HORIZONT, frame)
 
-        drawScenery(game, cell, kulisse.props)
+        // Wolken, im Vakuum keine — dann bleibt der Himmel leer, statt
+        // graue Attrappen zu zeigen.
+        DayCycle.cloud(scene, stage)?.let { cloud ->
+            drawClouds(
+                Color(cloud), time, cell, top = maxOf(frame.skyTop - h * 0.02f, 0f), bottom = frame.skyBottom,
+                light = Color(DayCycle.cloudLight(scene, stage))
+            )
+        }
+        drawLife(kulisse.life, LifeLayer.HIMMEL, frame)
+
+        // Vordergrund: Requisiten, Boden und was darauf unterwegs ist.
+        // Nachts liegt ein Schleier darüber — als Farbfilter auf einer
+        // Ebene, damit nur Gezeichnetes dunkler wird und nicht der Himmel
+        // zwischen den Bäumen. Am Tag (Schleier 0) gibt es keine Ebene.
+        val veil = DayCycle.veil(stage)
+        if (veil > 0f) {
+            val tint = Color(DayCycle.veilColor(scene, stage))
+            val mod = Color(
+                red = 1f - veil * (1f - tint.red),
+                green = 1f - veil * (1f - tint.green),
+                blue = 1f - veil * (1f - tint.blue)
+            )
+            drawContext.canvas.saveLayer(
+                androidx.compose.ui.geometry.Rect(-40f, frame.bandTop - h * 0.2f, w + 40f, h + 40f),
+                Paint().apply { colorFilter = ColorFilter.tint(mod, BlendMode.Modulate) }
+            )
+        }
+        drawScenery(game, cell, kulisse.props, night)
+        drawLife(kulisse.life, LifeLayer.VOR_BODEN, frame)
         kulisse.ground?.let { drawGroundStrip(cell, it) }
+        drawLife(kulisse.life, LifeLayer.BODEN, frame)
+        if (veil > 0f) drawContext.canvas.restore()
+        drawSceneryLights(game, cell, kulisse.props, night)
+        drawLife(kulisse.life, LifeLayer.LICHT, frame)
 
         // Kreisbahn mit Zielzone, ggf. Fallen-Zone und Punkt. Worauf
         // getippt wird, sieht überall gleich aus — sonst wäre die Kulisse
         // ein Vorteil: Zone, Kern und Minen bleiben in jeder Welt dieselben.
         // Die Kulisse wechselt nur das Material der normalen Blöcke und ein
         // Motiv von ein paar Pixeln auf der Zone (ScenePaint.track).
-        val (cx, cy, radius) = ringGeometry(size)
+        val (cx, cy, radius) = ring
         drawTrack(game, cx, cy, radius, cell, scene)
         // == AP-22 start ==
         drawStartCoach(game, fx, cx, cy, radius, cell)
@@ -153,17 +196,49 @@ fun DrawScope.drawTimingWorld(
  * hat. Der Akzent (Blütenfarbe, Fensterfarbe) wechselt eine Ebene
  * langsamer, also erst mit der nächsten Wiederholung.
  */
-internal fun DrawScope.drawScenery(game: TimingGame, cell: Float, props: List<Prop>) {
-    val h = size.height
-    val w = size.width
-    // Basis knapp unter der Grasnarben-Oberkante — der Boden-Streifen
-    // wird danach gezeichnet und verdeckt die Wurzeln sauber.
-    val groundY = ScenePaint.groundY(h) + cell * 2f
+internal fun DrawScope.drawScenery(game: TimingGame, cell: Float, props: List<Prop>, night: Float = 0f) {
+    val groundY = ScenePaint.groundY(size.height) + cell * 2f
+    forEachProp(game.elapsed, cell, props) { k, prop, x, wind, accent ->
+        drawProp(prop, x, groundY, size.height * prop.size, wind * prop.sway, cell, accent, night, k)
+    }
+}
 
+/**
+ * Was an den Requisiten leuchtet, nach dem Nachtschleier gezeichnet: der
+ * Lichtschein der Laternen und die hellen Fenster der Hochhäuser. Am Tag
+ * leuchtet nichts, und die Funktion tut nichts.
+ */
+internal fun DrawScope.drawSceneryLights(game: TimingGame, cell: Float, props: List<Prop>, night: Float) {
+    if (night <= 0.25f) return
+    val a = ((night - 0.25f) / 0.5f).coerceIn(0f, 1f)
+    val groundY = ScenePaint.groundY(size.height) + cell * 2f
+    forEachProp(game.elapsed, cell, props) { k, prop, x, _, accent ->
+        val s = size.height * prop.size
+        when (prop.shape) {
+            PropShape.LATERNE -> drawLanternGlow(x, groundY, s, cell, accent, a)
+            PropShape.HOCHHAUS -> drawTowerWindows(x, groundY, s, accent, night, k, game.elapsed)
+            else -> Unit
+        }
+    }
+}
+
+/**
+ * Läuft die Plätze der Requisiten ab: Die Szenerie driftet wie die Wolken
+ * nach links — nur schneller, weil sie näher am Betrachter ist
+ * (Parallaxe) — und wickelt rechts wieder ein. [block] bekommt Platz,
+ * Requisite, Mitte (auf ganzen Pixeln, damit sie ohne Kantenflimmern
+ * gleitet), Windausschlag und Akzentfarbe.
+ */
+private inline fun DrawScope.forEachProp(
+    time: Float,
+    cell: Float,
+    props: List<Prop>,
+    block: (k: Int, prop: Prop, x: Float, wind: Float, accent: Color) -> Unit
+) {
     // Im WELTRAUM treibt vor den Sternen nichts.
     if (props.isEmpty()) return
-
-    val drift = game.elapsed * h * 0.016f
+    val w = size.width
+    val drift = time * size.height * 0.016f
     // Locker gestellt: zwei, höchstens drei Requisiten zugleich im Bild.
     // Die Abstände schwanken je Platz etwas, damit die Reihe nicht wie
     // gestempelt aussieht. Die Anzahl ist ein Vielfaches der Liste, sonst
@@ -175,14 +250,14 @@ internal fun DrawScope.drawScenery(game: TimingGame, cell: Float, props: List<Pr
     for (k in 0 until count) {
         val jitter = PROP_JITTER[k % PROP_JITTER.size] * spacing
         val x = ((k * spacing + jitter - drift) % total + total) % total - spacing
-        val wind = sin(game.elapsed * 1.4f + k * 1.7f) * cell * 0.6f
+        val wind = sin(time * 1.4f + k * 1.7f) * cell * 0.6f
         val prop = props[k % props.size]
         val accent = if (prop.accents.isEmpty()) {
             Color.Transparent
         } else {
             Color(prop.accents[(k / props.size) % prop.accents.size])
         }
-        drawProp(prop, x, groundY, h * prop.size, wind * prop.sway, cell, accent)
+        block(k, prop, x.roundToInt().toFloat(), wind, accent)
     }
 }
 
@@ -200,7 +275,9 @@ internal fun DrawScope.drawProp(
     s: Float,
     sway: Float,
     cell: Float,
-    accent: Color
+    accent: Color,
+    night: Float = 0f,
+    slot: Int = 0
 ) {
     val dark = Color(prop.dark)
     val body = Color(prop.body)
@@ -215,7 +292,7 @@ internal fun DrawScope.drawProp(
         PropShape.WELLE -> drawBreaker(prop, cx, groundY, cell)
         PropShape.NADELBAUM ->
             drawPixelFir(cx, groundY, s, sway, cell, dark, body, light, stem, stemShade, accent)
-        PropShape.HOCHHAUS -> drawPixelTower(cx, groundY, s, cell, dark, body, light, accent)
+        PropShape.HOCHHAUS -> drawPixelTower(cx, groundY, s, cell, dark, body, light, accent, night, slot)
         // Der Fels ist ein Findling aus PropSprites, keine Kastentabelle
         // mehr. ScenePaint.ROCK_PARTS bleibt für den Paritäts-Vertrag
         // (ParityVectors) bestehen; gezeichnet wird er nirgends mehr —
@@ -301,6 +378,11 @@ internal fun DrawScope.drawPixelTree(
             size = Size(lw + cell * 2f, lh + cell * 2f)
         )
         bevelRect(color, Offset(lx - lw / 2f, layerTop), Size(lw, lh), cell)
+        // Laub: zwei helle Tupfer je Lage, gegeneinander versetzt, damit
+        // die Krone nicht wie drei glatte Kästen aussieht.
+        val leaf = Color(BevelPaint.light(color.toArgbLong()))
+        drawRect(leaf, Offset(lx - lw * 0.3f, layerTop + lh * 0.4f), Size(cell * 2f, cell))
+        drawRect(leaf, Offset(lx + lw * (0.05f + 0.08f * i), layerTop + lh * 0.62f - cell), Size(cell, cell))
     }
 }
 
@@ -467,6 +549,17 @@ internal fun DrawScope.drawPixelCactus(
         topLeft = Offset(cx - stemW / 2f, groundY - stemH),
         size = Size(stemW * 0.26f, stemH * 0.92f)
     )
+    // Stacheln: einzelne helle Zellen, die links und rechts versetzt aus
+    // der Kontur ragen.
+    val spine = Color(BevelPaint.light(light.toArgbLong()))
+    var sy = groundY - stemH + cell * 3f
+    var left = true
+    while (sy < groundY - cell * 4f) {
+        val sx = if (left) cx - stemW / 2f - cell * 2f else cx + stemW / 2f + cell
+        drawRect(spine, Offset(sx, sy), Size(cell, cell))
+        sy += cell * 3f
+        left = !left
+    }
 
     val fw = s * 0.26f
     drawRect(
@@ -491,7 +584,9 @@ internal fun DrawScope.drawPixelCactus(
  */
 internal fun DrawScope.drawBoulder(prop: Prop, cx: Float, groundY: Float, cell: Float) {
     val base = groundY - cell * 2f
-    val x = floor((cx - 8 * cell) / cell) * cell
+    // Ursprung auf ganzen Bildpixeln, nicht auf ganzen Zellen: Die Maske
+    // bleibt in sich pixelgenau und gleitet trotzdem stufenlos mit.
+    val x = (cx - 8 * cell).roundToInt().toFloat()
     propSprite(x, base - PropSprites.BOULDER.size * cell, cell, PropSprites.BOULDER, prop)
     propSprite(x + 14 * cell, base - PropSprites.PEBBLE.size * cell, cell, PropSprites.PEBBLE, prop)
 }
@@ -503,7 +598,7 @@ internal fun DrawScope.drawBoulder(prop: Prop, cx: Float, groundY: Float, cell: 
  */
 internal fun DrawScope.drawBreaker(prop: Prop, cx: Float, groundY: Float, cell: Float) {
     val base = groundY - cell * 2f
-    val x = floor((cx - 9 * cell) / cell) * cell
+    val x = (cx - 9 * cell).roundToInt().toFloat()
     propSprite(x, base - (PropSprites.BREAKER.size + 2) * cell, cell, PropSprites.BREAKER, prop)
 }
 
@@ -601,6 +696,12 @@ internal fun DrawScope.drawPixelFir(
  * Hochhaus: ein Block mit Schattenseite, heller Dachkante und einem
  * Fensterraster. Ohne Wind — ein wankendes Haus wäre ein Witz, den das
  * Spiel an dieser Stelle nicht macht.
+ *
+ * Auf dem Dach steht abwechselnd ein Aufbau oder eine Antenne ([slot]).
+ * Am Tag spiegeln die Fenster den Himmel (die helle Fassadenfarbe mit
+ * einem Glanzstrich); ab der Dämmerung sind sie dunkel, und
+ * [drawTowerWindows] schaltet nach dem Nachtschleier die an, hinter
+ * denen jemand wohnt.
  */
 internal fun DrawScope.drawPixelTower(
     cx: Float,
@@ -610,34 +711,122 @@ internal fun DrawScope.drawPixelTower(
     dark: Color,
     body: Color,
     light: Color,
-    window: Color
+    window: Color,
+    night: Float = 0f,
+    slot: Int = 0
 ) {
     val w = s * 0.9f
     val hgt = s * 2.4f
+    val roof = groundY - hgt
+    // Dachaufbau oder Antenne, hinter der Kontur des Hauses.
+    if (slot % 2 == 0) {
+        val ax = cx + w * 0.22f
+        drawRect(OutlineColor, Offset(ax - cell, roof - s * 0.42f - cell), Size(cell * 3f, s * 0.42f + cell))
+        drawRect(light, Offset(ax, roof - s * 0.42f), Size(cell, s * 0.42f))
+    } else {
+        val bw = w * 0.34f
+        val bx = cx - w * 0.36f
+        drawRect(OutlineColor, Offset(bx - cell, roof - s * 0.16f - cell), Size(bw + cell * 2f, s * 0.16f + cell))
+        bevelRect(dark, Offset(bx, roof - s * 0.16f), Size(bw, s * 0.16f), cell)
+    }
     drawRect(
         color = OutlineColor,
-        topLeft = Offset(cx - w / 2f - cell, groundY - hgt - cell),
+        topLeft = Offset(cx - w / 2f - cell, roof - cell),
         size = Size(w + cell * 2f, hgt + cell)
     )
-    bevelRect(body, Offset(cx - w / 2f, groundY - hgt), Size(w, hgt), cell)
-    drawRect(color = dark, topLeft = Offset(cx, groundY - hgt), size = Size(w / 2f, hgt))
-    drawRect(color = light, topLeft = Offset(cx - w / 2f, groundY - hgt), size = Size(w, s * 0.16f))
+    bevelRect(body, Offset(cx - w / 2f, roof), Size(w, hgt), cell)
+    drawRect(color = dark, topLeft = Offset(cx, roof), size = Size(w / 2f, hgt))
+    drawRect(color = light, topLeft = Offset(cx - w / 2f, roof), size = Size(w, s * 0.16f))
 
     // Fensterraster: jedes dritte Fenster bleibt dunkel, sonst sähe die
     // Fassade aus wie ein Schachbrett aus Licht.
+    val evening = night > 0.25f
+    val shine = Color.White
+    forEachTowerWindow(cx, groundY, s) { r, c, fx, fy, uw, uh ->
+        val off = (r + c) % 3 == 0
+        drawRect(
+            color = if (off || evening) dark else light,
+            topLeft = Offset(fx, fy),
+            size = Size(uw, uh)
+        )
+        // Tagsüber ein Glanzstrich oben links: Glas, keine Fläche.
+        if (!off && !evening) {
+            drawRect(shine, Offset(fx, fy), Size(uw, cell), alpha = 0.45f)
+            drawRect(window, Offset(fx, fy + uh - cell), Size(uw, cell), alpha = 0.6f)
+        }
+    }
+}
+
+/**
+ * Die Fenster eines Hochhauses bei Nacht: Ein Teil brennt ([litShare]),
+ * welche, wechselt einzeln alle paar Sekunden — mal geht hier eins aus,
+ * mal dort eins an. Auf der Antenne blinkt ein rotes Licht.
+ */
+internal fun DrawScope.drawTowerWindows(
+    cx: Float,
+    groundY: Float,
+    s: Float,
+    window: Color,
+    night: Float,
+    slot: Int,
+    time: Float
+) {
+    val share = litShare(night) * 1.3f
+    forEachTowerWindow(cx, groundY, s) { r, c, fx, fy, uw, uh ->
+        val id = slot * 97 + r * 13 + c * 5
+        val epoch = floor(time / 9f + worldHash(id + 4001)).toInt()
+        if (worldHash(id * 31 + epoch) < share) {
+            drawRect(window, Offset(fx, fy), Size(uw, uh))
+        }
+    }
+    if (slot % 2 == 0 && sin(time * 2.6f + slot) > 0.4f) {
+        val w = s * 0.9f
+        val cell = floor(size.height / 220f).coerceAtLeast(2f)
+        val ax = cx + w * 0.22f
+        val ay = groundY - s * 2.4f - s * 0.42f - cell
+        drawRect(RecordRed, Offset(ax, ay), Size(cell, cell))
+        drawRect(RecordRed, Offset(ax - cell, ay - cell), Size(cell * 3f, cell * 3f), alpha = 0.3f)
+    }
+}
+
+/** Das Fensterraster eines Hochhauses — eine Stelle für Tag und Nacht. */
+private inline fun forEachTowerWindow(
+    cx: Float,
+    groundY: Float,
+    s: Float,
+    block: (r: Int, c: Int, fx: Float, fy: Float, uw: Float, uh: Float) -> Unit
+) {
+    val w = s * 0.9f
+    val hgt = s * 2.4f
     val uw = w * 0.22f
     val uh = s * 0.16f
     for (r in 0 until 5) {
         val fy = groundY - hgt + s * 0.34f + r * s * 0.36f
         if (fy + uh > groundY - s * 0.1f) break
         for (c in 0 until 2) {
-            val fx = cx - w * 0.30f + c * w * 0.34f
-            drawRect(
-                color = if ((r + c) % 3 == 0) dark else window,
-                topLeft = Offset(fx, fy),
-                size = Size(uw, uh)
-            )
+            block(r, c, cx - w * 0.30f + c * w * 0.34f, fy, uw, uh)
         }
+    }
+}
+
+/**
+ * Das Licht einer Laterne bei Nacht: Das Glas leuchtet über dem Schleier,
+ * darunter fällt ein Lichtkegel in harten Stufen auf die Straße — Blöcke
+ * wie alles im Spiel, kein weicher Verlauf.
+ */
+private fun DrawScope.drawLanternGlow(cx: Float, groundY: Float, s: Float, cell: Float, glass: Color, a: Float) {
+    val glassTop = groundY - 3.50f * s
+    val glassH = 0.62f * s
+    drawRect(glass, Offset(cx - 0.36f * s, glassTop), Size(0.72f * s, glassH), alpha = a)
+    drawRect(OutlineColor, Offset(cx - 0.19f * s, glassTop), Size(0.09f * s, glassH), alpha = a)
+    drawRect(OutlineColor, Offset(cx + 0.10f * s, glassTop), Size(0.09f * s, glassH), alpha = a)
+    drawRect(glass, Offset(cx - 0.7f * s, glassTop - cell), Size(1.4f * s, glassH + cell * 2f), alpha = a * 0.22f)
+    // Kegel: vier Stufen, jede breiter, bis auf den Boden.
+    val coneTop = groundY - 2.76f * s
+    val step = (groundY - cell * 2f - coneTop) / 4f
+    for (k in 0 until 4) {
+        val half = s * (0.5f + k * 0.35f)
+        drawRect(glass, Offset(cx - half, coneTop + k * step), Size(half * 2f, groundY - cell * 2f - coneTop - k * step), alpha = a * 0.07f)
     }
 }
 
