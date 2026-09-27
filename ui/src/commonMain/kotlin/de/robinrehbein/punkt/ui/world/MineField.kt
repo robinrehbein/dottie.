@@ -33,7 +33,7 @@ import kotlin.math.sqrt
 internal const val TRAP_BOOM_SECONDS = 0.45f
 
 /** Zahl der Funken der Explosion. */
-internal const val TRAP_BOOM_SPARKS = 12
+internal const val TRAP_BOOM_SPARKS = 20
 
 /**
  * Pixelmaß einer Mine: ein Sprite-Pixel ist 0,6 Bahnzellen breit, ganzzahlig
@@ -417,7 +417,7 @@ internal fun trapMines(
 }
 
 /**
- * Die Explosion beim Hineintippen in die Falle: 12 Pixel-Funken, erst
+ * Die Explosion beim Hineintippen in die Falle: 20 Pixel-Funken, erst
  * gelb/orange, dann rot/grau, über [TRAP_BOOM_SECONDS], dazu ein kleiner
  * heller Kern, der schrumpft.
  *
