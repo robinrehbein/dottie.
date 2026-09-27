@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import de.robinrehbein.punkt.game.Backdrop
 import de.robinrehbein.punkt.game.BackdropKind
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.Ground
 import de.robinrehbein.punkt.game.Scene
 import kotlin.math.floor
@@ -39,6 +40,12 @@ import kotlin.math.sin
  *   gut 500 Zeilen Zeichencode je Form; auf dem Rand der Uhr blieben
  *   davon ein paar Pixel übrig. Die Welt erkennt man hier an Himmel,
  *   Boden, Wolken, Gebirge und Sternen.
+ * - **Bevel nur, wo Platz ist.** Die Wolken bekommen wie am Telefon eine
+ *   weiße Oberkante und eine kühlere Unterkante, der Boden eine helle
+ *   Oberkante auf der Narbe (docs/bevel-look.md, Abschnitt 0 Punkte 8
+ *   und 12). Die Bodenmuster der Welten (Dünen, Wellen, Felsmauer,
+ *   Bordstein) bleiben dem Telefon vorbehalten — keine neuen Formen auf
+ *   dem schmalen Rand. Gebirge und Sterne bleiben unberührt.
  */
 
 /**
@@ -98,18 +105,36 @@ internal fun DrawScope.drawWearScenery(
     scene.ground?.let { drawWearGround(it, groundTop, cell) }
 }
 
-/** Eine Pixel-Wolke, dieselbe Form wie drawCloud am Telefon. */
+/**
+ * Eine Pixel-Wolke, dieselbe Form wie drawCloud am Telefon — und
+ * dieselbe Kante: Unterkante und rechter Rand in [BevelPaint.cloudShade],
+ * darüber die Oberkanten der drei Stufen und der linke Rand in Weiß.
+ * Ohne Outline, wie bisher; eine Kontur machte aus der Wolke einen Stein.
+ */
 private fun DrawScope.drawWearCloud(x: Float, y: Float, cell: Float, color: Color) {
     val u = cell
     drawRect(color = color, topLeft = Offset(x, y + u * 2), size = Size(u * 14, u * 3))
     drawRect(color = color, topLeft = Offset(x + u * 2, y), size = Size(u * 7, u * 2))
     drawRect(color = color, topLeft = Offset(x + u * 4, y - u * 1.5f), size = Size(u * 4, u * 1.5f))
+    val shade = Color(BevelPaint.cloudShade(color.toArgbLong()))
+    drawRect(color = shade, topLeft = Offset(x, y + u * 5 - cell), size = Size(u * 14, cell))
+    drawRect(color = shade, topLeft = Offset(x + u * 14 - cell, y + u * 2), size = Size(cell, u * 3))
+    drawRect(color = Color.White, topLeft = Offset(x, y + u * 2), size = Size(u * 2, cell))
+    drawRect(color = Color.White, topLeft = Offset(x + u * 2, y), size = Size(u * 2, cell))
+    drawRect(color = Color.White, topLeft = Offset(x + u * 4, y - u * 1.5f), size = Size(u * 4, cell))
+    drawRect(color = Color.White, topLeft = Offset(x, y + u * 2), size = Size(cell, u * 3 - cell))
 }
 
 /**
  * Der Bodenstreifen wie drawGroundStrip am Telefon: Fläche mit dunklerem
  * Band, darüber die Grasnarbe mit hellen Zähnen und eine Konturlinie —
  * nur eben ab [top] statt ab der Telefon-Bodenkante.
+ *
+ * Die oberste Zeile der Narbe ist die helle Kante aus
+ * [BevelPaint.light], je über dem Zahn oder der Lücke darunter: Licht
+ * von oben, wie auf den Blöcken. Mehr Bevel gibt es hier nicht — die
+ * Narbe ist drei Zellen hoch, eine dunkle Unterkante ließe von der
+ * Grasfarbe nur eine Zeile übrig.
  */
 private fun DrawScope.drawWearGround(ground: Ground, top: Float, cell: Float) {
     val w = size.width
@@ -119,9 +144,13 @@ private fun DrawScope.drawWearGround(ground: Ground, top: Float, cell: Float) {
     drawRect(color = Color(ground.sandShade), topLeft = Offset(0f, top + cell * 6), size = Size(w, cell * 2))
     drawRect(color = Color(ground.turfDark), topLeft = Offset(0f, top), size = Size(w, cell * 3))
     val tooth = cell * 3f
+    val turfLight = Color(ground.turfLight)
+    drawRect(color = Color(BevelPaint.light(ground.turfDark)), topLeft = Offset(0f, top), size = Size(w, cell))
+    val toothEdge = Color(BevelPaint.light(ground.turfLight))
     var x = 0f
     while (x < w) {
-        drawRect(color = Color(ground.turfLight), topLeft = Offset(x, top), size = Size(tooth, cell * 2))
+        drawRect(color = turfLight, topLeft = Offset(x, top), size = Size(tooth, cell * 2))
+        drawRect(color = toothEdge, topLeft = Offset(x, top), size = Size(tooth, cell))
         x += tooth * 2
     }
     drawRect(color = WearOutlineColor, topLeft = Offset(0f, top - cell), size = Size(w, cell))

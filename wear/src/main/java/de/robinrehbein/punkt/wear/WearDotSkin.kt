@@ -1,6 +1,7 @@
 package de.robinrehbein.punkt.wear
 
 import androidx.compose.ui.graphics.Color
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
@@ -94,6 +95,18 @@ internal enum class WearDotSkin(val id: SkinId) {
         Color(SkinPaint.cell(id, col, row, state))
 
     fun shineColor(state: SkinState = SkinState()): Color = Color(SkinPaint.shine(id, state))
+
+    /** Glanzfarbe als ARGB-Long, für [kugelCell]. Einmal je Bild holen, nicht je Feld. */
+    fun shineArgb(state: SkinState = SkinState()): Long = SkinPaint.shine(id, state)
+
+    /**
+     * Feldfarbe mit den Kugel-Stufen aus [BevelPaint.kugel]: Licht oben
+     * links zur Glanzfarbe [shine] hin, Schatten unten rechts, dunkle
+     * Musterzellen unberührt — derselbe Vogel wie am Telefon
+     * (docs/bevel-look.md, Abschnitt 4).
+     */
+    fun kugelCell(col: Int, row: Int, state: SkinState, shine: Long): Color =
+        Color(BevelPaint.kugel(col, row, SkinPaint.cell(id, col, row, state), shine))
 
     val hasTrail: Boolean get() = SkinPaint.hasTrail(id)
 
