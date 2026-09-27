@@ -19,6 +19,8 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -28,9 +30,16 @@ import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
+import de.robinrehbein.punkt.game.DeathCause
 import de.robinrehbein.punkt.game.GamePhase
+import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.SoundSetId
+import de.robinrehbein.punkt.game.Twist
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.TimingGame
+import kotlin.math.cos
+import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlinx.coroutines.isActive
 
 /** Rot fürs "neuer Rekord"-Feedback, wie RecordRed in ui/.../world/Palette.kt. */
@@ -44,20 +53,22 @@ private val WearCelebrateGold = Color(0xFFFFE95E)
 private const val BANNER_FADE_SECONDS = 0.4f
 
 /**
- * Abdunklung hinter dem Skin-Wähler. Nicht ganz deckend: Die Bahn dahinter
+ * Abdunklung hinter den Wählern. Nicht ganz deckend: Die Bahn dahinter
  * bleibt als Kontext sichtbar, die Namen bleiben trotzdem lesbar.
  */
 private val WearScrim = Color(0xF00E1018)
 
 /**
- * Wear-OS-Version von "STOPP": Classic- und Daily-Modus aus :core plus
- * freischaltbare Skins — kein Teilen, keine Notifications. Feedback über
- * Haptik plus dieselben Chiptune-Sounds wie am Phone (WearAudio). Rekord,
- * Daily-Stand und Skin-Wahl liegen lokal auf der Uhr, unabhängig vom
- * Telefon-Store.
+ * Wear-OS-Version von "STOPP": Classic- und Daily-Modus aus :core, alle
+ * Twists mit derselben Rückmeldung wie am Telefon (PERFEKT, BLIND, KETTE,
+ * Todesursache, Twist-Erklärung) und eine kleine Sammlung aus Vogel, Welt
+ * und Ton — kein Teilen, keine Notifications, keine Statistik-Seite.
+ * Feedback über Haptik plus dieselben Chiptune-Sounds wie am Phone
+ * (WearAudio). Stände und Wahl liegen lokal auf der Uhr und gleichen sich
+ * mit dem Telefon ab (StatsSync).
  *
  * `controller` lebt in MainActivity statt hier via remember{}, damit
- * onKeyDown (Hardware-Zusatztasten) und dieser Screen denselben Zustand
+ * onKeyDown (Hardware-Tasten) und dieser Screen denselben Zustand
  * und denselben tap()-Weg teilen.
  */
 @Composable
@@ -83,8 +94,13 @@ internal fun WearGameScreen(controller: WearGameController) {
                 .pointerInput(controller) {
                     // Ganzflächiger Tap-Handler: TimingGame regelt READY/
                     // RUNNING/OVER (inkl. RESTART_LOCK) selbst — hier reicht
-                    // es, den Tap einfach durchzureichen.
-                    detectTapGestures(onTap = { controller.tap() })
+                    // es, den Tap durchzureichen. Gezählt wird beim
+                    // AUFSETZEN des Fingers (onPress), wie am Telefon und
+                    // wie bei den Hardware-Tasten: onTap käme erst beim
+                    // Loslassen, also je nach Finger 50-150 ms zu spät.
+                    // Die Knöpfe der Overlays verbrauchen ihr Aufsetzen
+                    // selbst, dort startet also kein Lauf mit.
+                    detectTapGestures(onPress = { controller.tap() })
                 }
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -95,7 +111,8 @@ internal fun WearGameScreen(controller: WearGameController) {
                     hour = controller.clockHour,
                     month = controller.clockMonth,
                     scene = controller.scene,
-                    dotWobble = WearNotYet.wobble(controller.notYetTimeLeft)
+                    dotWobble = WearNotYet.wobble(controller.notYetTimeLeft),
+                    fx = controller.fx
                 )
             }
 
@@ -104,15 +121,15 @@ internal fun WearGameScreen(controller: WearGameController) {
                     notYet = controller.notYetTimeLeft > 0f,
                     bestScore = controller.bestScore,
                     soundOn = controller.soundOn,
-                    onToggleSound = { controller.toggleSound() },
                     dailyMode = controller.dailyMode,
                     dailyBestToday = controller.dailyBestToday,
                     dailyStreak = controller.dailyStreak,
                     onToggleMode = { controller.toggleDailyMode() },
                     skin = controller.skin,
+                    scene = controller.scene,
                     hour = controller.clockHour,
                     month = controller.clockMonth,
-                    onOpenSkins = { controller.openSkinPicker() }
+                    onOpen = { controller.openPicker(it) }
                 )
                 GamePhase.RUNNING, GamePhase.DYING ->
                     WearRunningOverlay(
@@ -121,13 +138,20 @@ internal fun WearGameScreen(controller: WearGameController) {
                         // Banner nur im Lauf — während der Todes-Animation
                         // gehört die Bühne dem fallenden Vogel.
                         recordBannerTimeLeft = if (controller.phase == GamePhase.RUNNING)
-                            controller.recordBannerTimeLeft else 0f
+                            controller.recordBannerTimeLeft else 0f,
+                        chainBannerTimeLeft = if (controller.phase == GamePhase.RUNNING)
+                            controller.chainBannerTimeLeft else 0f,
+                        perfectPoints = controller.perfectPoints,
+                        deathCause = if (controller.phase == GamePhase.DYING)
+                            controller.deathCause else DeathCause.NONE
                     )
                 GamePhase.OVER -> WearOverOverlay(
                     score = controller.score,
                     bestScore = controller.bestScore,
                     isNewRecord = controller.isNewRecord,
                     taunt = controller.taunt,
+                    deathCause = controller.deathCause,
+                    lesson = controller.lesson,
                     tapHintVisible = controller.phaseElapsed >= TimingGame.RESTART_LOCK_SECONDS,
                     dailyMode = controller.dailyMode,
                     dailyBestToday = controller.dailyBestToday,
@@ -136,56 +160,112 @@ internal fun WearGameScreen(controller: WearGameController) {
                 )
             }
 
+            // BLIND! +n am Ring, an der Stelle des Treffers ein Stück zur
+            // Mitte hin — wie BlindPop am Telefon.
+            if (controller.blindPoints > 0 && controller.phase == GamePhase.RUNNING) {
+                WearBlindPop(points = controller.blindPoints, angle = controller.blindAngle)
+            }
+
             // Der Wähler liegt über allem: Sein eigener Tap-Handler
             // schluckt den ganzflächigen Start-Tap der Parent-Box, damit
             // ein Griff daneben nicht mitten in der Auswahl einen Lauf
             // startet.
-            if (controller.skinPickerOpen) {
-                WearSkinPicker(
-                    skins = controller.unlockedSkins,
+            when (controller.picker) {
+                WearPickerKind.SKIN -> WearPickerList(
+                    header = stringResource(R.string.skins, controller.collectedSkins, SkinPaint.collectableCount()),
+                    entries = controller.unlockedSkins,
                     selected = controller.skin,
-                    collected = controller.collectedSkins,
-                    hour = controller.clockHour,
-                    month = controller.clockMonth,
-                    onPick = { controller.chooseSkin(it) },
-                    onClose = { controller.closeSkinPicker() }
-                )
+                    extraTop = 0,
+                    onClose = { controller.closePicker() }
+                ) { entry, isSelected ->
+                    WearPickerRow(
+                        label = entry.name,
+                        selected = isSelected,
+                        onPick = { controller.chooseSkin(entry) }
+                    ) { drawWearSkinCoin(entry, controller.clockHour, controller.clockMonth) }
+                }
+                WearPickerKind.SCENE -> WearPickerList(
+                    header = stringResource(R.string.worlds, controller.unlockedScenes.size, SceneId.entries.size),
+                    entries = controller.unlockedScenes,
+                    selected = controller.scene,
+                    extraTop = 0,
+                    onClose = { controller.closePicker() }
+                ) { entry, isSelected ->
+                    WearPickerRow(
+                        label = stringResource(sceneNameRes(entry)),
+                        selected = isSelected,
+                        onPick = { controller.chooseScene(entry) }
+                    ) { drawWearSceneCoin(entry) }
+                }
+                WearPickerKind.SOUND -> WearPickerList(
+                    header = stringResource(R.string.sounds, controller.unlockedSounds.size, SoundSetId.entries.size),
+                    entries = controller.unlockedSounds,
+                    selected = controller.soundSet,
+                    // Oben im Ton-Wähler steht der Schalter TON: AN/AUS —
+                    // er ist vom Startbildschirm hierher umgezogen, damit
+                    // dort Platz für Vogel, Welt und Ton nebeneinander ist.
+                    extraTop = 1,
+                    top = {
+                        Text(
+                            text = stringResource(if (controller.soundOn) R.string.sound_on else R.string.sound_off),
+                            color = WearDotBody,
+                            fontSize = 14.sp,
+                            fontFamily = WearBytesized,
+                            modifier = Modifier
+                                .pointerInput(Unit) {
+                                    detectTapGestures(onTap = { controller.toggleSound() })
+                                }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    },
+                    onClose = { controller.closePicker() }
+                ) { entry, isSelected ->
+                    WearPickerRow(
+                        label = stringResource(soundNameRes(entry)),
+                        selected = isSelected,
+                        onPick = { controller.chooseSound(entry) }
+                    ) { drawWearSoundBars(entry, if (isSelected) WearDotBody else Color.White) }
+                }
+                null -> Unit
             }
         }
     }
 }
 
 /**
- * Skin-Wähler: eine scrollbare Liste aller freigeschalteten Skins.
+ * Ein Wähler: scrollbare Liste der freigeschalteten Einträge unter einer
+ * Kopfzeile mit dem Sammlungsstand. Dieselbe Bedienung für Vogel, Welt
+ * und Ton:
  *
- * Warum keine Durchtipp-Münze mehr: Mit 42 Skins wäre "einen weiter je
- * Tap" im Schnitt ein Dutzend Taps für einen bestimmten Skin, und man
- * sähe dabei nie, was noch kommt. In der Liste ist jeder sichtbare Skin
- * genau einen Tap entfernt, und die Kopfzeile zeigt nebenbei den
- * Sammlungsstand.
+ * - Wischen scrollt, ein Tap auf eine Zeile wählt (Vogel und Welt
+ *   schließen dabei, Ton spielt die Hörprobe und bleibt offen).
+ * - Die Drehkrone/Lünette schiebt den Cursor Eintrag für Eintrag weiter
+ *   (MainActivity leitet sie dorthin um, solange ein Wähler offen ist).
+ * - Eine Multifunktionstaste oder ZURÜCK bestätigt und schließt, ein Tap
+ *   neben die Liste oder auf die letzte Zeile ebenso.
  *
- * Bedienbar bleibt sie auf jedem Weg: Wischen scrollt, die Drehkrone
- * schiebt den Cursor Skin für Skin weiter (MainActivity leitet sie
- * dorthin um, solange der Wähler offen ist — der Rotary-Tap wäre hier
- * sinnlos), und ein Tap neben der Liste oder auf die letzte Zeile
- * schließt. Der Cursor wählt sofort sichtbar aus; festgeschrieben wird
- * beim Schließen (siehe WearGameController).
+ * Der Cursor wählt sofort sichtbar aus; festgeschrieben (und ans Telefon
+ * gemeldet) wird beim Schließen, siehe WearGameController.closePicker.
+ *
+ * Warum eine Liste statt einer Durchtipp-Münze: Mit 46 Skins wäre „einen
+ * weiter je Tap“ im Schnitt ein Dutzend Taps für einen bestimmten, und
+ * man sähe dabei nie, was noch kommt.
  */
 @Composable
-private fun WearSkinPicker(
-    skins: List<WearDotSkin>,
-    selected: WearDotSkin,
-    collected: Int,
-    hour: Int,
-    month: Int,
-    onPick: (WearDotSkin) -> Unit,
-    onClose: () -> Unit
+private fun <T> WearPickerList(
+    header: String,
+    entries: List<T>,
+    selected: T,
+    extraTop: Int,
+    onClose: () -> Unit,
+    top: (@Composable () -> Unit)? = null,
+    row: @Composable (entry: T, selected: Boolean) -> Unit
 ) {
     val listState = rememberScalingLazyListState()
-    val cursor = skins.indexOf(selected).coerceAtLeast(0)
+    val cursor = entries.indexOf(selected).coerceAtLeast(0)
     // Die Liste zieht dem Cursor nach, damit die Auswahl bei Krone und
     // beim Öffnen nie außerhalb des Bildes steht (+1 für die Kopfzeile).
-    LaunchedEffect(cursor) { listState.animateScrollToItem(cursor + 1) }
+    LaunchedEffect(cursor) { listState.animateScrollToItem(cursor + 1 + extraTop) }
 
     Box(
         modifier = Modifier
@@ -198,25 +278,16 @@ private fun WearSkinPicker(
         ScalingLazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             item {
                 Text(
-                    text = stringResource(
-                        R.string.skins,
-                        collected,
-                        SkinPaint.collectableCount()
-                    ),
+                    text = header,
                     color = Color.White.copy(alpha = 0.55f),
                     fontSize = 13.sp,
                     fontFamily = WearBytesized
                 )
             }
-            items(skins.size) { index ->
-                val entry = skins[index]
-                WearSkinRow(
-                    skin = entry,
-                    selected = entry == selected,
-                    hour = hour,
-                    month = month,
-                    onPick = { onPick(entry) }
-                )
+            if (top != null) item { top() }
+            items(entries.size) { index ->
+                val entry = entries[index]
+                row(entry, entry == selected)
             }
             item {
                 Text(
@@ -236,18 +307,16 @@ private fun WearSkinPicker(
 }
 
 /**
- * Eine Zeile des Wählers: Vorschau-Münze plus Name. Der Name der
- * Aufzählung IST die Bezeichnung — die Uhr ist einsprachig (siehe
- * WearDotSkin). Der gewählte Skin steht in Gold, das reicht als Marke und
- * spart ein Häkchen-Symbol auf einer ohnehin schmalen Zeile.
+ * Eine Zeile eines Wählers: Vorschau plus Name. Der gewählte Eintrag
+ * steht in Gold, das reicht als Marke und spart ein Häkchen-Symbol auf
+ * einer ohnehin schmalen Zeile.
  */
 @Composable
-private fun WearSkinRow(
-    skin: WearDotSkin,
+private fun WearPickerRow(
+    label: String,
     selected: Boolean,
-    hour: Int,
-    month: Int,
-    onPick: () -> Unit
+    onPick: () -> Unit,
+    preview: DrawScope.() -> Unit
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -255,17 +324,15 @@ private fun WearSkinRow(
             .fillMaxWidth()
             // Tap-Fläche über die ganze Zeilenbreite inkl. Polster — auf
             // dem kleinen Display zählt jedes zusätzliche Pixel Ziel.
-            .pointerInput(skin) {
+            .pointerInput(label) {
                 detectTapGestures(onTap = { onPick() })
             }
             .padding(horizontal = 16.dp, vertical = 7.dp)
     ) {
-        Canvas(modifier = Modifier.size(18.dp)) {
-            drawWearSkinCoin(skin, hour, month)
-        }
+        Canvas(modifier = Modifier.size(18.dp)) { preview() }
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = skin.name,
+            text = label,
             color = if (selected) WearDotBody else Color.White,
             fontSize = 14.sp,
             fontFamily = WearBytesized
@@ -273,20 +340,100 @@ private fun WearSkinRow(
     }
 }
 
+/**
+ * BLIND! +n nach einem Treffer im Nebel: auf dem Strahl von der Mitte
+ * zum Trefferpunkt, innerhalb des Rings — wie blindPopAnchor am Telefon.
+ * Wolkenweiß mit Blaustich, damit es nicht mit dem gelben PERFEKT
+ * verwechselt wird.
+ */
+@Composable
+private fun WearBlindPop(points: Int, angle: Float) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+                val w = constraints.maxWidth
+                val h = constraints.maxHeight
+                // Etwas weiter außen als am Telefon (0,5): Auf der Uhr
+                // steht der Score groß in der Ringmitte.
+                val reach = minOf(w, h) * 0.38f * 0.62f
+                val x = w / 2f + cos(angle) * reach
+                val y = h / 2f + sin(angle) * reach
+                layout(w, h) {
+                    placeable.place(
+                        (x - placeable.width / 2f).roundToInt(),
+                        (y - placeable.height / 2f).roundToInt()
+                    )
+                }
+            }
+    ) {
+        Text(
+            text = stringResource(R.string.blind_plus, points),
+            color = WearBlindColor,
+            fontSize = 14.sp,
+            fontFamily = WearBytesized
+        )
+    }
+}
+
+/** Wolkenweiß mit Blaustich, wie BlindPopColor am Telefon. */
+private val WearBlindColor = Color(0xFFE8F2FF)
+
+/** Text zu einer Todesursache, oder null für NONE. */
+private fun deathCauseRes(cause: DeathCause): Int? = when (cause) {
+    DeathCause.NONE -> null
+    DeathCause.EARLY -> R.string.death_early
+    DeathCause.LATE -> R.string.death_late
+    DeathCause.MISSED -> R.string.death_missed
+    DeathCause.TRAP -> R.string.death_trap
+}
+
+/** Kurze Twist-Erklärung fürs Game-Over. */
+private fun lessonRes(twist: Twist): Int = when (twist) {
+    Twist.PULSE -> R.string.lesson_pulse
+    Twist.DRIFT -> R.string.lesson_drift
+    Twist.GHOST -> R.string.lesson_ghost
+    Twist.FAKE -> R.string.lesson_fake
+    Twist.CHAIN -> R.string.lesson_chain
+}
+
+/** Name einer Welt, wie am Telefon übersetzt. */
+private fun sceneNameRes(scene: SceneId): Int = when (scene) {
+    SceneId.WIESE -> R.string.scene_wiese
+    SceneId.WUESTE -> R.string.scene_wueste
+    SceneId.MEER -> R.string.scene_meer
+    SceneId.BERG -> R.string.scene_berg
+    SceneId.STADT -> R.string.scene_stadt
+    SceneId.WELTRAUM -> R.string.scene_weltraum
+}
+
+/** Name eines Ton-Sets, wie am Telefon übersetzt. */
+private fun soundNameRes(set: SoundSetId): Int = when (set) {
+    SoundSetId.KLASSIK -> R.string.sound_klassik
+    SoundSetId.GLOCKE -> R.string.sound_glocke
+    SoundSetId.AMBOSS -> R.string.sound_amboss
+    SoundSetId.TROMMEL -> R.string.sound_trommel
+    SoundSetId.ORGEL -> R.string.sound_orgel
+    SoundSetId.PFEIFE -> R.string.sound_pfeife
+    SoundSetId.LASER -> R.string.sound_laser
+    SoundSetId.ROBOTER -> R.string.sound_roboter
+}
+
 @Composable
 private fun WearReadyOverlay(
     notYet: Boolean,
     bestScore: Int,
     soundOn: Boolean,
-    onToggleSound: () -> Unit,
     dailyMode: Boolean,
     dailyBestToday: Int,
     dailyStreak: Int,
     onToggleMode: () -> Unit,
     skin: WearDotSkin,
+    scene: SceneId,
     hour: Int,
     month: Int,
-    onOpenSkins: () -> Unit
+    onOpen: (WearPickerKind) -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -355,39 +502,40 @@ private fun WearReadyOverlay(
             }
             Spacer(modifier = Modifier.height(6.dp))
             WearModeSwitch(dailyMode = dailyMode, onToggle = onToggleMode)
-            // Untere Zeile: Skin-Münze und Ton-Schalter nebeneinander, beide
-            // mit eigenem Tap-Handler: detectTapGestures konsumiert das
-            // Up-Event, dadurch feuert der ganzflächige Start-Tap der
-            // Parent-Box hier nicht mit. Das Padding liegt INNERHALB des
-            // pointerInput-Knotens und vergrößert so die Tap-Fläche.
-            // Die Vorschau-Münze zeigt den gewählten Skin und öffnet den
-            // Wähler — nicht der (in READY weiter kreisende) Vogel: ein
-            // bewegtes Ziel wäre auf dem kleinen Display kaum zu treffen.
+            // Untere Zeile: die kleine Sammlung — Vogel, Welt, Ton. Jeder
+            // Knopf hat einen eigenen Tap-Handler: detectTapGestures
+            // verbraucht das Aufsetzen, dadurch startet der ganzflächige
+            // Tap der Parent-Box hier nicht mit. Das Padding liegt
+            // INNERHALB des pointerInput-Knotens und vergrößert so die
+            // Tap-Fläche. Die Knöpfe zeigen die aktuelle Wahl — nicht der
+            // (in READY weiter kreisende) Vogel: Ein bewegtes Ziel wäre
+            // auf dem kleinen Display kaum zu treffen.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = { onOpenSkins() })
-                        }
-                        .padding(6.dp)
-                ) {
-                    Canvas(modifier = Modifier.size(16.dp)) {
-                        drawWearSkinCoin(skin, hour, month)
-                    }
+                WearIconButton(onTap = { onOpen(WearPickerKind.SKIN) }) {
+                    drawWearSkinCoin(skin, hour, month)
                 }
-                Text(
-                    text = stringResource(if (soundOn) R.string.sound_on else R.string.sound_off),
-                    color = Color.White.copy(alpha = 0.55f),
-                    fontSize = 13.sp,
-                    fontFamily = WearBytesized,
-                    modifier = Modifier
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = { onToggleSound() })
-                        }
-                        .padding(horizontal = 8.dp, vertical = 6.dp)
-                )
+                WearIconButton(onTap = { onOpen(WearPickerKind.SCENE) }) {
+                    drawWearSceneCoin(scene)
+                }
+                WearIconButton(onTap = { onOpen(WearPickerKind.SOUND) }) {
+                    drawWearSpeaker(muted = !soundOn, color = Color.White.copy(alpha = 0.8f))
+                }
             }
         }
+    }
+}
+
+/** Ein kleiner Symbol-Knopf der Startzeile: 16 dp Bild, 6 dp Tap-Polster ringsum. */
+@Composable
+private fun WearIconButton(onTap: () -> Unit, icon: DrawScope.() -> Unit) {
+    Box(
+        modifier = Modifier
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onTap() })
+            }
+            .padding(6.dp)
+    ) {
+        Canvas(modifier = Modifier.size(16.dp)) { icon() }
     }
 }
 
@@ -423,7 +571,14 @@ private fun WearModeSwitch(dailyMode: Boolean, onToggle: () -> Unit) {
 }
 
 @Composable
-private fun WearRunningOverlay(score: Int, daily: Boolean, recordBannerTimeLeft: Float) {
+private fun WearRunningOverlay(
+    score: Int,
+    daily: Boolean,
+    recordBannerTimeLeft: Float,
+    chainBannerTimeLeft: Float,
+    perfectPoints: Int,
+    deathCause: DeathCause
+) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -443,15 +598,43 @@ private fun WearRunningOverlay(score: Int, daily: Boolean, recordBannerTimeLeft:
                     fontFamily = WearBytesized
                 )
             }
+            // Feste Zeilenhöhe für PERFEKT bzw. die Todesursache, damit
+            // der Score nicht bei jedem Perfekt-Treffer hüpft. Am Telefon
+            // stehen beide unter dem Ring; auf der Uhr ist unter dem Ring
+            // kein Platz, dafür liegt der Blick ohnehin in der Mitte.
+            Box(modifier = Modifier.height(20.dp), contentAlignment = Alignment.Center) {
+                val cause = deathCauseRes(deathCause)
+                when {
+                    cause != null -> Text(
+                        text = stringResource(cause),
+                        color = WearBannerOrange,
+                        fontSize = 16.sp,
+                        fontFamily = WearBytesized
+                    )
+                    perfectPoints > 0 -> Text(
+                        text = stringResource(R.string.perfect_plus, perfectPoints),
+                        color = WearCelebrateGold,
+                        fontSize = 15.sp,
+                        fontFamily = WearBytesized
+                    )
+                }
+            }
         }
         // "REKORD GEKNACKT!" am oberen Rand, sobald der Lauf den alten
         // Bestwert überholt (Timer im Controller, wie die Live-Feier am
         // Phone) — blendet am Ende weich aus statt hart zu verschwinden.
-        if (recordBannerTimeLeft > 0f) {
+        // „NOCH EINE!“ (KETTE) steht an derselben Stelle; der Rekord hat
+        // Vorrang, wie am Telefon (Priorität 2 gegen 1).
+        val banner = when {
+            recordBannerTimeLeft > 0f -> R.string.banner_record to recordBannerTimeLeft
+            chainBannerTimeLeft > 0f -> R.string.banner_chain to chainBannerTimeLeft
+            else -> null
+        }
+        if (banner != null) {
             Text(
-                text = stringResource(R.string.banner_record),
+                text = stringResource(banner.first),
                 color = WearBannerOrange.copy(
-                    alpha = (recordBannerTimeLeft / BANNER_FADE_SECONDS).coerceAtMost(1f)
+                    alpha = (banner.second / BANNER_FADE_SECONDS).coerceAtMost(1f)
                 ),
                 fontSize = 14.sp,
                 fontFamily = WearBytesized,
@@ -469,6 +652,8 @@ private fun WearOverOverlay(
     bestScore: Int,
     isNewRecord: Boolean,
     taunt: String,
+    deathCause: DeathCause,
+    lesson: Twist?,
     tapHintVisible: Boolean,
     dailyMode: Boolean,
     dailyBestToday: Int,
@@ -483,6 +668,16 @@ private fun WearOverOverlay(
                 fontSize = 40.sp,
                 fontFamily = WearBytesized
             )
+            // Warum es vorbei ist, klein unter dem Score — wie am Telefon
+            // unter dem Titel des Game-Overs.
+            deathCauseRes(deathCause)?.let { cause ->
+                Text(
+                    text = stringResource(cause),
+                    color = WearBannerOrange,
+                    fontSize = 12.sp,
+                    fontFamily = WearBytesized
+                )
+            }
             // Medaillen-Zeile ab Bronze: Münze plus Stufen-Name in der
             // Medaillen-Farbe — klein unter dem Score, der bleibt der Star.
             WearMedalTier.forScore(score)?.let { tier ->
@@ -505,12 +700,21 @@ private fun WearOverOverlay(
                 fontSize = 18.sp,
                 fontFamily = WearBytesized
             )
-            // Bei neuem Rekord gewinnt die Feier, sonst der Spott — wie am
-            // Phone (GameOverOverlay), nur eine Nummer kleiner.
+            // Bei neuem Rekord gewinnt die Feier, danach die Erklärung
+            // eines neuen Twists (einmal je Twist, siehe WearLessons), sonst
+            // der Spott — eine Zeile, mehr trägt das runde Display nicht.
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = if (isNewRecord) stringResource(R.string.new_record) else taunt,
-                color = if (isNewRecord) WearCelebrateGold else Color.White.copy(alpha = 0.8f),
+                text = when {
+                    isNewRecord -> stringResource(R.string.new_record)
+                    lesson != null -> stringResource(lessonRes(lesson))
+                    else -> taunt
+                },
+                color = when {
+                    isNewRecord -> WearCelebrateGold
+                    lesson != null -> WearDotBody
+                    else -> Color.White.copy(alpha = 0.8f)
+                },
                 fontSize = 12.sp,
                 fontFamily = WearBytesized
             )

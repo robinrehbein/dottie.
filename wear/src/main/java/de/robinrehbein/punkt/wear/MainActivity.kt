@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import android.view.InputDevice
+import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.WindowManager
@@ -35,6 +36,9 @@ class MainActivity : ComponentActivity() {
 
     /** Zeitstempel (elapsedRealtime) des letzten Rotary-Taps, für die Entprellung. */
     private var lastRotaryTapMs = 0L
+
+    /** Taste, deren Drücken verbraucht wurde — ihr Loslassen gehört dann auch uns. */
+    private var consumedKey = KeyEvent.KEYCODE_UNKNOWN
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,58 +100,79 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Hardware-Zusatztasten lösen denselben Tap aus wie ein Touch aufs
-     * Display — praktisch, weil der Finger beim Timing sonst genau die
-     * Zielzone verdeckt.
+     * Hardware-Tasten lösen denselben Tap aus wie ein Finger aufs Display —
+     * über denselben Aufruf (controller.tap()) und im selben Moment: beim
+     * DRÜCKEN, wie der Touch-Tap (onPress in WearGameScreen). Praktisch,
+     * weil der Finger beim Timing sonst genau die Zielzone verdeckt. Was
+     * welche Taste tut, entscheidet [WearKeys]; hier wird nur ausgeführt.
      *
-     * Was welche Uhr liefert (Stand der Recherche, Wear OS 4/5):
-     *  - STEM_1..3 sind laut Google-Doku die einzigen Tasten-Keycodes, die
-     *    Dritt-Apps im Vordergrund bekommen dürfen (Pixel Watch: Krone ist
-     *    nur Rotary/Power; TicWatch u. a. liefern ihre freien
-     *    Multifunktionstasten als STEM_1/2/3).
-     *  - Samsung Galaxy Watch 4/5/6/7: Home- und Zurück-Taste sind
-     *    System-Keys — es kommt für sie NIE ein STEM-Event bei Dritt-Apps
-     *    an; das ist so dokumentiert und kein Bug dieser App.
-     *  - Galaxy Watch Ultra: Der Quick-Button wurde von One UI zunächst
-     *    teils als STEM_1 durchgereicht, seit dem Firmware-Update vom
-     *    September 2025 (Wear OS 5) konsumiert das System das Event aber
-     *    vollständig — Dritt-Apps sehen weder onKeyDown noch
-     *    dispatchKeyEvent, es gibt keine Permission dagegen. Die
-     *    STEM-Behandlung hier bleibt trotzdem: Sie ist auf allen anderen
-     *    Uhren mit freier Multifunktionstaste der offizielle Weg und
-     *    schadet auf Samsung-Geräten nicht.
-     *  - STEM_PRIMARY ist der Power-/Home-Knopf und system-reserviert —
-     *    bewusst NICHT abgefangen, genau wie BACK: alles außer STEM_1..3
-     *    geht unangetastet an super, sonst ließe sich die App über die
-     *    Krone/Zurück-Geste nicht mehr verlassen.
+     * Neben onKeyDown steht onKeyUp: Das Loslassen einer Taste, deren
+     * Drücken hier verbraucht wurde, gehört ebenfalls uns — sonst schlösse
+     * das System die App beim Loslassen von ZURÜCK, obwohl die Taste eben
+     * getippt hat. (dispatchKeyEvent wäre der frühere Haken, ist in
+     * ComponentActivity aber als eingeschränkte API markiert.)
      *
-     * repeatCount-Guard wie in der Google-Doku: Nur der erste Down zählt,
-     * Halten der Taste darf im Timing-Spiel kein Dauerfeuer auslösen.
+     * Was welche Uhr liefert (Stand der Recherche, September 2026):
+     *  - STEM_1..3 sind laut Wear-OS-Doku („Physical buttons“) die einzigen
+     *    Tasten-Keycodes, die Dritt-Apps im Vordergrund bekommen. Uhren mit
+     *    freien Multifunktionstasten (Mobvoi TicWatch u. a.) liefern sie so.
+     *  - STEM_PRIMARY (Krone/Home oben) ist system-reserviert und wird hier
+     *    nie angefasst — sie führt immer zum Zifferblatt.
+     *  - Samsung Galaxy Watch 4 bis 8 und Ultra: Home ist System, und laut
+     *    Samsung-Entwicklerforum lassen sich die Tasten von Dritt-Apps
+     *    nicht umbelegen. Die orange Quick-Taste der Ultra wird nach
+     *    Entwicklerberichten seit dem Firmware-Update vom September 2025
+     *    vollständig vom System verbraucht (keine KeyEvents an Apps, keine
+     *    Berechtigung dafür); belegbar ist sie nur mit Samsungs eigenen
+     *    Aktionen. Kommt auf einer Firmware doch ein STEM-Event an, tippt
+     *    es hier ohne weiteres Zutun.
+     *  - Die ZURÜCK-Taste (Samsung: unten rechts) kommt als KEYCODE_BACK
+     *    an, solange sie in den Uhr-Einstellungen auf „Zurück“ steht. Sie
+     *    tippt nur im laufenden Lauf, sonst bleibt sie Zurück (siehe
+     *    [WearKeys]).
      */
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        return when (keyCode) {
-            KeyEvent.KEYCODE_STEM_1,
-            KeyEvent.KEYCODE_STEM_2,
-            KeyEvent.KEYCODE_STEM_3 -> {
-                if (event == null || event.repeatCount == 0) {
-                    // Im Skin-Wähler bestätigt die Taste die Auswahl,
-                    // statt einen Lauf zu starten — sonst käme man mit
-                    // Krone und Taste allein nie wieder heraus.
-                    if (controller.skinPickerOpen) controller.closeSkinPicker() else controller.tap()
-                }
-                true
-            }
-            else -> super.onKeyDown(keyCode, event)
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        val action = WearKeys.onDown(
+            keyCode = keyCode,
+            repeatCount = event.repeatCount,
+            phase = controller.game.phase,
+            phaseElapsed = controller.game.elapsed,
+            pickerOpen = controller.pickerOpen,
+            physical = isPhysicalKey(event)
+        )
+        when (action) {
+            WearKeyAction.SYSTEM -> return super.onKeyDown(keyCode, event)
+            WearKeyAction.TAP -> controller.tap()
+            WearKeyAction.CONFIRM_PICKER -> controller.closePicker()
+            WearKeyAction.SWALLOW -> Unit
         }
+        consumedKey = keyCode
+        return true
     }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == consumedKey) {
+            consumedKey = KeyEvent.KEYCODE_UNKNOWN
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+    /**
+     * Eine echte Taste am Gehäuse — kein vom System erzeugtes Zurück
+     * (Geste, Barrierefreiheit), das kommt vom virtuellen Gerät.
+     */
+    private fun isPhysicalKey(event: KeyEvent): Boolean =
+        event.deviceId != KeyCharacterMap.VIRTUAL_KEYBOARD &&
+            (event.flags and KeyEvent.FLAG_VIRTUAL_HARD_KEY) == 0
 
     /**
      * Drehkrone/Bezel als zusätzlicher Hardware-Tap: eine Raste = ein Tap.
      *
      * Hintergrund: Auf der Galaxy Watch Ultra ist der Quick-Button für
-     * Dritt-Apps nicht abfangbar (siehe onKeyDown) — der drehbare Ring
-     * bzw. die Touch-Lünette ist dort die einzige Hardware-Eingabe, die
-     * bei Apps ankommt. Rotary kommt als generisches MotionEvent
+     * Dritt-Apps nicht abfangbar (siehe onKeyDown) — neben ZURÜCK
+     * ist die Touch-Lünette (bzw. bei anderen Uhren Krone oder
+     * Drehring) die Hardware-Eingabe, die bei Apps ankommt. Rotary kommt als generisches MotionEvent
      * (SOURCE_ROTARY_ENCODER, ACTION_SCROLL, AXIS_SCROLL); Abfang auf
      * dispatch-Ebene statt via Compose-onRotaryScrollEvent, weil so kein
      * fokussierbarer Knoten samt FocusRequester nötig ist — der
@@ -178,12 +203,12 @@ class MainActivity : ComponentActivity() {
                 if (abs(rotaryAccumulated) >= ROTARY_UNITS_PER_TAP) {
                     val steps = sign(rotaryAccumulated).toInt()
                     rotaryAccumulated = 0f
-                    if (controller.skinPickerOpen) {
+                    if (controller.pickerOpen) {
                         // Im Wähler ist die Krone kein Tap, sondern der
-                        // Cursor: eine Raste = ein Skin weiter. Ohne
+                        // Cursor: eine Raste = ein Eintrag weiter. Ohne
                         // Entprellung — hier ist ein Schritt zu viel
                         // folgenlos, im Lauf wäre er ein Fehl-Tap.
-                        controller.moveSkinCursor(steps)
+                        controller.movePickerCursor(steps)
                     } else {
                         val now = SystemClock.elapsedRealtime()
                         if (now - lastRotaryTapMs >= ROTARY_TAP_DEBOUNCE_MS) {
