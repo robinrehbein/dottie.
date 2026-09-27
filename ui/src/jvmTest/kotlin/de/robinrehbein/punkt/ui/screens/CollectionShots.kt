@@ -121,6 +121,15 @@ class CollectionShots {
             s.tap("MEER")
             s.step(0.4)
             s.save(File(dir, "35-welt-gesperrt$suffix.png"))
+            // Die übrigen gesperrten Welten im Schaufenster (WÜSTE bleibt
+            // ungesehen, sonst fehlt unten das Banner): Boden, Hintergrund-
+            // Ebenen und Ring müssen im flachen Kasten stehen (v2.36).
+            listOf("BERG" to "berg", "STADT" to "stadt", "WELTRAUM" to "weltraum")
+                .forEach { (kachel, datei) ->
+                    s.tap(kachel)
+                    s.step(0.4)
+                    s.save(File(dir, "35-welt-$datei$suffix.png"))
+                }
 
             s.tap("TON")
             s.tap("GLOCKE")
