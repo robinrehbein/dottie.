@@ -616,9 +616,23 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 44` / `versionName
-"2.35"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
+(`app/build.gradle.kts`). Aktuell: `versionCode 45` / `versionName
+"2.36"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
 und committen.
+
+### Release-Notes 2.36 (Tagesaufgaben und Serien-Joker)
+
+Deutsch:
+
+> ▪ Drei neue Tagesaufgaben mit Belohnungen und Sammel-Skins
+> ▪ Serien-Joker schützen einen verpassten Tag der Daily-Serie
+> ▪ Neue Knapp-daneben-Anzeige und optionale Erinnerung an die Daily
+
+English:
+
+> ▪ Three new daily missions with rewards and collectible skins
+> ▪ Streak jokers protect a missed day in your daily streak
+> ▪ New near-miss feedback and an optional daily reminder
 
 ### Release-Notes 2.35 (Bevel-Look)
 
