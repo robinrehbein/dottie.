@@ -808,11 +808,13 @@ internal fun DrawScope.drawTrack(
     // fakeZoneHalf() (8.7). Erst alle Ränder, dann alle Kugeln:
     // Benachbarte Minen teilen sich ihren Rand, die Kugeln berühren sich
     // nie (trapMinePixel).
-    for (c in mineCenters) {
-        drawMineRim(c.x, c.y, minePx)
+    // Rote Minen sind eine Pixelstufe größer, wo es passt (trapRedPixel).
+    fun pxOf(mine: TrapMine) = if (mine.red) trap.redPx else minePx
+    for ((i, c) in mineCenters.withIndex()) {
+        drawMineRim(c.x, c.y, pxOf(mines[i]))
     }
     for ((i, mine) in mines.withIndex()) {
-        drawMineBody(mineCenters[i].x, mineCenters[i].y, minePx, mine.red)
+        drawMineBody(mineCenters[i].x, mineCenters[i].y, pxOf(mine), mine.red)
     }
 }
 
