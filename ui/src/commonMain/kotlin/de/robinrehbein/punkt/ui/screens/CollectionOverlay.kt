@@ -607,8 +607,9 @@ private fun DrawScope.drawShowcase(
     val cell = (h / 110f).roundToInt().toFloat().coerceAtLeast(2f)
     val kulisse = ScenePaint.of(scene)
 
-    drawRect(color = Color(kulisse.sky[0]))
-    drawBackdrop(kulisse.backdrop, game.elapsed, cell)
+    val sky = Color(kulisse.sky[0])
+    drawRect(color = sky)
+    drawBackdrop(kulisse.backdrop, game.elapsed, cell, sky)
     kulisse.cloud?.let { cloud ->
         val drift = game.elapsed * h * 0.02f
         drawCloud(w * 0.12f - drift % (w * 1.4f) + w * 0.2f, h * 0.12f, cell, Color(cloud))
@@ -626,7 +627,7 @@ private fun DrawScope.drawShowcase(
     val radius = minOf((bottom - top) / 2f, h * SHOWCASE_RING_MAX)
     val cx = w / 2f
     val cy = (top + bottom) / 2f
-    drawTrack(game, cx, cy, radius, cell)
+    drawTrack(game, cx, cy, radius, cell, scene)
     val px = cx + cos(game.angle) * radius
     val py = cy + sin(game.angle) * radius
     scale(SHOWCASE_BIRD_SCALE, pivot = Offset(px, py)) {

@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.DeathCause
 import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.game.TrapPaint
@@ -342,13 +343,17 @@ internal fun DrawScope.drawMineRim(cx: Float, cy: Float, px: Int) {
     }
 }
 
-/** Kugel und Glanz einer Mine, ohne Rand (siehe [drawMineRim]). */
+/**
+ * Kugel und Glanz einer Mine, ohne Rand (siehe [drawMineRim]). Die Kugel
+ * hat eine Kante wie alles im Bevel-Look: an der Lichtseite heller, an der
+ * Schattenseite dunkler ([BevelPaint.mineCell]). Die Form bleibt exakt
+ * [TrapPaint.MINE]; nur die Randpixel wechseln die Farbe.
+ */
 internal fun DrawScope.drawMineBody(cx: Float, cy: Float, px: Int, red: Boolean) {
     val u = px.toFloat()
     val size = TrapPaint.MINE_SIZE
     val ox = mineOrigin(cx, u)
     val oy = mineOrigin(cy, u)
-    val ball = Color(if (red) TrapPaint.RED else TrapPaint.BALL)
     val gloss = Color(TrapPaint.GLOSS)
     for (r in 0 until size) {
         val row = TrapPaint.MINE[r]
@@ -356,7 +361,7 @@ internal fun DrawScope.drawMineBody(cx: Float, cy: Float, px: Int, red: Boolean)
             val ch = row[k]
             if (ch == '.') continue
             drawRect(
-                color = if (ch == 'W') gloss else ball,
+                color = if (ch == 'W') gloss else Color(BevelPaint.mineCell(r, k, red)),
                 topLeft = Offset(ox + k * u, oy + r * u),
                 size = Size(u, u)
             )

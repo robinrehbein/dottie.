@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.use
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.TimingGame
 import kotlin.math.abs
@@ -27,7 +28,7 @@ import org.jetbrains.skia.Bitmap
 /**
  * Die Bahn im gerenderten Bild (1080×2340, WIESE): keine rosa Blüte mehr
  * im Perfekt-Kern, und ein Sandblock hat links und rechts genau eine
- * Rasterstufe (5 px) Umriss.
+ * Rasterstufe (5 px) Umriss, darin eine Stufe Licht- bzw. Schattenkante.
  */
 class ZoneBlockRenderTest {
 
@@ -82,10 +83,17 @@ class ZoneBlockRenderTest {
         val a = trackSlotAngle(k, TRACK_SEGMENTS)
         val b = sandBlock(cx + cos(a) * radius, cy + sin(a) * radius, cell)
         val outline = OutlineColor.toArgb()
+        // Seit dem Bevel-Look: in der Fläche links eine Stufe Licht, rechts
+        // eine Stufe Schatten (ScenePaint.track, WIESE), dazwischen Sand.
+        val track = ScenePaint.track(SceneId.WIESE)
+        assertEquals(GroundSandShade, Color(track.block), "WIESE behält GroundSandShade als Fläche")
         val sand = GroundSandShade.toArgb()
+        val light = Color(track.light).toArgb()
+        val dark = Color(track.dark).toArgb()
         val y = (b.top + b.outer / 2f).toInt()
         val row = (b.left.toInt() - 1..(b.left + b.outer).toInt()).map { bitmap.getColor(it, y) }
-        val expected = listOf(null) + List(unit) { outline } + List(b.inner.toInt()) { sand } +
+        val expected = listOf(null) + List(unit) { outline } + List(unit) { light } +
+            List(b.inner.toInt() - 2 * unit) { sand } + List(unit) { dark } +
             List(unit) { outline } + listOf(null)
         assertEquals(expected.size, row.size)
         for ((i, e) in expected.withIndex()) {
