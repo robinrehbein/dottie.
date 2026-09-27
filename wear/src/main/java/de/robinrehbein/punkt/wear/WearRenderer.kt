@@ -602,11 +602,12 @@ private fun DrawScope.drawWearDot(
     // oben, dreht sich dabei auf den Rücken und fällt kopfüber mit
     // Gravitation unten aus dem Bild. Ein eigener Zeitgeber ist unnötig —
     // game.elapsed zählt in DYING ab dem Todesmoment.
-    // In die Bomben getippt: Der Vogel platzt wie am Phone (drawBirdBurst)
-    // statt des Mario-Hüpfers.
-    val burst = game.phase == GamePhase.DYING && game.lastDeathCause == DeathCause.TRAP
+    // In die Bomben getippt: Der Vogel steht den Freeze über im Rahmen und
+    // platzt dann wie am Phone (drawBirdBurst) statt des Mario-Hüpfers.
+    val trapDeath = game.phase == GamePhase.DYING && game.lastDeathCause == DeathCause.TRAP
+    val burstTime = game.elapsed - TimingGame.DEATH_FREEZE_SECONDS
     var flip = 0f
-    if (game.phase == GamePhase.DYING && !burst) {
+    if (game.phase == GamePhase.DYING && !trapDeath) {
         val t = game.elapsed - TimingGame.DEATH_FREEZE_SECONDS
         if (t > 0f) {
             val h = size.height
@@ -685,8 +686,8 @@ private fun DrawScope.drawWearDot(
         }
     }
 
-    if (burst) {
-        drawWearBirdBurst(px, py, r, game.elapsed, size.height) { col, row -> skin.cell(col, row, state) }
+    if (trapDeath && burstTime > 0f) {
+        drawWearBirdBurst(px, py, r, burstTime, size.height) { col, row -> skin.cell(col, row, state) }
     } else if (flip > 0f) {
         rotate(degrees = flip, pivot = Offset(px, py)) { drawBird(px, py) }
     } else {
@@ -703,7 +704,8 @@ private fun DrawScope.drawWearDot(
 /**
  * Der Vogel platzt (Tod durch die Bomben), wie drawBirdBurst am Telefon:
  * zwölf äußere, sechs innere Tortenstücke und ein Kern fliegen aus der Mitte, hüpfen hoch,
- * fallen mit Gravitation und blassen aus. [time] = Sekunden seit dem Tod.
+ * fallen mit Gravitation und blassen aus. [time] = Sekunden seit dem Ende
+ * des Todes-Freeze.
  */
 private fun DrawScope.drawWearBirdBurst(
     centerX: Float,
@@ -716,7 +718,7 @@ private fun DrawScope.drawWearBirdBurst(
     val outer = 12
     val inner = 6
     val core = outer + inner
-    val alpha = (1f - (time - 0.6f) / 0.6f).coerceIn(0f, 1f)
+    val alpha = (1f - (time - 0.5f) / 0.5f).coerceIn(0f, 1f)
     if (alpha <= 0f) return
     val n = WEAR_GRID.toInt()
     val u = (radius * 2f) / WEAR_GRID

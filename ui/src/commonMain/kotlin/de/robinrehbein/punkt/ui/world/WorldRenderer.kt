@@ -1073,15 +1073,17 @@ internal fun DrawScope.drawTimingDot(
     var py = cy + sin(game.angle) * radius
     val r = h * DOT_RADIUS_SHARE
 
-    // In die Bomben getippt: Der Vogel platzt im Todesmoment in Stücke
-    // (drawBirdBurst) statt des Mario-Hüpfers.
-    val burst = fx.deathTime >= 0f && game.lastDeathCause == DeathCause.TRAP
+    // In die Bomben getippt: Der Vogel steht den Todes-Freeze über im
+    // Rahmen wie bei jedem Tod und platzt dann in Stücke (drawBirdBurst)
+    // statt des Mario-Hüpfers.
+    val trapDeath = fx.deathTime >= 0f && game.lastDeathCause == DeathCause.TRAP
+    val burstTime = fx.deathTime - TimingGame.DEATH_FREEZE_SECONDS
 
     // Mario-Tod: Während des Todes-Freeze bleibt der Vogel stehen, dann
     // hüpft er nach oben, dreht sich dabei auf den Rücken und fällt
     // kopfüber mit Gravitation unten aus dem Bild.
     var flip = 0f
-    if (fx.deathTime >= 0f && !burst) {
+    if (fx.deathTime >= 0f && !trapDeath) {
         val t = fx.deathTime - TimingGame.DEATH_FREEZE_SECONDS
         if (t > 0f) {
             py += (-DEATH_HOP_SPEED * t + 0.5f * DEATH_GRAVITY * t * t) * h
@@ -1165,8 +1167,8 @@ internal fun DrawScope.drawTimingDot(
         }
     }
 
-    if (burst) {
-        drawBirdBurst(px, py, r, fx.deathTime, h) { col, row -> Color(SkinPaint.cell(skin, col, row, state)) }
+    if (trapDeath && burstTime > 0f) {
+        drawBirdBurst(px, py, r, burstTime, h) { col, row -> Color(SkinPaint.cell(skin, col, row, state)) }
     } else if (flip > 0f) {
         rotate(degrees = flip, pivot = Offset(px, py)) { drawBird(px, py) }
     } else {
@@ -1186,8 +1188,9 @@ internal fun DrawScope.drawTimingDot(
  * äußeren und einen inneren Ring aus Tortenstücken und einen Kern
  * auseinander, jedes Stück fliegt aus der Mitte heraus (außen schneller), bekommt einen Schubs nach oben und fällt dann mit
  * [DEATH_GRAVITY] aus dem Bild; gegen Ende blassen sie aus. [time] sind
- * die Sekunden seit dem Tod — das Platzen beginnt sofort, nicht erst nach
- * dem Freeze, die Explosion (drawTrapBoom) liegt darüber.
+ * die Sekunden seit dem Ende des Todes-Freeze: Wie beim Mario-Hüpfer
+ * steht der Vogel erst im Rahmen, während Blitz und Explosion
+ * (drawTrapBoom) abklingen, und platzt dann sichtbar.
  *
  * Dieselbe Zeichnung wie [drawPixelCircle], nur mit Versatz pro Stück;
  * alles hängt allein an [time], also ohne eigenen Zustand.

@@ -25,12 +25,13 @@ const val DEATH_FLIP_SECONDS = 0.3f
  * [BURST_INNER] innere Stücke (Grenze [BURST_INNER_RADIUS] Sprite-Pixel
  * von der Mitte) plus Kern. Sie fliegen mit [BURST_SPEED] aus der Mitte, bekommen [BURST_HOP]
  * nach oben (beides Bildhöhen pro Sekunde) und blassen ab
- * [BURST_FADE_START] bis [BURST_SECONDS] aus.
+ * [BURST_FADE_START] bis [BURST_SECONDS] aus — gezählt ab dem Ende des
+ * Freeze, also fertig, wenn nach DEATH_FALL_SECONDS das Game-Over kommt.
  */
 const val BURST_OUTER = 12
 const val BURST_INNER = 6
 const val BURST_INNER_RADIUS = 3.8f
 const val BURST_SPEED = 0.35f
 const val BURST_HOP = 0.8f
-const val BURST_FADE_START = 0.6f
-const val BURST_SECONDS = 1.2f
+const val BURST_FADE_START = 0.5f
+const val BURST_SECONDS = 1.0f
