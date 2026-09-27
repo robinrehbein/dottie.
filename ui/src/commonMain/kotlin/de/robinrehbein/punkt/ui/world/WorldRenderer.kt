@@ -11,6 +11,7 @@ import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.Ground
 import de.robinrehbein.punkt.game.Prop
 import de.robinrehbein.punkt.game.PropShape
+import de.robinrehbein.punkt.game.PropSprites
 import de.robinrehbein.punkt.game.BlockPart
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
@@ -204,13 +205,14 @@ internal fun DrawScope.drawProp(
         PropShape.BLUME -> drawPixelFlower(cx, groundY, s, sway, cell, dark, body, light, accent)
         PropShape.STRAUCH -> drawPixelBush(cx, groundY, s, sway, cell, dark, body, light)
         PropShape.KAKTUS -> drawPixelCactus(cx, groundY, s, sway, cell, dark, body, light, accent)
-        PropShape.WELLE -> drawPixelWave(cx, groundY, s, sway, cell, dark, body, light, accent)
+        PropShape.WELLE -> drawBreaker(prop, cx, groundY, cell)
         PropShape.NADELBAUM ->
             drawPixelFir(cx, groundY, s, sway, cell, dark, body, light, stem, stemShade, accent)
         PropShape.HOCHHAUS -> drawPixelTower(cx, groundY, s, cell, dark, body, light, accent)
-        PropShape.FELS ->
-            drawBlockParts(ScenePaint.ROCK_PARTS, cx, groundY, s, sway, cell,
-                dark, body, light, accent)
+        // Der Fels ist ein Findling aus PropSprites, keine Kastentabelle
+        // mehr. ScenePaint.ROCK_PARTS bleibt für die Uhr und den
+        // Paritäts-Vertrag bestehen, das Telefon zeichnet ihn nicht mehr.
+        PropShape.FELS -> drawBoulder(prop, cx, groundY, cell)
         PropShape.LATERNE ->
             drawBlockParts(ScenePaint.LANTERN_PARTS, cx, groundY, s, sway, cell,
                 dark, body, light, accent)
@@ -232,8 +234,10 @@ internal fun DrawScope.drawOutlinedBlocks(cell: Float, blocks: List<Pair<Rect, C
             size = Size(r.w + cell * 2f, r.h + cell * 2f)
         )
     }
+    // Jede Fläche mit Bevel (Kante eine Zelle): So erben Kaktus, Insel
+    // und Palmen die Kante, ohne selbst davon zu wissen.
     blocks.forEach { (r, color) ->
-        drawRect(color = color, topLeft = Offset(r.x, r.y), size = Size(r.w, r.h))
+        bevelRect(color, Offset(r.x, r.y), Size(r.w, r.h), cell)
     }
 }
 
@@ -287,11 +291,7 @@ internal fun DrawScope.drawPixelTree(
             topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
             size = Size(lw + cell * 2f, lh + cell * 2f)
         )
-        drawRect(
-            color = color,
-            topLeft = Offset(lx - lw / 2f, layerTop),
-            size = Size(lw, lh)
-        )
+        bevelRect(color, Offset(lx - lw / 2f, layerTop), Size(lw, lh), cell)
     }
 }
 
@@ -324,11 +324,7 @@ internal fun DrawScope.drawPixelBush(
             topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
             size = Size(lw + cell * 2f, lh + cell * 2f)
         )
-        drawRect(
-            color = color,
-            topLeft = Offset(lx - lw / 2f, layerTop),
-            size = Size(lw, lh)
-        )
+        bevelRect(color, Offset(lx - lw / 2f, layerTop), Size(lw, lh), cell)
     }
 
     // Licht-Tupfer auf dem Bauch
@@ -408,7 +404,7 @@ internal fun DrawScope.drawPixelFlower(
             topLeft = Offset(x - cell, y - cell),
             size = Size(u + cell * 2f, u + cell * 2f)
         )
-        drawRect(color = color, topLeft = Offset(x, y), size = Size(u, u))
+        bevelRect(color, Offset(x, y), Size(u, u), cell)
     }
     block(bx - u / 2f, by - u * 1.5f, petal)          // oben
     block(bx - u * 1.5f, by - u / 2f, petal)          // links
@@ -477,42 +473,50 @@ internal fun DrawScope.drawPixelCactus(
 }
 
 /**
- * Welle: flacher, breiter Stapel mit Schaumtupfern. Bewusst breiter als
- * hoch — eine Welle, die wie ein Busch stünde, läse sich als Pflanze.
+ * Findling (FELS) mit Kiesel daneben, als Pixel-Maske aus
+ * [PropSprites.BOULDER] und [PropSprites.PEBBLE]: eine Zelle pro
+ * Maskenpixel. Gestapelte Rechtecke lasen sich als Kasten; die Maske
+ * bringt die runde Kuppe, Licht oben links, dunklen Fuß und den Riss.
+ * Er liegt auf der Bodenkante ([groundY] ist die Requisiten-Basis, zwei
+ * Zellen darunter) und wiegt nicht im Wind — Steine tun das nicht.
  */
-internal fun DrawScope.drawPixelWave(
-    cx: Float,
-    groundY: Float,
-    s: Float,
-    sway: Float,
-    cell: Float,
-    dark: Color,
-    body: Color,
-    light: Color,
-    foam: Color
-) {
-    val layers = listOf(
-        Triple(s * 3.0f, s * 0.30f, dark),
-        Triple(s * 2.2f, s * 0.26f, body),
-        Triple(s * 1.2f, s * 0.22f, light)
-    )
-    var layerTop = groundY
-    var lx = cx
-    layers.forEachIndexed { i, (lw, lh, color) ->
-        layerTop -= lh
-        lx = cx + sway * (0.3f + 0.4f * i)
-        drawRect(
-            color = OutlineColor,
-            topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
-            size = Size(lw + cell * 2f, lh + cell * 2f)
-        )
-        drawRect(color = color, topLeft = Offset(lx - lw / 2f, layerTop), size = Size(lw, lh))
-    }
-
-    val u = cell * 1.5f
-    drawRect(color = foam, topLeft = Offset(lx - s * 0.5f, layerTop), size = Size(u * 2f, u))
-    drawRect(color = foam, topLeft = Offset(lx + s * 0.2f, layerTop + u), size = Size(u, u))
+internal fun DrawScope.drawBoulder(prop: Prop, cx: Float, groundY: Float, cell: Float) {
+    val pal = spritePalette(prop)
+    val base = groundY - cell * 2f
+    val x = floor((cx - 8 * cell) / cell) * cell
+    pixelMap(x, base - PropSprites.BOULDER.size * cell, cell, PropSprites.BOULDER, pal)
+    pixelMap(x + 14 * cell, base - PropSprites.PEBBLE.size * cell, cell, PropSprites.PEBBLE, pal)
 }
+
+/**
+ * Brecher (WELLE) aus [PropSprites.BREAKER]: eingerollte Krone mit
+ * Schaumkante und Gischt. Der Fuß sitzt zwei Zellen über der Bodenkante,
+ * sonst verdeckten ihn die Wellenkämme des Bodens.
+ */
+internal fun DrawScope.drawBreaker(prop: Prop, cx: Float, groundY: Float, cell: Float) {
+    val base = groundY - cell * 2f
+    val x = floor((cx - 9 * cell) / cell) * cell
+    pixelMap(x, base - (PropSprites.BREAKER.size + 2) * cell, cell, PropSprites.BREAKER, spritePalette(prop))
+}
+
+/**
+ * Farben der Masken-Zeichen für eine Requisite (siehe [PropSprites]).
+ * Die Kulissen sind feste Daten; die Palette wird deshalb je Requisite
+ * einmal angelegt und nicht in jedem Frame neu.
+ */
+private fun spritePalette(prop: Prop): Map<Char, Color> = spritePalettes.getOrPut(prop) {
+    mapOf(
+        'O' to OutlineColor,
+        'L' to Color(prop.light),
+        'B' to Color(prop.body),
+        'D' to Color(prop.dark),
+        'K' to Color(PropSprites.crack(prop.dark)),
+        'W' to Color.White,
+        'F' to Color(PropSprites.FOAM_SHADE)
+    )
+}
+
+private val spritePalettes = HashMap<Prop, Map<Char, Color>>()
 
 /**
  * Nadelbaum: schmaler Stamm, drei spitze Lagen, helle Spitze obendrauf.
@@ -564,7 +568,7 @@ internal fun DrawScope.drawPixelFir(
             topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
             size = Size(lw + cell * 2f, lh + cell * 2f)
         )
-        drawRect(color = color, topLeft = Offset(lx - lw / 2f, layerTop), size = Size(lw, lh))
+        bevelRect(color, Offset(lx - lw / 2f, layerTop), Size(lw, lh), cell)
         // Schnee auf der Lage (BERG): ein Streifen an der Oberkante,
         // links länger, als wäre er von rechts angeweht.
         if (snow != Color.Transparent) {
@@ -609,7 +613,7 @@ internal fun DrawScope.drawPixelTower(
         topLeft = Offset(cx - w / 2f - cell, groundY - hgt - cell),
         size = Size(w + cell * 2f, hgt + cell)
     )
-    drawRect(color = body, topLeft = Offset(cx - w / 2f, groundY - hgt), size = Size(w, hgt))
+    bevelRect(body, Offset(cx - w / 2f, groundY - hgt), Size(w, hgt), cell)
     drawRect(color = dark, topLeft = Offset(cx, groundY - hgt), size = Size(w / 2f, hgt))
     drawRect(color = light, topLeft = Offset(cx - w / 2f, groundY - hgt), size = Size(w, s * 0.16f))
 
@@ -665,55 +669,27 @@ internal fun DrawScope.drawBlockParts(
         )
     }
     parts.forEach { p ->
-        drawRect(
-            color = when (p.tone) {
+        bevelRect(
+            when (p.tone) {
                 0 -> dark
                 1 -> body
                 2 -> light
                 else -> accent
             },
-            topLeft = Offset(left(p), top(p)),
-            size = Size(p.w * s, p.h * s)
+            Offset(left(p), top(p)),
+            Size(p.w * s, p.h * s),
+            cell
         )
     }
 }
 
 /**
- * Bodenstreifen: Grundfläche mit dunklerem Band, darüber die Narbe aus
- * zwei Tönen. Der statische Boden unter allem — welche Farben, sagt die
- * Kulisse; wo er beginnt, sagt ScenePaint.groundY und sonst niemand.
+ * Bodenstreifen: der statische Boden unter allem. Welches Muster und
+ * welche Farben, sagt die Kulisse (Ground.style, siehe GroundStyles.kt);
+ * wo er beginnt, sagt ScenePaint.groundY und sonst niemand.
  */
 internal fun DrawScope.drawGroundStrip(cell: Float, ground: Ground) {
-    val h = size.height
-    val w = size.width
-    val groundTop = ScenePaint.groundY(h)
-
-    drawRect(
-        color = Color(ground.sand),
-        topLeft = Offset(0f, groundTop),
-        size = Size(w, h - groundTop)
-    )
-    drawRect(
-        color = Color(ground.sandShade),
-        topLeft = Offset(0f, groundTop + cell * 8),
-        size = Size(w, cell * 2)
-    )
-    val toothW = cell * 5f
-    drawRect(
-        color = Color(ground.turfDark),
-        topLeft = Offset(0f, groundTop),
-        size = Size(w, cell * 5)
-    )
-    var x = 0f
-    while (x < w) {
-        drawRect(
-            color = Color(ground.turfLight),
-            topLeft = Offset(x, groundTop),
-            size = Size(toothW, cell * 4)
-        )
-        x += toothW * 2
-    }
-    drawRect(color = OutlineColor, topLeft = Offset(0f, groundTop - cell), size = Size(w, cell))
+    drawGroundStyle(cell, ScenePaint.groundY(size.height), ground)
 }
 
 /**
