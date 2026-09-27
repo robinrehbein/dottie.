@@ -8,7 +8,6 @@ import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.DeathCause
 import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.game.TrapPaint
-import de.robinrehbein.punkt.game.Twist
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.asin
@@ -240,101 +239,6 @@ internal fun trapEndGap(px: Int, radius: Float, cell: Float, segments: Int): Flo
     chordToSlots(mineBlockDistance(px, cell * 3f / 2f) + 0.5f, radius, segments)
 
 /**
- * Sprite-Pixelmaß der Minen der aktuellen Falle (Plan 3.4: Mine in
- * Blockgröße). Höchstens [minePixel] ([cell]), und so klein, dass sich
- * weder zwei Minen ([minesFit]) noch Kugel und Sandblock
- * ([mineBlockDistance]) je berühren, auch nicht an der engsten Stelle
- * unter PULS. Geprüft wird die Kette ([trapChain]) über alle Breiten, die
- * die Falle in dieser Runde annehmen kann; so bleibt die Größe beim Atmen
- * stehen, nur der Abstand atmet. Mindestens 1.
- */
-internal fun trapMinePixel(game: TimingGame, segments: Int, radius: Float, cell: Float): Int =
-    trapMineFit(game, segments, radius, cell).first
-
-/** [trapMinePixel] und ob die Minen dieser Größe überall hineinpassen. */
-private fun trapMineFit(game: TimingGame, segments: Int, radius: Float, cell: Float): Pair<Int, Boolean> {
-    val slot = 2f * PI.toFloat() / segments
-    val count = TrapPaint.count(game.zoneHalfWidth, slot)
-    val halves = if (Twist.PULSE in game.activeTwists) {
-        val narrowest = min(game.fakeZoneHalf(), game.zoneHalfWidth * TimingGame.PULSE_MIN_SHARE)
-        List(PULSE_SAMPLES + 1) { j ->
-            narrowest + (game.zoneHalfWidth - narrowest) * j / PULSE_SAMPLES
-        } + game.fakeZoneHalf()
-    } else {
-        listOf(game.fakeZoneHalf())
-    }
-    // Sehne statt Bogen: So weit liegen zwei Punkte der Bahn auf dem Bild auseinander.
-    fun chord(slots: Float): Float = 2f * radius * sin(abs(slots) * slot / 2f)
-    fun fits(px: Int): Boolean {
-        val endGap = trapEndGap(px, radius, cell, segments)
-        val blockDistance = mineBlockDistance(px, cell * 3f / 2f)
-        return halves.all { half ->
-            val chain = trapChain(game.fakeZoneCenter, half, count, segments, endGap)
-            val at = chain.at
-            val pitchOk = (1 until at.size).all { minesFit(px, chord(at[it] - at[it - 1])) }
-            val sandOk = chain.before == null || chain.after == null ||
-                (chord(at.first() - chain.before) >= blockDistance &&
-                    chord(chain.after - at.last()) >= blockDistance)
-            pitchOk && sandOk
-        }
-    }
-    var px = minePixel(cell)
-    while (px > 1 && !fits(px)) px--
-    return px to (px > 1 || fits(1))
-}
-
-/**
- * Wie groß eine rote Mine gezeichnet wird: eine Pixelstufe größer als die
- * übrigen ([px] + 1), damit das Lauflicht nicht nur die Farbe, sondern
- * auch die Größe wechselt und die Falle unter PULS nicht untergeht.
- *
- * Nur wenn es passt, geprüft wie [trapMineFit] über alle Breiten der
- * Runde (die Größe bleibt beim Atmen stehen):
- * - Die rote Kugel hält einen Bildpunkt Abstand zu jeder schwarzen Kugel
- *   daneben ([redBlackDistance]). Ränder dürfen sich überdecken, und zwei
- *   rote Minen nebeneinander dürfen sich berühren — dann liest sich der
- *   rote Block als eine Warnung.
- * - Die rote Kugel reicht höchstens auf den dunklen Umriss des Sandblocks
- *   daneben, nie auf seine Sandfläche ([faceHalf]).
- * Passt es nicht, bleibt die rote Mine so groß wie die anderen.
- */
-private fun trapRedPixel(
-    game: TimingGame,
-    segments: Int,
-    radius: Float,
-    cell: Float,
-    px: Int,
-    fits: Boolean
-): Int {
-    if (!fits) return px
-    val slot = 2f * PI.toFloat() / segments
-    val count = TrapPaint.count(game.zoneHalfWidth, slot)
-    val halves = if (Twist.PULSE in game.activeTwists) {
-        val narrowest = min(game.fakeZoneHalf(), game.zoneHalfWidth * TimingGame.PULSE_MIN_SHARE)
-        List(PULSE_SAMPLES + 1) { j ->
-            narrowest + (game.zoneHalfWidth - narrowest) * j / PULSE_SAMPLES
-        } + game.fakeZoneHalf()
-    } else {
-        listOf(game.fakeZoneHalf())
-    }
-    fun chord(slots: Float): Float = 2f * radius * sin(abs(slots) * slot / 2f)
-    val red = px + 1
-    val faceHalf = sandBlock(0f, 0f, cell).inner / 2f
-    val sandDistance = mineBlockDistance(red, faceHalf)
-    val endGap = trapEndGap(px, radius, cell, segments)
-    val ok = halves.all { half ->
-        val chain = trapChain(game.fakeZoneCenter, half, count, segments, endGap)
-        val at = chain.at
-        val pitchOk = (1 until at.size).all { chord(at[it] - at[it - 1]) >= redBlackDistance(px) }
-        val sandOk = chain.before == null || chain.after == null ||
-            (chord(at.first() - chain.before) >= sandDistance &&
-                chord(chain.after - at.last()) >= sandDistance)
-        pitchOk && sandOk
-    }
-    return if (ok) red else px
-}
-
-/**
  * Kleinster Abstand zwischen einer roten Mine ([px] + 1) und einer
  * schwarzen ([px]), bei dem sich ihre Kugeln nicht berühren: schräg die
  * beiden Kerne, längs der Achsen die Zacken, dazu ein Bildpunkt Luft.
@@ -344,18 +248,16 @@ internal fun redBlackDistance(px: Int): Float {
     return max(SQRT2 * 2.5f * sum, 3.5f * sum) + 1f
 }
 
-/** Stützstellen über die Atembreite der Falle unter PULS. */
-private const val PULSE_SAMPLES = 16
-
 /** Was `drawTrack` von der Falle zeichnet: die Minen und ihr Pixelmaß. */
 internal class TrapLayout(val mines: List<TrapMine>, val px: Int, val redPx: Int = px)
 
 /**
  * Die Minen der Falle so, wie `drawTrack` sie auf die Bahn mit Radius
- * [radius] und Zellgröße [cell] legt: Pixelmaß aus [trapMinePixel], Lage
- * aus [trapMines] mit der Lücke [trapEndGap] dieses Pixelmaßes. Passen
- * selbst Minen mit einem Bildpunkt nicht (siehe [trapChain]), halten sie
- * wenigstens untereinander Abstand.
+ * [radius] und Zellgröße [cell] legt: Pixelmaß aus [trapMinePixel], rote
+ * Minen immer eine Stufe größer, Lage aus [trapMines] mit der Lücke
+ * [trapEndGap] dieses Pixelmaßes. Passen selbst Minen mit einem Bildpunkt
+ * nicht (winzige Bahn, siehe [trapChain]), halten sie wenigstens
+ * untereinander Abstand.
  */
 internal fun trapLayout(
     game: TimingGame,
@@ -364,12 +266,75 @@ internal fun trapLayout(
     radius: Float,
     cell: Float
 ): TrapLayout {
-    val (px, fits) = trapMineFit(game, segments, radius, cell)
+    val (px, fits) = trapMineFit(segments, radius, cell)
     val minPitch = if (fits) 0f else chordToSlots(mineMineDistance(px) + 0.25f, radius, segments)
     val endGap = trapEndGap(px, radius, cell, segments)
-    val redPx = trapRedPixel(game, segments, radius, cell, px, fits)
-    return TrapLayout(trapMines(game, segments, zoneHalf, endGap, minPitch), px, redPx)
+    return TrapLayout(trapMines(game, segments, zoneHalf, endGap, minPitch), px, px + 1)
 }
+
+/**
+ * Sprite-Pixelmaß der Minen (Plan 3.4: Mine in Blockgröße) auf einer Bahn
+ * mit Radius [radius] und Zellgröße [cell] — fest für den Bildschirm, nicht
+ * je Falle. Das größte (höchstens [minePixel]), bei dem jede Falle des
+ * Laufs passt: jede Zonenbreite von der Grundbreite bis zur schmalsten und
+ * jede Lage der Falle zwischen zwei Blöcken. Dabei berühren sich weder
+ * zwei Kugeln ([minesFit]) noch Kugel und Sandblock ([mineBlockDistance]),
+ * und die rote Mine eine Stufe größer hält Abstand zu schwarzen Nachbarn
+ * ([redBlackDistance]) und zur Sandfläche. Mindestens 1.
+ *
+ * Früher wurde die Größe je Falle so groß wie möglich gerechnet; dann
+ * wechselte sie von Runde zu Runde, und unter PULS schrumpfte sie auf
+ * wenige Pixel. Die Falle atmet heute nicht mehr ([TimingGame.fakeZoneHalf]).
+ */
+internal fun trapMinePixel(segments: Int, radius: Float, cell: Float): Int =
+    trapMineFit(segments, radius, cell).first
+
+/** [trapMinePixel] und ob die Minen dieser Größe überall hineinpassen. */
+private fun trapMineFit(segments: Int, radius: Float, cell: Float): Pair<Int, Boolean> {
+    val key = Triple(segments, radius, cell)
+    fixedPxCache?.let { (k, v) -> if (k == key) return v }
+    val slot = 2f * PI.toFloat() / segments
+    fun chord(slots: Float): Float = 2f * radius * sin(abs(slots) * slot / 2f)
+    val faceHalf = sandBlock(0f, 0f, cell).inner / 2f
+    val halves = generateSequence(TimingGame.BASE_ZONE_HALF) { it - TimingGame.ZONE_SHRINK_PER_HIT }
+        .takeWhile { it >= TimingGame.MIN_ZONE_HALF - 1e-4f }
+        .toList()
+    fun fits(px: Int): Boolean {
+        val endGap = trapEndGap(px, radius, cell, segments)
+        val blockDistance = mineBlockDistance(px, cell * 3f / 2f)
+        val redSand = mineBlockDistance(px + 1, faceHalf)
+        return halves.all { half ->
+            val count = TrapPaint.count(half, slot)
+            (0 until FIXED_PX_OFFSETS).all { o ->
+                val center = (FIXED_PX_SLOT + o.toFloat() / FIXED_PX_OFFSETS) * slot
+                val chain = trapChain(center, half, count, segments, endGap)
+                val at = chain.at
+                val pitchOk = (1 until at.size).all {
+                    val d = chord(at[it] - at[it - 1])
+                    minesFit(px, d) && d >= redBlackDistance(px)
+                }
+                val sandOk = chain.before == null || chain.after == null ||
+                    (min(chord(at.first() - chain.before), chord(chain.after - at.last())) >=
+                        max(blockDistance, redSand))
+                pitchOk && sandOk
+            }
+        }
+    }
+    var px = minePixel(cell)
+    while (px > 1 && !fits(px)) px--
+    val result = px to (px > 1 || fits(1))
+    fixedPxCache = key to result
+    return result
+}
+
+/** Letztes Ergebnis von [trapMineFit]: Die Bahn ändert sich nur mit der Bildgröße. */
+private var fixedPxCache: Pair<Triple<Int, Float, Float>, Pair<Int, Boolean>>? = null
+
+/** Lagen der Falle zwischen zwei Blöcken, die [trapMinePixel] prüft. */
+private const val FIXED_PX_OFFSETS = 12
+
+/** Ein beliebiger Block als Bezug für die Lagen in [trapMinePixel]. */
+private const val FIXED_PX_SLOT = 15
 
 /**
  * Eine Mine, mittig auf ([cx], [cy]), mit Sprite-Pixeln der Kantenlänge

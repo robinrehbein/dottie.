@@ -124,11 +124,44 @@ class MineFieldTest {
         var pulsed = false
         val checked = eachTrapFrame(setOf(Twist.FAKE, Twist.PULSE)) { game, mines ->
             if (touchesZone(game)) return@eachTrapFrame
-            if (game.fakeZoneHalf() < game.zoneHalfWidth * 0.8f) pulsed = true
+            if (game.effectiveZoneHalf() < game.zoneHalfWidth * 0.8f) pulsed = true
             assertEquals(TrapPaint.count(game.zoneHalfWidth, cell), mines.size)
         }
         assertTrue(checked > 1000, "genug Frames geprüft: $checked")
-        assertTrue(pulsed, "die Falle hat tatsächlich geatmet")
+        assertTrue(pulsed, "die Zone hat tatsächlich geatmet")
+    }
+
+    @Test
+    fun `unter PULS atmet nur die Zone, die Kette steht`() {
+        // Je Falle (Mitte) dieselben Winkel in jedem Frame, solange die
+        // Zone nicht in die Kette hineinreicht.
+        val seen = HashMap<Float, List<Float>>()
+        var pulsed = false
+        val checked = eachTrapFrame(setOf(Twist.FAKE, Twist.PULSE)) { game, mines ->
+            if (touchesZone(game)) return@eachTrapFrame
+            if (game.effectiveZoneHalf() < game.zoneHalfWidth * 0.8f) pulsed = true
+            val angles = mines.map { it.angle }
+            val first = seen.getOrPut(game.fakeZoneCenter * 1000f + game.zoneHalfWidth) { angles }
+            assertEquals(first, angles, "Die Kette hat sich unter PULS bewegt")
+        }
+        assertTrue(checked > 1000, "genug Frames geprüft: $checked")
+        assertTrue(pulsed, "die Zone hat tatsächlich geatmet")
+    }
+
+    @Test
+    fun `die Minen sind in jeder Falle gleich groß, rote eine Stufe größer`() {
+        for (t in tracks) {
+            val sizes = HashSet<Pair<Int, Int>>()
+            for (twists in listOf(setOf(Twist.FAKE), setOf(Twist.FAKE, Twist.PULSE))) {
+                eachTrapFrameWhilePlaying(twists) { game ->
+                    val trap = layout(game, t)
+                    sizes.add(trap.px to trap.redPx)
+                }
+            }
+            assertEquals(1, sizes.size, "Minengrößen schwanken (${t.name}): $sizes")
+            val (px, red) = sizes.single()
+            assertEquals(px + 1, red, "Rot ist eine Stufe größer (${t.name})")
+        }
     }
 
     @Test
@@ -321,10 +354,10 @@ class MineFieldTest {
         for (t in tracks) {
             var narrow = false
             eachTrapFrame(setOf(Twist.FAKE, Twist.PULSE), seeds = 1L..30L, frames = 300) { game, _ ->
-                if (game.fakeZoneHalf() < game.zoneHalfWidth * 0.7f) narrow = true
+                if (game.effectiveZoneHalf() < game.zoneHalfWidth * 0.7f) narrow = true
                 assertMinesApart(game, t)
             }
-            assertTrue(narrow, "die Falle war eng (${t.name})")
+            assertTrue(narrow, "die Zone war eng (${t.name})")
             eachTrapFrame(setOf(Twist.FAKE), seeds = 1L..20L, frames = 300) { game, _ ->
                 assertMinesApart(game, t)
             }
@@ -419,31 +452,6 @@ class MineFieldTest {
             assertTrue(7 in counts && 2 in counts, "Fallen mit sieben bis zwei Minen geprüft: $counts")
             // Meist belegt die Falle genau so viele Blöcke, wie sie Minen trägt.
             assertTrue(exact * 2 > frames, "genau ein Blockabstand in $exact von $frames Frames (${t.name})")
-        }
-    }
-
-    @Test
-    fun `unter PULS wird die Lücke zum Sand nie größer als ein Blockabstand`() {
-        for (t in screens) {
-            var squeezed = false
-            fun check(game: TimingGame) {
-                if (touchesZone(game)) return
-                val g = endGaps(game, t)
-                assertEquals(0, g.hidden, "kein Sandblock neben der Kette fällt weg (${t.name})")
-                val loose = 1f / (g.count + 1) + 0.01f
-                if (g.pitch < 0.9f) {
-                    squeezed = true
-                    // Zusammengedrückt: höchstens ein Blockabstand Luft.
-                    assertTrue(g.before <= 1.01f && g.after <= 1.01f, "Lücke ${g.before}/${g.after} (${t.name})")
-                }
-                assertTrue(g.before <= 1f + loose && g.after <= 1f + loose, "Lücke ${g.before}/${g.after}")
-                // Mindestens so weit, dass die Mine den Sand nicht berührt.
-                val min = trapEndGap(layout(game, t).px, t.radius, t.cell, segments) - 0.02f
-                assertTrue(g.before >= min && g.after >= min, "Lücke ${g.before}/${g.after} < $min (${t.name})")
-            }
-            eachTrapFrame(setOf(Twist.FAKE, Twist.PULSE)) { game, _ -> check(game) }
-            eachTrapFrameWhilePlaying(setOf(Twist.FAKE, Twist.PULSE)) { check(it) }
-            assertTrue(squeezed, "PULS hat die Kette zusammengedrückt (${t.name})")
         }
     }
 

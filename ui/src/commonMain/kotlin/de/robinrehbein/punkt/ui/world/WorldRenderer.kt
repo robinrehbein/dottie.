@@ -912,9 +912,9 @@ internal fun DrawScope.drawTrack(
     // bleiben durch ihre größeren Blöcke bewusst ein durchgehendes Band.
     val segments = TRACK_SEGMENTS
     val zoneHalf = game.effectiveZoneHalf()
-    // Minen so groß wie möglich, aber nie so groß, dass sie sich oder den
-    // Sand daneben berühren (unter PULS rückt die Kette zusammen). Sie
-    // liegen im Takt der Blöcke auf den Plätzen, die die Falle frei lässt.
+    // Minen in fester Größe je Bildschirm, so groß, dass sie sich und den
+    // Sand daneben in keiner Falle berühren (trapMinePixel). Sie liegen im
+    // Takt der Blöcke auf den Plätzen, die die Falle frei lässt.
     val trap = trapLayout(game, segments, zoneHalf, radius, cell)
     val minePx = trap.px
     val mines = trap.mines
@@ -976,10 +976,10 @@ internal fun DrawScope.drawTrack(
 
     // Die Minen der Falle: so viele, wie TrapPaint.count aus der
     // Grundbreite ergibt, im Takt der Blöcke über die Breite
-    // fakeZoneHalf() (8.7). Erst alle Ränder, dann alle Kugeln:
+    // fakeZoneHalf(). Erst alle Ränder, dann alle Kugeln:
     // Benachbarte Minen teilen sich ihren Rand, die Kugeln berühren sich
     // nie (trapMinePixel).
-    // Rote Minen sind eine Pixelstufe größer, wo es passt (trapRedPixel).
+    // Rote Minen sind immer eine Pixelstufe größer (trapLayout).
     fun pxOf(mine: TrapMine) = if (mine.red) trap.redPx else minePx
     for ((i, c) in mineCenters.withIndex()) {
         drawMineRim(c.x, c.y, pxOf(mines[i]))

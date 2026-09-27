@@ -106,25 +106,27 @@ class ZoneWindowTest {
     }
 
     @Test
-    fun `die Falle ist genauso breit wie die Zone`() {
-        // Vorher wurde die Falle mit der Grundbreite gezeichnet, während
-        // die Zone atmete: Unter PULS war die Falle fast immer die
-        // breitere von beiden und verriet sich damit selbst.
+    fun `die Falle hat die Grundbreite und atmet unter PULS nicht`() {
+        // PULS wirkt nur auf die grüne Zone. Atmete die Falle mit, müssten
+        // ihre Minen schrumpfen oder sich überlappen.
         val spiel = TimingGame()
         assertEquals(spiel.effectiveZoneHalf(), spiel.fakeZoneHalf(), 0f)
 
-        // Auch mit laufendem PULS über eine ganze Welle hinweg.
+        // Über eine ganze Welle hinweg: Die Zone atmet, die Falle steht.
         spiel.twistOverride = setOf(Twist.PULSE, Twist.FAKE)
         spiel.start() // startet den Lauf und setzt die Twists
+        var geatmet = false
         repeat(120) {
             spiel.update(1f / 60f)
             assertEquals(
-                "Falle und Zone müssen dieselbe Breite haben",
-                spiel.effectiveZoneHalf(),
+                "Die Falle behält die Grundbreite",
+                spiel.zoneHalfWidth,
                 spiel.fakeZoneHalf(),
                 0f
             )
+            if (spiel.effectiveZoneHalf() < spiel.zoneHalfWidth * 0.8f) geatmet = true
         }
+        assertTrue("Die Zone atmet unter PULS weiter", geatmet)
     }
 
     @Test

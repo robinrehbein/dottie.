@@ -76,10 +76,9 @@ object TrapPaint {
      * mindestens eine. [cell] in derselben Einheit wie [zoneHalfWidth]
      * (im Spiel: Radiant eines Bahn-Blocks).
      *
-     * Absichtlich mit der Grundbreite [TimingGame.zoneHalfWidth] statt mit
-     * der pulsierenden [TimingGame.fakeZoneHalf]: Unter PULS atmet die
-     * Falle, die Zahl der Minen und das Lauflicht sollen dabei stehen
-     * bleiben. Gezeichnet wird dann in der Breite von `fakeZoneHalf()`.
+     * Mit der Grundbreite [TimingGame.zoneHalfWidth], derselben wie
+     * [TimingGame.fakeZoneHalf]: Die Falle atmet unter PULS nicht, Zahl
+     * und Lauflicht bleiben stehen.
      */
     fun count(zoneHalfWidth: Float, cell: Float): Int {
         if (!(cell > 0f) || !(zoneHalfWidth > 0f)) return 1

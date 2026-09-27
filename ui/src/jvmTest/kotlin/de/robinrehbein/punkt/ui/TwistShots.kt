@@ -299,8 +299,8 @@ class TwistShots {
     }
 
     /**
-     * Die Falle unter PULS, einmal eng und einmal weit: Die Kette atmet,
-     * die Zahl der Minen bleibt (Plan 8.7).
+     * Die Falle unter PULS, Zone einmal eng und einmal weit: Nur die Zone
+     * atmet, die Kette und die Zahl der Minen bleiben stehen.
      */
     @Test
     fun bombenPuls() {
@@ -312,12 +312,12 @@ class TwistShots {
             "weit" to { h: Float -> h > game.zoneHalfWidth * 0.97f }
         ).forEach { (name, wanted) ->
             var frames = 0
-            while (!wanted(game.fakeZoneHalf())) {
+            while (!wanted(game.effectiveZoneHalf())) {
                 game.update(BOT_DT / 4f)
                 check(game.phase == GamePhase.RUNNING) { "Punkt ist vor PULS-$name an der Zone vorbei" }
                 check(++frames < MAX_BOT_FRAMES) { "PULS erreicht $name nicht" }
             }
-            println("   bomben-puls-$name: breite=${game.fakeZoneHalf() / game.zoneHalfWidth} minen=$n")
+            println("   bomben-puls-$name: zone=${game.effectiveZoneHalf() / game.zoneHalfWidth} minen=$n")
             shoot(dir, "bomben-puls-$name.png", game)
         }
     }
@@ -342,7 +342,7 @@ class TwistShots {
         }
         val game = trapGame(2, setOf(Twist.PULSE))
         var frames = 0
-        while (game.fakeZoneHalf() >= game.zoneHalfWidth * 0.66f) {
+        while (game.effectiveZoneHalf() >= game.zoneHalfWidth * 0.66f) {
             game.update(BOT_DT / 4f)
             check(game.phase == GamePhase.RUNNING) { "Punkt ist vor PULS-eng an der Zone vorbei" }
             check(++frames < MAX_BOT_FRAMES) { "PULS erreicht eng nicht" }
