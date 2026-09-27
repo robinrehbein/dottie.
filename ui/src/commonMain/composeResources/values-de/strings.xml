@@ -84,6 +84,8 @@
     <!-- == AP-12 bomben == -->
     <!-- == /AP-12 == -->
     <string name="twist_learned_chain">NEU IN DIESEM LAUF: KETTE — ZWEI ZONEN NACHEINANDER</string>
+    <string name="twist_learned_mirror">NEU IN DIESEM LAUF: SPIEGEL — KEINE WENDE NACH DEM TREFFER</string>
+    <string name="twist_learned_tempo">NEU IN DIESEM LAUF: TEMPO — ORANGE SCHNELLER, BLAU LANGSAMER</string>
     <string name="tap_retry">TIPPEN = NOCHMAL</string>
     <string name="share">TEILEN</string>
     <string name="menu">MENÜ</string>
@@ -138,6 +140,10 @@
     <string name="twist_fake_text">EINE KETTE AUS BOMBEN NEBEN DER ZONE: NIE HINEINTIPPEN!</string>
     <string name="twist_chain_title">KETTE (AB 25)</string>
     <string name="twist_chain_text">ZWEI ZONEN NACHEINANDER — GLEICHE RICHTUNG.</string>
+    <string name="twist_mirror_title">SPIEGEL (AB 35)</string>
+    <string name="twist_mirror_text">WEISSE PFEILE HINTER DER ZONE: NACH DEM TREFFER KEINE WENDE — DIE NÄCHSTE ZONE LIEGT GEGENÜBER.</string>
+    <string name="twist_tempo_title">TEMPO (AB 45)</string>
+    <string name="twist_tempo_text">VOR DER ZONE ÄNDERT DER PUNKT SEIN TEMPO: ORANGE PFEILE SCHNELLER, BLAUE STRICHE LANGSAMER.</string>
     <string name="help_max_twists">MAXIMAL ZWEI TWISTS GLEICHZEITIG — ZUFÄLLIG GEMISCHT.</string>
     <string name="skin_selected">AUSGEWÄHLT</string>
     <string name="skin_family_einfarbig">EINFARBIG</string>

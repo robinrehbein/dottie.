@@ -355,6 +355,43 @@ class TwistShots {
     // == /AP-12 ==
 
     /** Ein Spiel mit festem Seed und festem Twist-Set, noch in READY. */
+    /**
+     * Die späten Twists (ab v2.36): SPIEGEL mit Pfeilen hinter der Zone,
+     * TEMPO schnell und langsam mit dem markierten Band davor. Der Punkt
+     * steht jeweils kurz vor dem Band bzw. vor der Zone.
+     */
+    @Test
+    fun spaeteTwists() {
+        val dir = shotsDir() ?: return
+        fun shot(name: String, game: TimingGame) {
+            ImageComposeScene(width = 1080, height = 2400, density = Density(2.625f)) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawTimingWorld(game, FxState(), SkinId.KLASSIK, SceneId.WIESE, hour = 12, month = 6)
+                }
+            }.use { scene ->
+                val data = scene.render(0L).encodeToData(EncodedImageFormat.PNG)!!
+                File(dir, name).writeBytes(data.bytes)
+                println("-> twists/$name")
+            }
+        }
+        val spiegel = seededGame(setOf(Twist.MIRROR))
+        check(playTo(spiegel, 12)) { "Bot starb vor SPIEGEL" }
+        runToRel(spiegel, -spiegel.zoneHalfWidth - 0.35f)
+        shot("spiegel.png", spiegel)
+
+        for (fast in listOf(true, false)) {
+            var found: TimingGame? = null
+            for (seed in 1L..60L) {
+                val g = seededGame(setOf(Twist.TEMPO), seed)
+                if (!playTo(g, 12)) continue
+                if (g.isTempoFast == fast) { found = g; break }
+            }
+            val g = checkNotNull(found) { "kein Seed mit TEMPO fast=$fast" }
+            runToRel(g, g.tempoStart() - 0.25f)
+            shot(if (fast) "tempo-schnell.png" else "tempo-langsam.png", g)
+        }
+    }
+
     private fun seededGame(twists: Set<Twist>, seed: Long = SEED): TimingGame =
         TimingGame(Random(seed)).apply { twistOverride = twists }
 

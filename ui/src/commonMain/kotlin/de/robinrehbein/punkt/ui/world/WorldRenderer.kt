@@ -29,6 +29,7 @@ import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.TimingGame
+import de.robinrehbein.punkt.game.TrackMarks
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -964,6 +965,11 @@ internal fun DrawScope.drawTrack(
         }
         if (underMine) continue
         drawTrackBlock(b, style)
+        // SPIEGEL und TEMPO zeigen sich auf der Bahn, bevor sie wirken
+        // (ab v2.36, siehe LateTwistMarks.kt).
+        TrackMarks.at(game, a, segments)?.let { mark ->
+            drawTrackMark(b, mark, travelOctant(a, game.direction))
+        }
     }
 
     for (z in zoneBlocks) drawZoneBlock(z.block, z.core, z.mirrored, style.motif)

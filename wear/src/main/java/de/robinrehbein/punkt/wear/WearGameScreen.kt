@@ -396,6 +396,8 @@ private fun lessonRes(twist: Twist): Int = when (twist) {
     Twist.GHOST -> R.string.lesson_ghost
     Twist.FAKE -> R.string.lesson_fake
     Twist.CHAIN -> R.string.lesson_chain
+    Twist.MIRROR -> R.string.lesson_mirror
+    Twist.TEMPO -> R.string.lesson_tempo
 }
 
 /** Name einer Welt, wie am Telefon übersetzt. */

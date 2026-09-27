@@ -9,7 +9,23 @@ import kotlin.random.Random
 enum class GamePhase { READY, RUNNING, DYING, OVER }
 
 /** Die Erschwernisse, die sich mit steigendem Score freischalten. */
-enum class Twist { PULSE, DRIFT, GHOST, FAKE, CHAIN }
+enum class Twist {
+    PULSE, DRIFT, GHOST, FAKE, CHAIN,
+
+    /**
+     * SPIEGEL (ab v2.36, ab Score 35): Nach dem Treffer dreht der Punkt
+     * NICHT um, die nächste Zone liegt gegenüber auf der Bahn. Neue
+     * Twists stehen hinten, damit die Ordinalzahlen der alten bleiben.
+     */
+    MIRROR,
+
+    /**
+     * TEMPO (ab v2.36, ab Score 45): Auf dem letzten Stück vor der Zone
+     * wird der Punkt schneller oder langsamer. In der Zone selbst fliegt
+     * er wieder im normalen Tempo.
+     */
+    TEMPO
+}
 
 /**
  * Was in einem Frame passiert ist.
@@ -96,6 +112,10 @@ enum class DeathCause { NONE, EARLY, LATE, MISSED, TRAP }
  *   (siehe [TimingGame.isInFog]). Die Texte sagen NEBEL, der Name bleibt.
  * - FAKE (ab 20): Eine Köder-Zone auf dem Weg — Tap darin ist tödlich.
  * - CHAIN (ab 25): Zwei Zonen direkt nacheinander ohne Richtungswechsel.
+ * - MIRROR (ab 35): Nach dem Treffer keine Wende, die nächste Zone liegt
+ *   gegenüber (siehe [TimingGame.isMirrorZone]).
+ * - TEMPO (ab 45): Vor der Zone ändert der Punkt sein Tempo (siehe
+ *   [TimingGame.tempoFactor]).
  *
  * Winkel sind in Radiant, Geschwindigkeiten in Radiant pro Sekunde.
  */
@@ -223,6 +243,16 @@ class TimingGame(private var random: Random) {
     /** [zoneAge] im Moment des Todes, für DYING und OVER. */
     private var zoneAgeAtDeath: Float = 0f
 
+    /**
+     * TEMPO: Faktor auf das Tempo im Tempo-Band vor der Zone — größer als
+     * 1 heißt schneller, kleiner langsamer. 1, solange TEMPO in dieser
+     * Zone nicht aktiv ist. Gewürfelt wird er nur, wenn TEMPO gezogen
+     * wurde: So bleibt die Zufallsfolge aller Läufe unter Score 45 (und
+     * damit jede Daily bis dorthin) Zahl für Zahl dieselbe wie vorher.
+     */
+    var tempoFactor: Float = 1f
+        private set
+
     /** Wie viele Ketten-Zonen nach der aktuellen noch folgen. */
     var chainRemaining: Int = 0
         private set
@@ -303,6 +333,52 @@ class TimingGame(private var random: Random) {
             val rel = relativeToZone()
             return rel >= fogStart() && rel <= fogEnd()
         }
+
+    /** Ist in der aktuellen Zone TEMPO aktiv? */
+    val hasTempo: Boolean
+        get() = Twist.TEMPO in activeTwists && tempoFactor != 1f
+
+    /** Wird der Punkt im Tempo-Band schneller (sonst langsamer)? */
+    val isTempoFast: Boolean
+        get() = tempoFactor > 1f
+
+    /**
+     * Anfang des Tempo-Bands, relativ zur Zone wie [relativeToZone]:
+     * [TEMPO_SECONDS] normaler Laufzeit vor der Zonenkante. Das Band endet
+     * an der Kante ([tempoEnd]) — in der Zone fliegt der Punkt wieder im
+     * gewohnten Tempo, das Trefferfenster bleibt also genau so lang wie
+     * ohne TEMPO. Nur die Ankunft verschiebt sich.
+     */
+    fun tempoStart(): Float = -zoneHalfWidth - currentSpeed() * TEMPO_SECONDS
+
+    /** Ende des Tempo-Bands: die vordere Zonenkante (Grundbreite). */
+    fun tempoEnd(): Float = -zoneHalfWidth
+
+    /** Steht der Punkt gerade im Tempo-Band? Reine Geometrie. */
+    val isInTempoBand: Boolean
+        get() {
+            val rel = relativeToZone()
+            return rel >= tempoStart() && rel < tempoEnd()
+        }
+
+    /**
+     * Ist die aktuelle Zone eine SPIEGEL-Zone — dreht der Punkt nach dem
+     * Treffer also NICHT um? Die Renderer zeigen das vor dem Treffer an,
+     * sonst wäre die ausbleibende Wende ein Zufallstod.
+     */
+    val isMirrorZone: Boolean
+        get() = Twist.MIRROR in activeTwists && chainRemaining == 0
+
+    /**
+     * Das Tempo, mit dem sich der Punkt gerade bewegt: [currentSpeed],
+     * im Tempo-Band mal [tempoFactor]. Alles, was in Sekunden rechnet
+     * (Spät-Gnade, Überfahren, Nebel, Abstand beim Fehltap), bleibt bei
+     * [currentSpeed] — es gilt in und hinter der Zone, und dort gilt das
+     * normale Tempo.
+     */
+    fun dotSpeed(): Float =
+        if (phase == GamePhase.RUNNING && hasTempo && isInTempoBand) currentSpeed() * tempoFactor
+        else currentSpeed()
 
     /** Steht der Punkt gerade in der (effektiven) Zielzone? */
     val isInZone: Boolean get() = abs(relativeToZone()) <= effectiveZoneHalf()
@@ -437,7 +513,9 @@ class TimingGame(private var random: Random) {
                     }
                     val speed = currentSpeed()
                     lastMissSeconds = when (lastDeathCause) {
-                        DeathCause.EARLY -> (-rel - half) / speed
+                        // Vor der Zone zählt das Tempo, mit dem der Punkt
+                        // gerade wirklich fliegt (TEMPO-Band).
+                        DeathCause.EARLY -> (-rel - half) / dotSpeed()
                         DeathCause.LATE -> (rel - half) / speed - LATE_TAP_FORGIVENESS_SECONDS
                         else -> 0f
                     }.coerceAtLeast(0f)
@@ -500,6 +578,7 @@ class TimingGame(private var random: Random) {
         activeTwists.clear()
         hasFakeZone = false
         chainRemaining = 0
+        tempoFactor = 1f
         announcedTwists.clear()
         pendingEvents.clear()
         lastDeathCause = DeathCause.NONE
@@ -525,7 +604,7 @@ class TimingGame(private var random: Random) {
                 angle = wrapTwoPi(angle + direction * READY_SPEED * dt)
             }
             GamePhase.RUNNING -> {
-                angle = wrapTwoPi(angle + direction * currentSpeed() * dt)
+                angle = wrapTwoPi(angle + direction * dotSpeed() * dt)
                 if (Twist.DRIFT in activeTwists) {
                     zoneCenter = wrapTwoPi(
                         zoneCenter + direction * driftSign * DRIFT_SPEED * dt
@@ -588,23 +667,42 @@ class TimingGame(private var random: Random) {
             spawnChainZone()
             pendingEvents.add(GameEventChainNext)
         } else {
-            direction = -direction
-            spawnZone()
+            // SPIEGEL: keine Wende, die nächste Zone liegt gegenüber.
+            val mirrored = Twist.MIRROR in activeTwists
+            if (!mirrored) direction = -direction
+            spawnZone(mirrored)
         }
     }
 
-    private fun spawnZone() {
+    private fun spawnZone(mirrored: Boolean = false) {
         // Der Mindestabstand ist zeitbasiert: Egal wie schnell der Punkt
         // schon kreist, bleiben immer mindestens MIN_REACTION_SECONDS bis
         // zur neuen Zone — sonst stirbt man an Physik statt an Skill.
         val minDistance = maxOf(MIN_ZONE_DISTANCE, currentSpeed() * MIN_REACTION_SECONDS)
         val maxDistance = maxOf(MAX_ZONE_DISTANCE, minDistance + 0.4f)
-        val distance = minDistance + random.nextFloat() * (maxDistance - minDistance)
+        // Nach einer SPIEGEL-Zone liegt die nächste gegenüber (etwa eine
+        // halbe Runde). Dieselbe eine Zufallszahl wie sonst: Die Folge
+        // bleibt gleich lang, nur ihr Sinn ändert sich.
+        val roll = random.nextFloat()
+        // Gegenüber heißt knapp unter einer halben Runde: Ab PI kippt
+        // relativeToZone auf die andere Seite, und die Zone gälte sofort
+        // als überfahren.
+        val distance = if (mirrored) {
+            maxOf(minDistance, PI.toFloat() - MIRROR_GAP - roll * MIRROR_SPREAD)
+        } else {
+            minDistance + roll * (maxDistance - minDistance)
+        }
         zoneCenter = wrapTwoPi(angle + direction * distance)
         chooseTwists()
 
         driftSign = if (random.nextBoolean()) 1 else -1
         chainRemaining = if (Twist.CHAIN in activeTwists) CHAIN_LENGTH else 0
+        // TEMPO würfelt nur, wenn es gezogen wurde (siehe tempoFactor).
+        tempoFactor = if (Twist.TEMPO in activeTwists) {
+            if (random.nextBoolean()) TEMPO_FAST else TEMPO_SLOW
+        } else {
+            1f
+        }
 
         hasFakeZone = false
         if (Twist.FAKE in activeTwists) {
@@ -743,7 +841,15 @@ class TimingGame(private var random: Random) {
         const val MAX_ACTIVE_TWISTS = 2
 
         /** Nie zusammen aktive Twist-Paare (siehe conflictsWithActive). */
-        val FORBIDDEN_COMBOS = listOf(setOf(Twist.GHOST, Twist.FAKE))
+        val FORBIDDEN_COMBOS = listOf(
+            setOf(Twist.GHOST, Twist.FAKE),
+            // Tempowechsel im Nebel sähe niemand — der Punkt wäre genau
+            // dort unsichtbar, wo er schneller oder langsamer wird.
+            setOf(Twist.GHOST, Twist.TEMPO),
+            // Die Kette läuft ohnehin ohne Wende weiter; SPIEGEL darauf
+            // wäre doppelt gemoppelt und würde die Kette zerreißen.
+            setOf(Twist.CHAIN, Twist.MIRROR)
+        )
         const val TWIST_PROBABILITY = 0.45f
         const val PULSE_SPEED = 5f
         const val PULSE_MIN_SHARE = 0.62f
@@ -766,6 +872,37 @@ class TimingGame(private var random: Random) {
         /** BLIND!: Extrapunkte für einen Treffer im Nebel (siehe [blindBonus]). */
         private const val BLIND_BONUS_POINTS = 1
         const val CHAIN_LENGTH = 1
+
+        /**
+         * SPIEGEL: Die nächste Zone liegt zwischen PI - MIRROR_GAP -
+         * MIRROR_SPREAD und PI - MIRROR_GAP voraus (in Radiant), also
+         * gegenüber, aber nie genau auf PI — dort kippt [relativeToZone].
+         * Die Streuung sorgt dafür, dass sie nicht jedes Mal auf den Block
+         * genau an derselben Stelle liegt.
+         */
+        const val MIRROR_GAP = 0.15f
+        const val MIRROR_SPREAD = 0.4f
+
+        /**
+         * TEMPO: So viele Sekunden normaler Laufzeit vor der Zone liegt
+         * das Tempo-Band. Lang genug, dass man den Wechsel sieht und
+         * reagieren kann; kurz genug, dass er erst nach dem letzten
+         * Treffer kommt (die Zone liegt mindestens MIN_REACTION_SECONDS
+         * entfernt, das Band beginnt also nie hinter dem Punkt, solange
+         * es kürzer ist).
+         */
+        const val TEMPO_SECONDS = 0.4f
+
+        /**
+         * Die zwei Tempi im Band. Schnell verschiebt die Ankunft um gut
+         * 0,09 s nach vorn, langsam um gut 0,17 s nach hinten — beides
+         * mehr als das Perfekt-Fenster, man muss also wirklich hinsehen.
+         * Schnell bleibt bewusst mild: Direkt nach einem Treffer liegen
+         * bis zur neuen Zone nur MIN_REACTION_SECONDS, und schneller als
+         * etwa 0,36 s soll es nie werden.
+         */
+        const val TEMPO_FAST = 1.3f
+        const val TEMPO_SLOW = 0.7f
         const val CHAIN_MIN_DISTANCE = 1.0f
         const val CHAIN_MAX_DISTANCE = 1.8f
 
@@ -787,6 +924,8 @@ class TimingGame(private var random: Random) {
             Twist.GHOST -> 15
             Twist.FAKE -> 20
             Twist.CHAIN -> 25
+            Twist.MIRROR -> 35
+            Twist.TEMPO -> 45
         }
 
         private const val TWO_PI = (2 * PI).toFloat()
