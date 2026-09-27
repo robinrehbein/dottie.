@@ -144,7 +144,8 @@ einzelner Skins einzubauen.
 
 Nicht anfassen: den Score und die Texte (sie laufen über die Schrift
 `Bytesized`), Overlays und Knöpfe (die haben schon Bevel), Nebel, Himmel
-und die Backdrop-Ebenen (Gebirge, Sterne).
+und die Backdrop-Ebenen (Gebirge, Sterne). Die einzige Ausnahme sind die
+Galaxien in Schritt 2 (Abschnitt 8.3b).
 
 ## 6. Vorgehen und Prüfung
 
@@ -252,6 +253,34 @@ Zwei Requisiten wirken heute als Kästen und sollen zum neuen Boden passen:
 Beide werden am besten als Pixel-Maske gezeichnet, wie `TrapPaint.MINE`
 (Zeilen aus Zeichen in `:core`, gezeichnet vom Renderer), statt als
 Rechteck-Liste. Vorlage: `alle-welten.png`, Wüste und Meer.
+
+### 8.3b Galaxien im Weltraum
+
+Die zwei Galaxien in `drawGalaxy` (`ui/.../world/Backdrop.kt`) bleiben an
+ihrem Platz und behalten ihre Form: oben links in Blau (`colors[4]`
+`#7FA8E8`), unten rechts in Rosé (`colors[5]` `#E89AB8`), zwei Arme, 40
+Schritte, gleiche Drehung. Geändert wird nur, wie sie verblassen.
+
+Heute werden die Arme nach außen stufenlos durchsichtig (`alpha`).
+Rosé halbtransparent über Dunkelblau wird ein schmutziges Grau-Lila. Die
+Staub-Pixel in Kernfarbe mit Transparenz wirken wie graubeige Flecken
+oder Bildrauschen.
+
+Neu:
+- **Arme in drei festen, deckenden Stufen statt `alpha`:** innen
+  (`t < 0.35`) die volle Armfarbe, in der Mitte (`t < 0.7`)
+  `mix(arm, Himmel, 0.35)`, außen `mix(arm, Himmel, 0.62)`. „Himmel“ ist
+  die aktuelle Himmelsstufe des Weltraums, damit es auf jeder Stufe passt.
+- **Staub nur auf der inneren Hälfte** (`t < 0.5`), deckend in
+  `mix(arm, Weiß, 0.6)` statt in Kernfarbe mit Transparenz.
+- **Der Kern-Schimmer** (heute das Kreuz mit `alpha = 0.5`) wird deckend in
+  der mittleren Armstufe gezeichnet, der helle Kern darüber bleibt, wie er
+  ist.
+- **Farbwerte in `:core`:** Die Mischwerte gehören zu `BevelPaint`,
+  damit sie testbar sind. Ein Test prüft, dass keine der Stufen dem
+  Zonengrün nahekommt (`MIN_ZONE_DISTANCE`).
+
+Vorlage: `alle-welten.png`, Weltraum.
 
 ### 8.4 Umsetzung
 
