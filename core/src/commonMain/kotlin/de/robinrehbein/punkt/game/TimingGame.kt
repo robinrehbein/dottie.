@@ -406,15 +406,16 @@ class TimingGame(private var random: Random) {
     }
 
     /**
-     * Halbe Breite der Fallen-Zone — dieselbe wie die der echten Zone,
-     * Pulsieren eingeschlossen.
+     * Halbe Breite der Fallen-Zone: die Grundbreite der Zone. PULS wirkt
+     * nur auf die grüne Zone, die Falle atmet nicht.
      *
-     * Vorher zeichneten die Renderer die Falle mit der Grundbreite,
-     * während die Zone atmete. Damit war die Falle während PULS fast immer
-     * die breitere von beiden; wer das einmal bemerkte, musste FALLE +
-     * PULS nie wieder raten. Eine Falle, die sich selbst verrät, ist keine.
+     * Früher atmete die Falle mit, damit sie sich unter PULS nicht als
+     * die breitere verriet. Seit die Falle eine Kette aus Minen ist, sieht
+     * sie ohnehin anders aus als die Zone; beim Atmen mussten die Minen
+     * dagegen schrumpfen oder sich überlappen. Jetzt liegt die Kette immer
+     * im Takt der Bahn-Blöcke, und die Minen haben eine feste Größe.
      */
-    fun fakeZoneHalf(): Float = effectiveZoneHalf()
+    fun fakeZoneHalf(): Float = zoneHalfWidth
 
     /**
      * Ist der Punkt gerade sichtbar? Unsichtbar nur in RUNNING unter NEBEL

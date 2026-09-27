@@ -27,7 +27,6 @@ import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.round
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -399,8 +398,8 @@ internal fun wearNeutralOuter(radius: Float): Float =
  * [TimingGame.zoneHalfWidth] und dem Winkel eines Bahn-Blocks als Zelle;
  * sie rundet ab und bleibt unter PULS stehen. Die Minen liegen gleichmäßig
  * über die Breite von [TimingGame.fakeZoneHalf] verteilt (je eine in der
- * Mitte von n gleich breiten Feldern), die Kette atmet also mit, die Zahl
- * nicht. Minen, die in der echten Zone ([zoneHalf]) lägen, entfallen.
+ * Mitte von n gleich breiten Feldern). Unter PULS atmet nur die Zone, die
+ * Kette steht. Minen, die in der echten Zone ([zoneHalf]) lägen, entfallen.
  * Keine Zufallszahl.
  */
 internal fun wearTrapMineAngles(game: TimingGame, segments: Int, zoneHalf: Float): List<Float> =
@@ -435,18 +434,13 @@ internal fun wearTrapMines(game: TimingGame, segments: Int, zoneHalf: Float): Li
 }
 
 /**
- * Kleinster Abstand zweier benachbarter Minen auf dem Bild (Sehne, in
- * Bildpunkten), den die Falle in dieser Runde annehmen kann. Unter PULS
- * zählt das Wellental, damit die Minen beim Atmen nicht die Größe wechseln.
+ * Abstand zweier benachbarter Minen auf dem Bild (Sehne, in Bildpunkten).
+ * Die Falle atmet unter PULS nicht ([TimingGame.fakeZoneHalf]), der
+ * Abstand steht also die ganze Runde.
  */
 internal fun wearMineDistance(game: TimingGame, segments: Int, radius: Float): Float {
     val count = TrapPaint.count(game.zoneHalfWidth, 2f * PI.toFloat() / segments)
-    val narrowest = if (Twist.PULSE in game.activeTwists) {
-        min(game.fakeZoneHalf(), game.zoneHalfWidth * TimingGame.PULSE_MIN_SHARE)
-    } else {
-        game.fakeZoneHalf()
-    }
-    val pitch = 2f * narrowest / count
+    val pitch = 2f * game.fakeZoneHalf() / count
     return 2f * radius * sin(pitch / 2f)
 }
 
