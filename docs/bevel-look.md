@@ -8,7 +8,12 @@ die bestehenden Sprites im Code.
 ```text
 Baue den Bevel-Look in Dottie ein. Lies zuerst docs/bevel-look.md ganz und
 sieh dir die Bilder in docs/bevel-mockups/ an (vorher-nachher.png,
-dot-optionen.png, dot-kugel.png, bevel-detail-bomben.png).
+dot-optionen.png, dot-kugel.png, bevel-detail-bomben.png,
+welten-bloecke.png, welten-boden.png).
+
+Setze es in zwei Schritten um: Schritt 1 ist der Bevel-Look (Abschnitte
+1–7), Schritt 2 sind die Bahn-Blöcke und der Boden pro Welt (Abschnitt 8).
+Schritt 2 baut auf Schritt 1 auf.
 
 Arbeite auf einem eigenen Branch von main und öffne am Ende einen Draft-PR
 nach main. Kein Merge. Commit-Nachrichten und Kommentare auf Deutsch, im
@@ -42,7 +47,9 @@ Spielelemente übertragen werden.
 - **Keine neuen Formen:** Dottie bekommt keine Flügel, er bleibt ein Punkt.
   Die Minen behalten `TrapPaint.MINE`, Bäume, Büsche und Blumen behalten
   ihre heutige Form.
-- **Boden:** bleibt flach wie heute, ohne Ziegelmuster.
+- **Boden:** In Schritt 1 bleibt die Form wie heute, nur mit Bevel und
+  ohne Ziegelmuster. Welteigene Böden kommen erst in Schritt 2
+  (Abschnitt 8).
 - **Die Golden Vectors (`parity/golden-vectors.txt`) dürfen sich nicht
   ändern.** Das hier ist reine Darstellung.
 
@@ -167,3 +174,99 @@ und die Backdrop-Ebenen (Gebirge, Sterne).
 - Alle Tests sind grün, die Golden Vectors unverändert.
 - Im PR steht eine Liste der Punkte, die ein Mensch am Gerät prüfen muss:
   Wirkung bei 60 fps, kleine Displays und die Uhr.
+
+## 8. Schritt 2: Bahn-Blöcke und Boden pro Welt
+
+Vorlage: `docs/bevel-mockups/welten-bloecke.png` und
+`docs/bevel-mockups/welten-boden.png`. Auch diese Mockups zeigen die
+Richtung, sie sind keine pixelgenaue Vorlage.
+
+Heute sieht die Bahn in allen sechs Welten gleich aus, mit Sandblöcken
+auch im Weltraum. Der Boden hat überall dieselbe Form, nur in anderen
+Farben. Nach diesem Schritt passt jede Welt von der Bahn bis zum Boden
+zusammen.
+
+### 8.1 Grundregel: Material wechselt, Signal bleibt
+
+- **Die normalen Bahn-Blöcke** bekommen pro Welt ein eigenes Material.
+- **Die Zone bleibt in jeder Welt grün.** Der Blockkörper nutzt immer die
+  Zonentöne aus `Palette.kt` (`GrassLight`, `GrassDark`, `GrassShine`,
+  `GrassEdge`, dazu `CORE` für den Kern). Pro Welt wechseln nur ein
+  kleines Motiv auf dem Block und der Akzent im Perfekt-Kern. Der goldene
+  Saum (`ZoneCoreHalo`) bleibt überall gleich.
+- **Die Minen bleiben in jeder Welt unverändert** (`TrapPaint`).
+- **Der Bevel aus Schritt 1 gilt für alles.**
+- **Kein Grün außerhalb der Zone.** Die einzige Ausnahme ist die Grasnarbe
+  der Wiese (`LEGACY_ZONE_GREENS`), die heute schon als Ausnahme gilt.
+- **Die Motive sind nur 1–3 Pixel groß.** Die Lesbarkeit von Zone und Kern
+  geht immer vor.
+
+### 8.2 Bahn-Blöcke
+
+| Welt | Normaler Block | Zonen-Motiv | Kern-Akzent |
+|---|---|---|---|
+| WIESE | Sand wie heute (`#DED895`) | Blätter (wie heute) | Blüte rosa/gold (wie heute) |
+| WUESTE | Sandstein `#E3B26A` mit waagrechter Fuge | 2–3 weiße Kaktusstacheln | Kaktusblüte `#FF5A8A` mit gelber Mitte |
+| MEER | Treibholz-Planke `#B9844F` mit Maserungspunkten | Seerosenblatt mit Kerbe, ein Wassertropfen `#7FD8F0` | Seerose weiß mit rosa Mitte |
+| BERG | Fels `#9AA0AA`, obere Kante als Schneekappe in Weiß | Moos mit Steinchen | Edelweiß weiß mit gelber Mitte |
+| STADT | Betonplatte `#B9BCC4` mit zwei Nieten | LED-Kachel: 2×2 hellgrüne Punkte | weißes „Go“-Licht, 3×3 |
+| WELTRAUM | Metallpanel `#C9D2E2` mit blauem Lämpchen `#7FD4FF` | hellgrüne Kristall-Facette (Diagonale) | leuchtende weiße Facette |
+
+Die Farben sind Startwerte. Die Tests aus 8.4 entscheiden: Wenn eine
+Farbe durchfällt, wird die Farbe angepasst und nicht der Test.
+
+### 8.3 Boden
+
+Die Bodenkante `ScenePaint.GROUND_TOP` bleibt in jeder Welt auf derselben
+Höhe. Requisiten stehen darauf, und die Tod-Animation landet dort. Der
+Boden bleibt statisch, ohne Animation.
+
+| Welt | Oberkante | Füllung |
+|---|---|---|
+| WIESE | Grasnarbe als Bevel-Kacheln (Form wie heute) | Sand mit ein paar Kieseln, Schattenstreifen wie heute |
+| WUESTE | Dünenkante als Pixel-Welle mit heller Oberkante | Sandstein in 3 Schichten mit versetzten Fugen, 2–3 kleine Steine |
+| MEER | Wellenkämme mit weißem Schaum | Wasser, nach unten in 3 Stufen dunkler. 4–5 Luftblasen als runde Pixel-Ringe (5×5, innen Wasser, ein weißes Glanzpixel oben links), darüber je eine kleine 2×2-Begleitblase. Keine einzelnen Pixel, die wirken wie Kratzer. |
+| BERG | Schneedecke mit Eiszapfen | Felsblöcke, versetzt wie eine Mauer, jeder Block bevelt |
+| STADT | Bordsteine mit Fugen | Asphalt mit gestrichelter gelber Mittellinie und einem Gully |
+| WELTRAUM | **kein Boden, wie heute** | — |
+
+Der Weltraum bleibt bewusst die einzige Welt ohne Boden. Ein Mondboden
+mit Kratern ist im Mockup nur als Option gezeigt und wird **nicht**
+umgesetzt.
+
+### 8.4 Umsetzung
+
+- **Daten statt Sonderlogik:** In `:core` → `ScenePaint` bekommt jede
+  `Scene` eine Beschreibung ihrer Bahn, etwa `TrackStyle` mit Blockfarbe,
+  Blockmuster (`GLATT`, `FUGE`, `PLANKE`, `SCHNEEKAPPE`, `NIETEN`,
+  `LAEMPCHEN`), Zonen-Motiv und Kern-Akzent. `Ground` bekommt einen Stil
+  für die Oberkante (`NARBE`, `DUENE`, `WELLE`, `SCHNEE`, `BORDSTEIN`) und
+  einen für die Füllung (`KIESEL`, `SCHICHTEN`, `BLASEN`, `FELSMAUER`,
+  `ASPHALT`). Die Namen sind Vorschläge, der Stil des Codes geht vor.
+  Keine Kulisse darf Sonderfälle im Renderer brauchen.
+- **Renderer:** `drawTrack` und `drawZoneBlock` bekommen den Stil der
+  aktiven Kulisse und zeichnen danach, ebenso `drawGroundStrip`.
+  Telefon und iOS sind derselbe Code.
+- **Uhr (`WearRenderer`):** nur die Blockfarbe pro Welt übernehmen, keine
+  Muster und keine Motive, weil die Fläche zu klein ist. Die Uhr hat
+  keinen Bodenstreifen.
+- **Sammlung:** Die Kulissen-Vorschau in `CollectionOverlay` zeigt die
+  neuen Blöcke und Böden mit. Kulissen sind das, was dort verkauft wird.
+- **Tests in `:core` (`ScenePaintTest`) erweitern:**
+  - Jede Blockfarbe jeder Welt hebt sich von allen 7 Himmelsstufen dieser
+    Welt ab, nach demselben Maß wie `MIN_SKY_SIGNAL_DISTANCE`.
+  - Keine Block-, Motiv- oder Bodenfarbe außerhalb der Zone liegt näher
+    als `MIN_ZONE_DISTANCE` am Zonengrün. Die Ausnahme ist nur
+    `LEGACY_ZONE_GREENS` in der WIESE.
+  - Der Zonenkörper nutzt in jeder Welt exakt die Zonentöne.
+  - `GROUND_TOP` ist unverändert.
+- Die Golden Vectors bleiben unverändert.
+
+### 8.5 Abnahme für Schritt 2
+
+- Im Draft-PR stehen Screenshots aller 6 Welten mit Bahn, Zone, Kern,
+  Minen und Boden, jeweils bei Himmelsstufe 0 und 6.
+- Zone und Kern sind in jeder Welt auf den ersten Blick als „hier
+  tippen“ erkennbar.
+- Die Bodenkante liegt in jeder Welt auf derselben Höhe wie vorher.
+- Die neuen Tests sind grün, die Golden Vectors unverändert.
