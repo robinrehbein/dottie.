@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.dp
+import de.robinrehbein.punkt.game.DeathCause
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.Ground
 import de.robinrehbein.punkt.game.Prop
@@ -783,11 +784,13 @@ internal fun DrawScope.drawTrack(
     // fakeZoneHalf() (8.7). Erst alle Ränder, dann alle Kugeln:
     // Benachbarte Minen teilen sich ihren Rand, die Kugeln berühren sich
     // nie (trapMinePixel).
-    for (c in mineCenters) {
-        drawMineRim(c.x, c.y, minePx)
+    // Rote Minen sind eine Pixelstufe größer, wo es passt (trapRedPixel).
+    fun pxOf(mine: TrapMine) = if (mine.red) trap.redPx else minePx
+    for ((i, c) in mineCenters.withIndex()) {
+        drawMineRim(c.x, c.y, pxOf(mines[i]))
     }
     for ((i, mine) in mines.withIndex()) {
-        drawMineBody(mineCenters[i].x, mineCenters[i].y, minePx, mine.red)
+        drawMineBody(mineCenters[i].x, mineCenters[i].y, pxOf(mine), mine.red)
     }
 }
 
@@ -1117,11 +1120,15 @@ internal fun DrawScope.drawTimingDot(
     var py = cy + sin(game.angle) * radius
     val r = h * DOT_RADIUS_SHARE
 
+    // In die Bomben getippt: Der Vogel platzt im Todesmoment in Stücke
+    // (drawBirdBurst) statt des Mario-Hüpfers.
+    val burst = fx.deathTime >= 0f && game.lastDeathCause == DeathCause.TRAP
+
     // Mario-Tod: Während des Todes-Freeze bleibt der Vogel stehen, dann
     // hüpft er nach oben, dreht sich dabei auf den Rücken und fällt
     // kopfüber mit Gravitation unten aus dem Bild.
     var flip = 0f
-    if (fx.deathTime >= 0f) {
+    if (fx.deathTime >= 0f && !burst) {
         val t = fx.deathTime - TimingGame.DEATH_FREEZE_SECONDS
         if (t > 0f) {
             py += (-DEATH_HOP_SPEED * t + 0.5f * DEATH_GRAVITY * t * t) * h
@@ -1218,7 +1225,9 @@ internal fun DrawScope.drawTimingDot(
         }
     }
 
-    if (flip > 0f) {
+    if (burst) {
+        drawBirdBurst(px, py, r, fx.deathTime, h) { col, row -> Color(SkinPaint.cell(skin, col, row, state)) }
+    } else if (flip > 0f) {
         rotate(degrees = flip, pivot = Offset(px, py)) { drawBird(px, py) }
     } else {
         drawBird(px, py)
@@ -1229,6 +1238,74 @@ internal fun DrawScope.drawTimingDot(
     // dann steht die Ursache als Text unter dem Ring.
     if (fx.deathTime >= 0f && fx.deathTime < TimingGame.DEATH_FREEZE_SECONDS) {
         drawDeathFrame(px, py, r, floor(h / 220f).coerceAtLeast(2f))
+    }
+}
+
+/**
+ * Der Vogel platzt (Tod durch die Bomben): Seine Pixel fallen in einen
+ * äußeren und einen inneren Ring aus Tortenstücken und einen Kern
+ * auseinander, jedes Stück fliegt aus der Mitte heraus (außen schneller), bekommt einen Schubs nach oben und fällt dann mit
+ * [DEATH_GRAVITY] aus dem Bild; gegen Ende blassen sie aus. [time] sind
+ * die Sekunden seit dem Tod — das Platzen beginnt sofort, nicht erst nach
+ * dem Freeze, die Explosion (drawTrapBoom) liegt darüber.
+ *
+ * Dieselbe Zeichnung wie [drawPixelCircle], nur mit Versatz pro Stück;
+ * alles hängt allein an [time], also ohne eigenen Zustand.
+ */
+internal fun DrawScope.drawBirdBurst(
+    centerX: Float,
+    centerY: Float,
+    radius: Float,
+    time: Float,
+    height: Float,
+    cell: (col: Int, row: Int) -> Color
+) {
+    val alpha = (1f - (time - BURST_FADE_START) / (BURST_SECONDS - BURST_FADE_START)).coerceIn(0f, 1f)
+    if (alpha <= 0f) return
+    val n = GRID.toInt()
+    val u = (radius * 2f) / GRID
+    val mid = (GRID - 1f) / 2f
+    val rr = GRID / 2f - 0.25f
+    val twoPi = 2f * PI.toFloat()
+    val core = BURST_OUTER + BURST_INNER
+    val pieceOffsets = Array(core + 1) { piece ->
+        // Außen BURST_OUTER schnelle Stücke, innen BURST_INNER langsamere
+        // (um ein halbes Stück gedreht), zuletzt der Kern: Er hüpft nur.
+        val (a, speed) = when {
+            piece < BURST_OUTER ->
+                (piece + 0.5f) / BURST_OUTER * twoPi to BURST_SPEED * (0.8f + 0.2f * (piece % 3))
+            piece < core ->
+                (piece - BURST_OUTER + 1f) / BURST_INNER * twoPi to BURST_SPEED * (0.45f + 0.15f * (piece % 2))
+            else -> 0f to 0f
+        }
+        val dx = cos(a) * speed * time * height
+        val dy = (sin(a) * speed * time - BURST_HOP * time + 0.5f * DEATH_GRAVITY * time * time) * height
+        Offset(dx, dy)
+    }
+    for (row in 0 until n) {
+        for (col in 0 until n) {
+            val dx = col - mid
+            val dy = row - mid
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (dist > rr) continue
+            val turn = (kotlin.math.atan2(dy, dx) + twoPi) / twoPi
+            val piece = when {
+                dist < 1.5f -> core
+                dist < BURST_INNER_RADIUS -> BURST_OUTER + ((turn * BURST_INNER + 0.5f).toInt() % BURST_INNER)
+                else -> (turn * BURST_OUTER).toInt() % BURST_OUTER
+            }
+            val offset = pieceOffsets[piece]
+            val color = if (dist > rr - 1.1f) OutlineColor else cell(col, row)
+            drawRect(
+                color = color,
+                topLeft = Offset(
+                    (centerX - radius + col * u + offset.x).roundToInt().toFloat(),
+                    (centerY - radius + row * u + offset.y).roundToInt().toFloat()
+                ),
+                size = Size(u + 0.5f, u + 0.5f),
+                alpha = alpha
+            )
+        }
     }
 }
 

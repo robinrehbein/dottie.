@@ -201,7 +201,7 @@ private fun DrawScope.drawWearBurst(timeLeft: Float, cx: Float, cy: Float, radiu
 
 /**
  * Die Explosion beim Tippen in die Bomben, wie drawTrapBoom am Telefon:
- * zwölf Funken, erst gelb/orange, dann rot/grau, dazu ein schrumpfender
+ * zwanzig Funken, erst gelb/orange, dann rot/grau, dazu ein schrumpfender
  * heller Kern. Nur bei Todesursache TRAP, [time] = Sekunden seit dem Tod.
  */
 private fun DrawScope.drawWearTrapBoom(
@@ -217,7 +217,7 @@ private fun DrawScope.drawWearTrapBoom(
     val x = cx + cos(game.angle) * radius
     val y = cy + sin(game.angle) * radius
     val q = (time / WearFx.BOOM_SECONDS).coerceIn(0f, 1f)
-    val sparks = 12
+    val sparks = 20
     for (i in 0 until sparks) {
         val odd = i % 2 == 1
         val a = i.toFloat() / sparks * (2f * PI.toFloat()) + (if (odd) 0.2f else 0f)
@@ -647,8 +647,11 @@ private fun DrawScope.drawWearDot(
     // oben, dreht sich dabei auf den Rücken und fällt kopfüber mit
     // Gravitation unten aus dem Bild. Ein eigener Zeitgeber ist unnötig —
     // game.elapsed zählt in DYING ab dem Todesmoment.
+    // In die Bomben getippt: Der Vogel platzt wie am Phone (drawBirdBurst)
+    // statt des Mario-Hüpfers.
+    val burst = game.phase == GamePhase.DYING && game.lastDeathCause == DeathCause.TRAP
     var flip = 0f
-    if (game.phase == GamePhase.DYING) {
+    if (game.phase == GamePhase.DYING && !burst) {
         val t = game.elapsed - TimingGame.DEATH_FREEZE_SECONDS
         if (t > 0f) {
             val h = size.height
@@ -742,7 +745,9 @@ private fun DrawScope.drawWearDot(
         }
     }
 
-    if (flip > 0f) {
+    if (burst) {
+        drawWearBirdBurst(px, py, r, game.elapsed, size.height) { col, row -> skin.cell(col, row, state) }
+    } else if (flip > 0f) {
         rotate(degrees = flip, pivot = Offset(px, py)) { drawBird(px, py) }
     } else {
         drawBird(px, py)
@@ -752,6 +757,67 @@ private fun DrawScope.drawWearDot(
     // um den Vogel — genau dort ist es passiert. Mit dem Hüpfer ist er weg.
     if (game.phase == GamePhase.DYING && game.elapsed < TimingGame.DEATH_FREEZE_SECONDS) {
         drawWearDeathFrame(px, py, r, wearCell(minDimension))
+    }
+}
+
+/**
+ * Der Vogel platzt (Tod durch die Bomben), wie drawBirdBurst am Telefon:
+ * zwölf äußere, sechs innere Tortenstücke und ein Kern fliegen aus der Mitte, hüpfen hoch,
+ * fallen mit Gravitation und blassen aus. [time] = Sekunden seit dem Tod.
+ */
+private fun DrawScope.drawWearBirdBurst(
+    centerX: Float,
+    centerY: Float,
+    radius: Float,
+    time: Float,
+    height: Float,
+    cell: (col: Int, row: Int) -> Color
+) {
+    val outer = 12
+    val inner = 6
+    val core = outer + inner
+    val alpha = (1f - (time - 0.6f) / 0.6f).coerceIn(0f, 1f)
+    if (alpha <= 0f) return
+    val n = WEAR_GRID.toInt()
+    val u = (radius * 2f) / WEAR_GRID
+    val mid = (WEAR_GRID - 1f) / 2f
+    val rr = WEAR_GRID / 2f - 0.25f
+    val twoPi = 2f * Math.PI.toFloat()
+    val offsets = Array(core + 1) { piece ->
+        val (a, speed) = when {
+            piece < outer -> (piece + 0.5f) / outer * twoPi to 0.35f * (0.8f + 0.2f * (piece % 3))
+            piece < core -> (piece - outer + 1f) / inner * twoPi to 0.35f * (0.45f + 0.15f * (piece % 2))
+            else -> 0f to 0f
+        }
+        Offset(
+            cos(a) * speed * time * height,
+            (sin(a) * speed * time - 0.8f * time + 0.5f * WEAR_DEATH_GRAVITY * time * time) * height
+        )
+    }
+    for (row in 0 until n) {
+        for (col in 0 until n) {
+            val dx = col - mid
+            val dy = row - mid
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (dist > rr) continue
+            val turn = (kotlin.math.atan2(dy, dx) + twoPi) / twoPi
+            val piece = when {
+                dist < 1.5f -> core
+                dist < 3.8f -> outer + ((turn * inner + 0.5f).toInt() % inner)
+                else -> (turn * outer).toInt() % outer
+            }
+            val offset = offsets[piece]
+            val color = if (dist > rr - 1.1f) WearOutlineColor else cell(col, row)
+            drawRect(
+                color = color,
+                topLeft = Offset(
+                    (centerX - radius + col * u + offset.x).roundToInt().toFloat(),
+                    (centerY - radius + row * u + offset.y).roundToInt().toFloat()
+                ),
+                size = Size(u + 0.5f, u + 0.5f),
+                alpha = alpha
+            )
+        }
     }
 }
 

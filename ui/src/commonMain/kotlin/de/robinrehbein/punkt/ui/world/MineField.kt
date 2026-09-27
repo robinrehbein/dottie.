@@ -34,7 +34,7 @@ import kotlin.math.sqrt
 internal const val TRAP_BOOM_SECONDS = 0.45f
 
 /** Zahl der Funken der Explosion. */
-internal const val TRAP_BOOM_SPARKS = 12
+internal const val TRAP_BOOM_SPARKS = 20
 
 /**
  * Pixelmaß einer Mine: ein Sprite-Pixel ist 0,6 Bahnzellen breit, ganzzahlig
@@ -276,11 +276,72 @@ private fun trapMineFit(game: TimingGame, segments: Int, radius: Float, cell: Fl
     return px to (px > 1 || fits(1))
 }
 
+/**
+ * Wie groß eine rote Mine gezeichnet wird: eine Pixelstufe größer als die
+ * übrigen ([px] + 1), damit das Lauflicht nicht nur die Farbe, sondern
+ * auch die Größe wechselt und die Falle unter PULS nicht untergeht.
+ *
+ * Nur wenn es passt, geprüft wie [trapMineFit] über alle Breiten der
+ * Runde (die Größe bleibt beim Atmen stehen):
+ * - Die rote Kugel hält einen Bildpunkt Abstand zu jeder schwarzen Kugel
+ *   daneben ([redBlackDistance]). Ränder dürfen sich überdecken, und zwei
+ *   rote Minen nebeneinander dürfen sich berühren — dann liest sich der
+ *   rote Block als eine Warnung.
+ * - Die rote Kugel reicht höchstens auf den dunklen Umriss des Sandblocks
+ *   daneben, nie auf seine Sandfläche ([faceHalf]).
+ * Passt es nicht, bleibt die rote Mine so groß wie die anderen.
+ */
+private fun trapRedPixel(
+    game: TimingGame,
+    segments: Int,
+    radius: Float,
+    cell: Float,
+    px: Int,
+    fits: Boolean
+): Int {
+    if (!fits) return px
+    val slot = 2f * PI.toFloat() / segments
+    val count = TrapPaint.count(game.zoneHalfWidth, slot)
+    val halves = if (Twist.PULSE in game.activeTwists) {
+        val narrowest = min(game.fakeZoneHalf(), game.zoneHalfWidth * TimingGame.PULSE_MIN_SHARE)
+        List(PULSE_SAMPLES + 1) { j ->
+            narrowest + (game.zoneHalfWidth - narrowest) * j / PULSE_SAMPLES
+        } + game.fakeZoneHalf()
+    } else {
+        listOf(game.fakeZoneHalf())
+    }
+    fun chord(slots: Float): Float = 2f * radius * sin(abs(slots) * slot / 2f)
+    val red = px + 1
+    val faceHalf = sandBlock(0f, 0f, cell).inner / 2f
+    val sandDistance = mineBlockDistance(red, faceHalf)
+    val endGap = trapEndGap(px, radius, cell, segments)
+    val ok = halves.all { half ->
+        val chain = trapChain(game.fakeZoneCenter, half, count, segments, endGap)
+        val at = chain.at
+        val pitchOk = (1 until at.size).all { chord(at[it] - at[it - 1]) >= redBlackDistance(px) }
+        val sandOk = chain.before == null || chain.after == null ||
+            (chord(at.first() - chain.before) >= sandDistance &&
+                chord(chain.after - at.last()) >= sandDistance)
+        pitchOk && sandOk
+    }
+    return if (ok) red else px
+}
+
+/**
+ * Kleinster Abstand zwischen einer roten Mine ([px] + 1) und einer
+ * schwarzen ([px]), bei dem sich ihre Kugeln nicht berühren: schräg die
+ * beiden Kerne, längs der Achsen die Zacken, dazu ein Bildpunkt Luft.
+ */
+internal fun redBlackDistance(px: Int): Float {
+    val sum = (px + 1) + px
+    return max(SQRT2 * 2.5f * sum, 3.5f * sum) + 1f
+}
+
 /** Stützstellen über die Atembreite der Falle unter PULS. */
 private const val PULSE_SAMPLES = 16
 
 /** Was `drawTrack` von der Falle zeichnet: die Minen und ihr Pixelmaß. */
-internal class TrapLayout(val mines: List<TrapMine>, val px: Int)
+internal class TrapLayout(val mines: List<TrapMine>, val px: Int, val redPx: Int = px)
 
 /**
  * Die Minen der Falle so, wie `drawTrack` sie auf die Bahn mit Radius
@@ -299,7 +360,8 @@ internal fun trapLayout(
     val (px, fits) = trapMineFit(game, segments, radius, cell)
     val minPitch = if (fits) 0f else chordToSlots(mineMineDistance(px) + 0.25f, radius, segments)
     val endGap = trapEndGap(px, radius, cell, segments)
-    return TrapLayout(trapMines(game, segments, zoneHalf, endGap, minPitch), px)
+    val redPx = trapRedPixel(game, segments, radius, cell, px, fits)
+    return TrapLayout(trapMines(game, segments, zoneHalf, endGap, minPitch), px, redPx)
 }
 
 /**
@@ -422,7 +484,7 @@ internal fun trapMines(
 }
 
 /**
- * Die Explosion beim Hineintippen in die Falle: 12 Pixel-Funken, erst
+ * Die Explosion beim Hineintippen in die Falle: 20 Pixel-Funken, erst
  * gelb/orange, dann rot/grau, über [TRAP_BOOM_SECONDS], dazu ein kleiner
  * heller Kern, der schrumpft.
  *
