@@ -225,7 +225,7 @@ jobs:
           serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
           packageName: de.robinrehbein.pointless
           releaseFiles: wear-release.aab
-          tracks: wear:qa
+          tracks: wear:internal
           status: completed
           changesNotSentForReview: false
           whatsNewDirectory: store/whatsnew

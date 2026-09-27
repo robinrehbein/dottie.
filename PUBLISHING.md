@@ -265,7 +265,7 @@ Der Workflow `.github/workflows/build-apk.yml` testet und baut bei jedem
 Push auf `main` signierte Phone- und Wear-AABs. Seine Workflow-Nummer ist
 der eindeutige Phone-`versionCode`; Wear verwendet `100000` plus diese
 Nummer. Nach erfolgreichem Build veröffentlicht `play-release` das
-Phone-AAB in `internal` und `alpha` sowie das Wear-AAB in `wear:qa`.
+Phone-AAB in `internal` und `alpha` sowie das Wear-AAB in `wear:internal`.
 Vor dem Upload prüft
 der Job noch einmal `origin/main` und überspringt überholte Builds.
 Beide Tracks erhalten ein vollständiges Release, Alpha durchläuft
