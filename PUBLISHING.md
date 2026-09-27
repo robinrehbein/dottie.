@@ -560,9 +560,23 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 42` / `versionName
-"2.33"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
+(`app/build.gradle.kts`). Aktuell: `versionCode 43` / `versionName
+"2.34"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
 und committen.
+
+### Release-Notes 2.34 (Lebendige Welten)
+
+Deutsch:
+
+> ▪ Welten mit flüssiger Bewegung, fernen Ebenen und Tageslauf belebt
+> ▪ Neue Bewohner und überarbeitete Hintergründe
+> ▪ Bombentreffer mit Explosion und neuer Game-Over-Animation
+
+English:
+
+> ▪ Worlds come alive with smoother motion, distant layers, and a day cycle
+> ▪ New inhabitants and refreshed backgrounds
+> ▪ Bomb hits now have an explosion and a new game-over animation
 
 ### Release-Notes 2.33 (Neuer Pixel-Look)
 

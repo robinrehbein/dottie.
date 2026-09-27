@@ -126,7 +126,7 @@ import de.robinrehbein.punkt.ui.world.OutlineColor
 import de.robinrehbein.punkt.ui.world.PanelSand
 import de.robinrehbein.punkt.ui.world.RecordRed
 import de.robinrehbein.punkt.ui.world.TextDark
-import de.robinrehbein.punkt.ui.world.drawCloud
+import de.robinrehbein.punkt.ui.world.drawClouds
 import de.robinrehbein.punkt.ui.world.drawBackdrop
 import de.robinrehbein.punkt.ui.world.drawGroundStrip
 import de.robinrehbein.punkt.ui.world.drawPixelCircle
@@ -616,11 +616,9 @@ private fun DrawScope.drawShowcase(
 
     val sky = Color(kulisse.sky[0])
     drawRect(color = sky)
-    drawBackdrop(kulisse.backdrop, game.elapsed, cell)
+    drawBackdrop(kulisse.backdrop, kulisse.backdrop?.colors.orEmpty(), game.elapsed, cell)
     kulisse.cloud?.let { cloud ->
-        val drift = game.elapsed * h * 0.02f
-        drawCloud(w * 0.12f - drift % (w * 1.4f) + w * 0.2f, h * 0.12f, cell, Color(cloud))
-        drawCloud(w * 0.78f - drift % (w * 1.4f) + w * 0.2f, h * 0.2f, cell, Color(cloud))
+        drawClouds(Color(cloud), game.elapsed, cell, top = h * 0.06f, bottom = h * 0.3f, speed = 2f)
     }
     drawScenery(game, cell, kulisse.props)
     kulisse.ground?.let { drawGroundStrip(cell, it) }

@@ -3,6 +3,7 @@ package de.robinrehbein.punkt.ui.world
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import kotlin.math.floor
+import kotlin.math.roundToInt
 
 /**
  * Insel im MEER: flacher Sandhügel in drei Stufen, darauf zwei Palmen mit
@@ -27,6 +28,11 @@ internal fun DrawScope.drawPixelIsland(
     sandShade: Color
 ) {
     val u = snapUp(s * 0.16f, cell)
+    // Die Insel gleitet stufenlos: Ihr Ursprung liegt auf ganzen
+    // Bildpixeln, ihre Blöcke auf dem Zellraster RELATIV dazu. Auf das
+    // absolute Raster gerundet sprang sie bei jeder Zelle — viermal pro
+    // Sekunde, neben Wolken, die flüssig ziehen.
+    val ox = cx.roundToInt().toFloat()
     // Der Hügel steht auf der Wasserlinie, nicht auf dem Grund: Der
     // Bodenstreifen (Wasser) wird danach gezeichnet und würde ihn sonst
     // fast ganz verdecken.
@@ -44,22 +50,24 @@ internal fun DrawScope.drawPixelIsland(
         val hh = snapUp(mh, cell)
         top -= hh
         val half = snapUp(mw / 2f, cell)
-        blocks += Rect(snap(cx, cell) - half, top, half, hh) to sand
-        blocks += Rect(snap(cx, cell), top, half, hh) to sandShade
+        blocks += Rect(ox - half, top, half, hh) to sand
+        blocks += Rect(ox, top, half, hh) to sandShade
     }
 
     // Palmen hinter dem obersten Sand, ihre Füße stecken im Hügel.
     val crest = top + snapUp(s * 0.08f, cell)
-    drawPalm(cx - s * 0.3f, crest, s * 1.7f, -1f, sway, u, cell, frondDark, frond, trunk, trunkShade)
-    drawPalm(cx + s * 0.35f, crest + s * 0.1f, s * 1.25f, 1f, sway * 0.8f, u, cell, frondDark, frond, trunk, trunkShade)
+    drawPalm(ox, -s * 0.3f, crest, s * 1.7f, -1f, sway, u, cell, frondDark, frond, trunk, trunkShade)
+    drawPalm(ox, s * 0.35f, crest + s * 0.1f, s * 1.25f, 1f, sway * 0.8f, u, cell, frondDark, frond, trunk, trunkShade)
     drawOutlinedBlocks(cell, blocks)
 }
 
 /**
  * Palme: Stamm aus fünf Segmenten, die sich zur Seite [lean] neigen,
- * oben sechs Wedel aus Blöcken, die nach außen hängen.
+ * oben sechs Wedel aus Blöcken, die nach außen hängen. [footX] ist der
+ * Abstand vom Inselursprung [ox]; gerastert wird relativ zu ihm.
  */
 private fun DrawScope.drawPalm(
+    ox: Float,
     footX: Float,
     footY: Float,
     height: Float,
@@ -76,6 +84,7 @@ private fun DrawScope.drawPalm(
     val segH = snapUp(height / segments, cell)
     val trunkW = snapUp(u * 0.9f, cell)
     val blocks = mutableListOf<Pair<Rect, Color>>()
+    fun snapX(v: Float): Float = ox + snap(v, cell)
     var x = footX
     var y = footY
     for (i in 0 until segments) {
@@ -83,11 +92,11 @@ private fun DrawScope.drawPalm(
         // nimmt die Spitze mit.
         x += lean * cell * (0.2f + i * 0.3f) + sway * 0.1f * i
         y -= segH
-        val sx = snap(x, cell)
+        val sx = snapX(x)
         blocks += Rect(sx - trunkW / 2f, y, trunkW / 2f, segH) to trunk
         blocks += Rect(sx, y, trunkW / 2f, segH) to trunkShade
     }
-    val topX = snap(x + sway * 0.6f, cell)
+    val topX = snapX(x + sway * 0.6f)
     val topY = y
 
     // Wedel: je ein Pfad aus Blöcken (dx, dy in Einheiten u), außen
@@ -107,7 +116,7 @@ private fun DrawScope.drawPalm(
         path.forEachIndexed { k, (dx, dy) ->
             val color = if (k >= path.size - 2) frondDark else frond
             blocks += Rect(
-                snap(topX + dx * u - u / 2f, cell),
+                topX + snap(dx * u - u / 2f, cell),
                 snap(topY + dy * u - u * 0.35f, cell),
                 u,
                 snapUp(u * 0.5f, cell)

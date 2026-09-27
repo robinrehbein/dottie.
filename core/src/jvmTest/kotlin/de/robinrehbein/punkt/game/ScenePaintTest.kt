@@ -40,6 +40,7 @@ class ScenePaintTest {
             out += prop.accents
         }
         scene.backdrop?.let { out += it.colors }
+        scene.life.forEach { out += it.colors }
         return out
     }
 
@@ -898,10 +899,12 @@ class ScenePaintTest {
         val meer = ScenePaint.props(SceneId.MEER)
         assertEquals("Im MEER treiben zwei Inseln", 2, meer.count { it.shape == PropShape.INSEL })
         assertTrue("Dazwischen Wellen", meer.any { it.shape == PropShape.WELLE })
-        // Die übrigen Welten bleiben ohne Hintergrund.
-        listOf(SceneId.WIESE, SceneId.WUESTE, SceneId.MEER, SceneId.STADT).forEach {
-            assertNull("$it hat keinen Hintergrund", ScenePaint.of(it).backdrop)
-        }
+        // Die übrigen Welten haben seit dem Welten-Feinschliff je ihre
+        // eigene ferne Ebene.
+        assertEquals(BackdropKind.HUEGEL, ScenePaint.of(SceneId.WIESE).backdrop?.kind)
+        assertEquals(BackdropKind.TAFELBERGE, ScenePaint.of(SceneId.WUESTE).backdrop?.kind)
+        assertEquals(BackdropKind.HORIZONT, ScenePaint.of(SceneId.MEER).backdrop?.kind)
+        assertEquals(BackdropKind.SKYLINE, ScenePaint.of(SceneId.STADT).backdrop?.kind)
     }
 
     // --- Nebel (Twist NEBEL) -------------------------------------------
@@ -972,6 +975,111 @@ class ScenePaintTest {
                 if (id == SceneId.BERG) FogSpeck.CROSS else FogSpeck.DOT,
                 fog.speckShape
             )
+        }
+    }
+
+    // ===== Tageslauf und Bewohner =====
+
+    @Test
+    fun `auch was der Tageslauf mischt kommt der Zielzone nicht nahe`() {
+        // Dunst, Wolkentönung und Schleier mischen Kulissenfarben mit dem
+        // Himmel. Jede Mischung ist eine neue Farbe — und keine davon darf
+        // auf dem Weg durch die sieben Stufen ins Zonengrün kippen.
+        val bestandsgruen = ScenePaint.LEGACY_ZONE_GREENS.toSet()
+        SceneId.entries.forEach { id ->
+            for (stage in 0..6) {
+                val gemischt = DayCycle.backdrop(id, stage) +
+                    listOfNotNull(DayCycle.cloud(id, stage)) +
+                    DayCycle.cloudLight(id, stage) +
+                    DayCycle.veilColor(id, stage)
+                gemischt.filter { it !in bestandsgruen }.forEach { farbe ->
+                    zielzone.forEach { zone ->
+                        assertTrue(
+                            "$id Stufe $stage mischt ${hex(farbe)} — nur ${abstand(farbe, zone)} vom Zonenton",
+                            abstand(farbe, zone) >= ScenePaint.MIN_ZONE_DISTANCE
+                        )
+                    }
+                }
+            }
+        }
+        DayCycle.OWN_COLORS.forEach { farbe ->
+            zielzone.forEach { zone ->
+                assertTrue("Sonne/Mond/Stern ${hex(farbe)}", abstand(farbe, zone) >= ScenePaint.MIN_ZONE_DISTANCE)
+            }
+        }
+    }
+
+    @Test
+    fun `am Tag ist jede Welt der Bestand`() {
+        // Stufe 0: kein Dunst, keine Tönung, kein Schleier, keine Nacht.
+        SceneId.entries.forEach { id ->
+            val scene = ScenePaint.of(id)
+            assertEquals("$id: Dunst am Tag", scene.backdrop?.colors.orEmpty(), DayCycle.backdrop(id, 0))
+            assertEquals("$id: Wolke am Tag", scene.cloud, DayCycle.cloud(id, 0))
+            assertEquals("$id: Wolkenkante am Tag", 0xFFFFFFFFL, DayCycle.cloudLight(id, 0))
+        }
+        for (stage in 0..2) {
+            assertEquals(0f, DayCycle.night(stage))
+            assertEquals(0f, DayCycle.veil(stage))
+        }
+    }
+
+    @Test
+    fun `die Nacht wird mit jeder Stufe tiefer`() {
+        for (stage in 1..6) {
+            assertTrue("Stufe $stage", DayCycle.night(stage) >= DayCycle.night(stage - 1))
+        }
+        assertEquals(1f, DayCycle.night(6))
+        assertTrue(DayCycle.veil(6) <= DayCycle.VEIL_MAX)
+        // Sonne und Mond teilen sich den Himmel: nie beide, nie keiner.
+        for (stage in 0..6) {
+            assertFalse("Stufe $stage", DayCycle.isDusk(stage) && DayCycle.isMoon(stage))
+        }
+    }
+
+    @Test
+    fun `jede Welt hat eine ferne Ebene und Bewohner`() {
+        SceneId.entries.forEach { id ->
+            val scene = ScenePaint.of(id)
+            assertNotNull("$id braucht eine ferne Ebene", scene.backdrop)
+            assertTrue("$id braucht Bewohner", scene.life.isNotEmpty())
+            assertEquals("$id: Bewohner doppelt", scene.life.size, scene.life.map { it.kind }.toSet().size)
+        }
+    }
+
+    @Test
+    fun `jede Ebene und jeder Bewohner hat alle Farben, die er zeichnet`() {
+        // Die Renderer greifen per Index zu; eine fehlende Farbe wäre ein
+        // Absturz mitten im Spiel, nicht im Test.
+        val ebene = mapOf(
+            BackdropKind.GEBIRGE to 6,
+            BackdropKind.STERNENHIMMEL to 6,
+            BackdropKind.HUEGEL to 5,
+            BackdropKind.TAFELBERGE to 5,
+            BackdropKind.HORIZONT to 7,
+            BackdropKind.SKYLINE to 6
+        )
+        val bewohner = mapOf(
+            LifeKind.SCHWARM to 1,
+            LifeKind.GLUEHWUERMCHEN to 2,
+            LifeKind.GEIER to 3,
+            LifeKind.STEPPENLAEUFER to 3,
+            LifeKind.MOEWEN to 3,
+            LifeKind.SEGELBOOT to 5,
+            LifeKind.DELFIN to 4,
+            LifeKind.SCHNEEFALL to 2,
+            LifeKind.FLUGZEUG to 5,
+            LifeKind.AUTO to 8,
+            LifeKind.PLANET to 6,
+            LifeKind.SATELLIT to 4
+        )
+        assertEquals(BackdropKind.entries.toSet(), ebene.keys)
+        assertEquals(LifeKind.entries.toSet(), bewohner.keys)
+        SceneId.entries.forEach { id ->
+            val scene = ScenePaint.of(id)
+            scene.backdrop?.let { assertEquals("$id: ${it.kind}", ebene.getValue(it.kind), it.colors.size) }
+            scene.life.forEach { assertEquals("$id: ${it.kind}", bewohner.getValue(it.kind), it.colors.size) }
+            scene.life.forEach { l -> l.colors.forEach { assertEquals("$id: ${l.kind} deckend", 0xFFL, it ushr 24) } }
         }
     }
 }
