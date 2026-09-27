@@ -9,6 +9,8 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.robinrehbein.punkt.game.DailyChallenge
+import de.robinrehbein.punkt.game.DeathCause
+import de.robinrehbein.punkt.game.GameEventChainNext
 import de.robinrehbein.punkt.game.GameEventDied
 import de.robinrehbein.punkt.game.GameEventHit
 import de.robinrehbein.punkt.game.GameEventNotYet
@@ -21,6 +23,7 @@ import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SoundBank
+import de.robinrehbein.punkt.game.SoundSetId
 import de.robinrehbein.punkt.game.SyncState
 import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.game.Twist
@@ -58,21 +61,18 @@ private const val KEY_BEST_DAILY_STREAK = "best_daily_streak"
 private const val KEY_SKIN_CHANGED = "skin_changed_at"
 
 /**
-
- * Kulissen-Wahl des Telefons, gespiegelt wie der Skin — die Uhr wählt
- * selbst nie eine Kulisse (siehe README, Abschnitt "Kulissen"), sie zieht
- * nur die Himmelsfarben aus ScenePaint. Ohne diese beiden Keys bliebe die
- * Uhr für immer bei WIESE, egal was am Telefon gewählt ist.
+ * Gewählte Welt und wann sie gewählt wurde — gleiche Schlüssel wie am
+ * Telefon. Gewählt wird auf der Uhr im Welt-Wähler oder am Telefon; der
+ * Abgleich trägt die neuere Wahl auf die andere Seite (SyncState).
  */
 private const val KEY_SCENE = "selected_scene"
 private const val KEY_SCENE_CHANGED = "scene_changed_at"
 
 /**
- * Das gewählte Ton-Set und wann es gewählt wurde. Die Uhr hat keinen
- * eigenen Wähler dafür (wie schon bei den Kulissen): Gewählt wird am
- * Telefon, die Uhr übernimmt die Wahl über den Abgleich — und spielt sie
- * dann auch. Ein Klang, den man am Telefon hört und auf der Uhr nicht,
- * wäre schlechter als gar keine Auswahl.
+ * Das gewählte Ton-Set und wann es gewählt wurde. Gewählt wird im
+ * Ton-Wähler der Uhr oder am Telefon, die neuere Wahl gewinnt — und die
+ * Uhr spielt sie dann auch. Ein Klang, den man am Telefon hört und auf
+ * der Uhr nicht, wäre schlechter als gar keine Auswahl.
  */
 private const val KEY_SOUND = "selected_sound"
 private const val KEY_SOUND_CHANGED = "sound_changed_at"
@@ -119,6 +119,14 @@ private const val KEY_PATRON = "patron_owned"
  * Bestandsspielers, sobald die Uhr ihren Stand schickt.
  */
 private const val KEY_OWNED_SCENES = "owned_scenes"
+
+/**
+ * Welche Twists die Uhr schon im Game-Over erklärt hat — gleicher
+ * Schlüssel und gleiche Schreibweise wie am Telefon (GameStore), aber in
+ * der Uhren-Prefs-Datei und bewusst NICHT im Abgleich: Didaktik ist je
+ * Gerät, kein Fortschritt.
+ */
+private const val KEY_TWISTS_EXPLAINED = "twists_explained"
 
 /**
  * Zustands-Holder außerhalb der Composition. MainActivity braucht ihn in
@@ -179,24 +187,20 @@ internal class WearGameController(context: Context) {
     var skin by mutableStateOf(WearDotSkin.fromName(prefs.getString(KEY_SKIN, null)))
         private set
 
-    /**
-     * Kulisse des Telefons, nur gespiegelt (siehe [KEY_SCENE]). Die Uhr
-     * bietet dafür keinen eigenen Wähler — anders als [skin] gibt es hier
-     * also keine öffentliche Setter-Funktion.
-     */
+    /** Die gewählte Welt (siehe [KEY_SCENE]); Kulisse, Himmel und Nebel. */
     var scene by mutableStateOf(ScenePaint.fromName(prefs.getString(KEY_SCENE, null)))
         private set
 
-    /**
-     * Das gewählte Ton-Set. Kein Wähler auf der Uhr — es kommt vom
-     * Telefon und steht hier nur, damit WearAudio es kennt.
-     */
-    var soundSet = SoundBank.fromName(prefs.getString(KEY_SOUND, null))
+    /** Das gewählte Ton-Set (siehe [KEY_SOUND]). */
+    var soundSet by mutableStateOf(SoundBank.fromName(prefs.getString(KEY_SOUND, null)))
         private set
 
-    /** Ist der Skin-Wähler offen? Nur aus dem READY-Overlay erreichbar. */
-    var skinPickerOpen by mutableStateOf(false)
+    /** Welcher Wähler offen ist, null = keiner. Nur aus dem READY-Overlay erreichbar. */
+    var picker by mutableStateOf<WearPickerKind?>(null)
         private set
+
+    /** Ist gerade ein Wähler offen? Dann sind Krone und Tasten Cursor und Bestätigen. */
+    val pickerOpen: Boolean get() = picker != null
 
     /**
      * Gönner-Paket gekauft. Play ist die Wahrheit ([WearPatron] fragt sie
@@ -217,6 +221,47 @@ internal class WearGameController(context: Context) {
     /** Sammlungsstand für die Kopfzeile des Wählers (ohne Saison/Gönner). */
     var collectedSkins by mutableIntStateOf(0)
         private set
+
+    /** Die offenen Welten, beim Öffnen des Welt-Wählers abgeleitet. */
+    var unlockedScenes by mutableStateOf(listOf(SceneId.WIESE))
+        private set
+
+    /** Die offenen Ton-Sets, beim Öffnen des Ton-Wählers abgeleitet. */
+    var unlockedSounds by mutableStateOf(listOf(SoundSetId.KLASSIK))
+        private set
+
+    // ===== Rückmeldung im Lauf (wie am Telefon) =====
+
+    /** Warum der letzte Lauf endete; NONE vor dem ersten Tod eines Laufs. */
+    var deathCause by mutableStateOf(DeathCause.NONE)
+        private set
+
+    /** Steht gerade „PERFEKT! +n“? Wie am Telefon 0,6 s nach dem Treffer. */
+    var perfectPoints by mutableIntStateOf(0)
+        private set
+
+    /**
+     * Bonus des letzten Blindtreffers im Nebel, 0 = kein „BLIND!“ zu
+     * zeigen. [blindAngle] ist die Stelle des Treffers auf der Bahn.
+     */
+    var blindPoints by mutableIntStateOf(0)
+        private set
+    var blindAngle by mutableFloatStateOf(0f)
+        private set
+
+    /** Restzeit des „NOCH EINE!“ nach der ersten Zone einer KETTE. */
+    var chainBannerTimeLeft by mutableFloatStateOf(0f)
+        private set
+
+    /** Der Twist, den dieses Game-Over erklärt, oder null (siehe [WearLessons]). */
+    var lesson by mutableStateOf<Twist?>(null)
+        private set
+
+    /** Effekte der Spielwelt (Blitz, Wackeln, Goldring, Funken). */
+    val fx = WearFx()
+
+    /** In diesem Lauf freigeschaltete Twists, für die Erklärung im Game-Over. */
+    private val unlockedThisRun = mutableListOf<Twist>()
 
     /**
      * Stunde (0-23) und Monat (1-12) der Geräte-Uhr — TAGESZEIT und
@@ -377,33 +422,65 @@ internal class WearGameController(context: Context) {
         prefs.getStringSet(KEY_OWNED_SCENES, null)?.toSet() ?: emptySet()
 
     /**
-     * Öffnet den Skin-Wähler. Die Liste wird hier einmal frisch aus den
-     * Ständen abgeleitet — ein neuer Rekord macht einen Skin also ab dem
-     * nächsten Öffnen wählbar, ganz ohne Unlock-Popup.
+     * Öffnet einen Wähler. Die Liste wird hier einmal frisch aus den
+     * Ständen abgeleitet — ein neuer Rekord macht einen Skin, eine Welt
+     * oder ein Ton-Set also ab dem nächsten Öffnen wählbar. Welten und
+     * Ton-Sets gelten nach denselben Regeln wie am Telefon als offen
+     * (ScenePaint/SoundBank in :core, samt Besitz-Menge der Welten).
      */
-    fun openSkinPicker() {
+    fun openPicker(kind: WearPickerKind) {
         val stats = skinStats()
-        unlockedSkins = WearDotSkin.entries.filter { it.isUnlocked(stats) }
-        collectedSkins = SkinPaint.unlockedCount(stats.toSkinStats())
-        skinPickerOpen = true
+        val core = stats.toSkinStats()
+        when (kind) {
+            WearPickerKind.SKIN -> {
+                unlockedSkins = WearDotSkin.entries.filter { it.isUnlocked(stats) }
+                collectedSkins = SkinPaint.unlockedCount(core)
+            }
+            WearPickerKind.SCENE ->
+                unlockedScenes = ScenePaint.ORDER.filter { ScenePaint.isUnlocked(it, core) }
+            WearPickerKind.SOUND ->
+                unlockedSounds = SoundSetId.entries.filter { SoundBank.isUnlocked(it, core) }
+        }
+        openedWith = Triple(skin, scene, soundSet)
+        picker = kind
     }
 
-    /** Ein Tap auf eine Zeile: Skin übernehmen und den Wähler schließen. */
+    /** Skin, Welt und Ton-Set beim Öffnen des Wählers — was sich davon ändert, ist gewählt. */
+    private var openedWith = Triple(skin, scene, soundSet)
+
+    /** Ein Tap auf eine Zeile des Skin-Wählers: übernehmen und schließen. */
     fun chooseSkin(next: WearDotSkin) {
         previewSkin(next)
-        closeSkinPicker()
+        closePicker()
+    }
+
+    /** Ein Tap auf eine Zeile des Welt-Wählers. */
+    fun chooseScene(next: SceneId) {
+        previewScene(next)
+        closePicker()
     }
 
     /**
-     * Krone im Wähler: Cursor um [steps] Skins weiter, zyklisch. Der Skin
-     * wird sofort sichtbar, aber noch nicht festgeschrieben — siehe
-     * [closeSkinPicker].
+     * Ein Tap auf eine Zeile des Ton-Wählers: Hörprobe, aber der Wähler
+     * bleibt offen — wie am Telefon: Wer eines hört, will das nächste
+     * hören. Zu geht er über ZURÜCK, die Taste oder einen Tap daneben.
      */
-    fun moveSkinCursor(steps: Int) {
-        val list = unlockedSkins
-        if (list.size <= 1) return
-        val at = list.indexOf(skin).coerceAtLeast(0)
-        previewSkin(list[((at + steps) % list.size + list.size) % list.size])
+    fun chooseSound(next: SoundSetId) {
+        previewSound(next, force = true)
+    }
+
+    /**
+     * Krone im Wähler: Cursor um [steps] Einträge weiter, zyklisch. Die
+     * Wahl wird sofort sichtbar (hörbar), aber erst beim Schließen
+     * festgeschrieben — siehe [closePicker].
+     */
+    fun movePickerCursor(steps: Int) {
+        when (picker) {
+            WearPickerKind.SKIN -> previewSkin(WearPickerCursor.step(unlockedSkins, skin, steps))
+            WearPickerKind.SCENE -> previewScene(WearPickerCursor.step(unlockedScenes, scene, steps))
+            WearPickerKind.SOUND -> previewSound(WearPickerCursor.step(unlockedSounds, soundSet, steps))
+            null -> Unit
+        }
     }
 
     /** Zeigt einen Skin an, ohne ihn zu speichern. */
@@ -414,19 +491,59 @@ internal class WearGameController(context: Context) {
         haptics.hit()
     }
 
+    /** Zeigt eine Welt an, ohne sie zu speichern — die Kulisse wechselt hinter dem Wähler. */
+    private fun previewScene(next: SceneId) {
+        if (next == scene) return
+        scene = next
+        haptics.hit()
+    }
+
+    /** Stellt ein Ton-Set ein, ohne es zu speichern, und spielt seine Fanfare. */
+    private fun previewSound(next: SoundSetId, force: Boolean = false) {
+        if (next == soundSet && !force) return
+        soundSet = next
+        audio.soundSet = next
+        audio.preview(next)
+        haptics.hit()
+    }
+
     /**
      * Schließt den Wähler und schreibt die Wahl fest — erst hier, nicht
      * bei jedem Rasten der Krone: Sonst ginge für jeden übersprungenen
-     * Skin ein Abgleich ans Telefon raus, und der Zeitstempel des letzten
-     * Wechsels wäre der eines Skins, den niemand gewählt hat.
+     * Eintrag ein Abgleich ans Telefon raus, und der Zeitstempel des
+     * letzten Wechsels wäre der eines Eintrags, den niemand gewählt hat.
      */
-    fun closeSkinPicker() {
-        skinPickerOpen = false
-        if (skin.name == prefs.getString(KEY_SKIN, null)) return
-        prefs.edit()
-            .putString(KEY_SKIN, skin.name)
-            .putLong(KEY_SKIN_CHANGED, System.currentTimeMillis())
-            .apply()
+    fun closePicker() {
+        if (picker == null) return
+        picker = null
+        val (skinBefore, sceneBefore, soundBefore) = openedWith
+        val now = System.currentTimeMillis()
+        val editor = prefs.edit()
+        var changed = false
+        // Nur was im Wähler wirklich verändert wurde, gilt als gewählt.
+        // Alles andere folgt den Prefs — dort kann inzwischen eine neuere
+        // Wahl des Telefons stehen (applySync lässt die Vorschau in Ruhe).
+        if (skin != skinBefore) {
+            editor.putString(KEY_SKIN, skin.name).putLong(KEY_SKIN_CHANGED, now)
+            changed = true
+        } else {
+            skin = WearDotSkin.fromName(prefs.getString(KEY_SKIN, null))
+        }
+        if (scene != sceneBefore) {
+            editor.putString(KEY_SCENE, scene.name).putLong(KEY_SCENE_CHANGED, now)
+            changed = true
+        } else {
+            scene = ScenePaint.fromName(prefs.getString(KEY_SCENE, null))
+        }
+        if (soundSet != soundBefore) {
+            editor.putString(KEY_SOUND, soundSet.name).putLong(KEY_SOUND_CHANGED, now)
+            changed = true
+        } else {
+            soundSet = SoundBank.fromName(prefs.getString(KEY_SOUND, null))
+            audio.soundSet = soundSet
+        }
+        if (!changed) return
+        editor.apply()
         onStateChanged?.invoke()
     }
 
@@ -468,18 +585,18 @@ internal class WearGameController(context: Context) {
         // des Telefons, damit kein Monat verlorengeht (siehe SyncState).
         monthsPlayed = prefs.getInt(KEY_MONTHS_PLAYED, 0),
         seasonEarned = prefs.getInt(KEY_SEASON_EARNED, 0),
-        skin = skin.name,
+        // Gemeldet wird die GESPEICHERTE Wahl, nicht die angezeigte: In
+        // einem offenen Wähler zeigt die Uhr eine Vorschau, die erst beim
+        // Schließen gilt (closePicker) — ein Abgleich mittendrin darf sie
+        // nicht mit dem alten Zeitstempel hinausschicken.
+        skin = WearDotSkin.fromName(prefs.getString(KEY_SKIN, null)).name,
         skinChangedAt = prefs.getLong(KEY_SKIN_CHANGED, 0L),
-        // Die Uhr wählt nie selbst eine Kulisse — hier steht nur zurück,
-        // was das Telefon zuletzt geschickt hat (siehe applySync). Damit
-        // bleibt SyncState.mergedWith stabil: Ohne dieses Zurückmelden
-        // würde ein Abgleich die Kulisse jedes Mal neu "verlieren".
-        scene = scene.name,
+        // Welt und Ton-Set: die gespeicherte Wahl samt Zeitstempel, egal
+        // ob sie auf der Uhr oder am Telefon getroffen wurde. Die neuere
+        // gewinnt auf beiden Seiten (SyncState.mergedWith).
+        scene = ScenePaint.fromName(prefs.getString(KEY_SCENE, null)).name,
         sceneChangedAt = prefs.getLong(KEY_SCENE_CHANGED, 0L),
-        // Die Uhr wählt das Ton-Set nicht selbst, gibt aber weiter, was
-        // sie hat: Sonst hielte sie beim nächsten Abgleich die Wahl des
-        // Telefons für neu und würde sie endlos zurückspiegeln.
-        sound = soundSet.name,
+        sound = SoundBank.fromName(prefs.getString(KEY_SOUND, null)).name,
         soundChangedAt = prefs.getLong(KEY_SOUND_CHANGED, 0L),
         // Die Besitz-Menge der Welten geht so zurück, wie sie gekommen
         // ist: SyncState.mergedWith vereinigt, verloren geht nichts.
@@ -566,13 +683,9 @@ internal class WearGameController(context: Context) {
         // gewinnt, aber nur, wenn sie hier auch verdient ist. Die Uhr
         // leitet das aus den zusammengeführten Zahlen ab und nicht aus
         // dem, was das Telefon behauptet.
-        if (state.soundChangedAt > before.soundChangedAt) {
-            val merged = WearSyncMerge.skinStats(before, state, patronOwned)
-            val incoming = SoundBank.fromName(state.sound)
-            if (SoundBank.isUnlocked(incoming, merged.toSkinStats())) {
-                editor.putString(KEY_SOUND, incoming.name)
-                editor.putLong(KEY_SOUND_CHANGED, state.soundChangedAt)
-            }
+        WearSyncMerge.soundToAdopt(before, state, patronOwned)?.let { adopted ->
+            editor.putString(KEY_SOUND, adopted.name)
+            editor.putLong(KEY_SOUND_CHANGED, state.soundChangedAt)
         }
         editor.apply()
 
@@ -580,10 +693,16 @@ internal class WearGameController(context: Context) {
         // nur beim Erzeugen.
         bestScore = prefs.getInt(KEY_BEST, 0)
         bestPerfectStreak = prefs.getInt(KEY_BEST_PERFECT, 0)
-        skin = WearDotSkin.fromName(prefs.getString(KEY_SKIN, null))
-        scene = ScenePaint.fromName(prefs.getString(KEY_SCENE, null))
-        soundSet = SoundBank.fromName(prefs.getString(KEY_SOUND, null))
-        audio.soundSet = soundSet
+        // Ein offener Wähler behält seine Vorschau: Was dort gerade
+        // angezeigt wird, schreibt closePicker gleich mit frischem
+        // Zeitstempel fest — die Wahl von eben ist neuer als jede, die
+        // der Abgleich hereinträgt.
+        if (picker == null) {
+            skin = WearDotSkin.fromName(prefs.getString(KEY_SKIN, null))
+            scene = ScenePaint.fromName(prefs.getString(KEY_SCENE, null))
+            soundSet = SoundBank.fromName(prefs.getString(KEY_SOUND, null))
+            audio.soundSet = soundSet
+        }
         refreshDailyDisplay()
         return true
     }
@@ -593,6 +712,8 @@ internal class WearGameController(context: Context) {
         notYetTimeLeft = WearNotYet.after(notYetTimeLeft, dt)
         refreshClock()
         recordBannerTimeLeft = (recordBannerTimeLeft - dt).coerceAtLeast(0f)
+        chainBannerTimeLeft = (chainBannerTimeLeft - dt).coerceAtLeast(0f)
+        fx.step(dt)
         val events = game.update(dt)
         var twistUnlockedThisFrame = false
         events.forEach { event ->
@@ -608,7 +729,19 @@ internal class WearGameController(context: Context) {
                     lastStage = 0
                     recordCelebrated = false
                     recordBannerTimeLeft = 0f
+                    chainBannerTimeLeft = 0f
                     runMaxPerfect = 0
+                    unlockedThisRun.clear()
+                    lesson = null
+                    deathCause = DeathCause.NONE
+                    fx.reset()
+                    // Wie am Telefon: Startet ein Treffer im Grün den Lauf,
+                    // spielt der Treffer-Ton, nicht zusätzlich der Start.
+                    // Der Sofort-Neustart aus dem Game-Over hat keinen
+                    // Treffer und behält den Start-Ton.
+                    if (events.none { it == GameEventHit || it == GameEventPerfectHit }) {
+                        audio.start()
+                    }
                 }
                 GameEventHit -> {
                     haptics.hit()
@@ -619,13 +752,28 @@ internal class WearGameController(context: Context) {
                     audio.perfect(game.perfectStreak)
                     runMaxPerfect = maxOf(runMaxPerfect, game.perfectStreak)
                 }
+                GameEventChainNext -> {
+                    // KETTE: Die zweite Zone folgt sofort — wie am Telefon
+                    // ein kurzes „NOCH EINE!“ plus eigener Ton.
+                    chainBannerTimeLeft = CHAIN_BANNER_SECONDS
+                    audio.chain()
+                }
                 is GameEventTwistUnlocked -> {
+                    // Ohne Text im Lauf (wie am Telefon): Fanfare, Haptik
+                    // und Goldring sagen „da war was“, erklärt wird im
+                    // Game-Over (siehe lesson).
                     twistUnlockedThisFrame = true
+                    unlockedThisRun.add(event.twist)
+                    fx.celebrate()
+                    haptics.unlock()
                     audio.unlock()
                 }
                 GameEventDied -> {
                     haptics.died()
                     audio.death()
+                    fx.died()
+                    deathCause = game.lastDeathCause
+                    lesson = takeLesson(game.lastDeathCause == DeathCause.TRAP)
                     val previousBest = bestScore
                     val newBest = game.score > previousBest
                     isNewRecord = newBest
@@ -658,7 +806,11 @@ internal class WearGameController(context: Context) {
                     // (z. B. allererster Lauf) kommt er jetzt — wie am Phone.
                     if (isNewRecord && !recordCelebrated) {
                         recordCelebrated = true
+                        haptics.newRecord()
                         audio.newRecord()
+                    } else {
+                        haptics.thud()
+                        audio.thud()
                     }
                 }
                 else -> Unit
@@ -672,6 +824,8 @@ internal class WearGameController(context: Context) {
         ) {
             recordCelebrated = true
             recordBannerTimeLeft = RECORD_BANNER_SECONDS
+            fx.celebrate()
+            haptics.newRecord()
             audio.newRecord()
         }
 
@@ -681,7 +835,11 @@ internal class WearGameController(context: Context) {
         val stage = game.score / 5
         if (game.phase == GamePhase.RUNNING && stage > lastStage) {
             lastStage = stage
-            if (!twistUnlockedThisFrame) audio.unlock()
+            if (!twistUnlockedThisFrame) {
+                fx.celebrate()
+                haptics.unlock()
+                audio.unlock()
+            }
         }
         if (game.phase == GamePhase.READY) {
             lastStage = 0
@@ -690,7 +848,25 @@ internal class WearGameController(context: Context) {
         phase = game.phase
         score = game.score
         phaseElapsed = game.elapsed
+        // PERFEKT und BLIND stehen 0,6 s nach dem Treffer, nur im Lauf —
+        // dieselben Bedingungen wie am Telefon (GameScreen, BlindPop).
+        val fresh = game.phase == GamePhase.RUNNING && game.timeSinceHit < POP_SECONDS
+        perfectPoints = if (fresh && game.lastHitPerfect) game.lastHitPoints else 0
+        val blind = if (fresh && game.lastHitBlind) (game.lastHitPoints - 1).coerceAtLeast(0) else 0
+        if (blind > 0 && blindPoints == 0) blindAngle = game.angle
+        blindPoints = blind
         frameTick++
+    }
+
+    /**
+     * Welcher Twist in diesem Game-Over erklärt wird (einer je Tod,
+     * siehe [WearLessons]) — und merkt ihn sich gleich als erklärt.
+     */
+    private fun takeLesson(diedInTrap: Boolean): Twist? {
+        val known = WearLessons.decode(prefs.getString(KEY_TWISTS_EXPLAINED, null))
+        val next = WearLessons.next(unlockedThisRun, known, diedInTrap) ?: return null
+        prefs.edit().putString(KEY_TWISTS_EXPLAINED, WearLessons.encode(known + next.name)).apply()
+        return next
     }
 
     /**
@@ -702,12 +878,16 @@ internal class WearGameController(context: Context) {
         // Offener Wähler: Die Wahl jetzt festschreiben, sonst ginge sie
         // mit der Composition verloren (sie wird erst beim Schließen
         // gespeichert).
-        if (skinPickerOpen) closeSkinPicker()
+        if (pickerOpen) closePicker()
         if (game.phase == GamePhase.RUNNING || game.phase == GamePhase.DYING) {
             game.reset()
             phase = GamePhase.READY
             score = 0
             recordBannerTimeLeft = 0f
+            chainBannerTimeLeft = 0f
+            perfectPoints = 0
+            blindPoints = 0
+            fx.reset()
         }
         notYetTimeLeft = 0f
     }
@@ -841,6 +1021,12 @@ internal class WearGameController(context: Context) {
     private companion object {
         /** Anzeigedauer des Rekord-Banners im Lauf, wie am Phone (2,2s). */
         const val RECORD_BANNER_SECONDS = 2.2f
+
+        /** „NOCH EINE!“ nach der ersten Zone einer KETTE, wie am Phone (1,2 s). */
+        const val CHAIN_BANNER_SECONDS = 1.2f
+
+        /** So lange stehen PERFEKT und BLIND nach dem Treffer, wie am Phone. */
+        const val POP_SECONDS = 0.6f
 
         /** Wie oft Stunde und Monat der Geräte-Uhr neu geholt werden. */
         const val CLOCK_REFRESH_MS = 60_000L

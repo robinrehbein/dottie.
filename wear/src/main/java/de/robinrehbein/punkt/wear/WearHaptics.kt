@@ -36,6 +36,21 @@ class WearHaptics(context: Context) {
         vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
     }
 
+    /** Freischaltung (Twist, neue Stufe): zwei kurze, gleich starke Stöße. */
+    fun unlock() {
+        vibrate(VibrationEffect.createWaveform(longArrayOf(0, 25, 60, 25), intArrayOf(0, 180, 0, 180), -1))
+    }
+
+    /** Rekord geknackt: drei aufsteigende Stöße. */
+    fun newRecord() {
+        vibrate(VibrationEffect.createWaveform(longArrayOf(0, 20, 50, 25, 50, 40), intArrayOf(0, 120, 0, 180, 0, 255), -1))
+    }
+
+    /** Aufschlag nach dem Sturz: ein kurzer, dumpfer Stoß. */
+    fun thud() {
+        vibrate(VibrationEffect.createOneShot(35, 90))
+    }
+
     /** Langes Rumpeln beim Tod. */
     fun died() {
         vibrate(VibrationEffect.createOneShot(120, 255))

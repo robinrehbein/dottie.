@@ -229,15 +229,9 @@ sondern als Bestand:
 | `leaderboards.available/connect/show` | READY-Overlay | entfaellt |
 | `leaderboards.submitBest/submitDaily` | Tod | entfaellt |
 | `statsSync.start/stop/publish` | Lebenszyklus, nach jeder Wahl | entfaellt |
-<<<<<<< HEAD
 | `DailyReminder.schedule/cancel/needsPermission` | READY-Schalter | `IosReminder` (UNUserNotificationCenter) |
 | `notifPermission.launch(POST_NOTIFICATIONS)` | READY-Schalter | `requestAuthorizationWithOptions` |
-| `ScoreCard.share(…)` | Game-Over | spaeter UIActivityViewController |
-=======
-| `DailyReminder.schedule/cancel/needsPermission` | READY-Schalter | spaeter UNUserNotificationCenter |
-| `notifPermission.launch(POST_NOTIFICATIONS)` | READY-Schalter | entfaellt |
 | `ScoreCard.share(…)` | Game-Over | seit v2.26 `IosShare` (UIActivityViewController) |
->>>>>>> worktree-agent-a0b691e19b93ab221
 | `LocalLifecycleOwner` | Start/Stopp des Abgleichs | Compose Multiplatform hat kein Pendant |
 
 **So wurde es umgesetzt, in drei Schritten:**

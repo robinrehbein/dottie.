@@ -560,9 +560,23 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 40` / `versionName
-"2.31"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
+(`app/build.gradle.kts`). Aktuell: `versionCode 41` / `versionName
+"2.32"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
 und committen.
+
+### Release-Notes 2.32 (Nebel und Bahn)
+
+Deutsch:
+
+> ▪ Nebel passt jetzt zur jeweiligen Welt, vom Sandsturm bis zum Sternennebel
+> ▪ Bahn und Zonenblöcke liegen in einem klareren Pixelraster
+> ▪ Umrisse von Nebel, Bahn und Minen überarbeitet
+
+English:
+
+> ▪ Fog now matches each world, from sandstorms to star clouds
+> ▪ Track and zone blocks use a cleaner pixel grid
+> ▪ Refined outlines for fog, track, and mines
 
 ### Release-Notes 2.31 (Zonen und Minen)
 
