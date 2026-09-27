@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.BackdropKind
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.CardFrame
 import de.robinrehbein.punkt.game.CardStyle
 import de.robinrehbein.punkt.game.CollectionAxis
@@ -402,13 +403,19 @@ fun CollectionOverlay(
                                         }
                                     ) {
                                         val d = size.minDimension
+                                        // Dieselbe Kugel wie im Spiel (BevelPaint.kugel):
+                                        // Wer hier einen Skin wählt, soll ihn so sehen,
+                                        // wie er dann über die Bahn fliegt.
+                                        val tileShine = SkinPaint.shine(skin, tileState)
                                         drawPixelCircle(
                                             outline = OutlineColor,
                                             centerX = size.width / 2f,
                                             centerY = size.height / 2f,
                                             radius = d / 2f,
                                             alpha = if (available) 1f else LOCKED_ALPHA
-                                        ) { col, row -> Color(SkinPaint.cell(skin, col, row, tileState)) }
+                                        ) { col, row ->
+                                            Color(BevelPaint.kugel(col, row, SkinPaint.cell(skin, col, row, tileState), tileShine))
+                                        }
                                     }
                                 }
                             }
