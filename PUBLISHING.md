@@ -560,9 +560,23 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 43` / `versionName
-"2.34"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
+(`app/build.gradle.kts`). Aktuell: `versionCode 44` / `versionName
+"2.35"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
 und committen.
+
+### Release-Notes 2.35 (Bevel-Look)
+
+Deutsch:
+
+> ▪ Menüs, Knöpfe und Schalter im neuen plastischen Pixel-Look
+> ▪ Score-Karte mit überarbeiteten Rahmen, Wolken und Weltböden
+> ▪ Nebel und Starthand grafisch verfeinert
+
+English:
+
+> ▪ Menus, buttons, and switches have a new dimensional pixel look
+> ▪ Score card refreshed with new frames, clouds, and world ground
+> ▪ Refined fog and starting hand graphics
 
 ### Release-Notes 2.34 (Lebendige Welten)
 
