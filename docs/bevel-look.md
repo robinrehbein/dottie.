@@ -9,7 +9,8 @@ die bestehenden Sprites im Code.
 Baue den Bevel-Look in Dottie ein. Lies zuerst docs/bevel-look.md ganz und
 sieh dir die Bilder in docs/bevel-mockups/ an (vorher-nachher.png,
 dot-optionen.png, dot-kugel.png, bevel-detail-bomben.png,
-welten-bloecke.png, welten-boden.png).
+welten-bloecke.png, welten-boden.png, alle-welten.png = Gesamtbild
+aller Welten).
 
 Setze es in zwei Schritten um: Schritt 1 ist der Bevel-Look (Abschnitte
 1–7), Schritt 2 sind die Bahn-Blöcke und der Boden pro Welt (Abschnitt 8).
