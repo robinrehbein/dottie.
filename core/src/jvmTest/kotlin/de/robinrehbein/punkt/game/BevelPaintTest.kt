@@ -13,15 +13,37 @@ import org.junit.Test
 class BevelPaintTest {
 
     @Test
-    fun `mix rechnet kanalweise und rundet kaufmaennisch`() {
+    fun `mix haelt die Enden und ist immer deckend`() {
         assertEquals(0xFF000000L, BevelPaint.mix(0xFF000000, 0xFFFFFFFF, 0f))
         assertEquals(0xFFFFFFFFL, BevelPaint.mix(0xFF000000, 0xFFFFFFFF, 1f))
-        // 255 · 0.5 = 127.5 → 128: halbe Schritte runden auf.
-        assertEquals(0xFF808080L, BevelPaint.mix(0xFF000000, 0xFFFFFFFF, 0.5f))
-        // Jeder Kanal für sich: Rot bleibt, Grün und Blau wandern.
-        assertEquals(0xFFFF4080L, BevelPaint.mix(0xFFFF0000, 0xFFFF80FF, 0.5f))
+        assertEquals(0xFF5AA82CL, BevelPaint.mix(0xFF5AA82C, 0xFF543847, 0f))
+        assertEquals(0xFF543847L, BevelPaint.mix(0xFF5AA82C, 0xFF543847, 1f))
         // Alpha ist immer deckend, auch wenn eine Seite es nicht ist.
         assertEquals(0xFFL, (BevelPaint.mix(0x00102030, 0x00102030, 0.3f) shr 24) and 0xFF)
+    }
+
+    @Test
+    fun `mix rechnet in Oklab, nicht kanalweise`() {
+        // Kanalweise wäre die Mitte zwischen Schwarz und Weiß #808080. In
+        // Oklab ist L = 0.5 gemeint, und das liegt linear bei 0.5³: dunkler.
+        assertEquals(0xFF636363L, BevelPaint.mix(0xFF000000, 0xFFFFFFFF, 0.5f))
+        // Rot zu Grün kanalweise wäre ein schmutziges Oliv #808000; in
+        // Oklab wird es ein sattes Ocker.
+        assertEquals(0xFFD0A800L, BevelPaint.mix(0xFFFF0000, 0xFF00FF00, 0.5f))
+    }
+
+    @Test
+    fun `die abgeleiteten Toene treffen die Zielbilder`() {
+        // Werte aus docs/bevel-mockups/ziel/, dort flächig vorhanden.
+        // Grasnarbe der WIESE: dunkle und helle Kante.
+        assertEquals(0xFF5E863EL, BevelPaint.dark(0xFF5AA82C))
+        assertEquals(0xFFA5D784L, BevelPaint.light(0xFF74BF2E))
+        // Äußerer Rosé-Arm (weltraum-basis-konfetti.png, 8900 Pixel) und
+        // seine mittlere Stufe.
+        assertEquals(0xFF7D5A78L, BevelPaint.galaxyTone(0xFFE89AB8, 0.9f))
+        assertEquals(0xFFB77D9BL, BevelPaint.galaxyTone(0xFFE89AB8, 0.5f))
+        // Wolkenunterkante (wiese-basis-gold.png, 6480 Pixel).
+        assertEquals(0xFFC7DEE6L, BevelPaint.cloudShade(0xFFE9FCFD))
     }
 
     @Test
@@ -29,8 +51,8 @@ class BevelPaintTest {
         val sand = 0xFFD3C87EL
         assertEquals(BevelPaint.mix(sand, 0xFFFFFFFF, 0.35f), BevelPaint.light(sand))
         assertEquals(BevelPaint.mix(sand, BevelPaint.OUTLINE, 0.30f), BevelPaint.dark(sand))
-        assertEquals(0xFFE2DBABL, BevelPaint.light(sand))
-        assertEquals(0xFFAD9D6EL, BevelPaint.dark(sand))
+        assertEquals(0xFFE2DBACL, BevelPaint.light(sand))
+        assertEquals(0xFFAB9A6FL, BevelPaint.dark(sand))
         assertEquals(0xFF543847L, BevelPaint.OUTLINE)
     }
 
@@ -126,17 +148,22 @@ class BevelPaintTest {
     @Test
     fun `Galaxienarme verblassen in drei deckenden Stufen`() {
         val arm = 0xFFE89AB8L
-        val himmel = ScenePaint.sky(SceneId.WELTRAUM)
-        for (sky in himmel) {
-            assertEquals(arm, BevelPaint.galaxyTone(arm, sky, 0f))
-            assertEquals(arm, BevelPaint.galaxyTone(arm, sky, 0.34f))
-            assertEquals(BevelPaint.mix(arm, sky, 0.2f), BevelPaint.galaxyTone(arm, sky, 0.35f))
-            assertEquals(BevelPaint.mix(arm, sky, 0.2f), BevelPaint.galaxyTone(arm, sky, 0.69f))
-            assertEquals(BevelPaint.mix(arm, sky, 0.45f), BevelPaint.galaxyTone(arm, sky, 0.7f))
-            assertEquals(BevelPaint.mix(arm, sky, 0.45f), BevelPaint.galaxyTone(arm, sky, 1f))
-            assertEquals(BevelPaint.galaxyTone(arm, sky, 0.5f), BevelPaint.galaxyGlow(arm, sky))
-        }
+        val sky = BevelPaint.GALAXY_SKY
+        assertEquals(arm, BevelPaint.galaxyTone(arm, 0f))
+        assertEquals(arm, BevelPaint.galaxyTone(arm, 0.34f))
+        assertEquals(BevelPaint.mix(arm, sky, 0.2f), BevelPaint.galaxyTone(arm, 0.35f))
+        assertEquals(BevelPaint.mix(arm, sky, 0.2f), BevelPaint.galaxyTone(arm, 0.69f))
+        assertEquals(BevelPaint.mix(arm, sky, 0.45f), BevelPaint.galaxyTone(arm, 0.7f))
+        assertEquals(BevelPaint.mix(arm, sky, 0.45f), BevelPaint.galaxyTone(arm, 1f))
+        assertEquals(BevelPaint.galaxyTone(arm, 0.5f), BevelPaint.galaxyGlow(arm))
         assertEquals(BevelPaint.mix(arm, 0xFFFFFFFF, 0.6f), BevelPaint.galaxyDust(arm))
+    }
+
+    @Test
+    fun `der Galaxienhimmel ist die erste Weltraum-Stufe`() {
+        // Wie im Prototyp: Die Arme verblassen gegen den festen Himmel,
+        // nicht gegen die aktuelle Stufe.
+        assertEquals(ScenePaint.sky(SceneId.WELTRAUM)[0], BevelPaint.GALAXY_SKY)
     }
 
     @Test
@@ -144,9 +171,9 @@ class BevelPaintTest {
         val zone = listOf(0xFF74BF2EL, 0xFF9DE85AL)
         val farben = ScenePaint.of(SceneId.WELTRAUM).backdrop!!.colors
         val arme = listOf(farben[4], farben[5])
-        for (arm in arme) for (sky in ScenePaint.sky(SceneId.WELTRAUM)) {
-            val stufen = listOf(0f, 0.5f, 0.9f).map { BevelPaint.galaxyTone(arm, sky, it) } +
-                BevelPaint.galaxyDust(arm) + BevelPaint.galaxyGlow(arm, sky)
+        for (arm in arme) {
+            val stufen = listOf(0f, 0.5f, 0.9f).map { BevelPaint.galaxyTone(arm, it) } +
+                BevelPaint.galaxyDust(arm) + BevelPaint.galaxyGlow(arm)
             for (s in stufen) for (z in zone) {
                 assertTrue(
                     "Galaxienton ${hex(s)} liegt zu nah an ${hex(z)}",

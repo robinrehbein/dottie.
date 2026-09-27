@@ -616,7 +616,7 @@ private fun DrawScope.drawShowcase(
 
     val sky = Color(kulisse.sky[0])
     drawRect(color = sky)
-    drawBackdrop(kulisse.backdrop, game.elapsed, cell, sky)
+    drawBackdrop(kulisse.backdrop, game.elapsed, cell)
     kulisse.cloud?.let { cloud ->
         val drift = game.elapsed * h * 0.02f
         drawCloud(w * 0.12f - drift % (w * 1.4f) + w * 0.2f, h * 0.12f, cell, Color(cloud))

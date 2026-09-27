@@ -1,6 +1,6 @@
 package de.robinrehbein.punkt.game
 
-import kotlin.math.floor
+import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
@@ -26,18 +26,199 @@ object BevelPaint {
     private const val WHITE: Long = 0xFFFFFFFF
 
     /**
-     * Kanalweise Mischung von [a] nach [b] (t = 0 → a, t = 1 → b),
-     * kaufmännisch gerundet. Alpha ist immer 0xFF — eine halb
+     * Mischung von [a] nach [b] (t = 0 → a, t = 1 → b) im Farbraum Oklab,
+     * Schritt für Schritt so, wie Compose `lerp(Color, Color, Float)`
+     * rechnet: Mit dieser Funktion sind die Zielbilder
+     * (docs/bevel-mockups/ziel/) gerendert. Kanalweise in sRGB gemischt
+     * lägen die abgeleiteten Töne um bis zu 39 pro Kanal daneben, meist
+     * etwas zu grau; in Oklab bleibt die Sättigung auf dem Weg zu Weiß
+     * oder zur Kontur erhalten.
+     *
+     * Nachgebaut statt aus Compose geholt, damit :core ohne Compose
+     * auskommt und Uhr und iOS dieselben Werte bekommen. Nachgebaut bis
+     * in die Float-Rundung: dieselben Matrizen, dieselbe Reihenfolge der
+     * Rechenschritte, dieselbe schnelle Kubikwurzel und die Half-Float-
+     * Speicherung, in der Compose eine Oklab-Farbe hält. Mit einer
+     * „sauberen“ Oklab-Formel kippten rund 6 % der Töne an
+     * Rundungsgrenzen um eine Stufe. `BevelMixTest` in :ui hält das
+     * gegen Compose selbst. Alpha ist immer 0xFF — eine halb
      * durchsichtige Kante würde vor jedem Himmel anders aussehen.
      */
     fun mix(a: Long, b: Long, t: Float): Long {
-        fun ch(shift: Int): Long {
-            val x = ((a shr shift) and 0xFF).toFloat()
-            val y = ((b shr shift) and 0xFF).toFloat()
-            return floor(x + (y - x) * t + 0.5f).toLong().coerceIn(0L, 255L)
-        }
-        return (0xFFL shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
+        val from = toOklab(a)
+        val to = toOklab(b)
+        // Wie androidx.compose.ui.util.lerp: (1 − t) · a + t · b.
+        fun lerp(x: Float, y: Float) = (1f - t) * x + t * y
+        return fromOklab(
+            half(lerp(from[0], to[0])),
+            half(lerp(from[1], to[1])),
+            half(lerp(from[2], to[2])),
+        )
     }
+
+    /**
+     * sRGB → Oklab wie Compose: Kanal linearisieren, über XYZ (D50, der
+     * Verbindungsraum von Compose) in den LMS-Raum, Kubikwurzel, dann
+     * nach Lab. Jede Komponente wird als Half-Float gespeichert.
+     */
+    private fun toOklab(c: Long): FloatArray {
+        val r = eotf(((c shr 16) and 0xFF).toFloat() / 255f)
+        val g = eotf(((c shr 8) and 0xFF).toFloat() / 255f)
+        val b = eotf((c and 0xFF).toFloat() / 255f)
+        val x = mul(SRGB_TO_XYZ, 0, r, g, b)
+        val y = mul(SRGB_TO_XYZ, 1, r, g, b)
+        val z = mul(SRGB_TO_XYZ, 2, r, g, b)
+        val l = fastCbrt(mul(XYZ_TO_LMS, 0, x, y, z))
+        val m = fastCbrt(mul(XYZ_TO_LMS, 1, x, y, z))
+        val s = fastCbrt(mul(XYZ_TO_LMS, 2, x, y, z))
+        return floatArrayOf(
+            half(mul(LMS_TO_LAB, 0, l, m, s).coerceIn(0f, 1f)),
+            half(mul(LMS_TO_LAB, 1, l, m, s).coerceIn(-0.5f, 0.5f)),
+            half(mul(LMS_TO_LAB, 2, l, m, s).coerceIn(-0.5f, 0.5f)),
+        )
+    }
+
+    /** Oklab → sRGB wie Compose: geklemmt, zurück über LMS und XYZ, auf 8 Bit gerundet. */
+    private fun fromOklab(lab: Float, labA: Float, labB: Float): Long {
+        val cl = lab.coerceIn(0f, 1f)
+        val ca = labA.coerceIn(-0.5f, 0.5f)
+        val cb = labB.coerceIn(-0.5f, 0.5f)
+        val l0 = mul(LAB_TO_LMS, 0, cl, ca, cb)
+        val m0 = mul(LAB_TO_LMS, 1, cl, ca, cb)
+        val s0 = mul(LAB_TO_LMS, 2, cl, ca, cb)
+        val l = l0 * l0 * l0
+        val m = m0 * m0 * m0
+        val s = s0 * s0 * s0
+        val x = mul(LMS_TO_XYZ, 0, l, m, s)
+        val y = mul(LMS_TO_XYZ, 1, l, m, s)
+        val z = mul(LMS_TO_XYZ, 2, l, m, s)
+        fun ch(row: Int): Long {
+            val v = oetf(mul(XYZ_TO_SRGB, row, x, y, z)).coerceIn(0f, 1f)
+            return (v * 255f + 0.5f).toInt().toLong()
+        }
+        return (0xFFL shl 24) or (ch(0) shl 16) or (ch(1) shl 8) or ch(2)
+    }
+
+    /**
+     * Zeile [row] einer 3×3-Matrix mal (v0, v1, v2). Die Matrizen liegen
+     * spaltenweise wie in Compose, und die Summe läuft in derselben
+     * Reihenfolge — sonst weicht die Float-Rundung ab.
+     */
+    private fun mul(m: FloatArray, row: Int, v0: Float, v1: Float, v2: Float): Float =
+        m[row] * v0 + m[row + 3] * v1 + m[row + 6] * v2
+
+    /** sRGB-Kurve rückwärts (Kanal → linear), in Double wie in Compose. */
+    private fun eotf(v: Float): Float {
+        val x = v.toDouble().coerceIn(0.0, 1.0)
+        val r = if (x >= 0.04045) ((1 / 1.055) * x + 0.055 / 1.055).pow(2.4) else (1 / 12.92) * x
+        return r.toFloat()
+    }
+
+    /** sRGB-Kurve vorwärts (linear → Kanal), in Double wie in Compose. */
+    private fun oetf(v: Float): Float {
+        val x = v.toDouble()
+        val r = if (x >= 0.04045 * (1 / 12.92)) (x.pow(1 / 2.4) - 0.055 / 1.055) / (1 / 1.055) else x / (1 / 12.92)
+        return r.coerceIn(0.0, 1.0).toFloat()
+    }
+
+    /**
+     * Die schnelle Kubikwurzel aus Compose (`fastCbrt`): Startwert per
+     * Bit-Trick, dann zwei Newton-Schritte. Nicht bitgleich mit einer
+     * exakten Wurzel, deshalb nachgebaut.
+     */
+    private fun fastCbrt(x: Float): Float {
+        val bits = x.toRawBits().toLong() and 0x1FFFFFFFFL
+        var y = Float.fromBits(709952852 + (bits / 3).toInt())
+        y -= (y - x / (y * y)) * (1f / 3f)
+        y -= (y - x / (y * y)) * (1f / 3f)
+        return y
+    }
+
+    /**
+     * Rundet auf ein Half-Float und zurück, genau wie der Farb-Konstruktor
+     * von Compose: 10 Bit Mantisse, halbe Stufen runden nach oben.
+     */
+    private fun half(v: Float): Float {
+        val bits = v.toRawBits()
+        val sign = bits ushr 31
+        var e = (bits ushr 23) and 0xFF
+        var mant = bits and 0x7FFFFF
+        var outE = 0
+        var outM = 0
+        var h: Int
+        if (e == 0xFF) {
+            outE = 31
+            outM = if (mant != 0) 0x200 else 0
+            h = (sign shl 15) or (outE shl 10) or outM
+        } else {
+            e = e - 127 + 15
+            if (e >= 31) {
+                outE = 0x31
+                h = (sign shl 15) or (outE shl 10) or outM
+            } else if (e <= 0) {
+                if (e >= -10) {
+                    mant = (mant or 0x800000) shr (1 - e)
+                    if (mant and 0x1000 != 0) mant += 0x2000
+                    outM = mant shr 13
+                }
+                h = (sign shl 15) or (outE shl 10) or outM
+            } else {
+                outE = e
+                outM = mant shr 13
+                h = (sign shl 15) or (outE shl 10) or outM
+                if (mant and 0x1000 != 0) h = ((outE shl 10) or outM) + 1 or (sign shl 15)
+            }
+        }
+        return halfToFloat(h and 0xFFFF)
+    }
+
+    private fun halfToFloat(h: Int): Float {
+        val sign = if (h and 0x8000 != 0) -1f else 1f
+        val e = (h shr 10) and 0x1F
+        val m = h and 0x3FF
+        return when (e) {
+            0 -> sign * m * HALF_SUBNORMAL_STEP
+            31 -> if (m == 0) sign * Float.POSITIVE_INFINITY else Float.NaN
+            else -> sign * Float.fromBits(((e - 15 + 127) shl 23) or (m shl 13))
+        }
+    }
+
+    private const val HALF_SUBNORMAL_STEP = 5.9604645e-8f
+
+    // Die Matrizen aus Compose 1.7 (spaltenweise), ausgelesen aus
+    // ColorSpaces.Srgb.adapt(D50) und ColorSpaces.Oklab. Compose rechnet
+    // sie selbst in Float aus; hier stehen die fertigen Werte, damit
+    // jedes Bit stimmt.
+    private val SRGB_TO_XYZ = floatArrayOf(
+        0.43602175f, 0.22247513f, 0.013928129f,
+        0.38510883f, 0.71690667f, 0.09710153f,
+        0.14308129f, 0.060618237f, 0.7141588f,
+    )
+    private val XYZ_TO_SRGB = floatArrayOf(
+        3.1343124f, -0.97874373f, 0.07194816f,
+        -1.6172329f, 1.916114f, -0.2289863f,
+        -0.490686f, 0.033449814f, 1.4052706f,
+    )
+    private val XYZ_TO_LMS = floatArrayOf(
+        0.7706913f, 0.0056468793f, 0.04636898f,
+        0.34922713f, 0.93706733f, 0.252901f,
+        -0.11203287f, 0.069691114f, 0.8516457f,
+    )
+    private val LMS_TO_LAB = floatArrayOf(
+        0.21045426f, 1.9779985f, 0.025904037f,
+        0.7936178f, -2.4285922f, 0.78277177f,
+        -0.004072047f, 0.4505937f, -0.80867577f,
+    )
+    private val LMS_TO_XYZ = floatArrayOf(
+        1.2886301f, -0.002604977f, -0.06938761f,
+        -0.53787726f, 1.0923469f, -0.29509315f,
+        0.21353269f, -0.08973064f, 1.1892171f,
+    )
+    private val LAB_TO_LMS = floatArrayOf(
+        1.0000001f, 1.0f, 1.0000001f,
+        0.3963378f, -0.105561346f, -0.08948418f,
+        0.21580376f, -0.06385418f, -1.2914855f,
+    )
 
     /** Helle Kante oben und links: 35 % zu Weiß. */
     fun light(base: Long): Long = mix(base, WHITE, 0.35f)
@@ -134,21 +315,29 @@ object BevelPaint {
     fun cloudShade(cloud: Long): Long = mix(cloud, 0xFF7A9AB0, 0.3f)
 
     /**
+     * Der Himmel, gegen den die Galaxienarme verblassen: die erste
+     * Weltraum-Stufe, fest. So ist es im Prototyp, mit dem die Zielbilder
+     * gerendert sind. Gegen die jeweils aktuelle Stufe gemischt wurden die
+     * äußeren Arme auf den helleren Stufen blass und milchig; mit dem
+     * festen Nachtblau bleiben sie auf jeder Stufe gleich satt.
+     */
+    const val GALAXY_SKY: Long = 0xFF0E1430
+
+    /**
      * Ton eines Galaxienarms an der Stelle [t] (0 = Kern, 1 = Spitze):
      * drei deckende Stufen statt stufenloser Transparenz. Rosé halb
      * durchsichtig über Dunkelblau wurde ein schmutziges Grau-Lila; so
-     * bleibt jede Stufe eine klare Farbe. [sky] ist die aktuelle
-     * Himmelsstufe, damit die Arme auf jeder Stufe in den Himmel laufen.
+     * bleibt jede Stufe eine klare Farbe.
      */
-    fun galaxyTone(arm: Long, sky: Long, t: Float): Long = when {
+    fun galaxyTone(arm: Long, t: Float): Long = when {
         t < 0.35f -> arm
-        t < 0.7f -> mix(arm, sky, 0.2f)
-        else -> mix(arm, sky, 0.45f)
+        t < 0.7f -> mix(arm, GALAXY_SKY, 0.2f)
+        else -> mix(arm, GALAXY_SKY, 0.45f)
     }
 
     /** Staub auf der inneren Armhälfte: deckend und hell statt Kernfarbe mit Alpha. */
     fun galaxyDust(arm: Long): Long = mix(arm, WHITE, 0.6f)
 
     /** Der Kern-Schimmer, deckend in der mittleren Armstufe. */
-    fun galaxyGlow(arm: Long, sky: Long): Long = mix(arm, sky, 0.2f)
+    fun galaxyGlow(arm: Long): Long = mix(arm, GALAXY_SKY, 0.2f)
 }

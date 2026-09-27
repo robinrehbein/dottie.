@@ -95,8 +95,7 @@ fun DrawScope.drawTimingWorld(
         drawRect(color = sky, topLeft = Offset(-40f, -40f), size = Size(w + 80f, h + 80f))
 
         // Hinter allem: Gebirge (BERG) oder Sternenhimmel (WELTRAUM).
-        // Die Galaxien verblassen gegen genau diese Himmelsstufe.
-        drawBackdrop(kulisse.backdrop, game.elapsed, cell, sky)
+        drawBackdrop(kulisse.backdrop, game.elapsed, cell)
 
         // Langsam driftende Wolken. Im Vakuum gibt es keine — dann bleibt
         // der Himmel leer, statt graue Attrappen zu zeigen.

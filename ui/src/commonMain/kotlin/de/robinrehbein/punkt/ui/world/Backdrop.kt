@@ -20,14 +20,12 @@ import kotlin.math.sin
  * kommen aus einem festen Hash über ihre Nummer.
  *
  * [time] ist die Laufuhr des Spiels ([de.robinrehbein.punkt.game.TimingGame.elapsed]),
- * dieselbe, an der Wolken und Requisiten driften. [sky] ist die aktuelle
- * Himmelsstufe: Die Galaxienarme laufen in deckenden Stufen in genau
- * diesen Himmel aus, statt durchsichtig zu werden.
+ * dieselbe, an der Wolken und Requisiten driften.
  */
-internal fun DrawScope.drawBackdrop(backdrop: Backdrop?, time: Float, cell: Float, sky: Color) {
+internal fun DrawScope.drawBackdrop(backdrop: Backdrop?, time: Float, cell: Float) {
     when (backdrop?.kind) {
         BackdropKind.GEBIRGE -> drawMountains(backdrop.colors, time, cell)
-        BackdropKind.STERNENHIMMEL -> drawStarfield(backdrop.colors, time, cell, sky.toArgbLong())
+        BackdropKind.STERNENHIMMEL -> drawStarfield(backdrop.colors, time, cell)
         null -> Unit
     }
 }
@@ -149,18 +147,18 @@ private fun snap(v: Float, cell: Float): Float = floor(v / cell) * cell
  * zwei Galaxien, die sich sehr langsam drehen, und alle paar Sekunden
  * eine Sternschnuppe.
  */
-private fun DrawScope.drawStarfield(colors: List<Long>, time: Float, cell: Float, sky: Long) {
+private fun DrawScope.drawStarfield(colors: List<Long>, time: Float, cell: Float) {
     val w = size.width
     val h = size.height
     val starColors = listOf(Color(colors[0]), Color(colors[1]), Color(colors[2]))
 
     drawGalaxy(
         cx = w * 0.22f, cy = h * 0.11f, radius = w * 0.17f, turn = time * 0.06f,
-        cell = cell, core = Color(colors[3]), arm = colors[4], sky = sky, tilt = 0.5f
+        cell = cell, core = Color(colors[3]), arm = colors[4], tilt = 0.5f
     )
     drawGalaxy(
         cx = w * 0.76f, cy = h * 0.84f, radius = w * 0.2f, turn = -time * 0.045f + 1.3f,
-        cell = cell, core = Color(colors[3]), arm = colors[5], sky = sky, tilt = 0.42f
+        cell = cell, core = Color(colors[3]), arm = colors[5], tilt = 0.42f
     )
 
     val drift = time * h * 0.002f
@@ -199,8 +197,9 @@ private fun Boolean.toInt(): Int = if (this) 1 else 0
  * Spiralgalaxie aus zwei Armen, als Pixelblöcke auf dem Raster. [turn]
  * dreht sie, [tilt] staucht sie senkrecht (schräg von der Seite gesehen).
  * Die Arme werden nach außen blasser — in drei deckenden Stufen zum
- * Himmel [sky] hin ([BevelPaint.galaxyTone]), nicht durchsichtig: Rosé
- * halb durchsichtig über Dunkelblau wurde ein schmutziges Grau-Lila.
+ * festen Galaxienhimmel hin ([BevelPaint.galaxyTone]), nicht
+ * durchsichtig: Rosé halb durchsichtig über Dunkelblau wurde ein
+ * schmutziges Grau-Lila.
  */
 private fun DrawScope.drawGalaxy(
     cx: Float,
@@ -210,7 +209,6 @@ private fun DrawScope.drawGalaxy(
     cell: Float,
     core: Color,
     arm: Long,
-    sky: Long,
     tilt: Float
 ) {
     val block = cell * 2f
@@ -223,7 +221,7 @@ private fun DrawScope.drawGalaxy(
             val r = radius * (0.1f + t * 0.9f)
             val x = snap(cx + cos(theta) * r, block)
             val y = snap(cy + sin(theta) * r * tilt, block)
-            drawRect(Color(BevelPaint.galaxyTone(arm, sky, t)), Offset(x, y), Size(block, block))
+            drawRect(Color(BevelPaint.galaxyTone(arm, t)), Offset(x, y), Size(block, block))
             // Staub und Sterne am Arm: versetzte Einzelzellen, nur auf der
             // inneren Hälfte und deckend. Außen wirkten sie wie Bildrauschen.
             if (k % 3 == 0 && t < 0.5f) {
@@ -236,7 +234,7 @@ private fun DrawScope.drawGalaxy(
     val ky = snap(cy, cell)
     // Schimmer als Kreuz, nicht als Kasten: Ein Rechteck mit Deckkraft
     // läse sich als Fenster im Himmel. Deckend in der mittleren Armstufe.
-    val glow = Color(BevelPaint.galaxyGlow(arm, sky))
+    val glow = Color(BevelPaint.galaxyGlow(arm))
     drawRect(glow, Offset(kx - block * 2f, ky - cell), Size(block * 5f, block * 2f))
     drawRect(glow, Offset(kx - cell, ky - block * 1.5f), Size(block * 2f, block * 4f))
     drawRect(core, Offset(kx - block, ky - cell), Size(block * 3f, block * 2f))
