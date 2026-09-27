@@ -365,7 +365,9 @@ object BevelPaint {
      * Schatten auch gegen das Licht links, wie in `drawCloud`, wo die
      * helle Kante links über der Unterkante endet. Eine Wolke hat eine
      * Unterseite — ohne das stünden an den Stufen unten links helle
-     * Flecken im Schatten.
+     * Flecken im Schatten. Dasselbe gilt für die senkrechten Stücke der
+     * Treppe unten links, die nach innen läuft; die linke Spitze der
+     * Wolke bleibt hell.
      *
      * Flächen unter drei Stufen bleiben flach (Abschnitt 0, Punkt 1): Ist
      * die Maske durch die Zelle waagrecht oder senkrecht keine drei Zellen
@@ -395,6 +397,17 @@ object BevelPaint {
         r = row + 1
         while (down < 3 && isSet(col, r)) { down++; r++ }
         if (across < 3 || down < 3) return Edge.FLAT
+        if (cloud && !isSet(col - 1, row) && !isSet(col - 1, row + 1)) {
+            // Stufe unten links: Liegt weiter oben in derselben Spalte
+            // Fläche links daneben, läuft die Kante hier nach innen und
+            // zeigt nach unten — Schatten. Die linke Spitze (links davon
+            // nie Fläche) behält ihr Licht.
+            var up = row - 1
+            while (isSet(col, up)) {
+                if (isSet(col - 1, up)) return Edge.DARK
+                up--
+            }
+        }
         return when {
             cloud && !isSet(col, row + 1) -> Edge.DARK
             !isSet(col - 1, row) || !isSet(col, row - 1) -> Edge.LIGHT

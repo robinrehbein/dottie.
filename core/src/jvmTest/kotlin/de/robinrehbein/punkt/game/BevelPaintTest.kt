@@ -282,10 +282,27 @@ class BevelPaintTest {
                 "LLLLL",
                 "L...D",
                 "D...D",
-                " L..D",
+                " D..D",
                 " DDDD"
             ),
             edges(listOf("#####", "#####", "#####", " ####", " ####"), cloud = true)
+        )
+    }
+
+    @Test
+    fun `bei Wolken bleibt die linke Spitze hell, die Stufen darunter dunkel`() {
+        // Links eine Spitze ohne Fläche daneben: Licht. Die Treppe, die
+        // darunter nach innen läuft, zeigt nach unten: Schatten.
+        assertEquals(
+            listOf(
+                " LLLLL",
+                "L....D",
+                "L....D",
+                "D....D",
+                " D...D",
+                " DDDDD"
+            ),
+            edges(listOf(" #####", "######", "######", "######", " #####", " #####"), cloud = true)
         )
     }
 
