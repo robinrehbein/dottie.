@@ -1251,8 +1251,8 @@ internal fun DrawScope.drawTimingDot(
  * auseinander, jedes Stück fliegt aus der Mitte heraus (außen schneller), bekommt einen Schubs nach oben und fällt dann mit
  * [DEATH_GRAVITY] aus dem Bild; gegen Ende blassen sie aus. [time] sind
  * die Sekunden seit dem Ende des Todes-Freeze: Wie beim Mario-Hüpfer
- * steht der Vogel erst im Rahmen, während Blitz und Explosion
- * (drawTrapBoom) abklingen, und platzt dann sichtbar.
+ * steht der Vogel erst im Rahmen, während der Blitz abklingt, und platzt
+ * dann zugleich mit der Explosion (drawTrapBoom).
  *
  * Dieselbe Zeichnung wie [drawPixelCircle], nur mit Versatz pro Stück;
  * alles hängt allein an [time], also ohne eigenen Zustand.

@@ -34,11 +34,11 @@ import kotlin.math.sqrt
 internal const val TRAP_BOOM_SECONDS = 0.45f
 
 /**
- * Sekunden vom Tod bis zur Explosion: Sie kommt, wenn der weiße Blitz
- * (flashAlpha, −3,5 pro Sekunde) fast weg ist, und vor dem Platzen des
- * Vogels nach dem Todes-Freeze — Blitz, Explosion, Platzen.
+ * Sekunden vom Tod bis zur Explosion: das Ende des Todes-Freeze, also
+ * genau dann, wenn auch der Vogel platzt (drawBirdBurst). Vorher klingt
+ * der weiße Blitz ab, der Vogel steht im Rahmen.
  */
-internal const val TRAP_BOOM_DELAY = 0.25f
+internal const val TRAP_BOOM_DELAY = TimingGame.DEATH_FREEZE_SECONDS
 
 /** Zahl der Funken der Explosion. */
 internal const val TRAP_BOOM_SPARKS = 20

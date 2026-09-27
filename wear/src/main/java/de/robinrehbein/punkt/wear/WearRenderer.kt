@@ -203,7 +203,7 @@ private fun DrawScope.drawWearBurst(timeLeft: Float, cx: Float, cy: Float, radiu
  * Die Explosion beim Tippen in die Bomben, wie drawTrapBoom am Telefon:
  * zwanzig Funken, erst gelb/orange, dann rot/grau, dazu ein schrumpfender
  * heller Kern. Nur bei Todesursache TRAP, [time] = Sekunden seit dem Tod;
- * die Funken beginnen [WearFx.BOOM_DELAY] danach, wenn der Blitz fast weg ist.
+ * die Funken beginnen [WearFx.BOOM_DELAY] danach, zugleich mit dem Platzen.
  */
 private fun DrawScope.drawWearTrapBoom(
     game: TimingGame,
