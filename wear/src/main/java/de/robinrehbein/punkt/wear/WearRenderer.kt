@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.DeathCause
 import de.robinrehbein.punkt.game.FogPaint
 import de.robinrehbein.punkt.game.FogSpeck
@@ -36,15 +37,13 @@ import kotlin.math.sqrt
 // Telefon-Version passt, ohne eine Abhängigkeit auf :app zu brauchen. =====
 
 // Himmel, Kulisse und Nebel kommen aus ScenePaint (:core), je nach
-// gewählter Welt — die Bahn bleibt in jeder Welt unverändert, wie am
-// Telefon: Worauf getippt wird, sieht überall gleich aus.
+// gewählter Welt. Die Bahn-Blöcke tragen das Material der Welt
+// (ScenePaint.track), die Zone bleibt überall grün wie am Telefon:
+// Worauf getippt wird, sieht überall gleich aus.
 
 internal val WearOutlineColor = Color(0xFF543847)
 internal val WearGrassLight = Color(0xFF9DE85A)
 internal val WearGrassDark = Color(0xFF74BF2E)
-
-/** Standard-Segmentfarbe außerhalb jeder Zone (Sand-Ton aus ui/.../world/Palette.kt). */
-internal val WearTrackDefaultColor = Color(0xFFD3C87E)
 
 /**
  * Gold-Akzent (DotBody am Phone) für Overlay-Texte und der Glanzton der
@@ -141,12 +140,12 @@ internal fun DrawScope.drawWearWorld(
         // Radius proportional zu minDimension statt zur Bildhöhe wie am Phone —
         // auf der Uhr sind Breite und Höhe (fast) identisch, aber minDimension
         // ist robust gegenüber eckigen/ovalen Displays.
-        val radius = d * 0.38f
+        val radius = d * WEAR_TRACK_RADIUS_SHARE
         val dotRadius = d * WEAR_DOT_RADIUS_SHARE
         val cell = wearCell(d)
         val trackOuter = radius + round(2f * PI.toFloat() * radius / WEAR_TRACK_SEGMENTS * WEAR_SEG_ZONE) / 2f
         drawWearScenery(kulisse, game.elapsed, cx, cy, trackOuter, cell)
-        drawWearTrack(game, cx, cy, radius)
+        drawWearTrack(game, cx, cy, radius, scene)
         // Die Nebelbank liegt über der Bahn und unter dem Vogel. Verdeckt wird
         // der Vogel nicht vom Band, sondern von der Engine (isDotVisible) —
         // das Band zeigt nur, wo das passiert. Farben und Partikel sind die
@@ -257,21 +256,34 @@ private val WearBoomSmoke = Color(0xFF8A8A8A)
  * Die Falle (Twist FAKE) ist wie am Telefon eine Kette aus Minen aus
  * [TrapPaint], mit demselben roten Lauflicht (siehe [wearTrapMines]).
  * Wo eine Mine liegt, bleibt die Bahn frei.
+ *
+ * Die Sandblöcke tragen die Farben der Welt [scene] aus
+ * [ScenePaint.track] (Fläche, helle und dunkle Kante), aber anders als
+ * am Telefon ohne Muster und ohne Zonen-Motive: Auf rund acht
+ * Bildpunkten Blockfläche bliebe von Fuge oder Niete nur ein
+ * verirrter Pixel, der wie Schmutz aussähe (docs/bevel-look.md,
+ * Abschnitt 0 Punkt 12). Die Zone bleibt, wie sie ist.
  */
 private fun DrawScope.drawWearTrack(
     game: TimingGame,
     cx: Float,
     cy: Float,
-    radius: Float
+    radius: Float,
+    scene: SceneId
 ) {
     val segments = WEAR_TRACK_SEGMENTS
     // Abstand zwischen zwei Segment-Mittelpunkten. Auf ganze Pixel
     // gerundet, damit die Blöcke ihre harten Kanten behalten.
-    val spacing = 2f * Math.PI.toFloat() * radius / segments
-    val neutralOuter = round(spacing * WEAR_SEG_NEUTRAL).coerceAtLeast(2f)
+    val spacing = wearTrackSpacing(radius)
     val zoneOuter = round(spacing * WEAR_SEG_ZONE).coerceAtLeast(4f)
-    val neutralInner = round(neutralOuter * WEAR_CORE_NEUTRAL).coerceAtLeast(1f)
+    val neutralOuter = wearNeutralOuter(radius)
+    val neutralInner = wearNeutralInner(radius)
     val zoneInner = round(zoneOuter * WEAR_CORE_ZONE).coerceAtLeast(2f)
+    val track = ScenePaint.track(scene)
+    val trackBlock = Color(track.block)
+    val trackLight = Color(track.light)
+    val trackDark = Color(track.dark)
+    val trackEdge = wearTrackEdge(neutralInner)
 
     val zoneHalf = game.effectiveZoneHalf()
     // Kern und Fallenbreite kommen aus der Engine — siehe perfectHalf()
@@ -303,22 +315,22 @@ private fun DrawScope.drawWearTrack(
         // den eine Mine berühren würde, bleibt ebenfalls frei.
         if (!inZone && wearBlockHitsMine(px, py, outer / 2f, mineCenters, mineHalf)) continue
         val inner = if (inZone) zoneInner else neutralInner
-        val innerColor = when {
-            inPerfectCore -> WearGrassLight
-            inZone -> WearGrassDark
-            else -> WearTrackDefaultColor
-        }
 
         drawRect(
             color = WearOutlineColor,
             topLeft = Offset(px - outer / 2f, py - outer / 2f),
             size = Size(outer, outer)
         )
-        drawRect(
-            color = innerColor,
-            topLeft = Offset(px - inner / 2f, py - inner / 2f),
-            size = Size(inner, inner)
-        )
+        val innerTopLeft = Offset(px - inner / 2f, py - inner / 2f)
+        if (inZone) {
+            drawRect(
+                color = if (inPerfectCore) WearGrassLight else WearGrassDark,
+                topLeft = innerTopLeft,
+                size = Size(inner, inner)
+            )
+        } else {
+            wearBevelRect(trackBlock, innerTopLeft, Size(inner, inner), trackEdge, trackLight, trackDark)
+        }
     }
 
     // Erst alle Ränder, dann alle Kugeln: Benachbarte Minen teilen sich
@@ -330,6 +342,36 @@ private fun DrawScope.drawWearTrack(
         drawWearMine(c.x, c.y, minePx, rimOnly = false, red = mines[i].red)
     }
 }
+
+/**
+ * Kantenbreite der Bahn-Blöcke bei einer Blockfläche von [inner]
+ * Bildpunkten: ein Viertel davon, auf ganze Pixel gerundet. Am Telefon
+ * ist die Fläche vier Rasterstufen breit und die Kante eine Stufe
+ * (TrackBlock.unit) — dasselbe Verhältnis hält die Uhr. Die Kontur
+ * drumherum taugt hier nicht als Maß: Bei 13 zu 8 Pixeln wäre sie
+ * 2,5 Pixel und die Kante gerundet so breit, dass die Fläche flach
+ * bliebe.
+ */
+internal fun wearTrackEdge(inner: Float): Float = wearBevelEdge(inner / 4f)
+
+/** Radius der Bahn im Verhältnis zur kürzeren Displayseite. */
+internal const val WEAR_TRACK_RADIUS_SHARE = 0.38f
+
+/** Abstand zweier Segment-Mittelpunkte auf der Bahn mit [radius]. */
+internal fun wearTrackSpacing(radius: Float): Float = 2f * Math.PI.toFloat() * radius / WEAR_TRACK_SEGMENTS
+
+/**
+ * Farbfläche eines Sandblocks außerhalb der Zone, auf ganze Pixel
+ * gerundet. Eine Funktion statt einer Rechnung in [drawWearTrack], damit
+ * der Test genau das prüft, was gezeichnet wird: Mit nachgerechneten
+ * Literalen bliebe er grün, wenn sich eine Konstante ändert.
+ */
+internal fun wearNeutralInner(radius: Float): Float =
+    round(wearNeutralOuter(radius) * WEAR_CORE_NEUTRAL).coerceAtLeast(1f)
+
+/** Ganzer Sandblock außerhalb der Zone, samt Kontur (siehe [wearNeutralInner]). */
+internal fun wearNeutralOuter(radius: Float): Float =
+    round(wearTrackSpacing(radius) * WEAR_SEG_NEUTRAL).coerceAtLeast(2f)
 
 // ===== Minen der Falle (Plan 3.4) =====
 
@@ -440,6 +482,10 @@ internal fun wearBlockHitsMine(
  * Eine Mine aus [TrapPaint.MINE], mittig auf ([cx], [cy]). [rimOnly]: nur
  * der helle Rand um jeden gesetzten Pixel, sonst Kugel und Glanz. [red]:
  * Das Lauflicht steht gerade auf dieser Mine.
+ *
+ * Die Kugel-Pixel bekommen ihre Kante aus [BevelPaint.mineEdge] (vorberechnet) — hell
+ * oben links, dunkel unten rechts, wie am Telefon. Das Sprite selbst,
+ * Rand, Glanz und Lauflicht bleiben unverändert.
  */
 private fun DrawScope.drawWearMine(cx: Float, cy: Float, px: Int, rimOnly: Boolean, red: Boolean = false) {
     val u = px.toFloat()
@@ -448,7 +494,6 @@ private fun DrawScope.drawWearMine(cx: Float, cy: Float, px: Int, rimOnly: Boole
     val oy = (cy - u * n / 2f).roundToInt().toFloat()
     val rim = wearMineRim(px).toFloat()
     val rimColor = Color(TrapPaint.RIM)
-    val ball = Color(if (red) TrapPaint.RED else TrapPaint.BALL)
     val gloss = Color(TrapPaint.GLOSS)
     for (r in 0 until n) {
         val row = TrapPaint.MINE[r]
@@ -463,7 +508,7 @@ private fun DrawScope.drawWearMine(cx: Float, cy: Float, px: Int, rimOnly: Boole
                 )
             } else {
                 drawRect(
-                    color = if (ch == 'W') gloss else ball,
+                    color = if (ch == 'W') gloss else Color(BevelPaint.mineEdge(r, k, red)),
                     topLeft = Offset(ox + k * u, oy + r * u),
                     size = Size(u, u)
                 )
@@ -625,14 +670,21 @@ private fun DrawScope.drawWearDot(
         month = month
     )
 
+    // Glanzfarbe einmal je Bild: Die Kugel-Stufen brauchen sie für jedes
+    // der 169 Felder, und bewegte Skins rechnen sie aus der Zeit.
+    val shineArgb = skin.shineArgb(state)
+
     fun drawBird(centerX: Float, centerY: Float, alpha: Float = 1f) {
+        // Dottie als Kugel (docs/bevel-look.md, Abschnitt 4): Die Stufen
+        // hängen am festen Licht oben links, sie werden beim Blick nach
+        // links also NICHT gespiegelt — nur Glanzpunkt und Auge.
         drawWearPixelCircle(
             outline = WearOutlineColor,
             centerX = centerX,
             centerY = centerY,
             radius = r,
             alpha = alpha
-        ) { col, row -> skin.cell(col, row, state) }
+        ) { col, row -> skin.kugelCell(col, row, state, shineArgb) }
 
         val u = (r * 2f) / WEAR_GRID
         fun rect(col: Float, row: Float, cols: Float, rows: Float, color: Color) {
@@ -650,25 +702,33 @@ private fun DrawScope.drawWearDot(
         // Das Auge bekommt zum Körper hin eine Kontur, sonst geht es auf
         // hellen Skins (Koi, Chrom) im Körper unter.
         val facingLeft = sin(game.angle) * game.direction > 0f
-        val shine = skin.shineColor(state)
+        val shine = Color(shineArgb)
+        // Weißer Kern im Glanzpunkt, an seiner äußeren oberen Ecke, und eine
+        // halbe Zeile Schatten unter dem Augenweiß: Das Auge sitzt in der
+        // Kugel statt auf ihr.
+        val eyeEdge = Color(BevelPaint.EYE_EDGE)
         val eyeOutline = skin.needsEyeOutline
         if (facingLeft) {
             rect(WEAR_GRID - 4.5f, 2.5f, 2f, 2f, shine)
+            rect(WEAR_GRID - 3.5f, 2.5f, 1f, 1f, Color.White)
             if (eyeOutline) {
                 rect(5.5f, 3f, 0.5f, 4f, WearOutlineColor)
                 rect(2f, 2.5f, 3.5f, 0.5f, WearOutlineColor)
                 rect(2f, 7f, 3.5f, 0.5f, WearOutlineColor)
             }
             rect(2f, 3f, 3.5f, 4f, Color.White)
+            rect(2f, 6.5f, 3.5f, 0.5f, eyeEdge)
             rect(2f, 4f, 1.5f, 2f, WearOutlineColor)
         } else {
             rect(2.5f, 2.5f, 2f, 2f, shine)
+            rect(2.5f, 2.5f, 1f, 1f, Color.White)
             if (eyeOutline) {
                 rect(7f, 3f, 0.5f, 4f, WearOutlineColor)
                 rect(7.5f, 2.5f, 3.5f, 0.5f, WearOutlineColor)
                 rect(7.5f, 7f, 3.5f, 0.5f, WearOutlineColor)
             }
             rect(7.5f, 3f, 3.5f, 4f, Color.White)
+            rect(7.5f, 6.5f, 3.5f, 0.5f, eyeEdge)
             rect(9.5f, 4f, 1.5f, 2f, WearOutlineColor)
         }
     }
@@ -812,23 +872,32 @@ internal fun DrawScope.drawWearMedalCoin(tier: WearMedalTier) {
  * Münzen würde die Uhr pro Frame durch dutzende Raster jagen. Stunde und
  * Monat kommen trotzdem mit, sonst zeigten TAGESZEIT und JAHRESZEIT in
  * der Vorschau ein anderes Kleid als im Lauf.
+ *
+ * Mit denselben Kugel-Stufen und demselben Glanzkern wie im Spiel: Die
+ * Vorschau soll den Vogel zeigen, den man bekommt.
  */
 internal fun DrawScope.drawWearSkinCoin(skin: WearDotSkin, hour: Int, month: Int) {
     val r = size.minDimension / 2f
     val cx = size.width / 2f
     val cy = size.height / 2f
     val state = SkinState(hour = hour, month = month)
+    val shine = skin.shineArgb(state)
     drawWearPixelCircle(
         outline = WearOutlineColor,
         centerX = cx,
         centerY = cy,
         radius = r
-    ) { col, row -> skin.cell(col, row, state) }
+    ) { col, row -> skin.kugelCell(col, row, state, shine) }
     val u = (r * 2f) / WEAR_GRID
     drawRect(
-        color = skin.shineColor(state),
+        color = Color(shine),
         topLeft = Offset(cx - r + 2.5f * u, cy - r + 2.5f * u),
         size = Size(2f * u, 2f * u)
+    )
+    drawRect(
+        color = Color.White,
+        topLeft = Offset(cx - r + 2.5f * u, cy - r + 2.5f * u),
+        size = Size(u, u)
     )
 }
 

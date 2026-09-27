@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.BackdropKind
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.CardFrame
 import de.robinrehbein.punkt.game.CardStyle
 import de.robinrehbein.punkt.game.CollectionAxis
@@ -402,13 +403,19 @@ fun CollectionOverlay(
                                         }
                                     ) {
                                         val d = size.minDimension
+                                        // Dieselbe Kugel wie im Spiel (BevelPaint.kugel):
+                                        // Wer hier einen Skin wählt, soll ihn so sehen,
+                                        // wie er dann über die Bahn fliegt.
+                                        val tileShine = SkinPaint.shine(skin, tileState)
                                         drawPixelCircle(
                                             outline = OutlineColor,
                                             centerX = size.width / 2f,
                                             centerY = size.height / 2f,
                                             radius = d / 2f,
                                             alpha = if (available) 1f else LOCKED_ALPHA
-                                        ) { col, row -> Color(SkinPaint.cell(skin, col, row, tileState)) }
+                                        ) { col, row ->
+                                            Color(BevelPaint.kugel(col, row, SkinPaint.cell(skin, col, row, tileState), tileShine))
+                                        }
                                     }
                                 }
                             }
@@ -607,7 +614,8 @@ private fun DrawScope.drawShowcase(
     val cell = (h / 110f).roundToInt().toFloat().coerceAtLeast(2f)
     val kulisse = ScenePaint.of(scene)
 
-    drawRect(color = Color(kulisse.sky[0]))
+    val sky = Color(kulisse.sky[0])
+    drawRect(color = sky)
     drawBackdrop(kulisse.backdrop, game.elapsed, cell)
     kulisse.cloud?.let { cloud ->
         val drift = game.elapsed * h * 0.02f
@@ -626,7 +634,7 @@ private fun DrawScope.drawShowcase(
     val radius = minOf((bottom - top) / 2f, h * SHOWCASE_RING_MAX)
     val cx = w / 2f
     val cy = (top + bottom) / 2f
-    drawTrack(game, cx, cy, radius, cell)
+    drawTrack(game, cx, cy, radius, cell, scene)
     val px = cx + cos(game.angle) * radius
     val py = cy + sin(game.angle) * radius
     scale(SHOWCASE_BIRD_SCALE, pivot = Offset(px, py)) {
