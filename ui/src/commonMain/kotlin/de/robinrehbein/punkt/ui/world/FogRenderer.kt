@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.FogPaint
 import de.robinrehbein.punkt.game.FogSpeck
 import de.robinrehbein.punkt.game.GamePhase
@@ -40,7 +41,10 @@ import kotlin.math.sin
  * ([fogUnit]), damit die Wolke den Vogel sicher schluckt. Gezeichnet wird
  * sie aber auf dem groben Raster der Kulisse ([fogGrid], zwei Zellen) mit
  * dunklem Umriss — so steht sie wie Himmelswolken und Galaxien in der
- * Pixelwelt statt wie ein weicher Fleck davor.
+ * Pixelwelt statt wie ein weicher Fleck davor. Wie die Himmelswolken
+ * trägt sie den Bevel-Look: helle Kante oben und links, dunkle unten und
+ * rechts, eine Rasterzelle breit ([BevelPaint.fogTone]). Wölkchen und
+ * Partikel sind kleiner als drei Zellen und bleiben flach.
  *
  * Jede Welt färbt ihren Nebel selbst ([FogPaint]): Wiese blau-weiß mit
  * Pollen, Wüste Sandsturm, Meer Gischt mit Schaumkrone, Berg Schnee-
@@ -70,9 +74,6 @@ internal const val FOG_BALL_SPACING = 6f
 
 /** So weit ragt die letzte Bausche über das Nebelende, in Wolkenpixeln. */
 private const val FOG_END_OVERHANG = 0.5f
-
-/** Schaumkrone der Wolke in Welten mit [FogPaint.crown]: reines Weiß über jeder Farbe der Welt. */
-private val FogCrown = Color(0xFFFFFFFF)
 
 /** Zeigt diese Zone gerade eine Nebelbank? Nur in RUNNING und nur unter NEBEL. */
 internal fun isFogShown(game: TimingGame): Boolean =
@@ -243,27 +244,17 @@ internal fun DrawScope.drawFogBank(
     }
     fun isOn(col: Int, row: Int) = col in 0 until cols && row in 0 until rows && on[row * cols + col]
 
-    // Farben der Welt (Wiese: Himmelblau, Meer: Gischt, Berg: Schnee …).
-    val bottom = Color(fog.bottom)
-    val low = Color(fog.low)
-    val mid = Color(fog.mid)
-    val topColor = Color(fog.top)
-    val inner = Color(fog.inner)
-
-    // Schattierung nach Abstand zur Unterkante: unten dunkel, oben und
-    // links hell angestrahlt, innen ein ruhiges Schachbrett aus mid und
-    // inner. Mit Krone (Meer) schäumt die Oberkante reinweiß.
+    // Bevel wie bei den Himmelswolken: Licht oben und links, Schatten
+    // unten und rechts (an der Unterseite auch links, wie in drawCloud),
+    // je eine Rasterzelle breit, innen ein ruhiges Schachbrett. Die Töne
+    // wählt BevelPaint.fogTone aus den Farben der Welt (Wiese: Himmelblau,
+    // Meer: Gischt mit Schaumkrone, Berg: Schnee …); schmale Zipfel unter
+    // drei Zellen bleiben flach (BevelPaint.maskEdge).
     fun shade(col: Int, row: Int): Color {
-        var d = 1
-        while (d < 5 && isOn(col, row + d)) d++
-        return when {
-            fog.crown && (!isOn(col, row - 1) || !isOn(col, row - 2)) && d > 2 -> FogCrown
-            d == 1 -> bottom
-            d == 2 -> low
-            !isOn(col - 1, row) || !isOn(col, row - 1) -> topColor
-            (gx0 + col + gy0 + row).mod(4) == 0 -> mid
-            else -> inner
-        }
+        val edge = BevelPaint.maskEdge(col, row, cloud = true) { c, r -> isOn(c, r) }
+        val nearTop = !isOn(col, row - 1) || !isOn(col, row - 2)
+        val speckle = (gx0 + col + gy0 + row).mod(4) == 0
+        return Color(BevelPaint.fogTone(fog, edge, nearTop, speckle))
     }
 
     // Zeilenweise, gleiche Farben am Stück: ein Rechteck je Lauf. Die

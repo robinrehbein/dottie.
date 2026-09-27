@@ -202,6 +202,129 @@ class BevelPaintTest {
         }
     }
 
+    // ===== Pixel-Masken: Start-Hand und Nebel =====
+
+    /** Kanten einer Maske aus Zeilen, '#' = gesetzt: L, D oder . je Zelle. */
+    private fun edges(rows: List<String>, cloud: Boolean = false): List<String> = rows.indices.map { r ->
+        rows[r].indices.joinToString("") { c ->
+            if (rows[r][c] != '#') {
+                " "
+            } else {
+                when (BevelPaint.maskEdge(c, r, cloud) { cc, rr -> rr in rows.indices && cc in rows[rr].indices && rows[rr][cc] == '#' }) {
+                    BevelPaint.Edge.LIGHT -> "L"
+                    BevelPaint.Edge.DARK -> "D"
+                    BevelPaint.Edge.FLAT -> "."
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `eine Maskenflaeche bekommt Licht oben links und Schatten unten rechts`() {
+        // Erst Schatten, dann Licht darüber: An den Ecken oben rechts und
+        // unten links gewinnt das Licht.
+        assertEquals(
+            listOf(
+                "LLLL",
+                "L..D",
+                "L..D",
+                "LDDD"
+            ),
+            edges(listOf("####", "####", "####", "####"))
+        )
+    }
+
+    @Test
+    fun `schmale Maskenteile unter drei Stufen bleiben flach`() {
+        // Ein Finger aus zwei Spalten über einem Ballen: Der Finger bleibt
+        // flach, der Ballen bekommt seine Kante — unter dem Finger keine
+        // Oberkante, dort geht die Fläche weiter.
+        assertEquals(
+            listOf(
+                " .. ",
+                " .. ",
+                "L..L",
+                "L..D",
+                "LDDD"
+            ),
+            edges(listOf(" ## ", " ## ", "####", "####", "####"))
+        )
+        // Eine Zeile und eine Spalte: flach, egal wie lang.
+        assertEquals(listOf("......"), edges(listOf("######")))
+        assertEquals(listOf(".", ".", ".", "."), edges(listOf("#", "#", "#", "#")))
+        // Zwei mal zwei: flach, wie bevelRect unter drei Kantenbreiten.
+        assertEquals(listOf("..", ".."), edges(listOf("##", "##")))
+    }
+
+    @Test
+    fun `an einer Treppe auf der Lichtseite bleibt jede Stufe hell`() {
+        // Die linke Flanke der Hand fällt nach rechts unten ab. Jede Stufe
+        // hat unten Kontur, bleibt aber hell — kein dunkler Fleck im Licht.
+        assertEquals(
+            listOf(
+                "LLLLL",
+                "L...D",
+                "L...D",
+                " L..D",
+                " LDDD"
+            ),
+            edges(listOf("#####", "#####", "#####", " ####", " ####"))
+        )
+    }
+
+    @Test
+    fun `bei Wolken gewinnt an der Unterkante der Schatten`() {
+        // Dieselbe Treppe als Wolke: Die Stufen unten links liegen auf der
+        // Unterseite und werden dunkel, wie in drawCloud. Oben rechts
+        // bleibt es hell.
+        assertEquals(
+            listOf(
+                "LLLLL",
+                "L...D",
+                "D...D",
+                " L..D",
+                " DDDD"
+            ),
+            edges(listOf("#####", "#####", "#####", " ####", " ####"), cloud = true)
+        )
+    }
+
+    @Test
+    fun `eine freie Zelle ist nie Kante`() {
+        assertEquals(BevelPaint.Edge.FLAT, BevelPaint.maskEdge(0, 0) { _, _ -> false })
+        // Mitten in einer vollen Fläche: flach.
+        assertEquals(BevelPaint.Edge.FLAT, BevelPaint.maskEdge(5, 5) { _, _ -> true })
+    }
+
+    @Test
+    fun `edgeTone nimmt light und dark der Grundfarbe`() {
+        val haut = 0xFFD9CFD6L
+        assertEquals(haut, BevelPaint.edgeTone(haut, BevelPaint.Edge.FLAT))
+        assertEquals(BevelPaint.light(haut), BevelPaint.edgeTone(haut, BevelPaint.Edge.LIGHT))
+        assertEquals(BevelPaint.dark(haut), BevelPaint.edgeTone(haut, BevelPaint.Edge.DARK))
+        // Weiß bleibt an der Lichtkante weiß, an der Schattenkante nicht.
+        assertEquals(0xFFFFFFFFL, BevelPaint.edgeTone(0xFFFFFFFF, BevelPaint.Edge.LIGHT))
+        assertTrue(helligkeit(BevelPaint.edgeTone(0xFFFFFFFF, BevelPaint.Edge.DARK)) < 3 * 255)
+    }
+
+    @Test
+    fun `der Nebel hat eine Kante in den Farben seiner Welt`() {
+        SceneId.entries.forEach { id ->
+            val fog = ScenePaint.of(id).fog
+            val krone = if (fog.crown) 0xFFFFFFFFL else fog.top
+            assertEquals("$id Schatten", fog.bottom, BevelPaint.fogTone(fog, BevelPaint.Edge.DARK, nearTop = false, speckle = false))
+            // Der Schatten gewinnt auch in der Schaumkrone.
+            assertEquals("$id Schatten oben", fog.bottom, BevelPaint.fogTone(fog, BevelPaint.Edge.DARK, nearTop = true, speckle = true))
+            assertEquals("$id Licht", fog.top, BevelPaint.fogTone(fog, BevelPaint.Edge.LIGHT, nearTop = false, speckle = true))
+            assertEquals("$id Krone", krone, BevelPaint.fogTone(fog, BevelPaint.Edge.LIGHT, nearTop = true, speckle = false))
+            assertEquals("$id Tupfer", fog.mid, BevelPaint.fogTone(fog, BevelPaint.Edge.FLAT, nearTop = false, speckle = true))
+            assertEquals("$id innen", fog.inner, BevelPaint.fogTone(fog, BevelPaint.Edge.FLAT, nearTop = false, speckle = false))
+            // Licht oben, Schatten unten: wie bei den Himmelswolken.
+            assertTrue("$id: Lichtkante nicht heller als innen", helligkeit(fog.top) > helligkeit(fog.inner))
+            assertTrue("$id: Schattenkante nicht dunkler als innen", helligkeit(fog.bottom) < helligkeit(fog.inner))
+        }
+    }
+
     private fun helligkeit(c: Long) = ((c shr 16) and 0xFF) + ((c shr 8) and 0xFF) + (c and 0xFF)
 
     private fun abstand(a: Long, b: Long): Float {

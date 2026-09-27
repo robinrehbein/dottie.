@@ -336,6 +336,108 @@ object BevelPaint {
     private val MINE_EDGE: Array<LongArray> = mineTable(red = false)
     private val MINE_EDGE_RED: Array<LongArray> = mineTable(red = true)
 
+    // ===== Pixel-Masken: Start-Hand und Nebel =====
+
+    /** Lage einer Maskenzelle zum Licht (siehe [maskEdge]). */
+    enum class Edge {
+        /** Innen, oder die Fläche ist zu schmal für eine Kante. */
+        FLAT,
+
+        /** Kante oben oder links: [light]. */
+        LIGHT,
+
+        /** Kante unten oder rechts: [dark]. */
+        DARK
+    }
+
+    /**
+     * Die Kante einer Zelle in einer Pixel-Maske: Fehlt der Nachbar links
+     * oder oben, liegt die Zelle an der Lichtseite; fehlt er rechts oder
+     * unten, an der Schattenseite. Wo beides zutrifft, gewinnt das Licht —
+     * wörtlich nach Abschnitt 0, Punkt 1: erst die dunkle Kante, dann die
+     * helle darüber. Anders als bei [mineCell], wo der Schatten gewinnt,
+     * damit die Zacken keine helle Spitze bekommen: Hand und Nebel haben
+     * Treppen an der Lichtseite, und dort stünden sonst an jeder Stufe
+     * dunkle Flecken im Licht. Oben rechts bleibt die Oberkante so bis
+     * zum Ende hell, wie bei [cloudShade]-Wolken (`drawCloud`).
+     *
+     * [cloud] gilt für Wolken: Dort gewinnt an der Unterkante der
+     * Schatten auch gegen das Licht links, wie in `drawCloud`, wo die
+     * helle Kante links über der Unterkante endet. Eine Wolke hat eine
+     * Unterseite — ohne das stünden an den Stufen unten links helle
+     * Flecken im Schatten.
+     *
+     * Flächen unter drei Stufen bleiben flach (Abschnitt 0, Punkt 1): Ist
+     * die Maske durch die Zelle waagrecht oder senkrecht keine drei Zellen
+     * breit, bekommt sie keine Kante. Ein Finger aus zwei Zellen oder ein
+     * Ärmel aus einer Zeile bliebe sonst nur Licht und Schatten, ohne
+     * Grundfarbe dazwischen, und läse sich als Streifen.
+     *
+     * [isSet] sagt, ob eine Zelle zur Fläche gehört; außerhalb der Maske
+     * muss es false liefern. Inline, damit der Nebel in jedem Frame ohne
+     * Lambda-Objekte auskommt.
+     */
+    inline fun maskEdge(
+        col: Int,
+        row: Int,
+        cloud: Boolean = false,
+        isSet: (col: Int, row: Int) -> Boolean
+    ): Edge {
+        if (!isSet(col, row)) return Edge.FLAT
+        var across = 1
+        var c = col - 1
+        while (across < 3 && isSet(c, row)) { across++; c-- }
+        c = col + 1
+        while (across < 3 && isSet(c, row)) { across++; c++ }
+        var down = 1
+        var r = row - 1
+        while (down < 3 && isSet(col, r)) { down++; r-- }
+        r = row + 1
+        while (down < 3 && isSet(col, r)) { down++; r++ }
+        if (across < 3 || down < 3) return Edge.FLAT
+        return when {
+            cloud && !isSet(col, row + 1) -> Edge.DARK
+            !isSet(col - 1, row) || !isSet(col, row - 1) -> Edge.LIGHT
+            !isSet(col + 1, row) || !isSet(col, row + 1) -> Edge.DARK
+            else -> Edge.FLAT
+        }
+    }
+
+    /** Farbe einer Maskenzelle mit Grundfarbe [base] an der Kante [edge]. */
+    fun edgeTone(base: Long, edge: Edge): Long = when (edge) {
+        Edge.FLAT -> base
+        Edge.LIGHT -> light(base)
+        Edge.DARK -> dark(base)
+    }
+
+    /**
+     * Farbe einer Rasterzelle der Nebelbank (Twist NEBEL): wie eine Wolke
+     * ([cloudShade]) ohne abgeleitete Kontur-Töne, sondern mit den Tönen,
+     * die jede Welt für ihren Nebel festlegt ([FogPaint]). Die Kante kommt
+     * aus [maskEdge] über die Wolkenzellen, mit der Wolkenregel
+     * (`cloud = true`: unten gewinnt der Schatten):
+     *
+     * - Schattenseite unten und rechts: [FogPaint.bottom], die Unterkante
+     *   der Welt — wie die kühle Unterkante der Himmelswolken, nur in der
+     *   Farbe der Welt (Sandsturm bleibt sandig, Sternennebel lila).
+     * - Schaumkrone ([FogPaint.crown], MEER): die obersten zwei Reihen
+     *   ([nearTop]) reinweiß, außer an der Schattenkante.
+     * - Lichtseite oben und links: [FogPaint.top].
+     * - Innen ein ruhiges Schachbrett: [FogPaint.mid] auf den Tupfern
+     *   ([speckle]), sonst [FogPaint.inner].
+     *
+     * Eine Stufe breit wie jede Kante: Die zweite Reihe [FogPaint.low]
+     * über der Unterkante fällt damit weg — zwei dunkle Reihen unten, aber
+     * keine rechts, lasen sich als Verlauf statt als Kante.
+     */
+    fun fogTone(fog: FogPaint, edge: Edge, nearTop: Boolean, speckle: Boolean): Long = when {
+        edge == Edge.DARK -> fog.bottom
+        fog.crown && nearTop -> WHITE
+        edge == Edge.LIGHT -> fog.top
+        speckle -> fog.mid
+        else -> fog.inner
+    }
+
     // ===== Wolken und Galaxien =====
 
     /**

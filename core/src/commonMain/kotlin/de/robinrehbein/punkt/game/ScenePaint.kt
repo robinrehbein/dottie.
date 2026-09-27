@@ -433,11 +433,14 @@ enum class FogSpeck {
  * Sternennebel im Weltraum. Die Form muss überall gleich bleiben, weil
  * sie den Vogel verdecken muss; nur das Aussehen darf wechseln.
  *
- * Die fünf Töne gehen von unten nach oben: [bottom] die unterste
- * Pixelreihe, [low] die zweite, [top] die Oberkante (oben und links),
- * [inner] die Fläche, [mid] die eingestreuten Tupfer darin. [speck] ist
- * die Partikelfarbe, [speckShape] ihre Form. [crown] setzt die obersten
- * zwei Reihen weiß (Schaumkrone am MEER).
+ * Die fünf Töne gehen von unten nach oben: [bottom] die Schattenkante
+ * (unten und rechts), [low] die frühere zweite Reihe darüber, [top] die
+ * Lichtkante (oben und links), [inner] die Fläche, [mid] die
+ * eingestreuten Tupfer darin. [speck] ist die Partikelfarbe, [speckShape]
+ * ihre Form. [crown] setzt die obersten zwei Reihen weiß (Schaumkrone am
+ * MEER). Welcher Ton auf welche Zelle kommt, entscheidet
+ * [BevelPaint.fogTone]; [low] zeichnet seit dem Bevel-Look niemand mehr
+ * (eine Kante ist eine Stufe breit), er bleibt für die Golden Vectors.
  */
 data class FogPaint(
     val bottom: Long,

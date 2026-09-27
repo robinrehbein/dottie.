@@ -10,6 +10,7 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.TimingGame
 import kotlin.math.floor
@@ -96,6 +97,7 @@ fun notYetWobble(notYetTime: Float, unit: Float): Float =
 /**
  * Pixel-Hand (16×17), Zeigefinger nach oben, wie `HAND` in
  * docs/feedback-check.html. O = Kontur, W = Haut, S = Schatten, Y = Ärmel.
+ * Die Bevel-Kanten darauf stehen in [HAND_EDGES].
  */
 internal val HAND = listOf(
     "....OO..........",
@@ -127,8 +129,58 @@ internal val HandSleeve = Color(0xFFFFD847)
 /** Die Fingerspitze beim Drücken (feedback-check.html:825). */
 internal val HandPressedTip = Color(0xFFFFE9A8)
 
-/** Schlagschatten: Kontur #543847 mit 35 % Deckkraft. */
-internal val HandDropShadow = Color(0x59543847)
+/**
+ * Zu welcher Fläche ein Hand-Pixel gehört: 1 = Haut (W, S), 2 = Ärmel
+ * (Y), 0 = keine (Kontur und frei). Die Kanten laufen je Fläche — die
+ * Haut bekommt über dem Ärmel ihre Unterkante wie über der Kontur.
+ */
+internal fun handSurface(ch: Char): Int = when (ch) {
+    'W', 'S' -> 1
+    'Y' -> 2
+    else -> 0
+}
+
+/**
+ * Die Kante jedes Hand-Pixels (Bevel-Look, docs/bevel-look.md Abschnitt 0),
+ * einmal vorberechnet wie die Minenkanten: Sie hängt nur an der Maske.
+ * Licht oben und links, Schatten unten und rechts, je Fläche
+ * ([handSurface]). Die Finger sind zwei Zellen breit und der Ärmel eine
+ * Zeile hoch — beides bleibt nach der Drei-Stufen-Regel flach, die
+ * Kante trägt der Handballen.
+ */
+internal val HAND_EDGES: List<List<BevelPaint.Edge>> = HAND.indices.map { row ->
+    (0 until HAND_COLUMNS).map { col ->
+        val surface = handSurface(HAND[row][col])
+        if (surface == 0) {
+            BevelPaint.Edge.FLAT
+        } else {
+            BevelPaint.maskEdge(col, row) { c, r ->
+                r in HAND.indices && c in 0 until HAND_COLUMNS && handSurface(HAND[r][c]) == surface
+            }
+        }
+    }
+}
+
+/**
+ * Farbe jedes Hand-Pixels mit Kante, ARGB, 0 = frei. Einmal vorberechnet
+ * statt im Frame gemischt: Die Hand steht auf dem Startbildschirm in
+ * jedem Frame, die Töne ändern sich aber nur mit dem Drücken.
+ */
+private fun handTones(pressed: Boolean): List<LongArray> = HAND.indices.map { row ->
+    LongArray(HAND_COLUMNS) { col ->
+        val base = when (HAND[row][col]) {
+            'O' -> OutlineColor
+            'W' -> if (pressed && row < 4) HandPressedTip else HandSkin
+            'S' -> HandShade
+            'Y' -> HandSleeve
+            else -> return@LongArray 0L
+        }
+        BevelPaint.edgeTone(base.toArgbLong(), HAND_EDGES[row][col])
+    }
+}
+
+internal val HAND_TONES: List<LongArray> = handTones(pressed = false)
+internal val HAND_TONES_PRESSED: List<LongArray> = handTones(pressed = true)
 
 /** Ein Hand-Pixel für einen Ringradius: wie im Mockup (R = 0,34 W, u = W/90), auf ganze Pixel. */
 internal fun handUnit(radius: Float): Float = max(1f, floor(radius / 30.6f))
@@ -162,27 +214,14 @@ fun DrawScope.drawStartHand(
     val origin = handOrigin(tipX, tipY, u)
     val ox = origin.x
     val oy = origin.y
+    // Kein Schlagschatten mehr (Bevel-Look: keine Schlagschatten, kein
+    // 2.5D) — die Tiefe trägt jetzt die Kante auf dem Handballen.
+    val tones = if (pressed) HAND_TONES_PRESSED else HAND_TONES
     for (row in HAND.indices) {
         for (col in 0 until HAND_COLUMNS) {
-            if (HAND[row][col] == '.') continue
-            drawRect(
-                color = HandDropShadow,
-                topLeft = Offset(ox + (col + 1) * u, oy + (row + 1) * u),
-                size = Size(u, u)
-            )
-        }
-    }
-    for (row in HAND.indices) {
-        for (col in 0 until HAND_COLUMNS) {
-            val ch = HAND[row][col]
-            val color = when (ch) {
-                'O' -> OutlineColor
-                'W' -> if (pressed && row < 4) HandPressedTip else HandSkin
-                'S' -> HandShade
-                'Y' -> HandSleeve
-                else -> continue
-            }
-            drawRect(color = color, topLeft = Offset(ox + col * u, oy + row * u), size = Size(u, u))
+            val tone = tones[row][col]
+            if (tone == 0L) continue
+            drawRect(color = Color(tone), topLeft = Offset(ox + col * u, oy + row * u), size = Size(u, u))
         }
     }
     val t = fx.handEchoTime

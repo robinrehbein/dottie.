@@ -2,6 +2,7 @@ package de.robinrehbein.punkt.ui.world
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.GameEventNotYet
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.TimingGame
@@ -141,6 +142,47 @@ class StartCoachTest {
     fun `die Hand hat 16 mal 17 Pixel`() {
         assertEquals(17, HAND.size)
         HAND.forEach { assertEquals(HAND_COLUMNS, it.length) }
+    }
+
+    @Test
+    fun `die Hand traegt Bevel auf dem Ballen, Finger und Aermel bleiben flach`() {
+        val edges = HAND_EDGES
+        // Finger (zwei Zellen breit) und Ärmel (eine Zeile hoch): flach.
+        for (row in 0..6) for (col in 0 until HAND_COLUMNS) {
+            if (HAND[row][col] == 'W') assertEquals(BevelPaint.Edge.FLAT, edges[row][col], "Finger $row/$col")
+        }
+        for (col in 0 until HAND_COLUMNS) assertEquals(BevelPaint.Edge.FLAT, edges[15][col], "Ärmel $col")
+        // Der Ballen: rechts an der Kontur und unten über dem Ärmel dunkel,
+        // links an der Kontur hell.
+        assertEquals(BevelPaint.Edge.DARK, edges[10][13])
+        assertEquals(BevelPaint.Edge.DARK, edges[14][6])
+        assertEquals(BevelPaint.Edge.LIGHT, edges[10][2])
+        // Kontur und freie Pixel haben nie eine Kante.
+        for (row in HAND.indices) for (col in 0 until HAND_COLUMNS) {
+            if (HAND[row][col] == 'O' || HAND[row][col] == '.') {
+                assertEquals(BevelPaint.Edge.FLAT, edges[row][col])
+            }
+        }
+    }
+
+    @Test
+    fun `die Toene der Hand kommen aus BevelPaint`() {
+        for (tones in listOf(HAND_TONES, HAND_TONES_PRESSED)) {
+            for (row in HAND.indices) for (col in 0 until HAND_COLUMNS) {
+                val ch = HAND[row][col]
+                val tone = tones[row][col]
+                when (ch) {
+                    '.' -> assertEquals(0L, tone, "frei $row/$col")
+                    'O' -> assertEquals(OutlineColor.toArgbLong(), tone)
+                    'Y' -> assertEquals(HandSleeve.toArgbLong(), tone)
+                }
+            }
+        }
+        assertEquals(BevelPaint.dark(HandSkin.toArgbLong()), HAND_TONES[10][13])
+        assertEquals(BevelPaint.dark(HandShade.toArgbLong()), HAND_TONES[11][13])
+        // Gedrückt färbt sich nur die flache Fingerspitze.
+        assertEquals(HandPressedTip.toArgbLong(), HAND_TONES_PRESSED[1][4])
+        assertEquals(HandSkin.toArgbLong(), HAND_TONES[1][4])
     }
 
     // ===== Geometrie =====
