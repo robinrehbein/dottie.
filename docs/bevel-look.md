@@ -1,0 +1,169 @@
+# Bevel-Look — Briefing für die Umsetzung
+
+In eine neue Claude-Code-Session mit dem Repo `robinrehbein/dottie.` geben.
+Die Mockups liegen unter `docs/bevel-mockups/`. Sie zeigen die Richtung,
+sind aber keine pixelgenaue Vorlage: Maßgeblich sind die Regeln unten und
+die bestehenden Sprites im Code.
+
+```text
+Baue den Bevel-Look in Dottie ein. Lies zuerst docs/bevel-look.md ganz und
+sieh dir die Bilder in docs/bevel-mockups/ an (vorher-nachher.png,
+dot-optionen.png, dot-kugel.png, bevel-detail-bomben.png).
+
+Arbeite auf einem eigenen Branch von main und öffne am Ende einen Draft-PR
+nach main. Kein Merge. Commit-Nachrichten und Kommentare auf Deutsch, im
+Stil des bestehenden Codes.
+```
+
+## 1. Ziel
+
+Dottie bekommt einen einheitlichen **Bevel-Look**: Jede Form bekommt eine
+helle Kante oben links und eine dunkle Kante unten rechts, so als käme das
+Licht von oben links. Alles bleibt flach, frontal und im bestehenden
+Pixel-/Retro-Look (Flappy-Bird-Stil). Das Bild soll hochwertiger und
+„drückbarer“ wirken, ohne am Spiel etwas zu ändern.
+
+Das Prinzip gibt es schon im Code, nämlich in `drawZoneBlock` in
+`ui/.../world/WorldRenderer.kt` und in `drawSandBevel` in
+`ui/.../components/OverlayCloseButton.kt`. Es soll auf die übrigen
+Spielelemente übertragen werden.
+
+## 2. Nicht-Ziele (verbindlich)
+
+- **Keine 2,5D-Optik:** keine Perspektive, keine gekippte Bahn, keine
+  Extrusion und keine Isometrie.
+- **Keine Schlagschatten:** Kein Element wirft einen Schatten auf den
+  Himmel oder den Boden. Der Pixelschatten des Scores bleibt, wie er heute
+  ist.
+- **Keine weichen Verläufe, kein Anti-Aliasing, keine Transparenz-Effekte.**
+  Alles bleibt in harten Pixelstufen.
+- **Keine Änderung an Mechanik oder Layout:** Ring, Radius, Tempo,
+  Zonenbreite, Trefferlogik und Größen bleiben gleich.
+- **Keine neuen Formen:** Dottie bekommt keine Flügel, er bleibt ein Punkt.
+  Die Minen behalten `TrapPaint.MINE`, Bäume, Büsche und Blumen behalten
+  ihre heutige Form.
+- **Boden:** bleibt flach wie heute, ohne Ziegelmuster.
+- **Die Golden Vectors (`parity/golden-vectors.txt`) dürfen sich nicht
+  ändern.** Das hier ist reine Darstellung.
+
+## 3. Die Bevel-Regel
+
+- **Licht** kommt immer von oben links.
+- **Helle Kante:** oben und links, `light = mix(basis, Weiß, 0.35)`.
+  Bei Dottie wird statt Weiß `SkinPaint.shine(skin)` verwendet.
+- **Dunkle Kante:** unten und rechts, `dark = mix(basis, Outline #543847, 0.30)`.
+  Wo es schon eine Schattenfarbe gibt, etwa die Schattenfarbe eines Skins
+  oder `SandBevelDark`, gilt diese.
+- **Reihenfolge wie in `drawZoneBlock`:** erst die dunkle Kante unten und
+  rechts zeichnen, dann die helle Kante oben und links darüber. An den
+  Ecken oben rechts und unten links gewinnt damit das Licht.
+- **Kantenbreite:** eine Pixelzelle, bei großen Flächen wie Baumkronen und
+  Büschen zwei. „Pixelzelle“ heißt das jeweilige `cell` bzw. `u` des
+  Elements, auf ganze Pixel gerundet wie in `drawZoneBlock`.
+- **Die Outline `#543847`** bleibt überall bestehen, die Kante liegt
+  innerhalb davon.
+- **Dunkle Musterzellen** bleiben unberührt, etwa Bienenstreifen, Kerne
+  oder Pupillen. Als dunkel gilt eine Zelle, wenn der Mittelwert ihrer
+  RGB-Kanäle unter 80 liegt. Aufgehellt würden sie grau.
+- **Farben werden abgeleitet, nicht neu erfunden:** Die Kanten entstehen
+  aus der jeweiligen Grundfarbe und funktionieren damit automatisch für
+  alle Kulissen (`ScenePaint`) und alle Skins (`SkinPaint`).
+
+**Ort der Logik:** Wie bei `SkinPaint` und `TrapPaint` rechnen die Renderer
+nicht selbst. Die Farbableitung (mix, light, dark, Dunkel-Test und die
+Kugel-Stufen aus Abschnitt 4) kommt in ein neues Objekt in `:core`, etwa
+`BevelPaint` mit ARGB-Longs. Telefon/iOS (`:ui`) und die Uhr (`:wear`)
+nutzen es gemeinsam. Diese Funktionen bekommen Unit-Tests in `:core`.
+
+## 4. Dottie: Option „Kugel“
+
+Grundlage ist das echte Sprite: `drawPixelCircle` in `ui/.../world/PixelShapes.kt`
+und `drawTimingDot` → `drawBird` in `WorldRenderer.kt`. Das Raster ist
+`GRID = 13`, `MID = 6`, die Kreismaske hat `RR = 6.25`, der Kontur-Ring
+liegt bei `dist > RR - 1.1`, und die Grundfarbe jeder Zelle kommt aus
+`SkinPaint.cell(...)`.
+
+Für jede Zelle innerhalb der Kontur gilt, mit `dx = col - MID`,
+`dy = row - MID` und `s = (dx + dy) / (RR * √2)` (−1 heißt ganz im Licht,
++1 ganz im Schatten):
+
+| Bereich | Farbe |
+|---|---|
+| `s < -0.42` | `mix(zelle, shine, 0.55)` |
+| `-0.42 ≤ s < -0.12` | `mix(zelle, shine, 0.22)` |
+| `-0.12 ≤ s ≤ 0.55` | `zelle` (unverändert) |
+| `s > 0.55` | `mix(zelle, Outline, 0.28)` |
+
+Dunkle Musterzellen bleiben ausgenommen (siehe Abschnitt 3).
+
+Glanz und Auge, bei Blick nach rechts, in Rasterzellen:
+- Der Glanzpunkt bleibt `rect(2.5, 2.5, 2, 2, shine)`. Neu kommt ein
+  weißer Kern darüber: `rect(2.5, 2.5, 1, 1, Weiß)`.
+- Das Auge bleibt, wie es ist: weiß bei `(7.5, 3, 3.5, 4)`, Pupille bei
+  `(9.5, 4, 1.5, 2)`, Kontur nur bei `needsEyeOutline`. Neu ist eine halbe
+  Zeile `#D5DEE2` am unteren Rand des Augenweiß, also `(7.5, 6.5, 3.5, 0.5)`.
+- Bei `facingLeft` wird alles gespiegelt, genau wie heute.
+
+Die Kugel-Stufen gehören in den Zellfarben-Lambda des Vogels, nicht fest
+in `drawPixelCircle`. Münzen und andere Nutzer von `drawPixelCircle`
+bleiben unverändert. Die Skin-Vorschau in der Sammlung
+(`CollectionOverlay`) soll aber dieselbe Kugel zeigen wie das Spiel.
+
+**Alle Skins prüfen.** Besonders wichtig sind die hellen Skins (Koi, Chrom,
+Ei, Pinguin), die gemusterten (Biene, Melone, Pilz, Karo, Galaxie,
+Fußball), die animierten (Regenbogen, Neon, Holo, Disco) und die dunklen
+(Onyx, Gewitter). Wenn die Stufen bei einem Skin das Muster zerstören,
+lieber die Faktoren für alle Skins gemeinsam senken, statt Ausnahmen
+einzelner Skins einzubauen.
+
+> Alternative: die sanfte Kante (`docs/bevel-mockups/dot-sanft.png`),
+> falls die Kugel verworfen wird. Dabei wird nur der erste Ring innerhalb
+> der Kontur verändert, nicht die Fläche. Der Ring wird oben links hell
+> mit `mix(zelle, Weiß, 0.35)` und unten rechts dunkel mit
+> `mix(zelle, Outline, 0.30)`. Die Richtung kommt aus `±(dx+dy)/dist > 0.35`.
+
+## 5. Weitere Elemente
+
+| Element | Ort | Was |
+|---|---|---|
+| Bahn-Blöcke | `drawTrack` (WorldRenderer) | Bevel nach der Regel, Basis ist die Bahnfarbe der Kulisse. |
+| Zone und Perfekt-Kern | `drawZoneBlock` | Ist schon bevelt. Nur prüfen, ob die Kantenbreite zu den neuen Blöcken passt. Keine Formänderung. |
+| Minen / Bomben | `drawMineBody` (MineField.kt), `drawWearMine` | Sprite `TrapPaint.MINE`, `RIM`, `GLOSS` und das Lauflicht bleiben. Neu ist nur die Kante auf den Kugel-Pixeln: schwarz mit hell `#4E4656` und dunkel `#0A080C`, rot mit hell `#FF8A7E` und dunkel `#9E1F1C`. Die Farben gehören als Konstanten in `TrapPaint`. Siehe `bevel-detail-bomben.png`. |
+| Wolken | `drawCloud` (PixelShapes.kt) | Oberkante in Weiß, Unterkante leicht dunkler als die Wolkenfarbe der Kulisse, ohne Outline wie heute. Wird auch in `CollectionOverlay` genutzt. |
+| Bäume, Büsche, Blumen, Kakteen, Tannen, Türme, Wellen | `drawOutlinedBlocks`, `drawBlockParts`, `drawPixel*` | Bevel pro Block. Am besten zentral in `drawOutlinedBlocks` bzw. `drawBlockParts`, dann erben es alle Requisiten. Kronen und Büsche zwei Zellen breit. |
+| Graskante am Boden | `drawGroundStrip` | Die Grasstreifen-Kacheln bekommen eine Kante. Der Sand bleibt flach, höchstens mit einer hellen Oberkante. |
+| Uhr | `wear/.../WearRenderer.kt` (`drawWearTrack`, `drawWearMine`, `drawWearDot`, `drawWearPixelCircle`) | Dieselben Regeln, soweit sie auf der kleinen Fläche lesbar bleiben. Im Zweifel nur Dottie und die Minen. |
+
+Nicht anfassen: den Score und die Texte (sie laufen über die Schrift
+`Bytesized`), Overlays und Knöpfe (die haben schon Bevel), Nebel, Himmel
+und die Backdrop-Ebenen (Gebirge, Sterne).
+
+## 6. Vorgehen und Prüfung
+
+1. **Vorher-Screenshots** über `ui/src/jvmTest/.../ScreenshotRenderer.kt`
+   erzeugen: `SHOTS_DIR=… ./gradlew :ui:jvmTest --rerun`, dazu
+   `TwistShots.kt` und `CollectionShots.kt`.
+2. `BevelPaint` in `:core` mit Tests anlegen.
+3. Die Elemente in dieser Reihenfolge umstellen: Dottie, Minen, Bahn,
+   Requisiten und Wolken, Boden, Uhr.
+4. **Nachher-Screenshots** derselben Szenen erzeugen, dazu alle Kulissen
+   und eine Skin-Galerie mit allen Skins in Spielgröße.
+5. Tests laufen lassen:
+   `./gradlew :core:jvmTest :ui:jvmTest testDebugUnitTest assembleDebug :wear:assembleDebug`.
+   Die Golden Vectors müssen unverändert grün sein.
+6. Performance: Dottie wird in jedem Frame gezeichnet. Die Kugel-Stufen
+   einmal pro Skin und `frameKey` berechnen oder günstig halten, keine
+   Allokationen pro Frame.
+
+## 7. Abnahme
+
+- Im Draft-PR stehen Vorher/Nachher-Bilder: Startbildschirm, Lauf mit
+  Bomben und Lauflicht, Perfekt-Kern, Nebel, Game-Over, alle Kulissen,
+  Skin-Galerie und Uhr.
+- Dottie ist auf jedem Skin als Kugel erkennbar, Muster bleiben erhalten,
+  und das Auge bleibt deutlich.
+- Es gibt keine Schlagschatten, keine Perspektive und keine Verläufe, und
+  kein Element hat sich in Größe oder Position verändert.
+- Alle Tests sind grün, die Golden Vectors unverändert.
+- Im PR steht eine Liste der Punkte, die ein Mensch am Gerät prüfen muss:
+  Wirkung bei 60 fps, kleine Displays und die Uhr.
