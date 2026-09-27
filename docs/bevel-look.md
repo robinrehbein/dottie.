@@ -225,7 +225,7 @@ Boden bleibt statisch, ohne Animation.
 | Welt | Oberkante | Füllung |
 |---|---|---|
 | WIESE | Grasnarbe als Bevel-Kacheln (Form wie heute) | Sand mit ein paar Kieseln, Schattenstreifen wie heute |
-| WUESTE | Dünenkante als Pixel-Welle mit heller Oberkante | Sandstein in 3 Schichten mit versetzten Fugen, 2–3 kleine Steine |
+| WUESTE | Dünenkante als Pixel-Welle mit heller Oberkante | Sandstein in 3 Schichten mit versetzten Fugen. 3–4 Kiesel, halb im Sand eingesunken: nur die gerundete obere Hälfte (7×3, Licht oben links) schaut heraus. Keine schwebenden Quadrate. |
 | MEER | Wellenkämme mit weißem Schaum | Wasser, nach unten in 3 Stufen dunkler. 4–5 Luftblasen als runde Pixel-Ringe (5×5, innen Wasser, ein weißes Glanzpixel oben links), darüber je eine kleine 2×2-Begleitblase. Keine einzelnen Pixel, die wirken wie Kratzer. |
 | BERG | Schneedecke mit Eiszapfen | Felsblöcke, versetzt wie eine Mauer, jeder Block bevelt |
 | STADT | Bordsteine mit Fugen | Asphalt mit gestrichelter gelber Mittellinie und einem Gully |
@@ -234,6 +234,24 @@ Boden bleibt statisch, ohne Animation.
 Der Weltraum bleibt bewusst die einzige Welt ohne Boden. Ein Mondboden
 mit Kratern ist im Mockup nur als Option gezeigt und wird **nicht**
 umgesetzt.
+
+### 8.3a Requisiten, die dazu passen müssen
+
+Zwei Requisiten wirken heute als Kästen und sollen zum neuen Boden passen:
+
+- **FELS (Wüste):** Statt gestapelter Rechtecke (`ROCK_PARTS`) ein
+  gerundeter Findling mit Outline, Licht oben links, dunkler Unterseite
+  und 1–2 Riss-Pixeln. Daneben liegt ein kleiner Kiesel (8×5). Farben wie
+  bisher: `light #C4A87C`, `body #A88860`, `dark #8A6A4A`, Riss `#6E5238`.
+- **WELLE (Meer):** Statt drei gestapelter Kästen ein Brecher mit
+  eingerollter Krone: blauer Körper (`#2E86D8`, Licht `#7FC8F0`, Schatten
+  `#1F5FA8`), weiße Schaumkante oben, 2 Gischt-Pixel vor der Krone. Der
+  Fuß sitzt sichtbar auf der Wasserlinie und wird nicht vom Boden
+  verdeckt.
+
+Beide werden am besten als Pixel-Maske gezeichnet, wie `TrapPaint.MINE`
+(Zeilen aus Zeichen in `:core`, gezeichnet vom Renderer), statt als
+Rechteck-Liste. Vorlage: `alle-welten.png`, Wüste und Meer.
 
 ### 8.4 Umsetzung
 
