@@ -32,7 +32,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -336,16 +335,15 @@ private val GAME_OVER_TOP = 72.dp
 /** Höhe der Leiste ohne Systemleiste, wie die Taster-Leiste im Start. */
 private val GAME_OVER_BAR_HEIGHT = 64.dp
 
-/** Deckkraft der gesperrten Leiste (Mockup: `.bar button[disabled]`). */
-private const val GAME_OVER_BAR_LOCKED_ALPHA = 0.35f
-
 /**
  * Die feste Leiste am unteren Rand mit MENÜ links und TEILEN rechts, im
  * Stil der Taster-Leiste des Startbildschirms. Sie steht immer an
  * derselben Stelle, egal wie viele Zeilen das Game-Over darüber hat.
  *
- * Gesperrt ist sie blass und schluckt jeden Tap selbst, bevor er die
- * Taster oder die Tipp-Geste des Spielbildschirms erreicht (Plan 8.7).
+ * Gesperrt schluckt sie jeden Tap selbst, bevor er die Taster oder die
+ * Tipp-Geste des Spielbildschirms erreicht (Plan 8.7). Sie sieht dabei
+ * aus wie entsperrt: Eine blasse Leiste, die nach 0,8 s aufspringt, wirkte
+ * wie ein Flackern.
  * Ob ein Knopf mit `enabled = false` den Tap verbraucht, hängt an der
  * Compose-Version (1.7.3 tut es, ältere nicht); die Leiste verlässt sich
  * nicht darauf, sonst startete ein Wut-Tap auf sie womöglich neu.
@@ -363,7 +361,6 @@ private fun GameOverBar(
         modifier = modifier
             .fillMaxWidth()
             .height(GAME_OVER_BAR_HEIGHT + bottomInset)
-            .alpha(if (locked) GAME_OVER_BAR_LOCKED_ALPHA else 1f)
             .pointerInput(Unit) {
                 // Erster Durchgang (Initial): vor den Tastern und vor der
                 // Geste außen. Gesperrt wird alles verbraucht — Aufsetzen,
