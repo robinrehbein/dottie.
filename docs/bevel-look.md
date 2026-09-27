@@ -1,31 +1,98 @@
 # Bevel-Look — Briefing für die Umsetzung
 
 In eine neue Claude-Code-Session mit dem Repo `robinrehbein/dottie.` geben.
-Die Mockups liegen unter `docs/bevel-mockups/`. Sie zeigen die Richtung,
-sind aber keine pixelgenaue Vorlage: Maßgeblich sind die Regeln unten und
-die bestehenden Sprites im Code.
+Maßgeblich ist Abschnitt 0 mit den Zielbildern in
+`docs/bevel-mockups/ziel/`.
 
 ```text
 Baue den Bevel-Look in Dottie ein.
 
-Das Briefing und die Mockups liegen auf dem Branch
-claude/dotty-2-5d-graphics-3y59iu (nicht auf main). Hol ihn dir mit
-`git fetch origin claude/dotty-2-5d-graphics-3y59iu` und lies von dort
-docs/bevel-look.md komplett. Sieh dir alle Bilder in docs/bevel-mockups/ an.
-Das Zielbild pro Welt zeigen welt-wiese.png, welt-wueste.png,
-welt-meer.png, welt-berg.png, welt-stadt.png und welt-weltraum.png, die
-Übersicht zeigt alle-welten.png. Details zeigen dot-kugel.png,
-bevel-detail-bomben.png, welten-bloecke.png und welten-boden.png.
+Briefing, Zielbilder und Prototyp liegen auf dem Branch
+claude/dotty-2-5d-graphics-3y59iu. Lies docs/bevel-look.md komplett.
+Abschnitt 0 ist verbindlich und geht allem anderen vor. Das Ergebnis soll
+genau wie die Zielbilder in docs/bevel-mockups/ziel/ aussehen. Sie sind
+mit dem echten Renderer und docs/bevel-prototyp.patch erzeugt.
 
-Setze es in zwei Schritten um: Schritt 1 ist der Bevel-Look (Abschnitte
-1–7), Schritt 2 sind Bahn-Blöcke, Boden, Requisiten und Galaxien pro Welt
-(Abschnitt 8). Schritt 2 baut auf Schritt 1 auf.
-
-Arbeite auf einem eigenen Branch von main und öffne am Ende einen Draft-PR
-nach main. Kein Merge. Commit-Nachrichten und Kommentare auf Deutsch, im
-Stil des bestehenden Codes. Frag nicht nach Dingen, die im Briefing schon
+Arbeite auf einem eigenen Branch und öffne am Ende einen Draft-PR nach
+main. Kein Merge. Commit-Nachrichten und Kommentare auf Deutsch, im Stil
+des bestehenden Codes. Frag nicht nach Dingen, die im Briefing schon
 entschieden sind.
 ```
+
+## 0. Finaler Stand (verbindlich, geht allem anderen vor)
+
+Nach den Abstimmungen gilt dieser Abschnitt. Wo die Abschnitte 1–9 oder
+ältere Mockups etwas anderes sagen, gilt **dieser Abschnitt**.
+
+**Die Zielbilder** liegen in `docs/bevel-mockups/ziel/`. Sie sind mit dem
+echten Renderer auf dem Stand von `main` nach PR #77 und dem Prototyp
+`docs/bevel-prototyp.patch` gerendert: jede Welt mit jedem Twist und
+wechselnden Skins (`<welt>-<twist>-<skin>.png`), dazu eine Übersicht pro
+Welt (`uebersicht-<welt>.png`). Das Ergebnis soll **genau so** aussehen.
+Die älteren gezeichneten Mockups (`welt-*.png`, `alle-welten.png`,
+`welten-*.png`) sind überholt, maßgeblich sind die Zielbilder.
+
+Die Entscheidungen:
+
+1. **Bevel-Regel:** Licht oben links, eine Stufe breit, dunkle Kante unten
+   und rechts, dann die helle Kante oben und links darüber. Flächen unter
+   3 Stufen bleiben flach. Die Farben werden abgeleitet mit
+   `light = mix(basis, Weiß, 0.35)` und `dark = mix(basis, Outline #543847, 0.30)`.
+2. **Dottie „Kugel“:** Stufen, Glanzkern und Augenkante wie in Abschnitt 4.
+   Keine Flügel.
+3. **Minen:** `TrapPaint.MINE` bleibt unverändert, dazu kommt die Kante auf
+   den Kugel-Pixeln. Schwarz: hell `#4E4656`, dunkel `#0A080C`. Rot: hell
+   `#FF8A7E`, dunkel `#9E1F1C`.
+4. **Bahn-Blöcke pro Welt** im Raster der Bahn (`TrackBlock`, Kante =
+   `unit`), mit den Farben und Mustern aus der Tabelle in 8.2. Die WIESE
+   behält `GroundSandShade` als Basis.
+5. **Zone:** Der Körper bleibt überall grün wie heute. Die Blätter und
+   Tupfer der Wiese bleiben nur in der WIESE. Die anderen Welten bekommen
+   ihr Motiv aus 8.2. **Im Perfekt-Kern gibt es kein Rot und kein Rosa**
+   (`main` hat die Blüte entfernt, weil Tester sie für eine Warnung
+   hielten). Die Kern-Akzente:
+   - WIESE: keiner, wie `main`
+   - WUESTE: gelbes Kreuz `#FFE08A` mit weißer Mitte
+   - MEER: weißes Kreuz mit gelber Mitte (`DotBody`)
+   - BERG: weißer Stern mit gelber Mitte
+   - STADT: weißes 3×3-Quadrat
+   - WELTRAUM: weiße Diagonale
+6. **Requisiten:** Baum, Blume, Strauch, Kaktus, Palmeninsel, Nadelbaum,
+   Hochhaus und Laterne bleiben **exakt in ihrer Form** und bekommen nur
+   Bevel. Ausnahmen:
+   - **FELS** wird Findling plus Kiesel.
+   - **WELLE** wird ein Brecher.
+
+   Beide sind Pixel-Masken (`BOULDER`, `PEBBLE`, `BREAKER` im Prototyp),
+   eine Zelle pro Maskenpixel, und liegen wie `TrapPaint.MINE` als
+   Zeilen in `:core`.
+7. **Boden pro Welt** wie im Prototyp (`drawProtoGround`):
+   - WIESE: Grasnarbe als Bevel-Kacheln, Sand mit Kieseln
+   - WUESTE: Dünenkante, drei Sandsteinschichten mit Fugen, halb
+     eingesunkene Kiesel in Sandtönen (`#E3BE82`, `#C79A55`, `#A57C42`)
+   - MEER: Wellenkämme mit Schaum, die bis 3 Zellen über die Bodenkante
+     reichen, dazu Wasserstufen und Luftblasen-Ringe
+   - BERG: Schneedecke mit Eiszapfen über einer bevelten Felsmauer
+   - STADT: Bordsteine, Asphalt mit gelber Mittellinie und Gully
+   - WELTRAUM: kein Boden
+8. **Wolken:** weiße Oberkante, dunklere Unterkante, keine Outline.
+9. **Galaxien:** Arme in drei deckenden Stufen (`t < 0.35` volle Farbe,
+   `t < 0.7` `mix(arm, Himmel, 0.2)`, sonst `mix(arm, Himmel, 0.45)`). Staub
+   nur innen, deckend. Schimmer deckend in `mix(arm, Himmel, 0.2)`.
+   „Himmel“ ist die aktuelle Himmelsstufe des Weltraums, nicht fest.
+10. **Nicht anfassen:** Score und Texte, Overlays, Nebel (der kommt pro Welt
+    aus `main`), Himmel, Gebirge und Sterne. Mechanik, Timing, Größen und
+    Golden Vectors bleiben unverändert.
+11. **Architektur:** Farbableitung und Welten-Stile in `:core` (`BevelPaint`,
+    Stil-Daten in `ScenePaint`, Masken), die Renderer in `:ui` und `:wear`
+    rechnen nicht selbst. Die Kulisse wird als Parameter übergeben, **keine
+    globale Variable** wie `protoScene` im Prototyp. Neue Tests in `:core`
+    nach 8.4. Ein Screenshot-Werkzeug nach dem Muster von `TwistShots`
+    (z. B. `BevelShots`) rendert die Welt-×-Twist-Matrix.
+12. **Uhr (`:wear`):** Dottie als Kugel, Minen mit Kante, Blockfarben pro
+    Welt, ohne Muster und Motive. Die Uhr hat eigene Szenerie
+    (`WearScenery.kt`): Requisiten dort bekommen Bevel, wo sie groß genug
+    sind.
 
 ## 1. Ziel
 
