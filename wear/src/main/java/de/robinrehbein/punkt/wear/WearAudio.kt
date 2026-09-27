@@ -11,8 +11,8 @@ import kotlin.concurrent.thread
 /**
  * Chiptune-Soundeffekte für die Uhr — dieselbe Synthese wie am Phone
  * (ChipSynth in :core), damit beide Apps identisch klingen. Schlanke
- * Variante von GameAudio in :app: nur die für Wear relevanten Effekte,
- * moderate Lautstärke für den kleinen Uhren-Lautsprecher.
+ * Variante von GameAudio in :app: dieselben acht Ereignisse, moderate
+ * Lautstärke für den kleinen Uhren-Lautsprecher.
  *
  * Die WAVs landen einmalig im Cache und laufen über einen SoundPool
  * (niedrige Latenz). Synthese, Datei-I/O und das Laden passieren auf
@@ -80,11 +80,17 @@ class WearAudio(context: Context) {
         }
     }
 
+    /** Lauf-Start ohne Treffer (Sofort-Neustart aus dem Game-Over). */
+    fun start() = play("start")
+
     /** Treffer-Blip; die Tonhöhe klettert pro 5er-Stufe eine Pentatonik hoch. */
     fun hit(score: Int) = play("hit", rate = ChipSynth.hitRate(score))
 
     /** Münz-Sound; jede Serien-Stufe klingt zwei Halbtöne höher. */
     fun perfect(streak: Int) = play("perfect", rate = ChipSynth.perfectRate(streak))
+
+    /** Folge-Zone der KETTE. */
+    fun chain() = play("chain")
 
     /** Fanfare für neue Twists und jede 5er-Stufe. */
     fun unlock() = play("unlock")
@@ -95,14 +101,23 @@ class WearAudio(context: Context) {
     /** Rekord-Jingle. */
     fun newRecord() = play("record")
 
+    /** Aufschlag, wenn das Ergebnis feststeht (ohne neuen Rekord). */
+    fun thud() = play("thud")
+
+    /**
+     * Hörprobe im Ton-Wähler: die Fanfare des Sets [set], auch wenn es
+     * noch nicht festgeschrieben ist — wie preview am Telefon.
+     */
+    fun preview(set: SoundSetId) = play("unlock", set = set)
+
     fun release() {
         released = true
         soundPool.release()
     }
 
-    private fun play(name: String, rate: Float = 1f) {
+    private fun play(name: String, rate: Float = 1f, set: SoundSetId = soundSet) {
         if (muted || released) return
-        val id = soundIds[soundSet]?.get(name) ?: return
+        val id = soundIds[set]?.get(name) ?: return
         soundPool.play(id, VOLUME, VOLUME, 1, 0, rate.coerceIn(0.5f, 2f))
     }
 
@@ -111,9 +126,10 @@ class WearAudio(context: Context) {
         const val VOLUME = 0.8f
 
         /**
-         * Teilmenge der Phone-Effekte, die es auf der Uhr braucht — kein
-         * "start"/"chain"/"thud", der Prototyp bleibt bewusst schlank.
+         * Alle acht Ereignisse eines Ton-Sets, wie am Telefon: Ein Set, das
+         * auf der Uhr den Start, die Kette oder den Aufschlag verschluckt,
+         * klänge dort anders als gewählt (README, „Ton-Sets“).
          */
-        val WEAR_EFFECTS = listOf("hit", "perfect", "unlock", "record", "death")
+        val WEAR_EFFECTS = listOf("start", "hit", "perfect", "chain", "unlock", "record", "death", "thud")
     }
 }

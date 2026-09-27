@@ -55,7 +55,8 @@ in `TimingGame`). Der PERFEKT-Kern liegt nie im Nebel, und der Punkt
 taucht kurz vor der hellen Mitte wieder auf. Wer trifft, solange er noch
 im Nebel steckt, bekommt **BLIND! +1** (ein normaler Treffer plus ein
 Punkt, die Perfekt-Serie bleibt erhalten). Am Telefon gleitet der Vogel
-in eine Pixel-Wolke hinein, auf der Uhr steht ein einfaches Nebelband.
+in eine Pixel-Wolke hinein, auf der Uhr steht ein einfaches Nebelband —
+in den Farben und mit den Partikeln der gewählten Welt.
 Im Code heißt der Twist weiter `Twist.GHOST`: Der Name wird gespeichert
 und steht in den Paritäts-Vektoren.
 
@@ -82,8 +83,8 @@ Minesweeper-Mine (7×7, schwarze Kugel mit hellem Rand für dunkle Himmel,
 Kette, die Richtung ergibt sich aus der Lage der Falle, nicht aus dem
 Zufall. Wer hineintippt, sieht 12 Pixel-Funken und „BOOM!“, beim ersten
 Mal zusätzlich „BOMBE = NIE TIPPEN“. Nach dem ersten Bomben-Tod darf die
-Bomben-Erklärung im Game-Over vordrängeln. Auf der Uhr stehen die Minen
-ohne Lauflicht.
+Bomben-Erklärung im Game-Over vordrängeln. Die Uhr zeigt dieselben Minen
+mit demselben Lauflicht.
 
 Kuratierte Ausnahme: NEBEL + BOMBEN erscheinen nie gleichzeitig —
 unsichtbarer Punkt plus tödliche Köder-Zone wäre Zufalls-Tod statt
@@ -230,8 +231,9 @@ zu `SkinPaint`. Eine Requisite ist dort **Daten, kein Zeichencode**:
 Form, Größe (Anteil der Bildhöhe), Windanteil und Farben. `:ui` läuft
 dieselbe Liste zyklisch ab und zeichnet sie auf Android wie auf iOS;
 ohne diese Trennung müsste jede neue Kulisse mehrfach nachgezeichnet
-werden und liefe auseinander. Die Uhr nimmt aus `ScenePaint` nur den
-Himmel — sie hat für Requisiten keinen Platz.
+werden und liefe auseinander. Die Uhr nimmt aus `ScenePaint` Himmel,
+Wolken, Boden, Gebirge, Sterne und Nebel — nur für Requisiten hat sie am
+schmalen Rand um den Ring keinen Platz.
 
 Zwei Formen gehen noch einen Schritt weiter und stehen **selbst** als
 Tabelle in `:core`: `ROCK_PARTS` und `LANTERN_PARTS`. Die Renderer füllen
@@ -301,8 +303,9 @@ jede Requisiten-Größe stammt unverändert aus dem Bestand vor v2.21
 Gewählt wird in der **SAMMLUNG** im Reiter WELT (Android, iOS); gesperrte
 Welten lassen sich im Schaufenster ansehen und zeigen Bedingung und
 Fortschritt. Die Wahl wird wie die Skin-Wahl gespeichert und steht auf der
-Score-Card — sonst sähe sie niemand außer der Besitzerin. Die Uhr wählt
-keine Kulisse; sie zieht die Himmelsfarben nur lesend aus `ScenePaint`.
+Score-Card — sonst sähe sie niemand außer der Besitzerin. Auf der Uhr
+lässt sich unter den offenen Welten ebenfalls wählen (ohne Schaufenster);
+die neuere Wahl gewinnt im Abgleich auf beiden Geräten.
 
 ## Ton-Sets (ab v2.23)
 
@@ -375,10 +378,11 @@ Was `:core` per Test festnagelt (`SoundSetTest`):
 Gewählt wird in der **SAMMLUNG** im Reiter TON — mit **Hörprobe beim
 Antippen**, auch für noch gesperrte Sets (die Fanfare des Sets: sie
 zeigt Lage, Länge und Anschlag). Das Menü bleibt dabei offen: Wer eines
-hört, will das nächste hören. Die Uhr hat keinen eigenen Wähler; sie
-übernimmt die Wahl über den Abgleich und spielt sie dann auch — ein
-Klang, den man am Telefon hört und auf der Uhr nicht, wäre schlechter als
-gar keine Auswahl.
+hört, will das nächste hören. Die Uhr hat einen eigenen, schlichten
+Wähler (nur offene Sets, mit Hörprobe), übernimmt aber genauso die Wahl
+des Telefons über den Abgleich und spielt sie dann auch — ein Klang, den
+man am Telefon hört und auf der Uhr nicht, wäre schlechter als gar keine
+Auswahl.
 
 ## Statistik-Seite (ab v2.21)
 
@@ -629,32 +633,59 @@ Im Modul `:wear` liegt ein eigenständiger Prototyp für runde Wear-OS-Uhren:
 eine schlanke, alleinstehende Watch-App, die die Spiellogik aus `:core`
 wiederverwendet — bewusst abgespeckt bleiben nur Teilen und Notifications.
 Feedback kommt über Haptik plus dieselben Chiptune-Sounds wie am Phone
-(`ChipSynth` liegt dafür in `:core`, abschaltbar über „TON: AN/AUS" auf
-dem Startscreen).
-Das Game-Feel der Phone-App ist mit an Bord: die Mario-Tod-Animation
-(Hüpfer und Sturz aus dem Bild), Medaillen ab 10/20/30/40 Punkten, das
-live eingeblendete „REKORD GEKNACKT!"-Banner und Spott-Texte beim Tod
-(eine gekürzte, Wear-taugliche Auswahl).
+(`ChipSynth` liegt dafür in `:core`, abschaltbar über „TON: AN/AUS" oben
+im Ton-Wähler).
+Das Game-Feel der Phone-App ist mit an Bord: alle Twists mit denselben
+Regeln (sie kommen aus `:core`), PERFEKT! +n, BLIND! +n im Nebel, NOCH
+EINE! bei der KETTE, die Todesursache (ZU FRÜH, ZU SPÄT, VERPASST, BOOM!)
+samt weißem Rahmen, Blitz, Wackeln und Bomben-Funken, der Goldring bei
+jeder Freischaltung, die Mario-Tod-Animation, Medaillen ab 10/20/30/40
+Punkten, das live eingeblendete „REKORD GEKNACKT!"-Banner, Spott-Texte
+beim Tod und — einmal je Twist — eine kurze Twist-Erklärung im Game-Over.
+Alle acht Klänge jedes Ton-Sets spielen auch auf der Uhr.
 Auch die Daily Challenge läuft auf der Uhr: gleicher Tages-Seed wie am
 Phone (`DailyChallenge` in `:core`), umgeschaltet über die Zeile
 „KLASSIK / DAILY" auf dem Start- und Game-Over-Overlay; Tagesbest und
 Tages-Serie werden lokal geführt (nur der erste Lauf des Tages schreibt
-die Serie fort, eine Lücke reißt sie). Dazu alle Punkt-Skins mit den
-Freischalt-Bedingungen des Phones (gemeinsames Farbwerk in `:core`) —
-ein Tap auf die kleine Skin-Münze im Startscreen öffnet eine scrollbare
-Liste aller freigeschalteten Skins (Drehkrone schiebt den Cursor Skin für
-Skin weiter, Tap auf eine Zeile wählt direkt). Die Gönner-Skins schaltet
+die Serie fort, eine Lücke reißt sie). Dazu eine kleine Sammlung: Drei
+Knöpfe im Startbildschirm öffnen je eine scrollbare Liste der offenen
+Punkt-Skins, Welten und Ton-Sets (Drehkrone schiebt den Cursor, Tap auf
+eine Zeile wählt, die Ton-Liste trägt oben den Schalter TON: AN/AUS).
+Die Welt zeichnet die Uhr mit Himmel, Wolken, Boden, Gebirge bzw. Sternen
+und ihrem eigenen Nebel am Rand um den Ring (`WearScenery.kt`). Die
+Gönner-Skins schaltet
 `WearPatron` frei: Die Uhr fragt Play Billing selbst und rein lesend ab,
 ob `patron_pack` gekauft ist — gekauft wird nur am Telefon, die Uhr
 spiegelt lediglich das Ergebnis (`patronOwned`). Ohne Play-Dienste (keine
 Verbindung, seitlich installiert) bleibt es bei gesperrt, ohne Fehlerbild.
-Rekord, Daily-Stand, Skin-Wahl und die Ausdauer-Zähler (Läufe,
-Punktesumme, Tage, Monate, Saison-Fortschritt) werden lokal auf der Uhr
-gespeichert, getrennt vom Telefon-Store — die Uhr schaltet ihre Skins
-also auch ohne Telefon frei.
-Auf Uhren mit Zusatztasten (z. B. dem Quick-Button der Galaxy Watch Ultra)
-lässt sich statt per Touch auch per Tastendruck tappen — praktisch, weil
-der Finger beim Timing sonst genau die Zielzone verdeckt.
+Rekord, Daily-Stand, Skin-, Welt- und Ton-Wahl und die Ausdauer-Zähler
+(Läufe, Punktesumme, Tage, Monate, Saison-Fortschritt) werden lokal auf
+der Uhr gespeichert, getrennt vom Telefon-Store — die Uhr schaltet also
+auch ohne Telefon frei.
+
+Bewusst nicht auf der Uhr: Statistik-Seite, Hilfe, Schaufenster für
+Gesperrtes, Score-Card-Rahmen und Teilen, Zielzeile mit Balken,
+Start-Hand der ersten Läufe und Requisiten der Welten — dafür ist das
+runde Display zu klein, oder es gibt dort nichts zu teilen.
+
+**Tasten.** Getippt wird beim Aufsetzen des Fingers (wie am Telefon) —
+und genauso, über denselben Aufruf, per Taste:
+
+- Multifunktionstasten (`KEYCODE_STEM_1..3`, z. B. TicWatch) tippen in
+  jeder Phase, im offenen Wähler bestätigen sie.
+- Die ZURÜCK-Taste (Galaxy Watch: unten) tippt nur, solange ein Lauf
+  läuft; direkt nach dem Tod wird sie kurz geschluckt, danach und im
+  Startbildschirm ist sie wieder das normale Zurück. Wischen zum
+  Schließen bleibt immer möglich.
+- Die Home-Taste (`STEM_PRIMARY`) bleibt beim System. Die orange
+  Quick-Taste der Galaxy Watch Ultra liefert Samsung nach heutigem Stand
+  nicht an Apps aus — kommt sie als STEM-Taste an, tippt sie automatisch.
+- Drehkrone bzw. Lünette: eine Raste = ein Tap (entprellt), im Wähler
+  der Cursor.
+
+Zum Ausprobieren ohne Uhr-Tasten: `adb shell input keyevent
+KEYCODE_STEM_1`. Ein per adb erzeugtes ZURÜCK gilt bewusst nicht als
+Taste (sonst tippten auch Gesten), es bleibt ein Zurück.
 
 Installation zum Testen per WLAN-ADB: Entwicklermodus auf der Uhr
 aktivieren, dort WLAN-Debugging einschalten, dann vom Rechner aus
