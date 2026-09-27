@@ -35,6 +35,9 @@ enum class GoalAxis {
     /** Tage mit Lauf im laufenden Saison-Fenster (siehe [Season]). */
     SEASON_DAYS,
 
+    /** Erledigte Tagesaufgaben insgesamt (ab v2.36, siehe DailyMissions). */
+    MISSIONS_DONE,
+
     /** Gesammelte Skins — die Bedingung des REGENBOGEN. */
     SKIN_COLLECTION,
 
@@ -146,7 +149,11 @@ object Progress {
         Triple(SkinId.THERMO, GoalAxis.BEST_SCORE, 75),
         Triple(SkinId.MEDAILLE, GoalAxis.RUN_COUNT, 200),
         Triple(SkinId.TAGESZEIT, GoalAxis.DAYS_PLAYED, 7),
-        Triple(SkinId.JAHRESZEIT, GoalAxis.MONTHS_PLAYED, 3)
+        Triple(SkinId.JAHRESZEIT, GoalAxis.MONTHS_PLAYED, 3),
+
+        Triple(SkinId.STERNCHEN, GoalAxis.MISSIONS_DONE, 10),
+        Triple(SkinId.ORDEN, GoalAxis.MISSIONS_DONE, 40),
+        Triple(SkinId.POKAL, GoalAxis.MISSIONS_DONE, 100)
     )
 
     /**
@@ -316,6 +323,7 @@ object Progress {
         GoalAxis.DAYS_PLAYED -> stats.daysPlayed
         GoalAxis.MONTHS_PLAYED -> stats.monthsPlayed
         GoalAxis.SEASON_DAYS -> seasonDays
+        GoalAxis.MISSIONS_DONE -> stats.missionsDone
         GoalAxis.SKIN_COLLECTION -> SkinPaint.unlockedCount(stats)
         GoalAxis.SCENE_COLLECTION -> ScenePaint.unlockedCount(stats)
     }

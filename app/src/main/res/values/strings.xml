@@ -13,4 +13,6 @@
     <string name="notif_text">Today\'s pattern is ready. One tap decides.</string>
     <string name="notif_text_streak_one">Streak: 1 day — don\'t let it break!</string>
     <string name="notif_text_streak">Streak: %1$d days — don\'t let it break!</string>
+    <string name="notif_risk_title">Your streak is in danger!</string>
+    <string name="notif_risk_text">%1$d days in a row — the Daily is still open today.</string>
 </resources>

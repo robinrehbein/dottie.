@@ -478,6 +478,61 @@ Falle) für dasselbe. Plan und Begründung: `docs/plan-feedback-ux.md`.
 - **Umlaute:** Die deutschen Texte schreiben Ä, Ö und Ü (die Schrift hat
   sie), SS bleibt.
 
+## Wiederkommen: Aufgaben, Joker, knapp daneben, Messung (ab v2.36)
+
+Bis v2.35 waren alle Ziele Summen, die über Wochen wachsen, die
+Daily-Serie riss beim ersten verpassten Tag, und ob überhaupt jemand
+wiederkam, wusste niemand. Vier Bausteine setzen dort an:
+
+- **Tagesaufgaben** (`DailyMissions` in `:core`): drei Aufgaben am Tag —
+  eine fürs Dabeisein (Läufe, Punkte, Tageslauf), eine für Technik
+  (PERFEKT, ab Rekord 45 auch BLIND!), eine fürs Können (ein guter Lauf,
+  frei oder im Tageslauf). Wie die Daily hängen sie am Kalendertag und
+  sind für alle gleich, aufgeteilt in vier Stufen nach Rekord (unter 10,
+  unter 25, unter 45, darüber). Die Stufe wird beim ersten Blick des
+  Tages festgeschrieben, damit die Aufgaben nicht mittags wechseln. Offen
+  sind sie als Zahl am STATISTIK-Taster, im Einzelnen oben auf der
+  Statistik-Seite; erledigt werden sie im Game-Over gefeiert. Während der
+  Stützräder (erste fünf Läufe) bleiben sie verborgen.
+- **Aufgaben-Skins**: STERNCHEN (10 erledigte Aufgaben), ORDEN (40) und
+  POKAL (100) in der neuen Familie AUFGABEN. Wie Saison- und Gönner-Skins
+  zählen sie **nicht** für den Regenbogen: Der wird nicht gespeichert,
+  sondern berechnet, und wäre mit dem Update für alle, die ihn haben,
+  wieder zu. Die Zahl erledigter Aufgaben läuft im Abgleich mit (Maximum),
+  damit auch die Uhr die drei Skins kennt.
+- **Serien-Joker** (`DailyChallenge.nextStreak(…, jokers)`): Ein Joker
+  deckt einen verpassten Tag der Daily-Serie, höchstens zwei liegen auf
+  Vorrat. Es gibt einen für **alle drei Tagesaufgaben** eines Tages und —
+  nur auf Android mit Werbung — einen per freiwilligem Spot, wenn die
+  Serie heute sonst reißen würde (Banner „SERIE VON 12 TAGEN RETTEN?").
+  Reichen die Joker nicht für die ganze Lücke, reißt die Serie wie bisher
+  und die Joker bleiben liegen. Joker sind lokal und nicht im Abgleich;
+  eine gerettete Serie übersteht ihn trotzdem, weil der jüngere Tag
+  gewinnt.
+- **Erinnerung**: Nach dem ersten Tageslauf fragt das Spiel einmal, ob es
+  abends erinnern soll (bisher war der Schalter nur in den Einstellungen).
+  Auf Android kommt um 21 Uhr eine zweite Erinnerung „SERIE IN GEFAHR",
+  wenn eine Serie ab drei Tagen auf dem Spiel steht und die Daily noch
+  offen ist (`DailyReminder.decide`).
+- **Knapp daneben**: Die Engine misst, um wie viele Sekunden ein
+  tödlicher Tap danebenlag (`TimingGame.lastMissSeconds`) — ZU FRÜH gegen
+  die Zonenkante, ZU SPÄT gegen das Ende der Spät-Gnade, also gegen das,
+  was wirklich gezählt hätte. Bis 0,5 s steht die Zahl unter der Ursache
+  („ZU FRÜH · KNAPP! 0,03 S"), bis 50 ms mit „KNAPP!". Im Lauf zählt
+  „NOCH 3 BIS REKORD" die letzten Punkte vor dem Rekord herunter (ab
+  Rekord 10).
+- **Nutzungsstatistik** (`Telemetry` in `:ui`, `GameAnalytics` in
+  `:app`): Firebase Analytics, **aus**, bis in
+  `res/values/analytics.xml` ein Projekt steht, und dann erst nach einer
+  ausdrücklichen Einwilligung im Spiel (Frage nach fünf Läufen, Schalter
+  „STATISTIK TEILEN" in den Einstellungen). Keine Werbe-ID, keine
+  Werbe-Signale. Einrichtung und Ereignisliste: PUBLISHING.md, Abschnitt
+  „Nutzungsstatistik". iOS misst nicht.
+
+Nebenbei: Die Rangliste in der Statistik war seit v2.23 gebaut, aber nie
+angeschlossen — der Aufruf reichte `leaderboardAvailable` nicht durch.
+Sie erscheint jetzt, sobald Play Games konfiguriert ist.
+
 ## Abgleich zwischen Telefon und Uhr (ab v2.19)
 
 Rekord, Lauf-Zahl, beste Perfekt-Serie, Daily-Stand sowie Skin-,

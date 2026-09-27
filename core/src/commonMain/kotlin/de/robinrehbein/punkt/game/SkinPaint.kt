@@ -43,6 +43,9 @@ enum class SkinId {
     CHAMAELEON, KOMBO, TINTE,
     THERMO, MEDAILLE, TAGESZEIT, JAHRESZEIT,
 
+    // Aufgaben — verdient mit Tagesaufgaben (ab v2.36)
+    STERNCHEN, ORDEN, POKAL,
+
     // Saison — nur im eigenen Monat verdienbar, dann für immer
     KUERBIS, ZUCKERSTANGE, HERZ, OSTEREI,
 
@@ -59,7 +62,7 @@ enum class SkinId {
  * einteilt: Wer eine Familie umsortiert, sieht sofort, dass auch die
  * Reihenfolge dranhängt.
  */
-enum class SkinFamily { EINFARBIG, GEMUSTERT, BEWEGT, REAGIEREND, SAISON, GOENNER }
+enum class SkinFamily { EINFARBIG, GEMUSTERT, BEWEGT, REAGIEREND, AUFGABEN, SAISON, GOENNER }
 
 /**
  * Der Lauf-Zustand, aus dem sich bewegte und reagierende Skins speisen.
@@ -107,7 +110,13 @@ data class SkinStats(
     val monthsPlayed: Int = 0,
     val seasonEarned: Int = 0,
     val patronOwned: Boolean = false,
-    val ownedScenes: Set<String> = emptySet()
+    val ownedScenes: Set<String> = emptySet(),
+    /**
+     * Erledigte Tagesaufgaben insgesamt (ab v2.36, siehe DailyMissions).
+     * Eine Ausdauer-Achse wie die Läufe: Sie wächst mit jedem Tag, an dem
+     * man vorbeischaut, nicht mit dem Rekord.
+     */
+    val missionsDone: Int = 0
 )
 
 /**
@@ -246,6 +255,9 @@ object SkinPaint {
         SkinId.MEDAILLE -> 0xFFC0C0C0
         SkinId.TAGESZEIT -> 0xFF8FD8FF
         SkinId.JAHRESZEIT -> 0xFFFFC93C
+        SkinId.STERNCHEN -> 0xFF2C3E8C
+        SkinId.ORDEN -> 0xFFD8323C
+        SkinId.POKAL -> 0xFFFFD23F
         SkinId.KUERBIS -> 0xFFF5821F
         SkinId.ZUCKERSTANGE -> 0xFFE8452F
         SkinId.HERZ -> 0xFFFF6FA8
@@ -295,6 +307,9 @@ object SkinPaint {
         SkinId.MEDAILLE -> 0xFF8F8F9C
         SkinId.TAGESZEIT -> 0xFF3D4A8C
         SkinId.JAHRESZEIT -> 0xFFE09218
+        SkinId.STERNCHEN -> 0xFF1B2766
+        SkinId.ORDEN -> 0xFFCC8F00
+        SkinId.POKAL -> 0xFFC99400
         SkinId.KUERBIS -> 0xFFC25E10
         SkinId.ZUCKERSTANGE -> 0xFFC2301F
         SkinId.HERZ -> 0xFFD6407E
@@ -345,6 +360,9 @@ object SkinPaint {
         SkinId.MEDAILLE -> 0xFFFFFFFF
         SkinId.TAGESZEIT -> 0xFFFFFFFF
         SkinId.JAHRESZEIT -> 0xFFFFFFFF
+        SkinId.STERNCHEN -> 0xFFB8C8FF
+        SkinId.ORDEN -> 0xFFFFF7CC
+        SkinId.POKAL -> 0xFFFFFFFF
         SkinId.KUERBIS -> 0xFFFFE0B8
         SkinId.ZUCKERSTANGE -> 0xFFFFFFFF
         SkinId.HERZ -> 0xFFFFFFFF
@@ -402,6 +420,12 @@ object SkinPaint {
     /** Saison-Skin? Verdienbar nur im eigenen Monat (siehe [Season]). */
     fun isSeasonal(id: SkinId): Boolean = Season.forSkin(id) != null
 
+    /** Mit Tagesaufgaben verdienter Skin (ab v2.36)? */
+    fun isMissionSkin(id: SkinId): Boolean = when (id) {
+        SkinId.STERNCHEN, SkinId.ORDEN, SkinId.POKAL -> true
+        else -> false
+    }
+
     /** Gekaufter Gönner-Skin? */
     fun isPatron(id: SkinId): Boolean = when (id) {
         SkinId.DIAMANT, SkinId.PHOENIX, SkinId.ONYX -> true
@@ -416,8 +440,14 @@ object SkinPaint {
      * Jahr erreichbar. Gönner-Skins nicht, sonst wäre er käuflich. Beides
      * würde aus dem Abschluss der Sammlung etwas machen, das nicht mehr
      * am Spielen hängt.
+     *
+     * Aufgaben-Skins (ab v2.36) auch nicht, aus einem dritten Grund: Der
+     * Regenbogen wird nicht gespeichert, sondern bei jedem Blick berechnet.
+     * Zählten drei neue Skins mit, wäre er für alle, die ihn schon haben,
+     * mit dem Update wieder zu.
      */
-    fun countsForCollection(id: SkinId): Boolean = !isSeasonal(id) && !isPatron(id)
+    fun countsForCollection(id: SkinId): Boolean =
+        !isSeasonal(id) && !isPatron(id) && !isMissionSkin(id)
 
     /**
      * Bewegte Skins müssen nicht in jedem Frame neu gerastert werden — ein
@@ -440,7 +470,8 @@ object SkinPaint {
     fun isAnimated(id: SkinId): Boolean = when (id) {
         SkinId.REGENBOGEN, SkinId.AURORA, SkinId.MAGMA, SkinId.NEON, SkinId.CHROM,
         SkinId.WELLE, SkinId.GEWITTER, SkinId.KONFETTI, SkinId.DISCO, SkinId.HOLO,
-        SkinId.ZUCKERSTANGE, SkinId.DIAMANT, SkinId.PHOENIX, SkinId.ONYX -> true
+        SkinId.ZUCKERSTANGE, SkinId.DIAMANT, SkinId.PHOENIX, SkinId.ONYX,
+        SkinId.POKAL -> true
         else -> false
     }
 
@@ -490,6 +521,13 @@ object SkinPaint {
         SkinId.HOLO -> stats.bestScore >= 80
         SkinId.GEWITTER -> stats.bestPerfectStreak >= 15
         SkinId.DISCO -> stats.bestDailyStreak >= 21
+
+        // Aufgaben: erledigte Tagesaufgaben insgesamt. Drei am Tag, also
+        // fällt STERNCHEN frühestens nach vier Tagen, POKAL nach gut einem
+        // Monat täglichen Vorbeischauens.
+        SkinId.STERNCHEN -> stats.missionsDone >= 10
+        SkinId.ORDEN -> stats.missionsDone >= 40
+        SkinId.POKAL -> stats.missionsDone >= 100
 
         // Saison: im eigenen Monat verdient, danach für immer gehalten.
         // Geprüft wird deshalb die Maske, nie der Kalender — sonst wäre
@@ -552,6 +590,8 @@ object SkinPaint {
 
         SkinId.CHAMAELEON, SkinId.KOMBO, SkinId.TINTE, SkinId.THERMO,
         SkinId.MEDAILLE, SkinId.TAGESZEIT, SkinId.JAHRESZEIT -> SkinFamily.REAGIEREND
+
+        SkinId.STERNCHEN, SkinId.ORDEN, SkinId.POKAL -> SkinFamily.AUFGABEN
 
         SkinId.KUERBIS, SkinId.ZUCKERSTANGE, SkinId.HERZ,
         SkinId.OSTEREI -> SkinFamily.SAISON
@@ -832,6 +872,38 @@ object SkinPaint {
                 }
             }
 
+            // ===== Aufgaben =====
+
+            SkinId.STERNCHEN -> when {
+                // Ein Pixelstern unten links, dazu drei Funken — unterhalb
+                // und abseits des Auges, das in beiden Blickrichtungen
+                // die Zeilen 2 bis 7 der Mitte belegt.
+                isMissionStar(col, row) -> 0xFFFFE95E
+                isMissionSpark(col, row) -> 0xFFFFF3B8
+                else -> shaded(col, row, 0xFF2C3E8C, 0xFF1B2766)
+            }
+
+            SkinId.ORDEN -> when {
+                // Oben das Ordensband in Rot-Weiß, unten die goldene
+                // Plakette mit hellem Kern.
+                row <= 5 -> if (col % 4 < 2) shaded(col, row, 0xFFD8323C, 0xFFA8202A)
+                else shaded(col, row, 0xFFF7F3EE, 0xFFDCD2C4)
+                row == 6 -> 0xFF8E5E12
+                (col == 6 && row in 8..10) || (row == 9 && col in 5..7) -> 0xFFFFF3B8
+                else -> shaded(col, row, 0xFFFFC400, 0xFFCC8F00)
+            }
+
+            SkinId.POKAL -> {
+                // Poliertes Gold mit einem Glanz, der langsam darüberzieht,
+                // und dem dunkleren Sockelband des Pokals. Anders als GOLD
+                // lebt er: Er ist der letzte Aufgaben-Skin.
+                var base = if (row in 9..10) 0xFFB07A00 else shaded(col, row, 0xFFFFD23F, 0xFFC99400)
+                val sweep = (t * 4.5f) % 22f - 5f
+                val d = abs(col - row * 0.6f - sweep + 4f)
+                if (d < 1.4f) base = mix(base, 0xFFFFFFFF, 0.8f * (1f - d / 1.4f))
+                if (noise(col, row, floor(t * 2f).toInt()) % 53 == 0) 0xFFFFFFFF else base
+            }
+
             SkinId.ZUCKERSTANGE -> {
                 val band = floor((col + row - t * 4f) / 2.2f).toInt()
                 if (((band % 2) + 2) % 2 == 0) shaded(col, row, 0xFFE8452F, 0xFFC2301F)
@@ -960,6 +1032,17 @@ object SkinPaint {
     /** Geschnitztes Grinsen des KUERBIS, bewusst unterhalb des Auges. */
     private fun isGrin(col: Int, row: Int): Boolean =
         (row == 10 && col in 3..9) || (row == 9 && (col == 3 || col == 6 || col == 9))
+
+    /**
+     * Der Stern von STERNCHEN: ein Plus unten links, ab Zeile 8 — darüber
+     * sitzt beim Blick nach links das Auge.
+     */
+    private fun isMissionStar(col: Int, row: Int): Boolean =
+        (col == 3 && row in 8..10) || (row == 9 && col in 2..4)
+
+    /** Die Funken von STERNCHEN, ebenfalls unterhalb der Augenzeilen. */
+    private fun isMissionSpark(col: Int, row: Int): Boolean =
+        (col == 8 && row == 10) || (col == 10 && row == 8) || (col == 5 && row == 11)
 
     /** Pixelherz, tief gesetzt — oben hat das Auge Vorrang. */
     private fun isHeart(col: Int, row: Int): Boolean = when (row) {

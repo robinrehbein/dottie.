@@ -55,6 +55,7 @@ import de.robinrehbein.punkt.ui.resources.daily
 import de.robinrehbein.punkt.ui.resources.settings
 import de.robinrehbein.punkt.ui.resources.start_daily_armed
 import de.robinrehbein.punkt.ui.resources.stats
+import de.robinrehbein.punkt.ui.resources.missions_badge_cd
 import de.robinrehbein.punkt.ui.theme.Bytesized
 import de.robinrehbein.punkt.ui.world.DotBody
 import de.robinrehbein.punkt.ui.world.OutlineColor
@@ -107,7 +108,10 @@ fun ReadyOverlay(
     // DAILY ist scharf: Der nächste Lauf ist der Tageslauf (Plan 8.6 #4).
     dailyArmed: Boolean = false,
     // Die Zielzeile fällt während der Stützräder weg (Plan 8.6 #7).
-    goalHidden: Boolean = false
+    goalHidden: Boolean = false,
+    // Offene Tagesaufgaben (ab v2.36): als Zahl am STATISTIK-Taster, in
+    // derselben Ecke wie die Serie am DAILY-Taster. 0 = kein Abzeichen.
+    missionsOpen: Int = 0
 ) {
 
     // Die Taster-Leiste zeichnet bis an den physischen Bildschirmrand,
@@ -216,6 +220,7 @@ fun ReadyOverlay(
             dailyStreak = dailyStreak,
             dailyArmed = dailyArmed,
             collectionHasNew = collectionHasNew,
+            missionsOpen = missionsOpen,
             onDaily = onDaily,
             onSkins = onSkins,
             onStats = onStats,
@@ -237,6 +242,7 @@ private fun TasterBar(
     dailyStreak: Int,
     dailyArmed: Boolean,
     collectionHasNew: Boolean,
+    missionsOpen: Int,
     onDaily: () -> Unit,
     onSkins: () -> Unit,
     onStats: () -> Unit,
@@ -295,7 +301,20 @@ private fun TasterBar(
             bottomInset = bottomInset,
             divider = true,
             modifier = Modifier.weight(1f)
-        )
+        ) {
+            // Die offenen Tagesaufgaben: dasselbe Abzeichen wie die Serie,
+            // nur mit der Zahl dessen, was heute noch zu tun ist. Sind alle
+            // erledigt, verschwindet es — der gewollte Endzustand des Tages.
+            if (missionsOpen > 0) {
+                CountBadge(
+                    count = missionsOpen,
+                    description = stringResource(Res.string.missions_badge_cd, missionsOpen),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 8.dp, end = 6.dp)
+                )
+            }
+        }
     }
 }
 
@@ -413,11 +432,16 @@ private const val TASTER_PRESSED_SHADE = 0.14f
  */
 @Composable
 private fun StreakBadge(days: Int, modifier: Modifier = Modifier) {
-    val cd = streakLabel(days)
+    CountBadge(count = days, description = streakLabel(days), modifier = modifier)
+}
+
+/** Das rote Zahlen-Abzeichen am Taster — für Serie und offene Aufgaben. */
+@Composable
+private fun CountBadge(count: Int, description: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(24.dp)
-            .semantics { contentDescription = cd },
+            .semantics { contentDescription = description },
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -430,7 +454,7 @@ private fun StreakBadge(days: Int, modifier: Modifier = Modifier) {
             )
         }
         Text(
-            text = days.toString(),
+            text = count.toString(),
             fontFamily = Bytesized,
             fontSize = 13.sp,
             color = Color.White

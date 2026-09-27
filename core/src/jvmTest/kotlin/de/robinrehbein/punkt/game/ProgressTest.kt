@@ -27,7 +27,8 @@ class ProgressTest {
         daysPlayed = 365,
         monthsPlayed = 12,
         seasonEarned = 0b1111,
-        patronOwned = true
+        patronOwned = true,
+        missionsDone = 9_999
     )
 
     /** Der Stand auf der Achse eines Ziels, ohne Umweg über die Anzeige. */
@@ -39,6 +40,7 @@ class ProgressTest {
         GoalAxis.TOTAL_SCORE -> leer.copy(totalScore = value)
         GoalAxis.DAYS_PLAYED -> leer.copy(daysPlayed = value)
         GoalAxis.MONTHS_PLAYED -> leer.copy(monthsPlayed = value)
+        GoalAxis.MISSIONS_DONE -> leer.copy(missionsDone = value)
         else -> leer
     }
 
@@ -138,7 +140,8 @@ class ProgressTest {
             }
             geprueft++
         }
-        assertEquals("alle Zahlen-Ziele geprüft", 48, geprueft)
+        // 48 bis v2.35, dazu die drei Aufgaben-Skins.
+        assertEquals("alle Zahlen-Ziele geprüft", 51, geprueft)
     }
 
     @Test

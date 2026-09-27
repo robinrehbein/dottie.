@@ -24,7 +24,8 @@ class CollectionProgressTest {
         daysPlayed = 365,
         monthsPlayed = 12,
         seasonEarned = 0b1111,
-        patronOwned = true
+        patronOwned = true,
+        missionsDone = 9_999
     )
 
     private fun statsWith(axis: GoalAxis, value: Int): SkinStats = when (axis) {
@@ -35,6 +36,7 @@ class CollectionProgressTest {
         GoalAxis.TOTAL_SCORE -> leer.copy(totalScore = value)
         GoalAxis.DAYS_PLAYED -> leer.copy(daysPlayed = value)
         GoalAxis.MONTHS_PLAYED -> leer.copy(monthsPlayed = value)
+        GoalAxis.MISSIONS_DONE -> leer.copy(missionsDone = value)
         else -> error("keine Tabellen-Achse: $axis")
     }
 
@@ -205,7 +207,8 @@ class CollectionProgressTest {
 
     @Test
     fun `die Zaehler der Reiter`() {
-        assertEquals(46, CollectionProgress.SKIN_TOTAL)
+        // 46 bis v2.35, dazu seit v2.36 die drei Aufgaben-Skins.
+        assertEquals(49, CollectionProgress.SKIN_TOTAL)
         assertEquals(6, CollectionProgress.SCENE_TOTAL)
         assertEquals(8, CollectionProgress.SOUND_TOTAL)
         assertEquals(7, CollectionProgress.FRAME_TOTAL)
@@ -213,7 +216,7 @@ class CollectionProgressTest {
         assertEquals(1, CollectionProgress.sceneCount(leer))
         assertEquals(1, CollectionProgress.soundCount(leer))
         assertEquals(1, CollectionProgress.frameCount(leer))
-        assertEquals(46, CollectionProgress.skinCount(maxStats))
+        assertEquals(49, CollectionProgress.skinCount(maxStats))
         assertEquals(6, CollectionProgress.sceneCount(maxStats))
         assertEquals(8, CollectionProgress.soundCount(maxStats))
         assertEquals(7, CollectionProgress.frameCount(maxStats))

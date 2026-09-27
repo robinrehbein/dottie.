@@ -191,6 +191,13 @@ class StatsSync(
          */
         const val KEY_OWNED_SCENES = "owned_scenes"
 
+        /**
+         * Erledigte Tagesaufgaben (ab v2.36). Eine ältere Gegenseite
+         * schickt das Feld nicht — dann 0, und das Maximum im
+         * Zusammenführen nimmt ohnehin den eigenen Wert.
+         */
+        const val KEY_MISSIONS_DONE = "missions_done"
+
         fun DataMap.putState(s: SyncState) {
             putInt(KEY_BEST, s.bestScore)
             putInt(KEY_RUNS, s.runCount)
@@ -211,6 +218,7 @@ class StatsSync(
             putString(KEY_SOUND, s.sound)
             putLong(KEY_SOUND_CHANGED, s.soundChangedAt)
             putStringArrayList(KEY_OWNED_SCENES, ArrayList(s.ownedScenes.sorted()))
+            putInt(KEY_MISSIONS_DONE, s.missionsDone)
         }
 
         fun DataMap.toState() = SyncState(
@@ -238,7 +246,8 @@ class StatsSync(
             sceneChangedAt = getLong(KEY_SCENE_CHANGED, 0L),
             sound = getString(KEY_SOUND, ""),
             soundChangedAt = getLong(KEY_SOUND_CHANGED, 0L),
-            ownedScenes = getStringArrayList(KEY_OWNED_SCENES)?.toSet() ?: emptySet()
+            ownedScenes = getStringArrayList(KEY_OWNED_SCENES)?.toSet() ?: emptySet(),
+            missionsDone = getInt(KEY_MISSIONS_DONE, 0)
         )
     }
 }

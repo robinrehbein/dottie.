@@ -264,4 +264,23 @@ class SyncStateTest {
         // nicht ein weiteres Mal hochzaehlen.
         assertEquals(merged, merged.mergedWith(yesterday))
     }
+
+    @Test
+    fun `erledigte Aufgaben nehmen das Maximum`() {
+        val a = phone.copy(missionsDone = 12)
+        val b = watch.copy(missionsDone = 3)
+        assertEquals(12, a.mergedWith(b).missionsDone)
+        assertEquals(a.mergedWith(b), b.mergedWith(a))
+    }
+
+    @Test
+    fun `eine per Joker gerettete Serie ueberlebt den Abgleich mit dem alten Stand`() {
+        // Telefon: am Tag 100 gespielt, Tag 101 verpasst, Tag 102 per Joker
+        // weitergezählt. Die Uhr kennt nur Tag 100. Die Lücke im Abgleich
+        // reißt nichts: Der jüngere Tag gewinnt mit seiner Serie.
+        val uhr = watch.copy(dailyDay = 100L, dailyStreak = 6)
+        val telefon = phone.copy(dailyDay = 102L, dailyStreak = 7)
+        assertEquals(7, telefon.mergedWith(uhr).dailyStreak)
+        assertEquals(7, uhr.mergedWith(telefon).dailyStreak)
+    }
 }

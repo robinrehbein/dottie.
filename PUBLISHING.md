@@ -21,6 +21,8 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.29.
 - [ ] Data-Safety-Formular **mit** Werbung ausfüllen (Abschnitt unten) —
       „keine Daten erhoben" wäre jetzt falsch
 - [ ] IARC-Fragebogen (Content-Rating) ausfüllen
+- [ ] Optional: Nutzungsstatistik (Firebase Analytics) einrichten und
+      Data-Safety-Formular ergänzen (Abschnitt „Nutzungsstatistik")
 - [x] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
       oder per CI-Job `play-internal`, siehe unten) — interner und
       geschlossener Test laufen bereits
@@ -528,6 +530,60 @@ der nur in der Play Console geht:
   per Unit-Test abgesichert) — nur im Klassik-Modus, die Daily Challenge
   bleibt werbefrei. Die Werte sind absichtlich zurückhaltend: Das Spiel
   lebt vom sofortigen nächsten Versuch.
+
+## Nutzungsstatistik aktivieren (Firebase Analytics, ab v2.36)
+
+Ohne diesen Schritt misst die App nichts, fragt nicht nach der
+Einwilligung und zeigt den Schalter „STATISTIK TEILEN" nicht. Der Code
+ist fertig; es fehlt nur ein Firebase-Projekt.
+
+1. [console.firebase.google.com](https://console.firebase.google.com) →
+   Projekt anlegen (Google Analytics **aktivieren**, Datenfreigabe-
+   Optionen alle **aus**).
+2. Android-App hinzufügen, Paketname `de.robinrehbein.pointless`,
+   `google-services.json` herunterladen.
+3. Vier Werte aus der JSON-Datei in `app/src/main/res/values/analytics.xml`
+   eintragen (welcher Wert wohin gehört, steht in der Datei). Die JSON-
+   Datei selbst bleibt **außerhalb** des Repos.
+4. Im Analytics-Bereich der Firebase-Konsole:
+   **Datenaufbewahrung** auf 14 Monate stellen, **Google-Signale aus**,
+   **Verknüpfung mit Google Ads** nicht anlegen.
+5. Datenschutzerklärung ist schon ergänzt (`docs/index.html`,
+   Abschnitt „Spielstatistik") — vor dem Release trotzdem einmal gegen
+   die tatsächliche Konfiguration lesen.
+6. **Data-Safety-Formular** ergänzen: „App-Aktivitäten → App-
+   Interaktionen" wird erhoben, **nicht geteilt**, Zweck **Analysen**,
+   **optional** (Nutzer kann ablehnen), verschlüsselt übertragen. Dazu
+   „Gerätekennungen oder andere IDs" für die zufällige App-Instanz-ID,
+   Zweck Analysen. Googles eigene Übersicht, was das Firebase-SDK dafür
+   angibt: firebase.google.com/docs/android/play-data-disclosure — vor
+   dem Absenden damit abgleichen.
+
+Prüfen am Gerät: Nach fünf Läufen erscheint beim nächsten Start die
+Frage „HILFST DU DOTTIE?". Die versteckte Diagnose-Zeile (langer Druck
+auf den Titel) zeigt `STATISTIK: an / ohne Einwilligung / aus (kein
+Projekt)`. In der Firebase-Konsole unter **DebugView** erscheinen die
+Ereignisse sofort, wenn das Gerät per
+`adb shell setprop debug.firebase.analytics.app de.robinrehbein.pointless`
+in den Debug-Modus geschaltet ist.
+
+Was gemessen wird (Ereignisse aus `Telemetry` in `:ui`):
+
+| Ereignis | Wozu |
+|---|---|
+| automatisch: `first_open`, `session_start`, `user_engagement` | Retention D1/D7/D30 (Firebase → Retention) |
+| `run_end` (score, cause, miss_ms, twists, run_no, daily …) | Woran und wann sterben die Leute? Ab welchem Lauf hören sie auf? |
+| `daily_end` (streak, jokers_used) | Wird die Daily gespielt, halten die Serien? |
+| `mission_done` (type, target, tier) | Sind die Aufgaben zu leicht oder zu schwer? |
+| `joker_earned`, `streak_rescue` | Wirken Joker und Rettungs-Angebot? |
+| `reminder`, `reminder_opened` | Holt die Erinnerung Leute zurück? |
+| `skin_unlocked`, `open_screen`, `share` | Wird gesammelt, wird geteilt? |
+
+Erste Fragen an die Zahlen: Retention-Kohorten (Tag 1 und Tag 7),
+Verteilung von `run_end.score` für `run_no` 1–10 (wo steigen Neue aus?),
+Anteil `cause = trap` ab Score 20, und wie oft `mission_done` je `type`
+fällt — daran lassen sich die Aufgaben-Ziele in `DailyMissions`
+nachziehen.
 
 ## Wear-App im Play Store mitverteilen
 

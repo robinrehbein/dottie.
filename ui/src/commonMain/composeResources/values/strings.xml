@@ -320,4 +320,57 @@
     <string name="share_text">%1$d points in DOTTIE. — can you beat that?</string>
     <string name="share_text_daily">Daily Challenge in DOTTIE.: %1$d points — can you beat that?</string>
     <string name="share_chooser">Share score</string>
+
+    <!-- ab v2.36: Tagesaufgaben, Serien-Joker, Knapp-daneben, Erinnerungs-
+         Frage und Nutzungsstatistik. -->
+    <string name="skin_family_aufgaben">MISSIONS</string>
+    <string name="skin_sternchen">STARLET</string>
+    <string name="skin_orden">MEDAL RIBBON</string>
+    <string name="skin_pokal">TROPHY</string>
+    <string name="skin_hint_sternchen">10 DAILY MISSIONS DONE</string>
+    <string name="skin_hint_orden">40 DAILY MISSIONS DONE</string>
+    <string name="skin_hint_pokal">100 DAILY MISSIONS DONE</string>
+    <string name="goal_axis_missions">MISSIONS</string>
+
+    <string name="missions_title">TODAY</string>
+    <string name="mission_runs">PLAY %1$d RUNS</string>
+    <string name="mission_points_today">COLLECT %1$d POINTS</string>
+    <string name="mission_daily_run">PLAY THE DAILY</string>
+    <string name="mission_perfects_today">HIT %1$d PERFECTS</string>
+    <string name="mission_perfect_streak">%1$d PERFECTS IN A ROW</string>
+    <string name="mission_blind_hits">HIT BLIND %1$d TIMES</string>
+    <string name="mission_score_in_run">SCORE %1$d IN ONE RUN</string>
+    <string name="mission_daily_score">SCORE %1$d IN THE DAILY</string>
+    <string name="mission_progress">%1$d/%2$d</string>
+    <string name="mission_done_line">MISSION DONE: %1$s</string>
+    <string name="missions_all_done">ALL 3 DONE!</string>
+    <string name="missions_all_done_joker">ALL 3 DONE! +1 STREAK SAVER</string>
+    <string name="missions_badge_cd">%1$d missions open today</string>
+
+    <string name="stats_jokers">STREAK SAVERS</string>
+    <string name="stats_missions">MISSIONS DONE</string>
+    <string name="joker_used_line">STREAK SAVER USED — STREAK KEPT!</string>
+    <string name="rescue_banner">SAVE YOUR %1$d-DAY STREAK?</string>
+    <string name="rescue_title">STREAK IN DANGER</string>
+    <string name="rescue_text">YOU MISSED THE DAILY. A STREAK SAVER COVERS THE DAY AND YOUR %1$d-DAY STREAK KEEPS GOING.</string>
+    <string name="rescue_fine">THE SAVER IS USED ON YOUR NEXT DAILY. YOU ALSO EARN ONE BY FINISHING ALL 3 DAILY MISSIONS.</string>
+    <string name="rescue_watch">WATCH AD</string>
+    <string name="rescue_no">NO THANKS</string>
+
+    <string name="death_near">SO CLOSE!</string>
+    <string name="death_margin">0.%1$s S</string>
+    <string name="death_cause_margin">%1$s · %2$s</string>
+    <string name="hud_record_in">%1$d TO YOUR BEST</string>
+
+    <string name="reminder_ask_title">REMINDER?</string>
+    <string name="reminder_ask_text">SHALL I NUDGE YOU IN THE EVENING IF YOU HAVEN\'T PLAYED THE DAILY YET? THAT KEEPS YOUR STREAK ALIVE.</string>
+    <string name="reminder_ask_yes">YES, PLEASE</string>
+    <string name="reminder_ask_no">NO</string>
+
+    <string name="analytics_ask_title">HELP DOTTIE?</string>
+    <string name="analytics_ask_text">MAY THE GAME SEND ANONYMOUS PLAY STATS? SCORES, HOW RUNS END, WHICH SCREENS YOU OPEN. NO ADVERTISING ID, NO NAME.</string>
+    <string name="analytics_ask_fine">THIS HELPS A ONE-PERSON STUDIO BALANCE THE GAME. YOU CAN SWITCH IT OFF ANYTIME IN SETTINGS.</string>
+    <string name="analytics_ask_yes">OK, SURE</string>
+    <string name="analytics_ask_no">NO</string>
+    <string name="ctl_analytics">SHARE STATS</string>
 </resources>

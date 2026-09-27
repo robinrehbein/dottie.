@@ -114,7 +114,13 @@ fun GameOverOverlay(
      * statt als Neustart durchzuschlagen (Plan 7.1, 8.6 #13). GameScreen
      * setzt das, solange `game.elapsed < GAME_OVER_BAR_LOCK_SECONDS` in OVER.
      */
-    barLocked: Boolean = false
+    barLocked: Boolean = false,
+    /**
+     * Zeilen unter den Feiern (ab v2.36): erledigte Tagesaufgaben und ein
+     * eingesetzter Serien-Joker. Belohnung wie Medaille und Skin, deshalb
+     * im selben Block.
+     */
+    extras: @Composable () -> Unit = {}
 ) {
     val blink by rememberInfiniteTransition(label = "overBlink").animateFloat(
         initialValue = 1f,
@@ -266,6 +272,8 @@ fun GameOverOverlay(
                         color = Color(0xFFFFE95E)
                     )
                 }
+
+                extras()
 
                 // Die Twist-Erklärung sitzt UNTER den Feier-Zeilen und ÜBER
                 // dem Ziel-Balken, und das ist der Platz, der den bestehenden

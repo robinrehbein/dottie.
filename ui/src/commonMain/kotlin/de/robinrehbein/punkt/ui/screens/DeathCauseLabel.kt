@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.DeathCause
 import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.death_bomb_lesson
+import de.robinrehbein.punkt.ui.resources.death_cause_margin
 import de.robinrehbein.punkt.ui.resources.death_early
 import de.robinrehbein.punkt.ui.resources.death_late
 import de.robinrehbein.punkt.ui.resources.death_missed
@@ -105,7 +106,12 @@ private val CauseColor = Color.White
 fun DeathCauseLabel(
     cause: DeathCause,
     bombLesson: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * „KNAPP! 0,03 S" unter der Ursache (ab v2.36) — null, wenn es nichts
+     * zu zeigen gibt (siehe [deathMarginText]).
+     */
+    margin: String? = null
 ) {
     val text = deathCauseText(cause) ?: return
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -130,6 +136,16 @@ fun DeathCauseLabel(
                 color = CauseColor,
                 textAlign = TextAlign.Center
             )
+            if (margin != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = margin,
+                    style = ScoreShadowStyle,
+                    fontSize = 20.sp,
+                    color = CauseColor,
+                    textAlign = TextAlign.Center
+                )
+            }
             if (bombLesson && cause == DeathCause.TRAP) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -150,10 +166,13 @@ fun DeathCauseLabel(
  * vorbei ist.
  */
 @Composable
-fun DeathCauseSmall(cause: DeathCause, modifier: Modifier = Modifier) {
+fun DeathCauseSmall(cause: DeathCause, modifier: Modifier = Modifier, margin: String? = null) {
     val text = deathCauseText(cause) ?: return
+    val label = stringResource(text)
     Text(
-        text = stringResource(text),
+        // „ZU FRÜH · KNAPP! 0,03 S" — der Abstand steht hinter der Ursache,
+        // damit die Zeile auch ohne ihn aussieht wie bisher.
+        text = if (margin == null) label else stringResource(Res.string.death_cause_margin, label, margin),
         style = ScoreShadowStyle,
         fontSize = 20.sp,
         color = CauseColor,

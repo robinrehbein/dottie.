@@ -25,6 +25,9 @@ enum class BackAction {
     /** Die einmalige Daily-Karte schließen. */
     CLOSE_DAILY_INTRO,
 
+    /** Eine Frage-Karte schließen, ohne zu antworten (ab v2.36). */
+    CLOSE_PROMPT,
+
     /** Aus dem Game-Over zurück in den Startbildschirm. */
     TO_MENU,
 
@@ -58,7 +61,10 @@ fun backAction(
     showStats: Boolean,
     showSkins: Boolean,
     showDailyIntro: Boolean,
-    phase: GamePhase
+    phase: GamePhase,
+    // Frage-Karte (Erinnerung, Statistik, Serien-Rettung) — wie die
+    // DAILY-Karte liegt sie über dem Startbildschirm.
+    showPrompt: Boolean = false
 ): BackAction = when {
     showHelp -> BackAction.CLOSE_HELP
     showSettings -> BackAction.CLOSE_SETTINGS
@@ -67,6 +73,7 @@ fun backAction(
     // == AP-22 start ==
     showDailyIntro -> BackAction.CLOSE_DAILY_INTRO
     // == /AP-22 ==
+    showPrompt -> BackAction.CLOSE_PROMPT
     phase == GamePhase.OVER -> BackAction.TO_MENU
     phase == GamePhase.RUNNING || phase == GamePhase.DYING -> BackAction.CONSUME
     else -> BackAction.NOT_HANDLED

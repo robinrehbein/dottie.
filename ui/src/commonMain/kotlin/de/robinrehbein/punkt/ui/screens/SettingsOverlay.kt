@@ -33,6 +33,7 @@ import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.ad_privacy
 import de.robinrehbein.punkt.ui.resources.ctl_close
 import de.robinrehbein.punkt.ui.resources.ctl_reminder
+import de.robinrehbein.punkt.ui.resources.ctl_analytics
 import de.robinrehbein.punkt.ui.resources.ctl_sound
 import de.robinrehbein.punkt.ui.resources.help
 import de.robinrehbein.punkt.ui.resources.remove_ads
@@ -74,7 +75,12 @@ internal fun SettingsOverlay(
     onPrivacy: () -> Unit = {},
     // Ohne Tages-Erinnerung (iOS) faellt die Zeile ganz weg. Ein
     // Schalter, der nichts schaltet, ist schlimmer als keiner.
-    reminderSupported: Boolean = true
+    reminderSupported: Boolean = true,
+    // Nutzungsstatistik (ab v2.36): nur, wenn die Plattform messen kann.
+    // Der Schalter ist der dauerhafte Weg zurück aus der Einwilligung.
+    analyticsSupported: Boolean = false,
+    analyticsOn: Boolean = false,
+    onToggleAnalytics: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -119,6 +125,15 @@ internal fun SettingsOverlay(
                     checked = reminderOn,
                     icon = if (reminderOn) PixelIcon.BELL_ON else PixelIcon.BELL_OFF,
                     onCheckedChange = { onToggleReminder() }
+                )
+            }
+            if (analyticsSupported) {
+                Spacer(modifier = Modifier.height(12.dp))
+                PixelSwitchRow(
+                    label = stringResource(Res.string.ctl_analytics),
+                    checked = analyticsOn,
+                    icon = null,
+                    onCheckedChange = { onToggleAnalytics() }
                 )
             }
             Spacer(modifier = Modifier.height(12.dp))

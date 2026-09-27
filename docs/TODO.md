@@ -11,6 +11,15 @@ die steht in der letzten Spalte.
 | iOS einmal spielen | Gebaut wird **automatisch**: `build-ios.yml` läuft auf einem macOS-Runner bei jedem Push auf `main` oder `claude/**`, der `ios/`, `core/`, `ui/` oder `parity/` anfasst (kein PR-Trigger — das Repo braucht keinen zweiten, siehe Kommentar im Workflow) — seit #54 dieselbe `:ui`, die Android zeichnet, nicht mehr ein separater Port. Was fehlt, ist kein Build, sondern ein Blick: einmal auf einem Gerät spielen und die 46 Skins, das Menü und die Kulissen ansehen. | vor dem iOS-Release |
 | `patron_pack` in der Play Console | Produkt anlegen und aktivieren, siehe PUBLISHING.md Abschnitt 4c. Ohne das sind Diamant, Phönix und Onyx unerreichbar. | beim Release |
 
+## Nach den ersten Nutzungsdaten (ab v2.36)
+
+| Punkt | Was genau |
+|---|---|
+| Firebase-Projekt anlegen | Ohne Projekt misst v2.36 nichts (PUBLISHING.md, Abschnitt „Nutzungsstatistik"). Danach das Data-Safety-Formular ergänzen. |
+| Aufgaben-Ziele nachziehen | Die Ziele in `DailyMissions` sind Startwerte. Sobald `mission_done` je `type` und `tier` ein paar Wochen läuft, gehören sie an die echte Erfüllungsquote angepasst (Ziel: die meisten Aufgaben fallen in einer Sitzung, alle drei an etwa jedem zweiten Tag). |
+| iOS: Aufgaben ja, Messung nein | iOS hat Aufgaben und Joker aus Aufgaben, aber weder Rettungs-Spot (keine Werbung) noch Messung noch die zweite Erinnerung um 21 Uhr (iOS plant im Voraus und kann nicht nachsehen, ob heute gespielt wurde). |
+| Uhr: Joker | Die Uhr rechnet die Serie ohne Joker. Wer an einem Tag mit fälligem Joker zuerst auf der Uhr spielt, verliert die Serie beim Abgleich. Selten, aber möglich — Joker in den `SyncState` aufzunehmen, wäre der nächste Schritt. |
+
 ## Entscheidungen, die noch offen sind
 
 | Punkt | Worum es geht |

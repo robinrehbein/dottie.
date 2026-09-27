@@ -50,6 +50,19 @@ class PlatformHooks(
      */
     val onWatchAdFor: (SkinId, onEarned: () -> Unit) -> Unit = { _, _ -> },
 
+    /**
+     * Spot für einen Serien-Joker zeigen (ab v2.36) — das Rettungs-Angebot,
+     * wenn die Daily-Serie sonst reißen würde. Wie beim Tagespass kommt der
+     * Rückruf nur bei bestätigtem Spot.
+     */
+    val onWatchAdForJoker: (onEarned: () -> Unit) -> Unit = { },
+
+    /**
+     * Jetzt wird ein belohnter Spot gebraucht (Rettungs-Angebot sichtbar).
+     * Die Plattform darf nachladen — wie bei [onSkinsOpened].
+     */
+    val onRewardedNeeded: () -> Unit = {},
+
     /** Muss der Einwilligungs-Dialog erreichbar sein (DSGVO)? */
     val privacyVisible: Boolean = false,
     val onPrivacy: () -> Unit = {},
@@ -88,6 +101,34 @@ class PlatformHooks(
      * waere eine Luege.
      */
     val setReminder: (wanted: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
+
+    // ===== Nutzungsstatistik (ab v2.36) =====
+
+    /**
+     * Kann die Plattform überhaupt messen? Auf Android nur, wenn in
+     * `res/values/analytics.xml` ein Firebase-Projekt eingetragen ist; auf
+     * iOS nie. Ohne Messung fällt die Frage und der Schalter weg.
+     */
+    val analyticsSupported: Boolean = false,
+
+    /**
+     * Die Einwilligung wurde gegeben oder zurückgenommen. Die Plattform
+     * schaltet die Erfassung entsprechend an oder aus und löscht beim
+     * Widerruf, was noch nicht gesendet ist.
+     */
+    val setAnalyticsConsent: (Boolean) -> Unit = {},
+
+    /**
+     * Ein Ereignis melden. Der Bildschirm ruft das nur mit Einwilligung —
+     * die Plattform prüft trotzdem selbst noch einmal.
+     */
+    val onAnalytics: (AnalyticsEvent) -> Unit = {},
+
+    /**
+     * Über welche Erinnerung die App geöffnet wurde ("daily", "risk") —
+     * null bei einem normalen Start. Nur für die Messung.
+     */
+    val openedFromReminder: String? = null,
 
     // ===== Teilen =====
 

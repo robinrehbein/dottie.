@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nutzungsstatistik über Firebase Analytics (ab v2.36).
+
+     Solange google_app_id leer ist, ist die Messung komplett AUS: Das
+     Spiel fragt nicht nach der Einwilligung, zeigt keinen Schalter und
+     ruft keine Firebase-Methode auf (GameAnalytics.available).
+
+     Einschalten: In der Firebase-Konsole ein Projekt anlegen, die
+     Android-App mit der Paket-ID de.robinrehbein.pointless hinzufügen und
+     aus der heruntergeladenen google-services.json diese vier Werte
+     übertragen (Anleitung: PUBLISHING.md, Abschnitt Nutzungsstatistik):
+
+       google_app_id        ← client[0].client_info.mobilesdk_app_id
+       google_api_key       ← client[0].api_key[0].current_key
+       project_id           ← project_info.project_id
+       gcm_defaultSenderId  ← project_info.project_number
+
+     Die Namen sind genau die, die das google-services-Plugin erzeugen
+     würde — Firebase liest sie beim Start selbst. Das Plugin ist bewusst
+     nicht eingebunden: Es bräuchte die JSON-Datei schon zum Bauen. Wer es
+     später doch einbindet, muss diese Datei löschen, sonst gibt es jede
+     Ressource doppelt.
+
+     Auch mit eingetragenen Werten sendet die App erst, wenn die Person im
+     Spiel zugestimmt hat (Manifest: firebase_analytics_collection_enabled
+     = false). Wer hier etwas ändert, muss die Datenschutzerklärung
+     (docs/index.html) und die Angaben zur Datensicherheit in der Play
+     Console nachziehen. -->
+<resources>
+    <string name="google_app_id" translatable="false"></string>
+    <string name="google_api_key" translatable="false"></string>
+    <string name="project_id" translatable="false"></string>
+    <string name="gcm_defaultSenderId" translatable="false"></string>
+</resources>

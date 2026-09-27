@@ -320,4 +320,57 @@
     <string name="share_text">%1$d Punkte in DOTTIE. — schaffst du mehr?</string>
     <string name="share_text_daily">Daily Challenge in DOTTIE.: %1$d Punkte — schaffst du mehr?</string>
     <string name="share_chooser">Score teilen</string>
+
+    <!-- ab v2.36: Tagesaufgaben, Serien-Joker, Knapp-daneben, Erinnerungs-
+         Frage und Nutzungsstatistik. -->
+    <string name="skin_family_aufgaben">AUFGABEN</string>
+    <string name="skin_sternchen">STERNCHEN</string>
+    <string name="skin_orden">ORDEN</string>
+    <string name="skin_pokal">POKAL</string>
+    <string name="skin_hint_sternchen">10 TAGESAUFGABEN ERLEDIGT</string>
+    <string name="skin_hint_orden">40 TAGESAUFGABEN ERLEDIGT</string>
+    <string name="skin_hint_pokal">100 TAGESAUFGABEN ERLEDIGT</string>
+    <string name="goal_axis_missions">AUFGABEN</string>
+
+    <string name="missions_title">HEUTE</string>
+    <string name="mission_runs">%1$d LÄUFE SPIELEN</string>
+    <string name="mission_points_today">%1$d PUNKTE SAMMELN</string>
+    <string name="mission_daily_run">TAGESLAUF SPIELEN</string>
+    <string name="mission_perfects_today">%1$dX PERFEKT TREFFEN</string>
+    <string name="mission_perfect_streak">%1$dX PERFEKT IN FOLGE</string>
+    <string name="mission_blind_hits">%1$dX BLIND TREFFEN</string>
+    <string name="mission_score_in_run">%1$d PUNKTE IN EINEM LAUF</string>
+    <string name="mission_daily_score">%1$d PUNKTE IM TAGESLAUF</string>
+    <string name="mission_progress">%1$d/%2$d</string>
+    <string name="mission_done_line">AUFGABE ERLEDIGT: %1$s</string>
+    <string name="missions_all_done">ALLE 3 GESCHAFFT!</string>
+    <string name="missions_all_done_joker">ALLE 3 GESCHAFFT! +1 JOKER</string>
+    <string name="missions_badge_cd">Heute %1$d Aufgaben offen</string>
+
+    <string name="stats_jokers">SERIEN-JOKER</string>
+    <string name="stats_missions">AUFGABEN ERLEDIGT</string>
+    <string name="joker_used_line">JOKER EINGESETZT — SERIE GERETTET!</string>
+    <string name="rescue_banner">SERIE VON %1$d TAGEN RETTEN?</string>
+    <string name="rescue_title">SERIE IN GEFAHR</string>
+    <string name="rescue_text">DU HAST DIE DAILY VERPASST. EIN JOKER DECKT DEN TAG, UND DEINE SERIE VON %1$d TAGEN LÄUFT WEITER.</string>
+    <string name="rescue_fine">DER JOKER WIRD BEIM NÄCHSTEN TAGESLAUF EINGESETZT. EINEN GIBT ES AUCH FÜR ALLE 3 TAGESAUFGABEN.</string>
+    <string name="rescue_watch">SPOT ANSEHEN</string>
+    <string name="rescue_no">NEIN DANKE</string>
+
+    <string name="death_near">KNAPP!</string>
+    <string name="death_margin">0,%1$s S</string>
+    <string name="death_cause_margin">%1$s · %2$s</string>
+    <string name="hud_record_in">NOCH %1$d BIS REKORD</string>
+
+    <string name="reminder_ask_title">ERINNERUNG?</string>
+    <string name="reminder_ask_text">SOLL ICH DICH ABENDS ANSTUPSEN, WENN DU DIE DAILY NOCH NICHT GESPIELT HAST? DANN REISST DEINE SERIE NICHT.</string>
+    <string name="reminder_ask_yes">JA, GERN</string>
+    <string name="reminder_ask_no">NEIN</string>
+
+    <string name="analytics_ask_title">HILFST DU DOTTIE?</string>
+    <string name="analytics_ask_text">DARF DAS SPIEL ANONYME SPIELSTATISTIK SENDEN? PUNKTE, WORAN LÄUFE ENDEN, WELCHE SEITEN DU ÖFFNEST. KEINE WERBE-ID, KEIN NAME.</string>
+    <string name="analytics_ask_fine">DAMIT KANN EIN EIN-PERSONEN-STUDIO DAS SPIEL FAIR ABSTIMMEN. ABSCHALTEN GEHT JEDERZEIT IN DEN EINSTELLUNGEN.</string>
+    <string name="analytics_ask_yes">OK, GERN</string>
+    <string name="analytics_ask_no">NEIN</string>
+    <string name="ctl_analytics">STATISTIK TEILEN</string>
 </resources>

@@ -27,6 +27,9 @@ enum class CollectionAxis {
     DAYS_PLAYED,
     MONTHS_PLAYED,
     SEASON_DAYS,
+
+    /** Erledigte Tagesaufgaben (ab v2.36): STERNCHEN, ORDEN, POKAL. */
+    MISSIONS_DONE,
     SKIN_COLLECTION,
     SCENE_COLLECTION,
 
@@ -170,6 +173,7 @@ object CollectionProgress {
         GoalAxis.DAYS_PLAYED -> CollectionAxis.DAYS_PLAYED
         GoalAxis.MONTHS_PLAYED -> CollectionAxis.MONTHS_PLAYED
         GoalAxis.SEASON_DAYS -> CollectionAxis.SEASON_DAYS
+        GoalAxis.MISSIONS_DONE -> CollectionAxis.MISSIONS_DONE
         GoalAxis.SKIN_COLLECTION -> CollectionAxis.SKIN_COLLECTION
         GoalAxis.SCENE_COLLECTION -> CollectionAxis.SCENE_COLLECTION
     }
@@ -185,6 +189,7 @@ object CollectionProgress {
         GoalAxis.MONTHS_PLAYED -> stats.monthsPlayed
         // Kommt in den Tabellen nicht vor, die Saison läuft oben eigens.
         GoalAxis.SEASON_DAYS -> 0
+        GoalAxis.MISSIONS_DONE -> stats.missionsDone
         GoalAxis.SKIN_COLLECTION -> SkinPaint.unlockedCount(stats)
         GoalAxis.SCENE_COLLECTION -> ScenePaint.unlockedCount(stats)
     }
