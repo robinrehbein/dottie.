@@ -202,7 +202,8 @@ private fun DrawScope.drawWearBurst(timeLeft: Float, cx: Float, cy: Float, radiu
 /**
  * Die Explosion beim Tippen in die Bomben, wie drawTrapBoom am Telefon:
  * zwanzig Funken, erst gelb/orange, dann rot/grau, dazu ein schrumpfender
- * heller Kern. Nur bei Todesursache TRAP, [time] = Sekunden seit dem Tod.
+ * heller Kern. Nur bei Todesursache TRAP, [time] = Sekunden seit dem Tod;
+ * die Funken beginnen [WearFx.BOOM_DELAY] danach, zugleich mit dem Platzen.
  */
 private fun DrawScope.drawWearTrapBoom(
     game: TimingGame,
@@ -213,10 +214,11 @@ private fun DrawScope.drawWearTrapBoom(
     cell: Float
 ) {
     if (game.lastDeathCause != DeathCause.TRAP) return
-    if (time < 0f || time >= WearFx.BOOM_SECONDS) return
+    val t = time - WearFx.BOOM_DELAY
+    if (time < 0f || t < 0f || t >= WearFx.BOOM_SECONDS) return
     val x = cx + cos(game.angle) * radius
     val y = cy + sin(game.angle) * radius
-    val q = (time / WearFx.BOOM_SECONDS).coerceIn(0f, 1f)
+    val q = (t / WearFx.BOOM_SECONDS).coerceIn(0f, 1f)
     val sparks = 20
     for (i in 0 until sparks) {
         val odd = i % 2 == 1
@@ -647,11 +649,12 @@ private fun DrawScope.drawWearDot(
     // oben, dreht sich dabei auf den Rücken und fällt kopfüber mit
     // Gravitation unten aus dem Bild. Ein eigener Zeitgeber ist unnötig —
     // game.elapsed zählt in DYING ab dem Todesmoment.
-    // In die Bomben getippt: Der Vogel platzt wie am Phone (drawBirdBurst)
-    // statt des Mario-Hüpfers.
-    val burst = game.phase == GamePhase.DYING && game.lastDeathCause == DeathCause.TRAP
+    // In die Bomben getippt: Der Vogel steht den Freeze über im Rahmen und
+    // platzt dann wie am Phone (drawBirdBurst) statt des Mario-Hüpfers.
+    val trapDeath = game.phase == GamePhase.DYING && game.lastDeathCause == DeathCause.TRAP
+    val burstTime = game.elapsed - TimingGame.DEATH_FREEZE_SECONDS
     var flip = 0f
-    if (game.phase == GamePhase.DYING && !burst) {
+    if (game.phase == GamePhase.DYING && !trapDeath) {
         val t = game.elapsed - TimingGame.DEATH_FREEZE_SECONDS
         if (t > 0f) {
             val h = size.height
@@ -745,8 +748,8 @@ private fun DrawScope.drawWearDot(
         }
     }
 
-    if (burst) {
-        drawWearBirdBurst(px, py, r, game.elapsed, size.height) { col, row -> skin.cell(col, row, state) }
+    if (trapDeath && burstTime > 0f) {
+        drawWearBirdBurst(px, py, r, burstTime, size.height) { col, row -> skin.kugelCell(col, row, state, shineArgb) }
     } else if (flip > 0f) {
         rotate(degrees = flip, pivot = Offset(px, py)) { drawBird(px, py) }
     } else {
@@ -763,7 +766,8 @@ private fun DrawScope.drawWearDot(
 /**
  * Der Vogel platzt (Tod durch die Bomben), wie drawBirdBurst am Telefon:
  * zwölf äußere, sechs innere Tortenstücke und ein Kern fliegen aus der Mitte, hüpfen hoch,
- * fallen mit Gravitation und blassen aus. [time] = Sekunden seit dem Tod.
+ * fallen mit Gravitation und blassen aus. [time] = Sekunden seit dem Ende
+ * des Todes-Freeze.
  */
 private fun DrawScope.drawWearBirdBurst(
     centerX: Float,
@@ -776,7 +780,7 @@ private fun DrawScope.drawWearBirdBurst(
     val outer = 12
     val inner = 6
     val core = outer + inner
-    val alpha = (1f - (time - 0.6f) / 0.6f).coerceIn(0f, 1f)
+    val alpha = (1f - (time - 0.5f) / 0.5f).coerceIn(0f, 1f)
     if (alpha <= 0f) return
     val n = WEAR_GRID.toInt()
     val u = (radius * 2f) / WEAR_GRID

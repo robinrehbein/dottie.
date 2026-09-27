@@ -33,6 +33,13 @@ import kotlin.math.sqrt
 /** Dauer der Explosion in Sekunden. */
 internal const val TRAP_BOOM_SECONDS = 0.45f
 
+/**
+ * Sekunden vom Tod bis zur Explosion: das Ende des Todes-Freeze, also
+ * genau dann, wenn auch der Vogel platzt (drawBirdBurst). Vorher klingt
+ * der weiße Blitz ab, der Vogel steht im Rahmen.
+ */
+internal const val TRAP_BOOM_DELAY = TimingGame.DEATH_FREEZE_SECONDS
+
 /** Zahl der Funken der Explosion. */
 internal const val TRAP_BOOM_SPARKS = 20
 
@@ -490,7 +497,8 @@ internal fun trapMines(
  *
  * Nur bei [TimingGame.lastDeathCause] == TRAP. Ohne eigenen Blitz: Jeder
  * Tod setzt schon `flashAlpha = 1` (Plan 8.7), ein zweiter wäre doppelt.
- * [time] ist die Zeit seit dem Tod (`FxState.deathTime`), negativ = kein Tod.
+ * [time] ist die Zeit seit dem Tod (`FxState.deathTime`), negativ = kein Tod;
+ * die Explosion beginnt [TRAP_BOOM_DELAY] danach.
  */
 internal fun DrawScope.drawTrapBoom(
     game: TimingGame,
@@ -501,10 +509,11 @@ internal fun DrawScope.drawTrapBoom(
     cell: Float
 ) {
     if (game.lastDeathCause != DeathCause.TRAP) return
-    if (time < 0f || time >= TRAP_BOOM_SECONDS) return
+    val t = time - TRAP_BOOM_DELAY
+    if (time < 0f || t < 0f || t >= TRAP_BOOM_SECONDS) return
     val x = cx + cos(game.angle) * radius
     val y = cy + sin(game.angle) * radius
-    val q = (time / TRAP_BOOM_SECONDS).coerceIn(0f, 1f)
+    val q = (t / TRAP_BOOM_SECONDS).coerceIn(0f, 1f)
     for (i in 0 until TRAP_BOOM_SPARKS) {
         val odd = i % 2 == 1
         val a = i.toFloat() / TRAP_BOOM_SPARKS * (2f * PI.toFloat()) + (if (odd) 0.2f else 0f)

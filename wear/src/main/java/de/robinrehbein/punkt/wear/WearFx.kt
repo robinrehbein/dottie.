@@ -1,5 +1,7 @@
 package de.robinrehbein.punkt.wear
 
+import de.robinrehbein.punkt.game.TimingGame
+
 /**
  * Die kurzen Effekte der Spielwelt, wie FxState am Telefon: Blitz und
  * Wackeln beim Tod, der Goldring bei jeder Freischaltung und die Uhr
@@ -74,5 +76,11 @@ internal class WearFx {
 
         /** Dauer der Bomben-Funken (TRAP_BOOM_SECONDS am Telefon). */
         const val BOOM_SECONDS = 0.45f
+
+        /**
+         * Verzögerung der Bomben-Funken nach dem Tod (TRAP_BOOM_DELAY am
+         * Telefon): das Ende des Freeze, zugleich mit dem Platzen des Vogels.
+         */
+        const val BOOM_DELAY = TimingGame.DEATH_FREEZE_SECONDS
     }
 }
