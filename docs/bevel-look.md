@@ -6,19 +6,25 @@ sind aber keine pixelgenaue Vorlage: Maßgeblich sind die Regeln unten und
 die bestehenden Sprites im Code.
 
 ```text
-Baue den Bevel-Look in Dottie ein. Lies zuerst docs/bevel-look.md ganz und
-sieh dir die Bilder in docs/bevel-mockups/ an (vorher-nachher.png,
-dot-optionen.png, dot-kugel.png, bevel-detail-bomben.png,
-welten-bloecke.png, welten-boden.png, alle-welten.png = Gesamtbild
-aller Welten).
+Baue den Bevel-Look in Dottie ein.
+
+Das Briefing und die Mockups liegen auf dem Branch
+claude/dotty-2-5d-graphics-3y59iu (nicht auf main). Hol ihn dir mit
+`git fetch origin claude/dotty-2-5d-graphics-3y59iu` und lies von dort
+docs/bevel-look.md komplett. Sieh dir alle Bilder in docs/bevel-mockups/ an.
+Das Zielbild pro Welt zeigen welt-wiese.png, welt-wueste.png,
+welt-meer.png, welt-berg.png, welt-stadt.png und welt-weltraum.png, die
+Übersicht zeigt alle-welten.png. Details zeigen dot-kugel.png,
+bevel-detail-bomben.png, welten-bloecke.png und welten-boden.png.
 
 Setze es in zwei Schritten um: Schritt 1 ist der Bevel-Look (Abschnitte
-1–7), Schritt 2 sind die Bahn-Blöcke und der Boden pro Welt (Abschnitt 8).
-Schritt 2 baut auf Schritt 1 auf.
+1–7), Schritt 2 sind Bahn-Blöcke, Boden, Requisiten und Galaxien pro Welt
+(Abschnitt 8). Schritt 2 baut auf Schritt 1 auf.
 
 Arbeite auf einem eigenen Branch von main und öffne am Ende einen Draft-PR
 nach main. Kein Merge. Commit-Nachrichten und Kommentare auf Deutsch, im
-Stil des bestehenden Codes.
+Stil des bestehenden Codes. Frag nicht nach Dingen, die im Briefing schon
+entschieden sind.
 ```
 
 ## 1. Ziel
