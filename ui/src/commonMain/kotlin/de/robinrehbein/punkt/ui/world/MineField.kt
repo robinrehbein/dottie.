@@ -79,8 +79,8 @@ private const val SQRT2 = 1.4142135f
  * Block liegt. Ein Bildpunkt Luft für das Runden auf ganze Pixel.
  *
  * Der helle Rand der Mine zählt hier bewusst nicht mit: Er darf auf dem
- * dunklen Umriss des Sandblocks liegen (Umriss 0,6 Zellen, Rand höchstens
- * 0,36 Zellen breit), nur die Kugel nie. Mit Rand schrumpften die Minen
+ * dunklen Umriss des Sandblocks liegen (Umriss eine halbe Zelle, siehe
+ * `trackUnit`; Rand höchstens 0,36 Zellen breit), nur die Kugel nie. Mit Rand schrumpften die Minen
  * auf einem 1080×2340-Telefon auf 28 px und wirkten kleiner als der Sand.
  */
 internal fun mineBlockDistance(px: Int, blockHalf: Float): Float {

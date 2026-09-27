@@ -210,6 +210,12 @@ class MineFieldTest {
 
     private fun Track.at(angle: Float): Offset = Offset(cx + cos(angle) * radius, cy + sin(angle) * radius)
 
+    /** Der Sandblock [k], wie drawTrack ihn ins Raster legt (sandBlock). */
+    private fun Track.sand(k: Int): TrackBlock {
+        val p = at(trackSlotAngle(k, segments))
+        return sandBlock(p.x, p.y, cell)
+    }
+
     /** Die Minen, wie drawTrack sie auf [t] legt. */
     private fun layout(game: TimingGame, t: Track): TrapLayout =
         trapLayout(game, segments, game.effectiveZoneHalf(), t.radius, t.cell)
@@ -228,8 +234,8 @@ class MineFieldTest {
     private fun drawnSand(game: TimingGame, t: Track, trap: TrapLayout): List<Int> {
         val centers = trap.mines.map { t.at(it.angle) }
         return sandSlots(game).filter { k ->
-            val b = t.at(trackSlotAngle(k, segments))
-            centers.none { mineTouchesBlock(it.x - b.x, it.y - b.y, trap.px, t.cell * 3f / 2f) }
+            val b = t.sand(k)
+            centers.none { mineTouchesBlock(it.x - b.centerX, it.y - b.centerY, trap.px, b.outer / 2f) }
         }
     }
 
@@ -264,22 +270,23 @@ class MineFieldTest {
     /**
      * Kein gezeichneter Sandblock berührt die Kugel einer Mine, und der
      * helle Rand reicht höchstens auf den dunklen Umriss des Blocks, nie
-     * auf seine Sandfläche (Kante 1,8 Zellen, wie in drawTrack).
+     * auf seine Sandfläche (außen 3 Zellen minus zwei Rasterstufen, an der
+     * gerundeten Lage — wie sandBlock und drawTrack).
      */
     private fun assertSandClear(game: TimingGame, t: Track, trap: TrapLayout = layout(game, t)) {
         val px = trap.px
         val rim = mineRim(px).toFloat()
         val blockHalf = t.cell * 3f / 2f
-        val faceHalf = t.cell * 1.8f / 2f
         val centers = trap.mines.map { t.at(it.angle) }
-        val reach = (TrapPaint.MINE_SIZE * px / 2f + rim + blockHalf) * 1.5f + 2f
+        val reach = (TrapPaint.MINE_SIZE * px / 2f + rim + blockHalf) * 1.5f + 2f + t.cell
         // Ein Viertelpixel Luft: Block und Mine teilen sich keinen Bildpunkt.
         fun square(c: Offset, half: Float) =
             Rect(c.x - half - 0.25f, c.y - half - 0.25f, c.x + half + 0.25f, c.y + half + 0.25f)
         for (k in drawnSand(game, t, trap)) {
-            val b = t.at(trackSlotAngle(k, segments))
-            val block = square(b, blockHalf)
-            val face = square(b, faceHalf)
+            val s = t.sand(k)
+            val b = Offset(s.centerX, s.centerY)
+            val block = square(b, s.outer / 2f)
+            val face = square(b, s.inner / 2f)
             for (c in centers) {
                 if ((c - b).getDistance() > reach) continue
                 for (m in bodyRects(c, px)) {

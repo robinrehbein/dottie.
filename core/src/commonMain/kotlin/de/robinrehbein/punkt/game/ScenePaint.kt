@@ -154,6 +154,38 @@ data class Ground(
     val turfLight: Long
 )
 
+/** Form der Partikel im Nebel (siehe [FogPaint.speck]). */
+enum class FogSpeck {
+    /** Ein einzelnes Korn: Pollen, Staub, Gischt, Ruß, Stern. */
+    DOT,
+
+    /** Ein kleines Kreuz: Schneeflocke. Kreuze halten Abstand zueinander. */
+    CROSS
+}
+
+/**
+ * Der Nebel der Kulisse (Twist NEBEL): dieselbe Wolkenform in jeder
+ * Welt, aber Farbe und Partikel der Welt — Sandsturm in der Wüste,
+ * Sternennebel im Weltraum. Die Form muss überall gleich bleiben, weil
+ * sie den Vogel verdecken muss; nur das Aussehen darf wechseln.
+ *
+ * Die fünf Töne gehen von unten nach oben: [bottom] die unterste
+ * Pixelreihe, [low] die zweite, [top] die Oberkante (oben und links),
+ * [inner] die Fläche, [mid] die eingestreuten Tupfer darin. [speck] ist
+ * die Partikelfarbe, [speckShape] ihre Form. [crown] setzt die obersten
+ * zwei Reihen weiß (Schaumkrone am MEER).
+ */
+data class FogPaint(
+    val bottom: Long,
+    val low: Long,
+    val mid: Long,
+    val top: Long,
+    val inner: Long,
+    val speck: Long,
+    val speckShape: FogSpeck = FogSpeck.DOT,
+    val crown: Boolean = false
+)
+
 /**
  * Eine komplette Kulisse. [cloud] und [ground] sind optional: Im Vakuum
  * gibt es weder Wolken noch Boden, und beides fehlt dort mit Absicht,
@@ -166,7 +198,8 @@ class Scene(
     val cloud: Long?,
     val ground: Ground?,
     val props: List<Prop>,
-    val backdrop: Backdrop?
+    val backdrop: Backdrop?,
+    val fog: FogPaint
 )
 
 object ScenePaint {
@@ -372,6 +405,8 @@ object ScenePaint {
             0xFF2A2640  // 30+ Nacht
         ),
         cloud = 0xFFE9FCFD,
+        // Nebel: weiße Wolke mit Blütenpollen.
+        fog = FogPaint(0xFFA0BEDA, 0xFFBED4EA, 0xFFD6E5F4, 0xFFFFFFFF, 0xFFF4F8FD, speck = 0xFFFFE89A),
         backdrop = null,
         ground = Ground(
             sand = 0xFFDED895,
@@ -415,6 +450,8 @@ object ScenePaint {
             0xFF8E3B47, 0xFF4A2C4E, 0xFF241C33
         ),
         cloud = 0xFFF7E9C8,
+        // Nebel: Sandsturm mit Staubkörnern.
+        fog = FogPaint(0xFFB8894E, 0xFFC9A064, 0xFFD4AE6E, 0xFFF0DDB0, 0xFFE8C88A, speck = 0xFF9C7A4A),
         backdrop = null,
         ground = Ground(
             sand = 0xFFE8C88A,
@@ -456,6 +493,8 @@ object ScenePaint {
             0xFFE09A4A, 0xFF35447F, 0xFF1B2138
         ),
         cloud = 0xFFDFF4FF,
+        // Nebel: Seenebel mit Schaumkrone und Gischt.
+        fog = FogPaint(0xFF1F7A96, 0xFF3FA0B8, 0xFF6CC4D2, 0xFFE8FAFC, 0xFF9ED8E0, speck = 0xFFFFFFFF, crown = true),
         backdrop = null,
         ground = Ground(
             sand = 0xFF2F86C8,
@@ -500,6 +539,8 @@ object ScenePaint {
             0xFFD08A5A, 0xFF3E4A78, 0xFF1E2438
         ),
         cloud = 0xFFF2FAFF,
+        // Nebel: graue Nebelwand mit Schneeflocken.
+        fog = FogPaint(0xFF5F6B7A, 0xFF7C8898, 0xFF98A3B1, 0xFFD7DEE6, 0xFFB4BDC8, speck = 0xFFFFFFFF, speckShape = FogSpeck.CROSS),
         backdrop = Backdrop(
             BackdropKind.GEBIRGE,
             listOf(
@@ -553,6 +594,8 @@ object ScenePaint {
             0xFFE8963C, 0xFF3A3F6E, 0xFF1A1A2E
         ),
         cloud = 0xFFE4E8F0,
+        // Nebel: Smog mit Ruß.
+        fog = FogPaint(0xFF7E828C, 0xFF969AA3, 0xFFADB0B8, 0xFFD6D8DC, 0xFFC4C6CC, speck = 0xFF5E616A),
         backdrop = null,
         ground = Ground(
             sand = 0xFF4A4550,
@@ -607,6 +650,8 @@ object ScenePaint {
             0xFF8A2C4A, 0xFF3A1A3E, 0xFF0A0716
         ),
         cloud = null,
+        // Nebel: Sternennebel.
+        fog = FogPaint(0xFF5B3A7A, 0xFF7A4E9A, 0xFFB06FB8, 0xFFF2C4E8, 0xFFD69AD6, speck = 0xFFFFFFFF),
         backdrop = Backdrop(
             BackdropKind.STERNENHIMMEL,
             listOf(
