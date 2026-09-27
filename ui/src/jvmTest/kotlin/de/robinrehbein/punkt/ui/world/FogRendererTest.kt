@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.use
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.SceneId
+import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinId
 import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.game.Twist
@@ -36,16 +37,20 @@ class FogRendererTest {
     @Test
     fun `punkt ist bei fogStart in der Mitte und bei fogEnd unsichtbar`() {
         listOf(0, 15, 40).forEach { hits ->
-            formats.forEach { format ->
-                listOf("fogStart" to 0f, "Mitte" to 0.5f, "fogEnd" to 1f).forEach { (name, share) ->
-                    val game = fogGame(hits)
-                    runToFogShare(game, share)
-                    assertTrue(game.isInFog, "$name bei $hits Treffern liegt nicht im Nebel")
-                    assertEquals(
-                        0,
-                        birdPixels(game, format),
-                        "Vogel bei $name sichtbar ($hits Treffer, ${format.width}×${format.height})"
-                    )
+            listOf("fogStart" to 0f, "Mitte" to 0.5f, "fogEnd" to 1f).forEach { (name, share) ->
+                val game = fogGame(hits)
+                runToFogShare(game, share)
+                assertTrue(game.isInFog, "$name bei $hits Treffern liegt nicht im Nebel")
+                // Jede Welt zeichnet dieselbe Wolke in ihren Farben (und mit
+                // ihren Partikeln): Der Vogel muss überall verschwinden.
+                formats.forEach { format ->
+                    SceneId.entries.forEach { scene ->
+                        assertEquals(
+                            0,
+                            birdPixels(game, format, scene),
+                            "Vogel bei $name sichtbar ($hits Treffer, ${format.width}×${format.height}, $scene)"
+                        )
+                    }
                 }
             }
         }
@@ -69,12 +74,14 @@ class FogRendererTest {
                 val teil = birdPixels(halb, format)
                 assertTrue(ganz > 0, "Vogel frei vor der Wolke nicht zu sehen")
                 assertTrue(teil in 1 until ganz, "Vogel gleitet nicht hinein: $teil von $ganz Pixeln")
-                assertEquals(
-                    0,
-                    birdPixels(vorher, format),
-                    "Vogel ragt am Nebelanfang aus der Wolke ($hits Treffer, ${format.width}×${format.height}, " +
-                        "zoneAge=${vorher.zoneAge})"
-                )
+                SceneId.entries.forEach { scene ->
+                    assertEquals(
+                        0,
+                        birdPixels(vorher, format, scene),
+                        "Vogel ragt am Nebelanfang aus der Wolke ($hits Treffer, ${format.width}×${format.height}, " +
+                            "$scene, zoneAge=${vorher.zoneAge})"
+                    )
+                }
             }
         }
     }
@@ -232,6 +239,101 @@ class FogRendererTest {
     }
 
     @Test
+    fun `wolke liegt auf dem raster der kulisse`() {
+        // Auf 1080×2340 ist eine Szenenzelle 10 px, das Wolkenraster 20 px
+        // (wie Galaxien und Himmelswolken), der Umriss 5 px.
+        assertEquals(10f, fogCell(2340f))
+        assertEquals(20f, fogGrid(2340f))
+        assertEquals(2f, fogCell(300f), "Zelle wird nie kleiner als 2 px")
+
+        // Nur die Bank auf durchsichtigem Grund, Partikel unsichtbar: Jede
+        // Kante einer Nebelfläche liegt auf dem 20-px-Raster ab Bankmitte.
+        val format = Format(1080, 2340)
+        val paint = ScenePaint.of(SceneId.MEER).fog.copy(speck = 0x00000000L)
+        val faces = setOf(paint.bottom, paint.low, paint.mid, paint.top, paint.inner, 0xFFFFFFFFL)
+            .map { it.toInt() }.toSet()
+        listOf(0, 15, 40).forEach { hits ->
+            val game = fogGame(hits)
+            while (game.zoneAge < FOG_ROLL_IN_SECONDS) game.update(1f / 240f)
+            val size = androidx.compose.ui.geometry.Size(format.width.toFloat(), format.height.toFloat())
+            val ring = ringGeometry(size)
+            val mid = game.zoneCenter + game.direction * (game.fogStart() + game.fogEnd()) / 2f
+            val ax = Math.round(ring.cx + kotlin.math.cos(mid) * ring.radius)
+            val ay = Math.round(ring.cy + kotlin.math.sin(mid) * ring.radius)
+            val bitmap = ImageComposeScene(format.width, format.height, Density(2f)) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawFogBank(game, ring.cx, ring.cy, ring.radius, game.fogStart(), game.fogEnd(), paint)
+                }
+            }.use { scene -> Bitmap.makeFromImage(scene.render(0L)) }
+            var edgesX = 0
+            var edgesY = 0
+            for (y in 0 until format.height) for (x in 0 until format.width) {
+                val c = bitmap.getColor(x, y)
+                if (x + 1 < format.width) {
+                    val r = bitmap.getColor(x + 1, y)
+                    if (c != r && (c in faces || r in faces)) {
+                        assertEquals(0, (x + 1 - ax).mod(20), "Senkrechte Kante bei x=${x + 1} ($hits Treffer)")
+                        edgesX++
+                    }
+                }
+                if (y + 1 < format.height) {
+                    val b = bitmap.getColor(x, y + 1)
+                    if (c != b && (c in faces || b in faces)) {
+                        assertEquals(0, (y + 1 - ay).mod(20), "Waagrechte Kante bei y=${y + 1} ($hits Treffer)")
+                        edgesY++
+                    }
+                }
+            }
+            assertTrue(edgesX > 0 && edgesY > 0, "Keine Wolke gezeichnet ($hits Treffer)")
+            // Der Umriss steht außen 5 px über die Flächen.
+            assertTrue(outlineWidths(bitmap, format).all { it == 5 }, "Umriss nicht 5 px breit ($hits Treffer)")
+        }
+    }
+
+    @Test
+    fun `jede welt faerbt den nebel selbst`() {
+        val format = Format(720, 1280)
+        val game = fogGame(15)
+        runToFogShare(game, 0.5f)
+        SceneId.entries.forEach { scene ->
+            val fog = ScenePaint.of(scene).fog
+            val bitmap = render(game, SkinId.KLASSIK, format, scene)
+            // Mit Schaumkrone ist die Oberkante reinweiß statt fog.top.
+            val topColor = if (fog.crown) 0xFFFFFFFF.toInt() else fog.top.toInt()
+            var inner = 0
+            var top = 0
+            for (y in 0 until format.height) for (x in 0 until format.width) {
+                when (bitmap.getColor(x, y)) {
+                    fog.inner.toInt() -> inner++
+                    topColor -> top++
+                }
+            }
+            assertTrue(inner > 0, "Nebel in $scene ohne eigene Innenfarbe")
+            assertTrue(top > 0, "Nebel in $scene ohne eigene Oberkante")
+        }
+        // Und die Farben unterscheiden sich wirklich von Welt zu Welt.
+        assertEquals(SceneId.entries.size, SceneId.entries.map { ScenePaint.of(it).fog.inner }.toSet().size)
+    }
+
+    /**
+     * Breite des Umrisses links der Wolke: je Zeile die Zahl der
+     * OutlineColor-Pixel vor der ersten Fläche, wenn davor Durchsichtiges liegt.
+     */
+    private fun outlineWidths(bitmap: Bitmap, format: Format): List<Int> {
+        val outline = OutlineColor.toArgb()
+        val widths = mutableListOf<Int>()
+        for (y in 0 until format.height) {
+            var x = 0
+            while (x < format.width && (bitmap.getColor(x, y) ushr 24) == 0) x++
+            if (x == 0 || x >= format.width) continue
+            var n = 0
+            while (x + n < format.width && bitmap.getColor(x + n, y) == outline) n++
+            if (x + n < format.width && (bitmap.getColor(x + n, y) ushr 24) != 0) widths += n
+        }
+        return widths.filter { it in 1..20 }.distinct()
+    }
+
+    @Test
     fun `blind pop nur nach gewertetem blindtreffer`() {
         val blind = fogGame(15)
         blindHit(blind)
@@ -368,17 +470,17 @@ class FogRendererTest {
         return fogUnit(format.height.toFloat()) / ring.radius
     }
 
-    private fun render(game: TimingGame, skin: SkinId, format: Format): Bitmap =
+    private fun render(game: TimingGame, skin: SkinId, format: Format, scene: SceneId = SceneId.WIESE): Bitmap =
         ImageComposeScene(width = format.width, height = format.height, density = Density(2f)) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                drawTimingWorld(game, FxState(), skin, SceneId.WIESE, hour = 12, month = 6)
+                drawTimingWorld(game, FxState(), skin, scene, hour = 12, month = 6)
             }
         }.use { scene -> Bitmap.makeFromImage(scene.render(0L)) }
 
     /** Wie viele Pixel sich ändern, wenn nur die Farbe des Vogels wechselt. */
-    private fun birdPixels(game: TimingGame, format: Format): Int {
-        val a = render(game, SkinId.KLASSIK, format).readPixels()!!
-        val b = render(game, SkinId.MINZE, format).readPixels()!!
+    private fun birdPixels(game: TimingGame, format: Format, scene: SceneId = SceneId.WIESE): Int {
+        val a = render(game, SkinId.KLASSIK, format, scene).readPixels()!!
+        val b = render(game, SkinId.MINZE, format, scene).readPixels()!!
         var diff = 0
         for (i in a.indices step 4) {
             if (a[i] != b[i] || a[i + 1] != b[i + 1] || a[i + 2] != b[i + 2]) diff++
@@ -386,12 +488,13 @@ class FogRendererTest {
         return diff
     }
 
-    /** Pixel in der Farbe der Wolkenunterkante (oder in irgendeiner Wolkenfarbe). */
+    /** Pixel in der Farbe der Wolkenunterkante (oder in irgendeiner Wolkenfarbe) der Wiese. */
     private fun fogPixels(game: TimingGame, format: Format, anyFogColor: Boolean = false): Int {
+        val fog = ScenePaint.of(SceneId.WIESE).fog
         val colors = if (anyFogColor) {
-            setOf(FogBottom, FogLow, FogMid, FogInner).map { it.toArgb() }.toSet()
+            setOf(fog.bottom, fog.low, fog.mid, fog.inner).map { it.toInt() }.toSet()
         } else {
-            setOf(FogBottom.toArgb())
+            setOf(fog.bottom.toInt())
         }
         val bitmap = render(game, SkinId.KLASSIK, format)
         var count = 0

@@ -59,6 +59,23 @@ in eine Pixel-Wolke hinein, auf der Uhr steht ein einfaches Nebelband.
 Im Code heißt der Twist weiter `Twist.GHOST`: Der Name wird gespeichert
 und steht in den Paritäts-Vektoren.
 
+Die Wolke hat in jeder Welt **dieselbe Form** — sie muss den Vogel überall
+gleich verdecken —, aber eigene Farben und Partikel (`FogPaint` in
+`ScenePaint`, Zeilen `scene.fog.*` im Paritäts-Vertrag):
+
+| Welt | Nebel | Partikel |
+|---|---|---|
+| WIESE | weiße Wolke | gelbe Pollen |
+| WÜSTE | Sandsturm | brauner Staub |
+| MEER | Seenebel mit weißer Schaumkrone | weiße Gischt |
+| BERG | graue Nebelwand | Schneeflocken (Kreuze) |
+| STADT | grauer Smog | dunkler Ruß |
+| WELTRAUM | violetter Sternennebel | weiße Sterne |
+
+`ScenePaintTest` sichert ab: Jede Welt hat ihren eigenen Nebel, die
+Unterkante ist dunkler als die Oberkante, und die Partikel liegen
+mindestens 20 Helligkeitsstufen neben der Nebelfläche.
+
 **Bomben (ab v2.28, vorher FALLE):** Jeder Block der Falle ist eine
 Minesweeper-Mine (7×7, schwarze Kugel mit hellem Rand für dunkle Himmel,
 `TrapPaint` in `:core`). Ein rotes Lauflicht wandert alle 0,09 s über die

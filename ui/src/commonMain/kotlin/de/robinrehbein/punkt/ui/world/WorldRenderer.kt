@@ -117,8 +117,8 @@ fun DrawScope.drawTimingWorld(
         // == AP-23 nebel ==
         // Die Nebelbank liegt über dem Vogel: Er gleitet an ihrer Kontur
         // hinein und heraus. Grenzen allein aus der Engine.
-        drawFogBank(game, cx, cy, radius, game.fogStart(), game.fogEnd())
-        drawFogPuffs(game, fx, cx, cy, radius)
+        drawFogBank(game, cx, cy, radius, game.fogStart(), game.fogEnd(), kulisse.fog)
+        drawFogPuffs(game, fx, cx, cy, radius, kulisse.fog)
         // == /AP-23 ==
         if (fx.celebrateTime > 0f) {
             drawUnlockBurst(fx.celebrateTime, cx, cy, radius, cell)
@@ -720,6 +720,10 @@ internal fun DrawScope.drawGroundStrip(cell: Float, ground: Ground) {
  * Die Kreisbahn als Kette blockiger Zellen. Die Zielzone ist grün mit
  * hellem Perfekt-Kern, die Falle eine Kette aus Minen mit rotem Lauflicht
  * (siehe MineField.kt) — alles im Pixel-Raster.
+ *
+ * Sand- und Zonenblöcke liegen im Raster der halben Zelle ([trackUnit],
+ * auf 1080×2340 fünf Bildpunkte): Kanten, Umrisse, Licht-Kanten und
+ * Blätter sind Vielfache davon. Siehe [TrackBlock].
  */
 internal fun DrawScope.drawTrack(
     game: TimingGame,
@@ -731,7 +735,7 @@ internal fun DrawScope.drawTrack(
     // 60 statt 72 Segmente: Die einzelnen Kettenglieder bekommen sichtbaren
     // Abstand (Perlenketten-Look), statt sich zu überlappen. Die Zonen
     // bleiben durch ihre größeren Blöcke bewusst ein durchgehendes Band.
-    val segments = 60
+    val segments = TRACK_SEGMENTS
     val zoneHalf = game.effectiveZoneHalf()
     // Minen so groß wie möglich, aber nie so groß, dass sie sich oder den
     // Sand daneben berühren (unter PULS rückt die Kette zusammen). Sie
@@ -740,35 +744,20 @@ internal fun DrawScope.drawTrack(
     val minePx = trap.px
     val mines = trap.mines
     val mineCenters = mines.map { Offset(cx + cos(it.angle) * radius, cy + sin(it.angle) * radius) }
-    // Die Zone wird zur Mitte hin größer (zoneBlockScale). Gesammelt und
-    // nach Größe gezeichnet, damit die größeren Blöcke oben liegen. Kern
-    // und Breite kommen aus der Engine: Was hier leuchtet, ist exakt das
-    // Fenster, das der Tap auch wertet.
-    val zoneBlocks = ArrayList<ZoneSlot>()
-    // Gemessen bis einen halben Block über den Rand hinaus: Sonst schrumpft
-    // ein Block, der zufällig genau auf der Grenze liegt, auf Sandgröße,
-    // und eine schmale Zone (drei Blöcke) wirkt schief und kürzer.
-    val taper = zoneHalf + PI.toFloat() / segments
-    for (k in 0 until segments) {
-        val a = trackSlotAngle(k, segments)
-        val rel = abs(TimingGame.wrapToPi(a - game.zoneCenter))
-        if (rel > zoneHalf) continue
-        zoneBlocks += ZoneSlot(
-            x = cx + cos(a) * radius,
-            y = cy + sin(a) * radius,
-            cell = cell * zoneBlockScale(rel / taper),
-            core = rel <= game.perfectHalf(),
-            mirrored = k % 2 == 1
-        )
-    }
-    zoneBlocks.sortBy { it.cell }
+    // Die Zone wird zur Mitte hin größer (zoneBlockScale). Kleine Blöcke
+    // zuerst gezeichnet, damit die größeren oben liegen.
+    val zoneBlocks = zoneSlots(game, cx, cy, radius, cell)
     // Erst der goldene Saum des Perfekt-Kerns, dann alle Blöcke: Die
     // Nachbarn überdecken ihn, sichtbar bleibt er nur außen um den Kern.
-    val halo = (cell * 0.4f).roundToInt().coerceAtLeast(1).toFloat()
+    // Er ist eine Rasterstufe breit und folgt der gerundeten Außenkante.
     for (z in zoneBlocks) {
         if (!z.core) continue
-        val s = (z.cell * 5f).roundToInt() + 2f * halo
-        drawRect(color = ZoneCoreHalo, topLeft = Offset(z.x - s / 2f, z.y - s / 2f), size = Size(s, s))
+        val b = z.block
+        drawRect(
+            color = ZoneCoreHalo,
+            topLeft = Offset(b.left - b.unit, b.top - b.unit),
+            size = Size(b.outer + 2f * b.unit, b.outer + 2f * b.unit)
+        )
     }
     for (k in 0 until segments) {
         val a = trackSlotAngle(k, segments)
@@ -792,25 +781,27 @@ internal fun DrawScope.drawTrack(
         // Liegt die Falle auf der Zone, gewinnt die Zone: Grün bleibt Grün.
         if (inFake) continue
 
-        val outer = cell * 3f
+        val b = sandBlock(px, py, cell)
         // Nur im Notfall (winzige Bahn unter PULS, siehe trapChain) reicht
         // eine Mine an den Sand heran; dann bleibt dieser Block frei.
-        val underMine = mineCenters.any { mineTouchesBlock(it.x - px, it.y - py, minePx, outer / 2f) }
+        // Gemessen an der gerundeten Lage, die wirklich gezeichnet wird.
+        val underMine = mineCenters.any {
+            mineTouchesBlock(it.x - b.centerX, it.y - b.centerY, minePx, b.outer / 2f)
+        }
         if (underMine) continue
-        val inner = cell * 1.8f
         drawRect(
             color = OutlineColor,
-            topLeft = Offset(px - outer / 2f, py - outer / 2f),
-            size = Size(outer, outer)
+            topLeft = Offset(b.left, b.top),
+            size = Size(b.outer, b.outer)
         )
         drawRect(
             color = GroundSandShade,
-            topLeft = Offset(px - inner / 2f, py - inner / 2f),
-            size = Size(inner, inner)
+            topLeft = Offset(b.faceLeft, b.faceTop),
+            size = Size(b.inner, b.inner)
         )
     }
 
-    for (z in zoneBlocks) drawZoneBlock(z.x, z.y, z.cell, z.core, z.mirrored)
+    for (z in zoneBlocks) drawZoneBlock(z.block, z.core, z.mirrored)
 
     // Die Minen der Falle: so viele, wie TrapPaint.count aus der
     // Grundbreite ergibt, im Takt der Blöcke über die Breite
@@ -825,8 +816,107 @@ internal fun DrawScope.drawTrack(
     }
 }
 
-/** Ein Block der grünen Zone vor dem Zeichnen: Lage, Zellmaß, Kern, gespiegelt. */
-private class ZoneSlot(val x: Float, val y: Float, val cell: Float, val core: Boolean, val mirrored: Boolean)
+/** Zahl der Blöcke auf der Bahn. */
+internal const val TRACK_SEGMENTS = 60
+
+/**
+ * Die Rasterstufe der Bahn: eine halbe Zelle, ganzzahlig gerundet und
+ * mindestens 1 px — auf 1080×2340 fünf Bildpunkte.
+ *
+ * Warum die halbe Zelle: Alles, womit auf der Bahn gespielt wird — Sand,
+ * Zone und Minen — teilt sich so eine Pixelstufe. Die Minen zeichnen ihr
+ * Sprite in genau diesem Maß (5 px auf 1080×2340, siehe [minePixel]);
+ * Umrisse, Blätter und Licht-Kanten der Blöcke waren dagegen in krummen
+ * Größen zwischen 2 und 8 px gesetzt und wirkten neben den Minen unscharf.
+ * Die Welt dahinter (Wolken, Büsche, Boden) bleibt bei ganzen und
+ * doppelten Zellen: Sie ist Kulisse und darf gröber sein.
+ */
+internal fun trackUnit(cell: Float): Int = (cell * 0.5f).roundToInt().coerceAtLeast(1)
+
+/**
+ * Ein Block der Bahn im Bild, fertig gerundet: linke obere Ecke
+ * ([left], [top]) und Kante [outer] sind Vielfache der Rasterstufe
+ * [unit] ([trackUnit]), gezählt ab dem Bildursprung. Der dunkle Umriss
+ * ist überall genau eine Stufe breit, die Fläche darin ([inner]) also
+ * `outer − 2 · unit`.
+ */
+internal class TrackBlock(val left: Float, val top: Float, val outer: Float, val unit: Float) {
+    val inner: Float get() = outer - 2f * unit
+    val faceLeft: Float get() = left + unit
+    val faceTop: Float get() = top + unit
+    val centerX: Float get() = left + outer / 2f
+    val centerY: Float get() = top + outer / 2f
+}
+
+/**
+ * Legt einen Block aus [units] Rasterstufen der Größe [unit] so ins
+ * Raster, dass seine Mitte der Bahnposition ([x], [y]) so nah wie möglich
+ * bleibt (höchstens eine halbe Stufe daneben).
+ */
+private fun snapBlock(x: Float, y: Float, units: Int, unit: Int): TrackBlock {
+    val outer = units * unit
+    val left = ((x - outer / 2f) / unit).roundToInt() * unit
+    val top = ((y - outer / 2f) / unit).roundToInt() * unit
+    return TrackBlock(left.toFloat(), top.toFloat(), outer.toFloat(), unit.toFloat())
+}
+
+/**
+ * Ein Sandblock an der Bahnposition ([x], [y]): außen 3 Zellen (auf
+ * 1080×2340 30 px, sechs Stufen), Umriss eine Stufe, Sandfläche
+ * `3 Zellen − 2 Stufen` (20 px). Passt die Kante nicht auf das Raster
+ * (etwa Zelle 7 px, Stufe 4 px), wird sie abgerundet — nie größer als
+ * 3 Zellen, damit die Abstände der Minen ([mineBlockDistance]) halten.
+ */
+internal fun sandBlock(x: Float, y: Float, cell: Float): TrackBlock {
+    val unit = trackUnit(cell)
+    val units = floor(cell * 3f / unit + 1e-4f).toInt().coerceAtLeast(3)
+    return snapBlock(x, y, units, unit)
+}
+
+/**
+ * Ein Zonenblock an der Bahnposition ([x], [y]) mit dem Anteil [scale]
+ * ([zoneBlockScale]) der vollen Größe von 5 Zellen: Kante auf ganze
+ * Rasterstufen gerundet, mindestens vier (Umriss, zwei Stufen Gras,
+ * Umriss). Auf 1080×2340 sind das 30 bis 50 px.
+ */
+internal fun zoneBlock(x: Float, y: Float, cell: Float, scale: Float): TrackBlock {
+    val unit = trackUnit(cell)
+    val units = (cell * scale * 5f / unit).roundToInt().coerceAtLeast(4)
+    return snapBlock(x, y, units, unit)
+}
+
+/** Ein Block der grünen Zone vor dem Zeichnen: Lage und Maß, Anteil, Kern, gespiegelt. */
+internal class ZoneSlot(val block: TrackBlock, val scale: Float, val core: Boolean, val mirrored: Boolean)
+
+/**
+ * Die Blöcke der grünen Zone, wie [drawTrack] sie zeichnet: in der
+ * Reihenfolge des Zeichnens, kleine zuerst, damit die größeren oben
+ * liegen. Kern und Breite kommen aus der Engine: Was hier leuchtet, ist
+ * exakt das Fenster, das der Tap auch wertet.
+ */
+internal fun zoneSlots(game: TimingGame, cx: Float, cy: Float, radius: Float, cell: Float): List<ZoneSlot> {
+    val segments = TRACK_SEGMENTS
+    val zoneHalf = game.effectiveZoneHalf()
+    // Gemessen bis einen halben Block über den Rand hinaus: Sonst schrumpft
+    // ein Block, der zufällig genau auf der Grenze liegt, auf Sandgröße,
+    // und eine schmale Zone (drei Blöcke) wirkt schief und kürzer.
+    val taper = zoneHalf + PI.toFloat() / segments
+    val slots = ArrayList<ZoneSlot>()
+    for (k in 0 until segments) {
+        val a = trackSlotAngle(k, segments)
+        val rel = abs(TimingGame.wrapToPi(a - game.zoneCenter))
+        if (rel > zoneHalf) continue
+        val scale = zoneBlockScale(rel / taper)
+        slots += ZoneSlot(
+            block = zoneBlock(cx + cos(a) * radius, cy + sin(a) * radius, cell, scale),
+            scale = scale,
+            core = rel <= game.perfectHalf(),
+            mirrored = k % 2 == 1
+        )
+    }
+    slots.sortBy { it.scale }
+    return slots
+}
 
 /**
  * Wie groß ein Zonenblock im Abstand [d] von der Zonenmitte ist (0 =
@@ -838,76 +928,80 @@ private class ZoneSlot(val x: Float, val y: Float, val cell: Float, val core: Bo
  * So zeigt die Zone ohne Worte zur Mitte, wo Perfekt liegt, und wirkt
  * trotzdem nie schmaler, als sie trifft: Der äußerste Block einer breiten
  * Zone bekommt etwa 0,67, der einer schmalen (drei Blöcke) etwa 0,77.
- * Das Trefferfenster ändert sich nicht, nur die Zeichnung.
+ * Das Trefferfenster ändert sich nicht, nur die Zeichnung. Gezeichnet
+ * wird der Anteil auf ganze Rasterstufen gerundet ([zoneBlock]).
  */
 internal fun zoneBlockScale(d: Float): Float =
     0.6f + 0.4f * cos(d.coerceIn(0f, 1f) * PI.toFloat() / 2f)
 
 /**
- * Ein Block der grünen Zone: dunkler Umriss (5 Zellen), Grasfläche (3,4
- * Zellen; [cell] ist schon mit [zoneBlockScale] verkleinert), darauf Blätterbüschel wie bei den Büschen und eine Licht-Kante
- * wie bei den Knöpfen — hell oben und links, dunkel unten und rechts. Im
- * Perfekt-Kern ([core]) ist alles heller und eine Blüte sitzt in der
- * Mitte; den goldenen Saum zeichnet [drawTrack] vorher.
+ * Ein Block der grünen Zone ([block], siehe [zoneBlock]): dunkler Umriss
+ * eine Rasterstufe breit, darin die Grasfläche, darauf Blätterbüschel wie
+ * bei den Büschen und eine Licht-Kante wie bei den Knöpfen — hell oben
+ * und links, dunkel unten und rechts. Im Perfekt-Kern ([core]) ist alles
+ * heller; den goldenen Saum zeichnet [drawTrack] vorher. Der Umriss ist
+ * auch im Kern nur eine Stufe breit: Hervorgehoben wird der Kern durch
+ * Farbe und Saum, nicht durch einen dickeren Rand.
+ *
+ * Alles liegt im Raster der Bahn ([trackUnit]): Die Grasfläche ist in
+ * `n = inner / unit` Rasterpixel geteilt, Büschel und Tupfer sind ganze
+ * Rasterpixel, ihre Lage wächst mit `n / 8` mit (auf 1080×2340 ist der
+ * volle Block 10 Stufen, die Grasfläche 8).
+ *
+ * Früher saß im Kern eine rosa Blüte mit gelber Mitte. Sie ist weg: Das
+ * Rot direkt neben der Nebelwolke irritierte die Tester — es las sich wie
+ * ein Warnsignal oder eine Mine, nicht wie das Ziel.
  *
  * Die Zone war das einzige flache Element neben Wolken, Kaktus und Minen.
  * Die Form bleibt bewusst ein Quadrat: Die runden Minen unterscheiden sich
  * so auch ohne Farbe von der Zone (Rot-Grün-Schwäche), und die
  * überlappenden Quadrate lesen sich weiter als durchgehendes Band.
  *
- * [mirrored] spiegelt die Büschel waagrecht, damit nicht jeder Block
- * gleich aussieht. Alle Maße auf ganze Pixel gerundet.
+ * [mirrored] spiegelt die Spalten der Büschel, damit nicht jeder Block
+ * gleich aussieht.
  */
-internal fun DrawScope.drawZoneBlock(x: Float, y: Float, cell: Float, core: Boolean, mirrored: Boolean) {
-    // Ganze Pixel: [cell] ist hier oft krumm (zoneBlockScale).
-    val outer = (cell * 5f).roundToInt().toFloat()
-    val inner = (cell * 3.4f).roundToInt().toFloat()
-    val left = (x - inner / 2f).roundToInt().toFloat()
-    val top = (y - inner / 2f).roundToInt().toFloat()
-    fun block(u: Float, v: Float, w: Float, h: Float, color: Color) {
-        // u, v: Lage in der Grasfläche (0..1), gespiegelt bei [mirrored]
-        val bx = if (mirrored) left + (1f - u) * inner - w else left + u * inner
-        drawRect(
-            color = color,
-            topLeft = Offset(bx.roundToInt().toFloat(), (top + v * inner).roundToInt().toFloat()),
-            size = Size(w.roundToInt().toFloat().coerceAtLeast(1f), h.roundToInt().toFloat().coerceAtLeast(1f))
-        )
+internal fun DrawScope.drawZoneBlock(block: TrackBlock, core: Boolean, mirrored: Boolean) {
+    val unit = block.unit
+    val inner = block.inner
+    val left = block.faceLeft
+    val top = block.faceTop
+    val n = (inner / unit).roundToInt()
+    drawRect(color = OutlineColor, topLeft = Offset(block.left, block.top), size = Size(block.outer, block.outer))
+    drawRect(color = if (core) GrassLight else GrassDark, topLeft = Offset(left, top), size = Size(inner, inner))
+    /** Ein Rasterpixel der Grasfläche in Spalte [col], Zeile [row]; außerhalb fällt es weg. */
+    fun pixel(col: Int, row: Int, color: Color) {
+        if (col !in 0 until n || row !in 0 until n) return
+        val c = if (mirrored) n - 1 - col else col
+        drawRect(color = color, topLeft = Offset(left + c * unit, top + row * unit), size = Size(unit, unit))
     }
-    drawRect(
-        color = OutlineColor,
-        topLeft = Offset((x - outer / 2f).roundToInt().toFloat(), (y - outer / 2f).roundToInt().toFloat()),
-        size = Size(outer, outer)
-    )
-    drawRect(
-        color = if (core) GrassLight else GrassDark,
-        topLeft = Offset(left, top),
-        size = Size(inner, inner)
-    )
-    // Blätterbüschel: helle oben links, dunkle Tupfer unten rechts.
+    val f = n / 8f
+    // Blätterbüschel: ein Pixel, sein rechter Nachbar und der darüber.
     val leaf = if (core) GrassLeafCore else GrassLight
+    for ((a, b) in ZONE_LEAVES) {
+        val col = (a * f).roundToInt()
+        val row = (b * f).roundToInt()
+        pixel(col, row, leaf)
+        pixel(col + 1, row, leaf)
+        pixel(col, row - 1, leaf)
+    }
+    // Dunkle Tupfer, je ein Pixel.
     val deep = if (core) GrassDark else GrassDeep
-    for ((u, v) in listOf(0.18f to 0.22f, 0.5f to 0.16f, 0.24f to 0.52f)) {
-        block(u, v, cell * 0.8f, cell * 0.5f, leaf)
-        block(u + 0.06f, v - 0.06f, cell * 0.4f, cell * 0.2f, leaf)
-    }
-    for ((u, v) in listOf(0.56f to 0.56f, 0.3f to 0.76f, 0.68f to 0.32f)) {
-        block(u, v, cell * 0.6f, cell * 0.4f, deep)
-    }
-    // Licht-Kante wie bei den Eckknöpfen (drawSandBevel): erst der
-    // Schatten unten und rechts, dann das Licht oben und links darüber.
-    val edge = (cell * 0.5f).roundToInt().coerceAtLeast(1).toFloat()
+    for ((a, b) in ZONE_SPECKS) pixel((a * f).roundToInt(), (b * f).roundToInt(), deep)
+    // Licht-Kante wie bei den Eckknöpfen (drawSandBevel), eine Stufe breit:
+    // erst der Schatten unten und rechts, dann das Licht oben und links darüber.
     val shade = if (core) GrassEdgeCore else GrassEdge
     val shine = if (core) GrassShineCore else GrassShine
-    drawRect(shade, Offset(left, top + inner - edge), Size(inner, edge))
-    drawRect(shade, Offset(left + inner - edge, top), Size(edge, inner))
-    drawRect(shine, Offset(left, top), Size(inner - edge, edge))
-    drawRect(shine, Offset(left, top), Size(edge, inner - edge))
-    if (core) {
-        // Blüte: rosa Blätter, goldene Mitte.
-        block(0.52f, 0.44f, cell * 0.7f, cell * 0.7f, BlossomPink)
-        block(0.52f + 0.2f / 3.4f, 0.44f + 0.2f / 3.4f, cell * 0.3f, cell * 0.3f, DotBody)
-    }
+    drawRect(shade, Offset(left, top + inner - unit), Size(inner, unit))
+    drawRect(shade, Offset(left + inner - unit, top), Size(unit, inner))
+    drawRect(shine, Offset(left, top), Size(inner - unit, unit))
+    drawRect(shine, Offset(left, top), Size(unit, inner - unit))
 }
+
+/** Lage der Blätterbüschel auf der Grasfläche, in Achteln (Spalte, Zeile). */
+private val ZONE_LEAVES = listOf(1 to 2, 4 to 1, 2 to 4)
+
+/** Lage der dunklen Tupfer, in Achteln (Spalte, Zeile). */
+private val ZONE_SPECKS = listOf(4 to 4, 2 to 6, 5 to 2)
 
 /**
  * Freischalt-Zelebration: ein goldener Ring aus Pixel-Blöcken, der von der

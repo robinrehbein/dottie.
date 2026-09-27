@@ -629,4 +629,75 @@ class ScenePaintTest {
             assertNull("$it hat keinen Hintergrund", ScenePaint.of(it).backdrop)
         }
     }
+
+    // --- Nebel (Twist NEBEL) -------------------------------------------
+
+    /** Grobe Helligkeit 0..255: Mittel der drei Kanäle. */
+    private fun helligkeit(color: Long): Int =
+        (((color shr 16) and 0xFF) + ((color shr 8) and 0xFF) + (color and 0xFF)).toInt() / 3
+
+    /** Mindestabstand der Partikel zur Nebelfläche, in Helligkeitsstufen. */
+    private val minSpeckAbstand = 20
+
+    @Test
+    fun `jede Welt hat einen Nebel`() {
+        SceneId.entries.forEach { id ->
+            val fog = ScenePaint.of(id).fog
+            listOf(fog.bottom, fog.low, fog.mid, fog.top, fog.inner, fog.speck).forEach {
+                assertEquals("$id: Nebelfarbe ${hex(it)} ist nicht deckend", 0xFFL, (it shr 24) and 0xFF)
+            }
+        }
+    }
+
+    @Test
+    fun `kein Nebel gleicht dem einer anderen Welt`() {
+        val flaechen = SceneId.entries.map { it to ScenePaint.of(it).fog.inner }
+        flaechen.forEachIndexed { i, (a, fa) ->
+            flaechen.drop(i + 1).forEach { (b, fb) ->
+                assertTrue("$a und $b teilen die Nebelfläche ${hex(fa)}", fa != fb)
+            }
+        }
+    }
+
+    @Test
+    fun `der Nebel ist unten dunkler als oben`() {
+        // Die Wolke liegt vor dem Himmel und wird von oben beleuchtet:
+        // Eine hellere Unterkante liest sich als umgedreht.
+        SceneId.entries.forEach { id ->
+            val fog = ScenePaint.of(id).fog
+            assertTrue(
+                "$id: bottom ${hex(fog.bottom)} ist nicht dunkler als top ${hex(fog.top)}",
+                helligkeit(fog.bottom) < helligkeit(fog.top)
+            )
+        }
+    }
+
+    @Test
+    fun `die Partikel heben sich von der Nebelflaeche ab`() {
+        SceneId.entries.forEach { id ->
+            val fog = ScenePaint.of(id).fog
+            assertTrue("$id: Partikel und Fläche sind gleich", fog.speck != fog.inner)
+            val abstand = kotlin.math.abs(helligkeit(fog.speck) - helligkeit(fog.inner))
+            assertTrue(
+                "$id: Partikel ${hex(fog.speck)} liegt nur $abstand Stufen neben der Fläche ${hex(fog.inner)}",
+                abstand >= minSpeckAbstand
+            )
+        }
+    }
+
+    @Test
+    fun `nur das MEER hat eine Schaumkrone und nur der BERG Schneeflocken`() {
+        // Beides sind Welt-Merkmale, keine Stilfrage: Die Krone ist die
+        // Gischt auf der Welle, das Kreuz die Schneeflocke. Taucht eins
+        // davon in einer anderen Welt auf, ist eine Zeile verrutscht.
+        SceneId.entries.forEach { id ->
+            val fog = ScenePaint.of(id).fog
+            assertEquals("$id: Schaumkrone", id == SceneId.MEER, fog.crown)
+            assertEquals(
+                "$id: Partikelform",
+                if (id == SceneId.BERG) FogSpeck.CROSS else FogSpeck.DOT,
+                fog.speckShape
+            )
+        }
+    }
 }
