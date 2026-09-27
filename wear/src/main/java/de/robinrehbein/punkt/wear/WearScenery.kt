@@ -14,6 +14,7 @@ import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.Ground
 import de.robinrehbein.punkt.game.Scene
 import kotlin.math.floor
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -246,7 +247,9 @@ private fun DrawScope.drawWearStarfield(colors: List<Long>, time: Float, cell: F
         val color = tones[(kind * 3f).toInt().coerceIn(0, 2)]
         val speed = 1.1f + wearHash(i + 104729) * 2.2f
         val twinkle = 0.7f + 0.3f * sin(time * speed + wearHash(i + 1299709) * 6.28f)
-        val px = floor(x / cell) * cell
+        // Waagrecht auf ganze Pixel statt auf ganze Zellen: Die Sterne
+        // driften langsam und sprangen sonst alle paar Sekunden eine Zelle.
+        val px = x.roundToInt().toFloat()
         val py = floor(y / cell) * cell
         if (kind > 0.9f) {
             drawRect(color, Offset(px - cell, py), Size(cell * 3f, cell), alpha = twinkle)
@@ -267,7 +270,7 @@ private fun DrawScope.drawWearStarfield(colors: List<Long>, time: Float, cell: F
             val back = k * cell * 2f
             drawRect(
                 tones[0],
-                Offset(floor((headX + back) / cell) * cell, floor((headY - back * 0.45f) / cell) * cell),
+                Offset((headX + back).roundToInt().toFloat(), (headY - back * 0.45f).roundToInt().toFloat()),
                 Size(cell, cell),
                 alpha = (1f - k / 6f) * (1f - q * 0.6f)
             )

@@ -85,7 +85,35 @@ enum class BackdropKind {
      * drehende Galaxien, ab und zu eine Sternschnuppe. Farben: Stern
      * weiß, Stern warm, Stern kühl, Galaxienkern, Arm eins, Arm zwei.
      */
-    STERNENHIMMEL
+    STERNENHIMMEL,
+
+    /**
+     * Zwei Reihen sanfter Hügel, die hintere heller (Dunst), auf der
+     * vorderen ein paar runde Baumkronen. Farben: ferne Hügel, ihre
+     * Lichtkante, nahe Hügel, ihre Lichtkante, Baumkronen.
+     */
+    HUEGEL,
+
+    /**
+     * Tafelberge mit Gesteinsschichten, davor eine Reihe flacher Dünen.
+     * Farben: Fels, Schattenseite, helle Schicht, Düne, Dünenkamm.
+     */
+    TAFELBERGE,
+
+    /**
+     * Das offene Meer bis zum Horizont mit Glitzern, darauf eine ferne
+     * Insel mit Leuchtturm. Farben: Meer, Glitzern, Insel, Inselschatten,
+     * Turm weiß, Turm rot, Lampe.
+     */
+    HORIZONT,
+
+    /**
+     * Zwei Reihen Hochhäuser als Silhouette, die hintere im Dunst. Nachts
+     * gehen Fenster an, auf dem höchsten Dach blinkt ein Licht. Farben:
+     * ferne Häuser, ihre Fenster am Tag, nahe Häuser, ihre Schattenseite,
+     * Fenster bei Nacht, Dachlicht.
+     */
+    SKYLINE
 }
 
 /**
@@ -454,8 +482,10 @@ data class FogPaint(
  * Eine komplette Kulisse. [cloud] und [ground] sind optional: Im Vakuum
  * gibt es weder Wolken noch Boden, und beides fehlt dort mit Absicht,
  * statt in Grau ausgeblendet zu werden. [backdrop] ist die Ebene hinter
- * allem (Gebirge, Sternenhimmel), null heißt: nur Himmel. [props] darf
- * leer sein — im WELTRAUM treibt nichts vor den Sternen.
+ * allem (Hügel, Tafelberge, Horizont, Gebirge, Skyline, Sternenhimmel),
+ * null heißt: nur Himmel. [props] darf leer sein — im WELTRAUM treibt
+ * nichts vor den Sternen. [life] sind die Bewohner der Welt ([LifeKind]);
+ * wie sie sich mit der Tageszeit verändert, sagt [DayCycle].
  */
 class Scene(
     val sky: List<Long>,
@@ -463,7 +493,8 @@ class Scene(
     val ground: Ground?,
     val props: List<Prop>,
     val backdrop: Backdrop?,
-    val fog: FogPaint
+    val fog: FogPaint,
+    val life: List<Life> = emptyList()
 )
 
 object ScenePaint {
@@ -671,7 +702,14 @@ object ScenePaint {
         cloud = 0xFFE9FCFD,
         // Nebel: weiße Wolke mit Blütenpollen.
         fog = FogPaint(0xFFA0BEDA, 0xFFBED4EA, 0xFFD6E5F4, 0xFFFFFFFF, 0xFFF4F8FD, speck = 0xFFFFE89A),
-        backdrop = null,
+        backdrop = Backdrop(
+            BackdropKind.HUEGEL,
+            listOf(
+                0xFF96D2AA, 0xFFB2E0C2, // ferne Hügel, im Dunst
+                0xFF60A88C, 0xFF7CBE9E, // nahe Hügel
+                0xFF468A6E              // Baumkronen
+            )
+        ),
         ground = Ground(
             sand = 0xFFDED895,
             sandShade = 0xFFD3C87E,
@@ -701,6 +739,10 @@ object ScenePaint {
                 PropShape.STRAUCH, 0.026f, 0.4f,
                 dark = 0xFF5AA82C, body = 0xFF71C837, light = 0xFF9DE85A
             )
+        ),
+        life = listOf(
+            Life(LifeKind.SCHWARM, listOf(0xFF3B4658)),
+            Life(LifeKind.GLUEHWUERMCHEN, listOf(0xFFFFF27A, 0xFFFFE08A))
         )
     )
 
@@ -717,7 +759,13 @@ object ScenePaint {
         cloud = 0xFFF7E9C8,
         // Nebel: Sandsturm mit Staubkörnern.
         fog = FogPaint(0xFFB8894E, 0xFFC9A064, 0xFFD4AE6E, 0xFFF0DDB0, 0xFFE8C88A, speck = 0xFF9C7A4A),
-        backdrop = null,
+        backdrop = Backdrop(
+            BackdropKind.TAFELBERGE,
+            listOf(
+                0xFFD9946A, 0xFFBF7A55, 0xFFE8B088, // Fels, Schatten, Schicht
+                0xFFE0A874, 0xFFF0C896              // Dünen, Dünenkamm
+            )
+        ),
         ground = Ground(
             sand = 0xFFE8C88A,
             sandShade = 0xFFD4AE6E,
@@ -744,6 +792,10 @@ object ScenePaint {
                 PropShape.FELS, 0.026f, 0f,
                 dark = 0xFF8A6A4A, body = 0xFFA88860, light = 0xFFC4A87C
             )
+        ),
+        life = listOf(
+            Life(LifeKind.GEIER, listOf(0xFF3E3238, 0xFF2A2226, 0xFFD9B8A0)),
+            Life(LifeKind.STEPPENLAEUFER, listOf(0xFFB08552, 0xFF8A6238, 0xFFD2AD74))
         )
     )
 
@@ -761,7 +813,14 @@ object ScenePaint {
         cloud = 0xFFDFF4FF,
         // Nebel: Seenebel mit Schaumkrone und Gischt.
         fog = FogPaint(0xFF1F7A96, 0xFF3FA0B8, 0xFF6CC4D2, 0xFFE8FAFC, 0xFF9ED8E0, speck = 0xFFFFFFFF, crown = true),
-        backdrop = null,
+        backdrop = Backdrop(
+            BackdropKind.HORIZONT,
+            listOf(
+                0xFF3A96CC, 0xFFBFE6F8,             // Meer, Glitzern
+                0xFF4E8C7C, 0xFF3F7668,             // Insel, Schatten
+                0xFFF4F4F0, 0xFFD9544A, 0xFFFFE27A  // Turm weiß, rot, Lampe
+            )
+        ),
         ground = Ground(
             sand = 0xFF2F86C8,
             sandShade = 0xFF24699E,
@@ -792,6 +851,11 @@ object ScenePaint {
                 dark = 0xFF1F5FA8, body = 0xFF2E86D8, light = 0xFF7FC8F0,
                 accents = listOf(0xFFFFFFFF, 0xFFDFF4FF)
             )
+        ),
+        life = listOf(
+            Life(LifeKind.MOEWEN, listOf(0xFFFFFFFF, 0xFF5A6470, 0xFFF2B33C)),
+            Life(LifeKind.SEGELBOOT, listOf(0xFFFFFFFF, 0xFFD2E0EA, 0xFFC0504A, 0xFF8A3A36, 0xFFFFE27A)),
+            Life(LifeKind.DELFIN, listOf(0xFF5E86A8, 0xFFB8D4E6, 0xFF46688A, 0xFFFFFFFF))
         )
     )
 
@@ -848,6 +912,9 @@ object ScenePaint {
                 stem = 0xFF5C4130, stemShade = 0xFF46311F,
                 accents = listOf(0xFFF4F8FC)
             )
+        ),
+        life = listOf(
+            Life(LifeKind.SCHNEEFALL, listOf(0xFFFFFFFF, 0xFFE4EEF6))
         )
     )
 
@@ -864,7 +931,14 @@ object ScenePaint {
         cloud = 0xFFE4E8F0,
         // Nebel: Smog mit Ruß.
         fog = FogPaint(0xFF7E828C, 0xFF969AA3, 0xFFADB0B8, 0xFFD6D8DC, 0xFFC4C6CC, speck = 0xFF5E616A),
-        backdrop = null,
+        backdrop = Backdrop(
+            BackdropKind.SKYLINE,
+            listOf(
+                0xFF8FA9C2, 0xFFA8BED2, // ferne Häuser, Fenster am Tag
+                0xFF6F86A2, 0xFF607592, // nahe Häuser, Schattenseite
+                0xFFFFE08A, 0xFFE8524A  // Fenster bei Nacht, Dachlicht
+            )
+        ),
         ground = Ground(
             sand = 0xFF4A4550,
             sandShade = 0xFF383340,
@@ -899,6 +973,16 @@ object ScenePaint {
                 dark = 0xFF3A3446, body = 0xFF4C4560, light = 0xFF766E8C,
                 accents = listOf(0xFFFFD847)
             )
+        ),
+        life = listOf(
+            Life(LifeKind.FLUGZEUG, listOf(0xFFF4F6FA, 0xFFC4CCD8, 0xFF4A90D9, 0xFFE8524A, 0xFF5CD6B0)),
+            Life(
+                LifeKind.AUTO,
+                listOf(
+                    0xFFE0524A, 0xFFA83A36, 0xFF4A86D0, 0xFF30609E, // rot, blau
+                    0xFFBFE3F2, 0xFF2A2630, 0xFFFFF2B0, 0xFFFF5A4A  // Scheibe, Reifen, Licht vorn, hinten
+                )
+            )
         )
     )
 
@@ -930,7 +1014,14 @@ object ScenePaint {
             )
         ),
         ground = null,
-        props = emptyList()
+        props = emptyList(),
+        life = listOf(
+            Life(
+                LifeKind.PLANET,
+                listOf(0xFFE8B07A, 0xFFC4885A, 0xFFF4D2A4, 0xFFD8C4A0, 0xFFA8946E, 0xFFB8BCC8)
+            ),
+            Life(LifeKind.SATELLIT, listOf(0xFFD0D4DC, 0xFF3A5A9A, 0xFF6A8AC8, 0xFFE8524A))
+        )
     )
 
     /**

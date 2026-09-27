@@ -67,27 +67,59 @@ fun DrawScope.drawPixelCircle(
 }
 
 /**
- * Blockige Retro-Wolke aus drei gestapelten Rechtecken. Die Farbe kommt
+ * Blockige Retro-Wolke aus gestapelten Rechtecken. Die Farbe kommt
  * seit den Kulissen von außen (ScenePaint) — der Standard ist die Wolke
  * der WIESE, damit Aufrufer ohne Kulisse unverändert bleiben.
+ *
+ * Zwei Formen ([shape]): 0 ist die Bestandswolke aus drei Stufen, 1 eine
+ * breitere mit zwei Buckeln. [u] ist die Einheit der Form (Standard zwei
+ * Zellen; eine kleine, ferne Wolke nimmt eine).
  *
  * Bevel-Look ohne Kontur: Licht oben links in Weiß, an der Unterkante
  * und rechts am Sockel ein kühler Schatten ([BevelPaint.cloudShade]).
  * Die Kanten sind eine [cell] breit, nicht die doppelte Wolkenzelle —
  * breiter wirkte die Wolke wie ein Kasten mit Rahmen.
  */
-fun DrawScope.drawCloud(x: Float, y: Float, cell: Float, color: Color = CloudColor) {
-    val u = cell * 2f
-    drawRect(color = color, topLeft = Offset(x, y + u * 2), size = Size(u * 14, u * 3))
-    drawRect(color = color, topLeft = Offset(x + u * 2, y), size = Size(u * 7, u * 2))
-    drawRect(color = color, topLeft = Offset(x + u * 4, y - u * 1.5f), size = Size(u * 4, u * 1.5f))
-    // Erst der Schatten unten und rechts am Sockel, dann das Licht auf den
-    // Oberkanten aller drei Stufen und links am Sockel.
+fun DrawScope.drawCloud(
+    x: Float,
+    y: Float,
+    cell: Float,
+    color: Color = CloudColor,
+    shape: Int = 0,
+    u: Float = cell * 2f,
+    light: Color = Color.White
+) {
+    val parts = CLOUD_PARTS[shape]
+    for (p in parts.indices step 4) {
+        drawRect(color = color, topLeft = Offset(x + parts[p] * u, y + parts[p + 1] * u), size = Size(parts[p + 2] * u, parts[p + 3] * u))
+    }
+    // Erst der Schatten unten und rechts am Sockel (dem ersten Teil),
+    // dann das Licht auf den Oberkanten und links am Sockel.
     val shade = Color(BevelPaint.cloudShade(color.toArgbLong()))
-    drawRect(color = shade, topLeft = Offset(x, y + u * 5 - cell), size = Size(u * 14, cell))
-    drawRect(color = shade, topLeft = Offset(x + u * 14 - cell, y + u * 2), size = Size(cell, u * 3))
-    drawRect(color = Color.White, topLeft = Offset(x, y + u * 2), size = Size(u * 2, cell))
-    drawRect(color = Color.White, topLeft = Offset(x + u * 2, y), size = Size(u * 2, cell))
-    drawRect(color = Color.White, topLeft = Offset(x + u * 4, y - u * 1.5f), size = Size(u * 4, cell))
-    drawRect(color = Color.White, topLeft = Offset(x, y + u * 2), size = Size(cell, u * 3 - cell))
+    val bx = x + parts[0] * u
+    val by = y + parts[1] * u
+    val bw = parts[2] * u
+    val bh = parts[3] * u
+    drawRect(color = shade, topLeft = Offset(bx, by + bh - cell), size = Size(bw, cell))
+    drawRect(color = shade, topLeft = Offset(bx + bw - cell, by), size = Size(cell, bh))
+    val lights = CLOUD_LIGHTS[shape]
+    for (p in lights.indices step 3) {
+        drawRect(color = light, topLeft = Offset(x + lights[p] * u, y + lights[p + 1] * u), size = Size(lights[p + 2] * u, cell))
+    }
+    drawRect(color = light, topLeft = Offset(bx, by), size = Size(cell, bh - cell))
 }
+
+/**
+ * Die Teile der Wolkenformen in Einheiten: je x, y, Breite, Höhe; das
+ * erste Teil ist der Sockel. Form 0 ist Pixel für Pixel die Bestandswolke.
+ */
+private val CLOUD_PARTS: Array<FloatArray> = arrayOf(
+    floatArrayOf(0f, 2f, 14f, 3f, 2f, 0f, 7f, 2f, 4f, -1.5f, 4f, 1.5f),
+    floatArrayOf(0f, 2f, 16f, 2.5f, 1.5f, 0.5f, 6f, 1.5f, 7f, -0.5f, 7f, 2.5f, 9f, -1.5f, 3f, 1f)
+)
+
+/** Lichtkanten der Formen: je x, y, Breite (Höhe ist eine Zelle). */
+private val CLOUD_LIGHTS: Array<FloatArray> = arrayOf(
+    floatArrayOf(0f, 2f, 2f, 2f, 0f, 2f, 4f, -1.5f, 4f),
+    floatArrayOf(0f, 2f, 1.5f, 1.5f, 0.5f, 5.5f, 7f, -0.5f, 2f, 9f, -1.5f, 3f)
+)

@@ -466,6 +466,10 @@ object ParityVectors {
                     arrayOf(b.kind.name) + b.colors.map { argb(it) }.toTypedArray()
                 } ?: arrayOf("-")
             )
+            // Bewohner (LifeKind): je Bewohner eine Zeile, Art und Farben.
+            scene.life.forEachIndexed { k, l ->
+                line("scene.life.${id.name}.$k", l.kind.name, *l.colors.map { argb(it) }.toTypedArray())
+            }
             // Nebel (Twist NEBEL): die fünf Töne bottom, low, mid, top,
             // inner, dann Partikelfarbe, Partikelform und Schaumkrone
             // (1 = ja). Die Form der Wolke steht nicht hier — sie ist in
