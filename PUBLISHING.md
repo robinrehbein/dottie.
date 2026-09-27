@@ -1,6 +1,6 @@
 # DOTTIE. — Weg in den Play Store
 
-Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.29.
+Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.37.
 
 ## Checkliste
 
@@ -259,31 +259,45 @@ mindestens 2, höchstens 8 Screenshots je Sprache; die sechs Motive
 passen also in einen Eintrag, und ihre Reihenfolge ist die Reihenfolge
 im Listing.
 
-## Automatischer Upload in den internen Test-Track (CI)
+## Automatische Play-Releases nach jedem Merge
 
-Der Workflow hat einen Job `play-internal`, der das gebaute AAB per
-Play Developer API in den **internen Test-Track** lädt (als Entwurf).
-Er läuft nur bei manuellem Start: **Actions → Build APK → Run
-workflow** (auf `main`). Einmalige Einrichtung:
+Der Workflow `.github/workflows/build-apk.yml` testet und baut bei jedem
+Push auf `main` ein signiertes Phone-AAB. Seine Workflow-Nummer ist der
+eindeutige `versionCode`; der sichtbare Versionsname erhält dieselbe
+Nummer als letzte Komponente. Nach erfolgreichem Build veröffentlicht
+`play-release` das AAB in `internal` und `alpha`. Vor dem Upload prüft
+der Job noch einmal `origin/main` und überspringt überholte Builds.
+Beide Tracks erhalten ein vollständiges Release, Alpha durchläuft
+anschließend gegebenenfalls Googles Prüfung. Die generischen DE/EN-
+Hinweise liegen unter `store/whatsnew/`; für konkrete Änderungen diese
+Dateien vor dem Merge aktualisieren.
 
-1. Play Console → **Einstellungen → API-Zugriff** → Google-Cloud-Projekt
-   verknüpfen und dort ein **Service-Konto** anlegen (die Console
-   verlinkt direkt in die Cloud Console).
-2. In der Cloud Console für das Service-Konto einen **JSON-Key**
-   erzeugen und herunterladen.
-3. Zurück in der Play Console dem Service-Konto Zugriff auf DOTTIE.
-   geben — die Berechtigung „Releases in Tests verwalten" reicht.
-4. Den **kompletten JSON-Inhalt** als GitHub-Secret
-   `PLAY_SERVICE_ACCOUNT_JSON` anlegen (Settings → Secrets and
-   variables → Actions). Die Key-Datei danach lokal löschen, nie
-   committen, nie in Chats einfügen.
+Der Publish-Job ist bis zur einmaligen Einrichtung deaktiviert:
 
-Zwei Dinge kann die API nicht, die bleiben Handarbeit in der Console:
-die App selbst anlegen (Name „Dottie.", Paket `de.robinrehbein.pointless`)
-und den allerersten Upload prüfen/freigeben. Außerdem gilt: Der Job
-verweigert den Start, solange der Keystore nicht rotiert ist
-(`PUNKT_KEYSTORE_BASE64` fehlt), und jeder Upload braucht einen noch
-nicht verwendeten `versionCode`.
+1. In einem Google-Cloud-Projekt die **Google Play Developer API**
+   aktivieren und ein eigenes Service-Konto für Dottie erstellen.
+   Eine Verknüpfung des Cloud-Projekts mit dem Play-Konto ist dafür
+   nicht mehr erforderlich.
+2. In der Play Console unter **Nutzer und Berechtigungen** das
+   Service-Konto nur für Dottie. einladen und ihm die Berechtigung
+   zur Veröffentlichung in Test-Tracks geben. Für `production` sind
+   später zusätzliche Rechte und Produktionszugriff nötig.
+3. Für das Service-Konto einen JSON-Key erzeugen. Den **gesamten**
+   JSON-Inhalt als GitHub-Actions-Secret `PLAY_SERVICE_ACCOUNT_JSON`
+   speichern. Die Key-Datei nie committen und nach dem Einrichten
+   sicher entfernen.
+4. GitHub-Actions-Variable `PLAY_PUBLISH_ENABLED` auf `true` setzen.
+   Optional `PLAY_TRACKS` auf eine kommagetrennte Liste setzen;
+   Standard ist `internal,alpha`. `beta` (offener Test) und
+   `production` erst nach Freigabe durch Google hinzufügen.
+5. Einmal auf `main` **Build APK → Run workflow** ausführen und
+   Play-Status, AAB-Version sowie Release-Hinweise prüfen. Danach
+   erfolgt derselbe Upload bei jedem Merge automatisch.
+
+Fehlt das Secret oder schlägt Googles Prüfung fehl, bricht der
+Publish-Job sichtbar ab. Der erfolgreiche Build und sein AAB bleiben
+als GitHub-Artefakte erhalten. Die Play-API kann fehlenden
+Produktionszugriff nicht umgehen.
 
 ## Play Games Services: Bestenlisten aktivieren
 
@@ -616,9 +630,24 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 45` / `versionName
-"2.36"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
-und committen.
+(`app/build.gradle.kts`). Lokal ist die nächste Version `46` / `"2.37"`
+(Uhr: `100011` / `"0.2.9-wear"`). Main-Builds aus GitHub Actions
+verwenden stattdessen die eindeutige Workflow-Nummer als `versionCode`
+und `2.37.<Workflow-Nummer>` als `versionName`. So bekommt jeder Merge
+einen neuen Play-Build. Bei einem späteren Wechsel der Hauptversion
+den Präfix `2.37` in `app/build.gradle.kts` anpassen.
+
+### Release-Notes 2.37 (Bomben und PULS)
+
+Deutsch:
+
+> ▪ Bomben behalten in allen Welten eine klare, feste Größe
+> ▪ Fallen atmen unter PULS nicht mehr
+
+English:
+
+> ▪ Bombs keep a clear, fixed size in every world
+> ▪ Traps no longer pulse during PULSE
 
 ### Release-Notes 2.36 (Tagesaufgaben und Serien-Joker)
 

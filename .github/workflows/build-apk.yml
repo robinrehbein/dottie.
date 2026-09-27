@@ -108,6 +108,14 @@ jobs:
           name: punkt-release-aab
           path: app/build/outputs/bundle/release/app-release.aab
 
+      - name: Upload release mapping
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: punkt-release-mapping
+          path: app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
+
       # bundleRelease im Root baut auch :wear mit — seit der Signing-Config
       # in wear/build.gradle.kts ist das Wear-AAB store-tauglich signiert
       # und wird in der Play Console als zweites Bundle (Formfaktor Wear OS)
@@ -133,17 +141,33 @@ jobs:
             wear/build/outputs/apk/debug/wear-debug.apk
             wear/build/outputs/bundle/release/wear-release.aab
 
-  # Läuft nur bei manuellem Start (Actions → Build APK → "Run workflow"
-  # auf main) und lädt das AAB in den internen Test-Track der Play
-  # Console. Braucht die Secrets PLAY_SERVICE_ACCOUNT_JSON und den
-  # rotierten Keystore (PUNKT_KEYSTORE_BASE64) — Anleitung in
-  # PUBLISHING.md. Jeder Upload braucht einen frischen versionCode.
-  play-internal:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+  # Nach jedem Merge auf main: genau den neuesten erfolgreichen Build in
+  # die freigeschalteten Play-Tracks stellen. Der Job bleibt aus, bis das
+  # app-spezifische Servicekonto eingerichtet und PLAY_PUBLISH_ENABLED=true
+  # gesetzt ist. PLAY_TRACKS kann nach Produktionsfreigabe erweitert werden.
+  play-release:
+    if: github.ref == 'refs/heads/main' && vars.PLAY_PUBLISH_ENABLED == 'true'
     needs: build
     runs-on: ubuntu-latest
+    concurrency:
+      group: dottie-play-release
+      cancel-in-progress: false
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Nur den neuesten main-Commit veröffentlichen
+        id: latest
+        run: |
+          git fetch --no-tags origin main
+          if [ "$GITHUB_SHA" = "$(git rev-parse origin/main)" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Ein neuerer main-Commit ist bereits vorhanden; dieser Build wird übersprungen."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Check Play-Upload-Voraussetzungen
+        if: steps.latest.outputs.current == 'true'
         env:
           PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           KEYSTORE: ${{ secrets.PUNKT_KEYSTORE_BASE64 }}
@@ -156,17 +180,32 @@ jobs:
             echo "::error::Keystore nicht rotiert (PUNKT_KEYSTORE_BASE64 fehlt) — der Test-Keystore darf nie in den Play Store."
             exit 1
           fi
+          if ! printf '%s' "$PLAY_JSON" | jq -e '.type == "service_account" and (.client_email | type == "string")' > /dev/null; then
+            echo "::error::PLAY_SERVICE_ACCOUNT_JSON ist kein gültiges Servicekonto-JSON."
+            exit 1
+          fi
 
       - name: Download AAB
+        if: steps.latest.outputs.current == 'true'
         uses: actions/download-artifact@v4
         with:
           name: punkt-release-aab
 
-      - name: Upload in den internen Test-Track
+      - name: Download mapping
+        if: steps.latest.outputs.current == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: punkt-release-mapping
+
+      - name: In Google Play veröffentlichen
+        if: steps.latest.outputs.current == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: de.robinrehbein.pointless
           releaseFiles: app-release.aab
-          track: internal
-          status: draft
+          tracks: ${{ vars.PLAY_TRACKS || 'internal,alpha' }}
+          status: completed
+          changesNotSentForReview: false
+          whatsNewDirectory: store/whatsnew
+          mappingFile: mapping.txt

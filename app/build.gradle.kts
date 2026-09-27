@@ -33,8 +33,14 @@ android {
         //
         // v2.19: Abgleich mit der Uhr ueber den Wearable Data Layer.
         // v2.20: Versteckte Diagnose-Zeile (langer Druck auf den Titel).
-        versionCode = 45
-        versionName = "2.36"
+        // Main-Builds aus GitHub Actions erhalten mit der Workflow-Nummer
+        // automatisch einen neuen Play-versionCode. Lokal bleibt die nächste
+        // Version fest, damit Debug-Builds auch ohne CI reproduzierbar sind.
+        val ciRunNumber = if (System.getenv("GITHUB_REF") == "refs/heads/main") {
+            System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        } else null
+        versionCode = ciRunNumber ?: 46
+        versionName = ciRunNumber?.let { "2.37.$it" } ?: "2.37"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
