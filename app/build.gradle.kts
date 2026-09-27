@@ -124,6 +124,12 @@ dependencies {
     implementation(libs.play.services.ads)
     implementation(libs.ump)
     implementation(libs.billing.ktx)
+    // Nutzungsstatistik (Firebase Analytics, ab v2.30) — inaktiv, bis in
+    // res/values/analytics.xml ein Projekt steht, und dann nur mit
+    // Einwilligung (siehe analytics/GameAnalytics.kt, PUBLISHING.md).
+    // Bewusst ohne google-services-Plugin: Das bräuchte die JSON-Datei
+    // schon zum Bauen, und ohne sie ließe sich die App nicht mehr bauen.
+    implementation(libs.firebase.analytics)
     // WorkManager für die tägliche Daily-Challenge-Erinnerung
     implementation(libs.androidx.work.runtime)
 

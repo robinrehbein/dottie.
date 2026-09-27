@@ -92,7 +92,16 @@ data class SyncState(
      * Fehlt das Feld, weil die Gegenseite eine ältere App fährt, bleibt
      * die Menge leer — verloren geht dadurch nichts.
      */
-    val ownedScenes: Set<String> = emptySet()
+    val ownedScenes: Set<String> = emptySet(),
+    /**
+     * Erledigte Tagesaufgaben insgesamt (ab v2.30). Aufgaben gibt es nur
+     * am Telefon; die Uhr bekommt die Zahl trotzdem, damit sie die drei
+     * Aufgaben-Skins als verdient erkennt und eine Wahl des Telefons
+     * übernehmen kann. Wie die Läufe keine echte Summe, sondern das
+     * Maximum — die einzige Wahl, die wiederholtes Zusammenführen stabil
+     * übersteht. Fehlt das Feld (ältere Gegenseite), bleibt es 0.
+     */
+    val missionsDone: Int = 0
 ) {
 
     /**
@@ -158,7 +167,8 @@ data class SyncState(
             sceneChangedAt = maxOf(sceneChangedAt, other.sceneChangedAt),
             sound = if (soundFromOther) other.sound else sound,
             soundChangedAt = maxOf(soundChangedAt, other.soundChangedAt),
-            ownedScenes = ownedScenes + other.ownedScenes
+            ownedScenes = ownedScenes + other.ownedScenes,
+            missionsDone = maxOf(missionsDone, other.missionsDone)
         )
     }
 

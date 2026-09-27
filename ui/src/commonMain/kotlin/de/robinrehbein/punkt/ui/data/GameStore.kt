@@ -4,6 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import de.robinrehbein.punkt.game.DailyChallenge
+import de.robinrehbein.punkt.game.DailyMissions
+import de.robinrehbein.punkt.game.MissionDay
+import de.robinrehbein.punkt.game.RunFacts
 import de.robinrehbein.punkt.game.CardFrame
 import de.robinrehbein.punkt.game.CardStyle
 import de.robinrehbein.punkt.game.SceneId
@@ -95,6 +98,43 @@ class GameStore(private val prefs: KeyValueStore) {
         get() = prefs.boolean(KEY_REMINDER, false)
         set(value) {
             prefs.edit { putBoolean(KEY_REMINDER, value) }
+        }
+
+    /**
+     * Wurde schon einmal gefragt, ob die Erinnerung an soll (ab v2.30)?
+     * Die Frage kommt genau einmal, nach dem ersten Tageslauf — ein Nein
+     * ist eine Antwort, kein Aufschub. Rein lokal, nicht im Abgleich.
+     */
+    var reminderAsked: Boolean
+        get() = prefs.boolean(KEY_REMINDER_ASKED, false)
+        set(value) {
+            prefs.edit { putBoolean(KEY_REMINDER_ASKED, value) }
+        }
+
+    /**
+     * Einwilligung in die anonyme Nutzungsstatistik (ab v2.30): null = nie
+     * gefragt, dann wird auch nichts gesendet. Die Plattform liest den
+     * Wert beim Start und schaltet die Erfassung entsprechend (siehe
+     * PlatformHooks.setAnalyticsConsent). Rein lokal, nicht im Abgleich:
+     * Eine Einwilligung gilt für das Gerät, auf dem sie gegeben wurde.
+     */
+    var analyticsConsent: Boolean?
+        get() = when (prefs.int(KEY_ANALYTICS_CONSENT, CONSENT_UNKNOWN)) {
+            CONSENT_YES -> true
+            CONSENT_NO -> false
+            else -> null
+        }
+        set(value) {
+            prefs.edit {
+                putInt(
+                    KEY_ANALYTICS_CONSENT,
+                    when (value) {
+                        true -> CONSENT_YES
+                        false -> CONSENT_NO
+                        null -> CONSENT_UNKNOWN
+                    }
+                )
+            }
         }
 
     /**
@@ -311,11 +351,55 @@ class GameStore(private val prefs: KeyValueStore) {
      * Anzeige auf dem Startscreen: War gestern der letzte Lauf, läuft die
      * Serie noch; liegt er länger zurück, ist sie faktisch gerissen.
      */
-    fun dailyStreakPreviewFor(epochDay: Long): Int = when {
-        dailyDay == epochDay -> dailyStreak
-        dailyDay == epochDay - 1 -> dailyStreak
-        else -> 0
+    fun dailyStreakPreviewFor(epochDay: Long): Int =
+        // Seit v2.30 lebt eine Serie auch über eine Lücke, die die Joker
+        // decken: Sie wird beim nächsten Tageslauf fortgeschrieben.
+        if (DailyChallenge.isStreakAlive(dailyDay, epochDay, streakJokers)) dailyStreak else 0
+
+    // ===== Serien-Joker (ab v2.30) =====
+
+    /**
+     * Joker auf Vorrat (0 bis [DailyChallenge.MAX_JOKERS]). Jeder deckt
+     * einen verpassten Tag der Daily-Serie. Verdient mit allen drei
+     * Tagesaufgaben eines Tages oder per freiwilligem Spot, wenn die Serie
+     * sonst reißen würde.
+     *
+     * Rein lokal und bewusst nicht im Abgleich: Die Uhr rechnet ihre Serie
+     * ohne Joker. Eine auf dem Telefon gerettete Serie übersteht den
+     * Abgleich trotzdem, weil der jüngere Tag gewinnt (SyncState.mergeDaily).
+     */
+    val streakJokers: Int
+        get() = prefs.int(KEY_STREAK_JOKERS, 0).coerceIn(0, DailyChallenge.MAX_JOKERS)
+
+    /** Einen Joker gutschreiben; false, wenn der Vorrat schon voll ist. */
+    fun addStreakJoker(): Boolean {
+        val now = streakJokers
+        if (now >= DailyChallenge.MAX_JOKERS) return false
+        prefs.edit { putInt(KEY_STREAK_JOKERS, now + 1) }
+        return true
     }
+
+    /**
+     * Kann ein Spot die Serie heute noch retten (siehe
+     * [DailyChallenge.isRescuable])? Nicht mehr, sobald das Angebot heute
+     * abgelehnt wurde — es soll einmal fragen, nicht bei jedem Blick.
+     */
+    fun streakRescuableFor(epochDay: Long): Boolean =
+        prefs.long(KEY_RESCUE_DECLINED_DAY, Long.MIN_VALUE) != epochDay &&
+            DailyChallenge.isRescuable(dailyDay, dailyStreak, epochDay, streakJokers)
+
+    /** Das Rettungs-Angebot für heute ausschlagen. */
+    fun declineStreakRescue(epochDay: Long) {
+        prefs.edit { putLong(KEY_RESCUE_DECLINED_DAY, epochDay) }
+    }
+
+    /**
+     * Wie viele Joker der letzte Tageslauf verbraucht hat — 0, wenn keiner
+     * nötig war. Nur für die Zeile „JOKER EINGESETZT" im Game-Over, deshalb
+     * nicht gespeichert.
+     */
+    var lastDailyJokersUsed: Int = 0
+        private set
 
     /**
      * Meldet einen beendeten Lauf; liefert true, wenn es ein neuer Rekord
@@ -394,13 +478,19 @@ class GameStore(private val prefs: KeyValueStore) {
      */
     fun submitDailyRun(epochDay: Long, score: Int): Boolean {
         val firstRunToday = dailyDay != epochDay
+        lastDailyJokersUsed = 0
         if (firstRunToday) {
-            val streak = DailyChallenge.nextStreak(
+            val jokers = streakJokers
+            val step = DailyChallenge.nextStreak(
                 lastPlayedEpochDay = dailyDay,
                 currentStreak = dailyStreak,
-                todayEpochDay = epochDay
+                todayEpochDay = epochDay,
+                jokers = jokers
             )
+            val streak = step.streak
+            lastDailyJokersUsed = step.jokersUsed
             prefs.edit {
+                if (step.jokersUsed > 0) putInt(KEY_STREAK_JOKERS, jokers - step.jokersUsed)
                 putInt(KEY_DAILY_STREAK, streak)
                 // Der Bestwert wandert bei jedem Schreiben der Serie mit:
                 // Fällt sie gleich hier auf 1 zurück, bleibt oben stehen,
@@ -431,6 +521,72 @@ class GameStore(private val prefs: KeyValueStore) {
             0
         }
 
+    // ===== Tagesaufgaben (ab v2.30) =====
+
+    /** Erledigte Tagesaufgaben insgesamt — die Achse der Aufgaben-Skins. */
+    val missionsDone: Int
+        get() = prefs.int(KEY_MISSIONS_DONE, 0)
+
+    /**
+     * Der Aufgaben-Stand eines Tages. Ist der gespeicherte Stand von einem
+     * anderen Tag, beginnt ein neuer — und seine Stufe wird sofort
+     * festgeschrieben: Wer mittags den Rekord hebt, behält seine drei
+     * Aufgaben bis Mitternacht (siehe DailyMissions).
+     */
+    fun missionDayFor(epochDay: Long): MissionDay {
+        if (prefs.long(KEY_MISSION_DAY, Long.MIN_VALUE) == epochDay) {
+            val progress = decodeProgress(prefs.string(KEY_MISSION_PROGRESS))
+            return MissionDay(epochDay, prefs.int(KEY_MISSION_TIER, 0), progress)
+        }
+        val fresh = DailyMissions.emptyDay(epochDay, DailyMissions.tierFor(bestScore))
+        writeMissionDay(fresh)
+        return fresh
+    }
+
+    /** Was ein Lauf an den Aufgaben bewegt hat. */
+    data class MissionUpdate(
+        val day: MissionDay,
+        /** Indizes der Aufgaben, die dieser Lauf erledigt hat. */
+        val completed: List<Int>,
+        /** Hat dieser Lauf die letzte der drei erledigt — und gab es dafür einen Joker? */
+        val allDoneNow: Boolean,
+        val jokerEarned: Boolean
+    )
+
+    /**
+     * Schreibt einen beendeten Lauf in die Aufgaben seines Tages. Der Tag
+     * ist der, an dem der Lauf startete — wie bei allen anderen Zählern.
+     *
+     * Wer alle drei erledigt, bekommt einen Serien-Joker (solange der
+     * Vorrat nicht voll ist): Die Aufgaben sind der Weg, die Daily-Serie
+     * gegen einen verpassten Tag abzusichern, ohne Werbung anzusehen.
+     */
+    fun submitMissionRun(epochDay: Long, facts: RunFacts): MissionUpdate {
+        val before = missionDayFor(epochDay)
+        val after = DailyMissions.apply(before, facts)
+        val completed = before.missions.indices.filter { !before.isDone(it) && after.isDone(it) }
+        val allDoneNow = !before.allDone && after.allDone
+        writeMissionDay(after)
+        if (completed.isNotEmpty()) {
+            prefs.edit { putInt(KEY_MISSIONS_DONE, missionsDone + completed.size) }
+        }
+        val joker = allDoneNow && addStreakJoker()
+        return MissionUpdate(after, completed, allDoneNow, joker)
+    }
+
+    private fun writeMissionDay(day: MissionDay) {
+        prefs.edit {
+            putLong(KEY_MISSION_DAY, day.epochDay)
+            putInt(KEY_MISSION_TIER, day.tier)
+            putString(KEY_MISSION_PROGRESS, day.progress.joinToString(","))
+        }
+    }
+
+    private fun decodeProgress(raw: String?): List<Int> {
+        val values = raw?.split(',')?.mapNotNull { it.trim().toIntOrNull() } ?: emptyList()
+        return List(DailyMissions.COUNT) { values.getOrElse(it) { 0 }.coerceAtLeast(0) }
+    }
+
     /** Aktueller Stand gebündelt, für Skin-Freischaltungen. */
     fun stats(): SkinStats = SkinStats(
         bestScore = bestScore,
@@ -447,6 +603,7 @@ class GameStore(private val prefs: KeyValueStore) {
         // == AP-13 welten ==
         ownedScenes = rememberOwnedScenes(),
         // == /AP-13 ==
+        missionsDone = missionsDone,
     )
 
     // == AP-13 welten ==
@@ -599,6 +756,9 @@ class GameStore(private val prefs: KeyValueStore) {
             // verliert auch die Uhr oder ein zweites Gerät keine Welt.
             ownedScenes = rememberOwnedScenes(),
             // == /AP-13 ==
+            // Die Uhr erledigt keine Aufgaben, bekommt die Zahl aber, damit
+            // sie die Aufgaben-Skins als verdient erkennt.
+            missionsDone = missionsDone,
         )
     }
 
@@ -639,6 +799,7 @@ class GameStore(private val prefs: KeyValueStore) {
         if (state.seasonEarned != before.seasonEarned) {
             putInt(KEY_SEASON_EARNED, before.seasonEarned or state.seasonEarned)
         }
+        if (state.missionsDone > before.missionsDone) putInt(KEY_MISSIONS_DONE, state.missionsDone)
         if (state.dailyDay != before.dailyDay ||
             state.dailyBest != before.dailyBest ||
             state.dailyStreak != before.dailyStreak
@@ -734,6 +895,7 @@ class GameStore(private val prefs: KeyValueStore) {
         // == AP-13 welten ==
         ownedScenes = before.ownedScenes + state.ownedScenes,
         // == /AP-13 ==
+        missionsDone = maxOf(state.missionsDone, before.missionsDone),
     )
 
     // == AP-15 sammlung ==
@@ -831,5 +993,24 @@ class GameStore(private val prefs: KeyValueStore) {
         // Ob „BOMBE = NIE TIPPEN“ schon einmal kam. Lokal, nicht im Sync.
         const val KEY_BOMB_LESSON_SEEN = "bomb_lesson_seen"
         // == /AP-11 ==
+
+        // ===== ab v2.30: Aufgaben, Joker, Erinnerungs-Frage, Statistik =====
+        // Erledigte Aufgaben insgesamt — im Abgleich (Aufgaben-Skins).
+        const val KEY_MISSIONS_DONE = "missions_done"
+        // Der Aufgaben-Stand des laufenden Tages: Tag, Stufe, "a,b,c".
+        const val KEY_MISSION_DAY = "mission_day"
+        const val KEY_MISSION_TIER = "mission_tier"
+        const val KEY_MISSION_PROGRESS = "mission_progress"
+        // Serien-Joker auf Vorrat. Lokal, nicht im Abgleich.
+        const val KEY_STREAK_JOKERS = "streak_jokers"
+        // Tag, an dem das Rettungs-Angebot ausgeschlagen wurde.
+        const val KEY_RESCUE_DECLINED_DAY = "rescue_declined_day"
+        // Wurde nach der Erinnerung gefragt? Lokal.
+        const val KEY_REMINDER_ASKED = "reminder_asked"
+        // Einwilligung in die Nutzungsstatistik: 0 unbekannt, 1 ja, 2 nein.
+        const val KEY_ANALYTICS_CONSENT = "analytics_consent"
+        const val CONSENT_UNKNOWN = 0
+        const val CONSENT_YES = 1
+        const val CONSENT_NO = 2
     }
 }

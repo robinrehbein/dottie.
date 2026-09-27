@@ -10,4 +10,6 @@
     <string name="notif_text">Die heutige Abfolge ist bereit. Ein Tap entscheidet.</string>
     <string name="notif_text_streak_one">Serie: 1 Tag — nicht reißen lassen!</string>
     <string name="notif_text_streak">Serie: %1$d Tage — nicht reißen lassen!</string>
+    <string name="notif_risk_title">Deine Serie ist in Gefahr!</string>
+    <string name="notif_risk_text">%1$d Tage am Stück — die Daily ist heute noch offen.</string>
 </resources>

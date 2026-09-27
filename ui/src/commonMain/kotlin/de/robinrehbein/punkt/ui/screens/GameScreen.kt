@@ -34,6 +34,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.CardStyle
 import de.robinrehbein.punkt.game.DailyChallenge
+import de.robinrehbein.punkt.game.DailyMissions
+import de.robinrehbein.punkt.game.Mission
+import de.robinrehbein.punkt.game.RunFacts
 import de.robinrehbein.punkt.game.GameEventChainNext
 import de.robinrehbein.punkt.game.GameEventDied
 import de.robinrehbein.punkt.game.GameEventHit
@@ -66,6 +69,8 @@ import de.robinrehbein.punkt.ui.platform.GameSounds
 import de.robinrehbein.punkt.ui.platform.PlatformBackHandler
 import de.robinrehbein.punkt.ui.platform.PlatformHooks
 import de.robinrehbein.punkt.ui.platform.ShareRequest
+import de.robinrehbein.punkt.ui.platform.AnalyticsEvent
+import de.robinrehbein.punkt.ui.platform.Telemetry
 import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.banner_chain
 import de.robinrehbein.punkt.ui.resources.banner_record
@@ -82,6 +87,22 @@ import de.robinrehbein.punkt.ui.resources.ready_hint
 import de.robinrehbein.punkt.ui.resources.share_text
 import de.robinrehbein.punkt.ui.resources.share_text_daily
 import de.robinrehbein.punkt.ui.resources.start_not_yet
+import de.robinrehbein.punkt.ui.resources.analytics_ask_fine
+import de.robinrehbein.punkt.ui.resources.analytics_ask_no
+import de.robinrehbein.punkt.ui.resources.analytics_ask_text
+import de.robinrehbein.punkt.ui.resources.analytics_ask_title
+import de.robinrehbein.punkt.ui.resources.analytics_ask_yes
+import de.robinrehbein.punkt.ui.resources.hud_record_in
+import de.robinrehbein.punkt.ui.resources.reminder_ask_no
+import de.robinrehbein.punkt.ui.resources.reminder_ask_text
+import de.robinrehbein.punkt.ui.resources.reminder_ask_title
+import de.robinrehbein.punkt.ui.resources.reminder_ask_yes
+import de.robinrehbein.punkt.ui.resources.rescue_banner
+import de.robinrehbein.punkt.ui.resources.rescue_fine
+import de.robinrehbein.punkt.ui.resources.rescue_no
+import de.robinrehbein.punkt.ui.resources.rescue_text
+import de.robinrehbein.punkt.ui.resources.rescue_title
+import de.robinrehbein.punkt.ui.resources.rescue_watch
 import de.robinrehbein.punkt.ui.share.ScoreCardContent
 import de.robinrehbein.punkt.ui.share.renderScoreCard
 import de.robinrehbein.punkt.ui.text.sceneTitle
@@ -133,6 +154,10 @@ private class RunState {
 
     /** Höchste Perfekt-Serie dieses Laufs, für die Bestleistung. */
     var maxPerfect = 0
+
+    /** PERFEKT-Treffer und BLIND!-Treffer dieses Laufs, für die Tagesaufgaben. */
+    var perfectHits = 0
+    var blindHits = 0
 
     /**
      * Die Twists, die dieser Lauf freigeschaltet hat — in der Reihenfolge,
@@ -358,6 +383,32 @@ private fun GameScreenContent(
     }
     var reminderOn by remember { mutableStateOf(store.reminderEnabled) }
 
+    // ===== Wiederkehr (ab v2.30) =====
+    // Nutzungsstatistik: gesendet wird nur mit Einwilligung, und nur, wenn
+    // die Plattform überhaupt messen kann. Die Plattform prüft selbst noch
+    // einmal — doppelt hält hier besser als einmal zu wenig.
+    var analyticsOn by remember { mutableStateOf(store.analyticsConsent == true) }
+    fun track(event: AnalyticsEvent) {
+        if (hooks.analyticsSupported && store.analyticsConsent == true) hooks.onAnalytics(event)
+    }
+    // Die Tagesaufgaben des heutigen Tages und was der letzte Lauf daran
+    // bewegt hat (für die Zeilen im Game-Over).
+    var missionDay by remember { mutableStateOf(store.missionDayFor(deviceCalendar().epochDay)) }
+    var missionsDoneThisRun by remember { mutableStateOf(emptyList<Mission>()) }
+    var missionsAllDoneThisRun by remember { mutableStateOf(false) }
+    var jokerEarnedThisRun by remember { mutableStateOf(false) }
+    var jokerUsedThisRun by remember { mutableStateOf(false) }
+    var jokers by remember { mutableIntStateOf(store.streakJokers) }
+    // Kann ein Spot die Daily-Serie heute noch retten? Nachgezogen bei
+    // jedem Eintritt in den Startbildschirm.
+    var rescuable by remember { mutableStateOf(false) }
+    // Die offene Frage-Karte und die in dieser Sitzung weggeklickten.
+    var prompt by remember { mutableStateOf<Prompt?>(null) }
+    var dismissedPrompts by remember { mutableStateOf(emptySet<Prompt>()) }
+    // „Knapp daneben": wie weit der tödliche Tap danebenlag.
+    var deathMissSeconds by remember { mutableStateOf(0f) }
+    var deathMissNear by remember { mutableStateOf(false) }
+
     /**
      * Frischt den Tagespass auf und holt eine nicht mehr gedeckte Auswahl
      * zurück auf KLASSIK. Nötig, weil der Pass um Mitternacht verfällt und
@@ -397,6 +448,42 @@ private fun GameScreenContent(
     }
 
     LaunchedEffect(Unit) { refreshSkinPass(deviceCalendar().epochDay) }
+
+    // Über eine Erinnerung geöffnet? Das zählt für die Messung, ob die
+    // Erinnerung überhaupt jemanden zurückholt.
+    LaunchedEffect(Unit) {
+        hooks.openedFromReminder?.let { track(Telemetry.reminderOpened(it)) }
+    }
+
+    // Beim Eintritt in den Startbildschirm: Aufgaben des Tages (Mitternacht
+    // kann dazwischen liegen), Joker, Rettungs-Angebot und höchstens eine
+    // Frage. Nach einem Abgleich ebenso — die Uhr kann die Serie verändert
+    // haben.
+    LaunchedEffect(phase, store.syncRevision) {
+        if (phase != GamePhase.READY) return@LaunchedEffect
+        val today = deviceCalendar().epochDay
+        missionDay = store.missionDayFor(today)
+        jokers = store.streakJokers
+        dailyStreak = store.dailyStreakPreviewFor(today)
+        val wasRescuable = rescuable
+        rescuable = hooks.adsEnabled && store.streakRescuableFor(today)
+        if (rescuable) {
+            hooks.onRewardedNeeded()
+            if (!wasRescuable) track(Telemetry.streakRescue("shown", store.dailyStreak))
+        }
+        if (prompt == null && !showDailyIntro) {
+            prompt = nextPrompt(
+                reminderSupported = hooks.reminderSupported,
+                reminderEnabled = store.reminderEnabled,
+                reminderAsked = store.reminderAsked,
+                dailyPlayedEver = store.dailyDay > 0L,
+                analyticsSupported = hooks.analyticsSupported,
+                analyticsAnswered = store.analyticsConsent != null,
+                runCount = store.runCount,
+                dismissed = dismissedPrompts
+            )
+        }
+    }
 
     // Ein Abgleich mit der Uhr schreibt am Bildschirm vorbei in den
     // Speicher — die Zustände oben lesen ihn nur beim Erzeugen. Also
@@ -526,6 +613,12 @@ private fun GameScreenContent(
                             bannerState.timeLeft = 0f
                             bannerText = ""
                             runState.maxPerfect = 0
+                            runState.perfectHits = 0
+                            runState.blindHits = 0
+                            missionsDoneThisRun = emptyList()
+                            missionsAllDoneThisRun = false
+                            jokerEarnedThisRun = false
+                            jokerUsedThisRun = false
                             runState.unlockedTwists.clear()
                             skinUnlockedThisRun = false
                             newMedalThisRun = false
@@ -552,12 +645,14 @@ private fun GameScreenContent(
                         is GameEventHit -> {
                             feedback.score()
                             sounds.hit(game.score)
+                            if (game.lastHitBlind) runState.blindHits++
                         }
                         is GameEventPerfectHit -> {
                             feedback.perfect()
                             sounds.perfect(game.perfectStreak)
                             perfectPoints = game.lastHitPoints
                             runState.maxPerfect = max(runState.maxPerfect, game.perfectStreak)
+                            runState.perfectHits++
                         }
                         is GameEventChainNext -> {
                             showBanner(bannerChainText, 1.2f, priority = 1)
@@ -591,6 +686,8 @@ private fun GameScreenContent(
                             bombLesson = deathCause == de.robinrehbein.punkt.game.DeathCause.TRAP &&
                                 store.takeBombLesson()
                             // == /AP-11 ==
+                            deathMissSeconds = game.lastMissSeconds
+                            deathMissNear = game.lastMissWasNear
                             val previousBest = store.bestScore
                             newMedalThisRun = MedalPaint.isUpgrade(game.score, previousBest)
                             // Gezählt wird, was VERDIENT ist: Saison zählt
@@ -605,14 +702,71 @@ private fun GameScreenContent(
                             )
                             store.submitPerfectStreak(runState.maxPerfect)
                             if (dailyMode) {
+                                val firstDailyToday = store.dailyDay != runState.epochDay
                                 store.submitDailyRun(runState.epochDay, game.score)
                                 dailyBestToday = store.dailyBestFor(runState.epochDay)
                                 dailyStreak = store.dailyStreak
+                                jokerUsedThisRun = store.lastDailyJokersUsed > 0
                                 hooks.onSubmitDaily(game.score)
+                                if (firstDailyToday) {
+                                    track(
+                                        Telemetry.dailyEnd(
+                                            game.score,
+                                            store.dailyStreak,
+                                            store.lastDailyJokersUsed
+                                        )
+                                    )
+                                }
                             }
                             hooks.onSubmitBest(game.score)
+                            // Tagesaufgaben vor der Skin-Prüfung: Die letzte
+                            // Aufgabe kann STERNCHEN, ORDEN oder POKAL
+                            // freischalten, und das soll dieses Game-Over feiern.
+                            val missions = store.submitMissionRun(
+                                runState.epochDay,
+                                RunFacts(
+                                    score = game.score,
+                                    perfectHits = runState.perfectHits,
+                                    maxPerfectStreak = runState.maxPerfect,
+                                    blindHits = runState.blindHits,
+                                    daily = dailyMode
+                                )
+                            )
+                            missionDay = missions.day
+                            missionsDoneThisRun = missions.completed.map { missions.day.missions[it] }
+                            missionsAllDoneThisRun = missions.allDoneNow
+                            jokerEarnedThisRun = missions.jokerEarned
+                            jokers = store.streakJokers
+                            missions.completed.forEach { i ->
+                                track(
+                                    Telemetry.missionDone(
+                                        missions.day.missions[i],
+                                        missions.day.tier,
+                                        missions.allDoneNow
+                                    )
+                                )
+                            }
+                            if (missions.jokerEarned) {
+                                track(Telemetry.jokerEarned("missions", store.streakJokers))
+                            }
                             skinUnlockedThisRun =
                                 SkinPaint.earnedCount(store.stats()) > earnedBefore
+                            track(
+                                Telemetry.runEnd(
+                                    score = game.score,
+                                    hits = game.hits,
+                                    cause = game.lastDeathCause,
+                                    missSeconds = game.lastMissSeconds,
+                                    daily = dailyMode,
+                                    runNumber = store.runCount,
+                                    bestBefore = previousBest,
+                                    newRecord = isNewRecord,
+                                    maxPerfectStreak = runState.maxPerfect,
+                                    activeTwists = game.activeTwists.toSet(),
+                                    skin = skin.name
+                                )
+                            )
+                            if (skinUnlockedThisRun) track(Telemetry.skinUnlocked(store.runCount))
                             // Erst zählen, dann zielen: Der Balken im
                             // Game-Over zeigt den Stand NACH diesem Lauf.
                             nextGoal = Progress.nextGoal(
@@ -760,8 +914,9 @@ private fun GameScreenContent(
         }
         // == AP-11 todesursache ==
         // Die Ursache am Ring, solange der Vogel stürzt (Freeze und Fall).
+        val marginText = deathMarginText(deathCause, deathMissSeconds, deathMissNear)
         if (phase == GamePhase.DYING) {
-            DeathCauseLabel(cause = deathCause, bombLesson = bombLesson)
+            DeathCauseLabel(cause = deathCause, bombLesson = bombLesson, margin = marginText)
         }
         // == /AP-11 ==
 
@@ -787,8 +942,12 @@ private fun GameScreenContent(
                 },
                 dailyArmed = dailyMode,
                 goalHidden = trainingWheels,
+                // Während der Stützräder kein Abzeichen: Wer gerade lernt,
+                // wo er tippen muss, braucht noch keine Aufgaben.
+                missionsOpen = if (trainingWheels) 0 else DailyMissions.COUNT - missionDay.doneCount,
                 // == /AP-22 ==
                 onSkins = {
+                    track(Telemetry.openScreen("collection"))
                     // Vor dem Öffnen nachziehen: Der Startscreen kann seit
                     // dem letzten Lauf einen Tageswechsel gesehen haben.
                     refreshSkinPass(deviceCalendar().epochDay)
@@ -805,6 +964,9 @@ private fun GameScreenContent(
                     // dem letzten Lauf einen Monatswechsel gesehen haben,
                     // und daran hängt, ob ein Saison-Ziel gilt.
                     val now = deviceCalendar()
+                    track(Telemetry.openScreen("stats"))
+                    missionDay = store.missionDayFor(now.epochDay)
+                    jokers = store.streakJokers
                     statsSnapshot = store.stats()
                     statsGoals = Progress.nextGoals(
                         stats = statsSnapshot,
@@ -813,11 +975,25 @@ private fun GameScreenContent(
                     )
                     showStats = true
                 },
-                onSettings = { showSettings = true },
+                onSettings = {
+                    track(Telemetry.openScreen("settings"))
+                    showSettings = true
+                },
                 diagnostics = if (showDiagnostics) hooks.diagnostics else null,
                 onToggleDiagnostics = { showDiagnostics = !showDiagnostics },
                 collectionHasNew = collectionHasNew,
                 banner = {
+                    // Die Daily-Serie reißt heute, ein Spot könnte sie
+                    // retten: Das Angebot steht über allem anderen, weil es
+                    // nur heute gilt.
+                    if (rescuable) {
+                        AttentionBanner(
+                            stringResource(Res.string.rescue_banner, store.dailyStreak)
+                        ) {
+                            track(Telemetry.streakRescue("opened", store.dailyStreak))
+                            prompt = Prompt.RESCUE
+                        }
+                    }
                     // == AP-15 sammlung ==
                     // Neue Welten bekommen ein Banner unter dem Rekord:
                     // Eine Welt ändert das ganze Bild, sie soll nicht nur
@@ -838,7 +1014,13 @@ private fun GameScreenContent(
                 ScoreHud(
                     score = score,
                     daily = dailyMode,
-                    banner = if (phase == GamePhase.RUNNING) bannerText else ""
+                    banner = if (phase == GamePhase.RUNNING) bannerText else "",
+                    // Die letzten Treffer vor dem Rekord bekommen einen
+                    // Zähler. Erst ab Rekord 10: Darunter ist jeder zweite
+                    // Lauf ein Rekord, und die Zeile wäre Dauerrauschen.
+                    recordHint = recordGap(bestScore, score)?.let {
+                        if (phase == GamePhase.RUNNING) stringResource(Res.string.hud_record_in, it) else ""
+                    } ?: ""
                 )
             GamePhase.OVER -> {
                 // Die Texte der geteilten Karte werden hier gelesen und
@@ -889,6 +1071,7 @@ private fun GameScreenContent(
                             // enthaelt. Wer sich die Rahmenstufe im letzten
                             // Lauf verdient hat, teilt sie also auch.
                             val stand = store.stats()
+                            track(Telemetry.share(score, dailyMode))
                             val (stunde, monat) = deviceHourAndMonth()
                             teilen(
                                 ShareRequest(
@@ -921,10 +1104,18 @@ private fun GameScreenContent(
                     onMenu = { backToMenu() },
                     cause = {
                         // == AP-11 todesursache ==
-                        DeathCauseSmall(deathCause)
+                        DeathCauseSmall(deathCause, margin = marginText)
                         // == /AP-11 ==
                     },
-                    barLocked = overBarLocked
+                    barLocked = overBarLocked,
+                    extras = {
+                        GameOverRewardLines(
+                            missionsDone = missionsDoneThisRun,
+                            allDone = missionsAllDoneThisRun,
+                            jokerEarned = jokerEarnedThisRun,
+                            jokerUsed = jokerUsedThisRun
+                        )
+                    }
                 )
             }
         }
@@ -938,6 +1129,89 @@ private fun GameScreenContent(
                 },
                 onClose = { showDailyIntro = false }
             )
+        }
+
+        // Höchstens eine Frage-Karte, nur im Startbildschirm (ab v2.30).
+        val offen = prompt
+        if (offen != null && phase == GamePhase.READY && !showDailyIntro) {
+            fun schliessen() {
+                if (offen != Prompt.RESCUE) dismissedPrompts = dismissedPrompts + offen
+                prompt = null
+            }
+            when (offen) {
+                Prompt.REMINDER -> PromptCard(
+                    title = stringResource(Res.string.reminder_ask_title),
+                    text = stringResource(Res.string.reminder_ask_text),
+                    fine = null,
+                    yes = stringResource(Res.string.reminder_ask_yes),
+                    onYes = {
+                        store.reminderAsked = true
+                        prompt = null
+                        track(Telemetry.reminder("prompt_yes"))
+                        hooks.setReminder(true) { aktiv ->
+                            reminderOn = aktiv
+                            store.reminderEnabled = aktiv
+                        }
+                    },
+                    no = stringResource(Res.string.reminder_ask_no),
+                    onNo = {
+                        store.reminderAsked = true
+                        prompt = null
+                        track(Telemetry.reminder("prompt_no"))
+                    },
+                    onClose = { schliessen() }
+                )
+                Prompt.ANALYTICS -> PromptCard(
+                    title = stringResource(Res.string.analytics_ask_title),
+                    text = stringResource(Res.string.analytics_ask_text),
+                    fine = stringResource(Res.string.analytics_ask_fine),
+                    yes = stringResource(Res.string.analytics_ask_yes),
+                    onYes = {
+                        store.analyticsConsent = true
+                        analyticsOn = true
+                        hooks.setAnalyticsConsent(true)
+                        prompt = null
+                    },
+                    no = stringResource(Res.string.analytics_ask_no),
+                    onNo = {
+                        store.analyticsConsent = false
+                        analyticsOn = false
+                        hooks.setAnalyticsConsent(false)
+                        prompt = null
+                    },
+                    onClose = { schliessen() }
+                )
+                Prompt.RESCUE -> PromptCard(
+                    title = stringResource(Res.string.rescue_title),
+                    text = stringResource(Res.string.rescue_text, store.dailyStreak),
+                    fine = stringResource(Res.string.rescue_fine),
+                    yes = stringResource(Res.string.rescue_watch),
+                    onYes = {
+                        prompt = null
+                        val serie = store.dailyStreak
+                        // Erst der bestätigte Spot, dann der Joker — wie
+                        // beim Tagespass. Bei Abbruch bleibt das Banner.
+                        hooks.onWatchAdForJoker {
+                            if (store.addStreakJoker()) {
+                                track(Telemetry.jokerEarned("ad", store.streakJokers))
+                            }
+                            track(Telemetry.streakRescue("watched", serie))
+                            val heute = deviceCalendar().epochDay
+                            jokers = store.streakJokers
+                            dailyStreak = store.dailyStreakPreviewFor(heute)
+                            rescuable = hooks.adsEnabled && store.streakRescuableFor(heute)
+                        }
+                    },
+                    no = stringResource(Res.string.rescue_no),
+                    onNo = {
+                        store.declineStreakRescue(deviceCalendar().epochDay)
+                        track(Telemetry.streakRescue("declined", store.dailyStreak))
+                        rescuable = false
+                        prompt = null
+                    },
+                    onClose = { schliessen() }
+                )
+            }
         }
         // == /AP-22 ==
 
@@ -956,11 +1230,21 @@ private fun GameScreenContent(
                     hooks.setReminder(!reminderOn) { aktiv ->
                         reminderOn = aktiv
                         store.reminderEnabled = aktiv
+                        track(Telemetry.reminder(if (aktiv) "on" else "off"))
                     }
                 },
                 onHelp = {
+                    track(Telemetry.openScreen("help"))
                     showSettings = false
                     showHelp = true
+                },
+                analyticsSupported = hooks.analyticsSupported,
+                analyticsOn = analyticsOn,
+                onToggleAnalytics = {
+                    val an = !analyticsOn
+                    analyticsOn = an
+                    store.analyticsConsent = an
+                    hooks.setAnalyticsConsent(an)
                 },
                 onClose = { showSettings = false },
                 // Kein Preis von Google = kein Angebot. Ein Knopf, der
@@ -987,7 +1271,8 @@ private fun GameScreenContent(
             // == AP-22 start ==
             showDailyIntro = showDailyIntro,
             // == /AP-22 ==
-            phase = phase
+            phase = phase,
+            showPrompt = prompt != null && phase == GamePhase.READY
         )
         PlatformBackHandler(enabled = zurueck != BackAction.NOT_HANDLED) {
             when (zurueck) {
@@ -999,6 +1284,12 @@ private fun GameScreenContent(
                 // == AP-22 start ==
                 BackAction.CLOSE_DAILY_INTRO -> showDailyIntro = false
                 // == /AP-22 ==
+                BackAction.CLOSE_PROMPT -> prompt?.let { offen ->
+                    // Ohne Antwort geschlossen: in dieser Sitzung nicht
+                    // noch einmal. Die Rettung bleibt als Banner stehen.
+                    if (offen != Prompt.RESCUE) dismissedPrompts = dismissedPrompts + offen
+                    prompt = null
+                }
                 BackAction.CONSUME,
                 BackAction.NOT_HANDLED -> Unit
             }
@@ -1009,7 +1300,15 @@ private fun GameScreenContent(
             StatsOverlay(
                 stats = statsSnapshot,
                 goals = statsGoals,
-                onClose = { showStats = false }
+                onClose = { showStats = false },
+                // Die Rangliste war bisher gebaut, aber nie angeschlossen:
+                // Der Aufruf reichte die beiden Werte nicht durch.
+                leaderboardAvailable = hooks.leaderboardAvailable,
+                onLeaderboard = hooks.onShowLeaderboard,
+                // Vor dem Ende der Stützräder keine Aufgaben — dieselbe
+                // Regel wie beim Abzeichen am Taster.
+                missionDay = if (trainingWheels) null else missionDay,
+                jokers = jokers
             )
         }
 

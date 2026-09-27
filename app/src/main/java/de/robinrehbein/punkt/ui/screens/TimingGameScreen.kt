@@ -16,6 +16,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import de.robinrehbein.punkt.BuildConfig
 import de.robinrehbein.punkt.ads.AdsManager
+import de.robinrehbein.punkt.analytics.GameAnalytics
 import de.robinrehbein.punkt.billing.BillingManager
 import de.robinrehbein.punkt.game.GameAudio
 import de.robinrehbein.punkt.game.GameHaptics
@@ -43,7 +44,7 @@ import org.jetbrains.compose.resources.stringResource
  * `LocalLifecycleOwner` kennt. Genau das war der Sinn der Uebung.
  */
 @Composable
-fun TimingGameScreen(modifier: Modifier = Modifier) {
+fun TimingGameScreen(modifier: Modifier = Modifier, openedFromReminder: String? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
     val store = remember { GameStore(AndroidKeyValueStore(context)) }
@@ -66,6 +67,10 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             onPatronOwned = {}
         )
     }
+    // Nutzungsstatistik: ohne Firebase-Projekt komplett inaktiv, mit
+    // Projekt erst nach der Einwilligung im Spiel (siehe GameAnalytics).
+    val analytics = remember { GameAnalytics(context, store) }
+    LaunchedEffect(Unit) { analytics.applyStoredConsent() }
     val statsSync = remember {
         StatsSync(
             context = context,
@@ -131,6 +136,12 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             onWatchAdFor = { _, onEarned ->
                 activity?.let { ads.showRewarded(it) { onEarned() } }
             },
+            // Derselbe belohnte Spot wie beim Tagespass, nur eine andere
+            // Belohnung: ein Serien-Joker statt eines geliehenen Skins.
+            onWatchAdForJoker = { onEarned ->
+                activity?.let { ads.showRewarded(it) { onEarned() } }
+            },
+            onRewardedNeeded = { ads.ensureRewarded() },
             privacyVisible = ads.enabled && ads.privacyOptionsRequired,
             onPrivacy = { activity?.let { ads.showPrivacyOptions(it) } },
             removeAdsPrice = if (ads.enabled) billing.priceLabel else null,
@@ -162,12 +173,17 @@ fun TimingGameScreen(modifier: Modifier = Modifier) {
             // Gezeichnet ist die Karte da schon (in :ui, fuer beide
             // Plattformen) — hier bleibt nur, was wirklich nur Android
             // kann: PNG in den Cache, FileProvider, ACTION_SEND.
+            analyticsSupported = analytics.available,
+            setAnalyticsConsent = { analytics.setConsent(it) },
+            onAnalytics = { analytics.log(it) },
+            openedFromReminder = openedFromReminder,
             onShare = { anfrage ->
                 ScoreCard.share(context, anfrage.image, anfrage.text, chooserTitle)
             },
             diagnostics = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n" +
                 "WERBUNG: ${ads.status}\n" +
-                "KAUF: ${billing.status}"
+                "KAUF: ${billing.status}\n" +
+                "STATISTIK: ${if (!analytics.available) "aus (kein Projekt)" else if (store.analyticsConsent == true) "an" else "ohne Einwilligung"}"
         )
     )
 }

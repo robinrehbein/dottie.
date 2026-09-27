@@ -173,6 +173,28 @@ class TimingGame(private var random: Random) {
         private set
 
     /**
+     * Um wie viele Sekunden der tödliche Tap danebenlag — nur bei
+     * [DeathCause.EARLY] und [DeathCause.LATE], sonst 0.
+     *
+     * Gemessen wird gegen das Fenster, das tatsächlich gezählt hätte:
+     * ZU FRÜH gegen die vordere Zonenkante, ZU SPÄT gegen das Ende der
+     * Spät-Gnade ([LATE_TAP_FORGIVENESS_SECONDS]). Wer „0,02 S ZU SPÄT"
+     * liest, hätte mit 0,02 s früher wirklich getroffen — gegen die
+     * sichtbare Kante gemessen stünde dort eine größere Zahl, die kein
+     * Treffer eingelöst hätte.
+     *
+     * In Sekunden statt als Winkel, weil dieselbe Distanz bei hohem Tempo
+     * eine kürzere Zeit ist: Nur die Zeit sagt, wie knapp es für den
+     * Daumen war. Gesetzt im tödlichen Tap, zurückgesetzt bei jedem Start.
+     */
+    var lastMissSeconds: Float = 0f
+        private set
+
+    /** War der tödliche Tap knapp daneben (siehe [NEAR_MISS_SECONDS])? */
+    val lastMissWasNear: Boolean
+        get() = lastMissSeconds > 0f && lastMissSeconds <= NEAR_MISS_SECONDS
+
+    /**
      * BLIND!-Bonus: Ein gültiger Treffer, solange der Punkt unter NEBEL
      * noch in der Nebelbank steckt, zählt +1 extra (normal +1, also +2)
      * und setzt die Perfekt-Serie nicht zurück. Standardmäßig an.
@@ -349,6 +371,7 @@ class TimingGame(private var random: Random) {
         phase = GamePhase.RUNNING
         elapsed = 0f
         lastDeathCause = DeathCause.NONE
+        lastMissSeconds = 0f
         lastHitBlind = false
         spawnZone()
     }
@@ -375,6 +398,7 @@ class TimingGame(private var random: Random) {
                     phase = GamePhase.RUNNING
                     elapsed = 0f
                     lastDeathCause = DeathCause.NONE
+                    lastMissSeconds = 0f
                     lastHitBlind = false
                     pendingEvents.add(GameEventStarted)
                     registerHit(perfect, blind = false)
@@ -411,6 +435,12 @@ class TimingGame(private var random: Random) {
                         rel < 0f -> DeathCause.EARLY
                         else -> DeathCause.LATE
                     }
+                    val speed = currentSpeed()
+                    lastMissSeconds = when (lastDeathCause) {
+                        DeathCause.EARLY -> (-rel - half) / speed
+                        DeathCause.LATE -> (rel - half) / speed - LATE_TAP_FORGIVENESS_SECONDS
+                        else -> 0f
+                    }.coerceAtLeast(0f)
                     die()
                     GameEventDied
                 }
@@ -473,6 +503,7 @@ class TimingGame(private var random: Random) {
         announcedTwists.clear()
         pendingEvents.clear()
         lastDeathCause = DeathCause.NONE
+        lastMissSeconds = 0f
         lastHitBlind = false
         frozenPulseTime = 0f
         zoneAgeAtDeath = 0f
@@ -696,6 +727,13 @@ class TimingGame(private var random: Random) {
         const val MIN_REACTION_SECONDS = 0.45f
         const val LATE_TAP_FORGIVENESS_SECONDS = 0.07f
         const val PASS_BUFFER_SECONDS = 0.09f
+
+        /**
+         * Bis hierhin gilt ein Fehltap als „KNAPP!“ (siehe [lastMissWasNear]).
+         * 50 ms sind etwa drei Frames: So knapp ist es nur, wenn man den
+         * Takt schon hatte und der Daumen einen Hauch zu schnell war.
+         */
+        const val NEAR_MISS_SECONDS = 0.05f
 
         // Scoring: erster Perfekt +2, jeder weitere in Serie +1 mehr, Deckel +5.
         const val PERFECT_BASE_SCORE = 2

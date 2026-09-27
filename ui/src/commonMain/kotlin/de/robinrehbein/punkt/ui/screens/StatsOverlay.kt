@@ -28,7 +28,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.robinrehbein.punkt.game.DailyChallenge
 import de.robinrehbein.punkt.game.Goal
+import de.robinrehbein.punkt.game.MissionDay
 import de.robinrehbein.punkt.game.GoalAxis
 import de.robinrehbein.punkt.game.MedalId
 import de.robinrehbein.punkt.game.MedalPaint
@@ -44,7 +46,11 @@ import de.robinrehbein.punkt.game.SoundSetId
 import de.robinrehbein.punkt.ui.components.PixelButton
 import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.goal_axis_days
+import de.robinrehbein.punkt.ui.resources.goal_axis_missions
 import de.robinrehbein.punkt.ui.resources.goal_axis_months
+import de.robinrehbein.punkt.ui.resources.missions_title
+import de.robinrehbein.punkt.ui.resources.stats_jokers
+import de.robinrehbein.punkt.ui.resources.stats_missions
 import de.robinrehbein.punkt.ui.resources.goal_axis_perfect
 import de.robinrehbein.punkt.ui.resources.goal_axis_points
 import de.robinrehbein.punkt.ui.resources.goal_axis_runs
@@ -114,7 +120,12 @@ fun StatsOverlay(
     // Stand der anderen interessiert. Die Bedingung ist unverändert —
     // nur sichtbar, wenn Play Games konfiguriert und angemeldet ist.
     leaderboardAvailable: Boolean = false,
-    onLeaderboard: () -> Unit = {}
+    onLeaderboard: () -> Unit = {},
+    // Die Tagesaufgaben stehen ganz oben (ab v2.30): Sie sind das, was
+    // HEUTE zu tun ist — die Zahlen darunter ändern sich nur langsam.
+    missionDay: MissionDay? = null,
+    // Serien-Joker auf Vorrat (0..2), null = keine Zeile.
+    jokers: Int? = null
 ) {
     Box(
         modifier = Modifier
@@ -140,6 +151,12 @@ fun StatsOverlay(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
+            if (missionDay != null) {
+                SkinFamilyHeading(stringResource(Res.string.missions_title))
+                MissionRows(missionDay)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
             StatRow(stringResource(Res.string.record_label), stats.bestScore.toString())
             StatRow(stringResource(Res.string.stats_runs), stats.runCount.toString())
             StatRow(stringResource(Res.string.stats_total_score), stats.totalScore.toString())
@@ -147,6 +164,13 @@ fun StatsOverlay(
             StatRow(stringResource(Res.string.stats_months), stats.monthsPlayed.toString())
             StatRow(stringResource(Res.string.stats_perfect), stats.bestPerfectStreak.toString())
             StatRow(stringResource(Res.string.stats_daily_streak), stats.bestDailyStreak.toString())
+            if (jokers != null) {
+                StatRow(
+                    stringResource(Res.string.stats_jokers),
+                    "$jokers/${DailyChallenge.MAX_JOKERS}"
+                )
+            }
+            StatRow(stringResource(Res.string.stats_missions), stats.missionsDone.toString())
             // Alle drei Sammlungen als Stand "12/35": Die Zahl allein
             // sagt nichts, erst das Verhältnis zeigt, wie weit es noch ist.
             StatRow(
@@ -292,6 +316,7 @@ internal fun goalAxisText(axis: GoalAxis) = when (axis) {
     GoalAxis.RUN_COUNT -> Res.string.goal_axis_runs
     GoalAxis.SKIN_COLLECTION -> Res.string.goal_axis_skins
     GoalAxis.SCENE_COLLECTION -> Res.string.goal_axis_scenes
+    GoalAxis.MISSIONS_DONE -> Res.string.goal_axis_missions
 }
 
 /**

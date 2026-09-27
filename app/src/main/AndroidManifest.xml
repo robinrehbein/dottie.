@@ -34,6 +34,28 @@
                 android:name="com.google.android.gms.ads.APPLICATION_ID"
                 android:value="@string/admob_app_id" />
 
+        <!-- Nutzungsstatistik (ab v2.30): Firebase sammelt NICHTS, bevor
+             die Person im Spiel zugestimmt hat — auch nicht das
+             automatische first_open. GameAnalytics schaltet die Erfassung
+             erst nach dem JA frei und beim Widerruf wieder ab.
+             Werbe-ID und Werbe-Signale bleiben dauerhaft aus: Die
+             Statistik ist zum Abstimmen des Spiels da, nicht für Werbung. -->
+        <meta-data
+                android:name="firebase_analytics_collection_enabled"
+                android:value="false" />
+        <meta-data
+                android:name="google_analytics_adid_collection_enabled"
+                android:value="false" />
+        <meta-data
+                android:name="google_analytics_default_allow_ad_personalization_signals"
+                android:value="false" />
+        <meta-data
+                android:name="google_analytics_default_allow_ad_storage"
+                android:value="false" />
+        <meta-data
+                android:name="google_analytics_default_allow_ad_user_data"
+                android:value="false" />
+
         <provider
                 android:name="androidx.core.content.FileProvider"
                 android:authorities="${applicationId}.fileprovider"

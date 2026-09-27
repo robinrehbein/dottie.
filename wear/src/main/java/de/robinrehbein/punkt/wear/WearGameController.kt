@@ -121,6 +121,13 @@ private const val KEY_PATRON = "patron_owned"
 private const val KEY_OWNED_SCENES = "owned_scenes"
 
 /**
+ * Erledigte Tagesaufgaben (ab v2.30). Wie die Besitz-Menge nur ein
+ * Spiegel: Aufgaben gibt es am Telefon, die Uhr bewahrt die Zahl auf,
+ * damit die Aufgaben-Skins auch hier freigeschaltet sind.
+ */
+private const val KEY_MISSIONS_DONE = "missions_done"
+
+/**
  * Zustands-Holder außerhalb der Composition. MainActivity braucht ihn in
  * onKeyDown (Hardware-Zusatztasten wie der Quick-Button der Galaxy Watch
  * Ultra), WearGameScreen für Touch-Taps und fürs Zeichnen — game.tap() +
@@ -369,7 +376,8 @@ internal class WearGameController(context: Context) {
         monthsPlayed = Integer.bitCount(prefs.getInt(KEY_MONTHS_PLAYED, 0)),
         seasonEarned = prefs.getInt(KEY_SEASON_EARNED, 0),
         patronOwned = patronOwned,
-        ownedScenes = ownedScenes()
+        ownedScenes = ownedScenes(),
+        missionsDone = prefs.getInt(KEY_MISSIONS_DONE, 0)
     )
 
     /** Die gespeicherte Besitz-Menge der Welten, als Kopie (siehe [KEY_OWNED_SCENES]). */
@@ -483,7 +491,10 @@ internal class WearGameController(context: Context) {
         soundChangedAt = prefs.getLong(KEY_SOUND_CHANGED, 0L),
         // Die Besitz-Menge der Welten geht so zurück, wie sie gekommen
         // ist: SyncState.mergedWith vereinigt, verloren geht nichts.
-        ownedScenes = ownedScenes()
+        ownedScenes = ownedScenes(),
+        // Die Uhr erledigt selbst keine Aufgaben, sie spiegelt die Zahl
+        // des Telefons zurück — sonst hielte sie sie jedes Mal für neu.
+        missionsDone = prefs.getInt(KEY_MISSIONS_DONE, 0)
     )
 
     /**
@@ -536,6 +547,9 @@ internal class WearGameController(context: Context) {
         // SyncState.mergedWith: Eine Welt, die eine Seite besitzt, bleibt.
         val owned = before.ownedScenes + state.ownedScenes
         if (owned != before.ownedScenes) editor.putStringSet(KEY_OWNED_SCENES, owned)
+        if (state.missionsDone > before.missionsDone) {
+            editor.putInt(KEY_MISSIONS_DONE, state.missionsDone)
+        }
         if (state.skinChangedAt > before.skinChangedAt) {
             // Freischaltungen leitet die Uhr aus den Ständen ab — mit den
             // zusammengeführten Zahlen, nicht mit den alten (siehe

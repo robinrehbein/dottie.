@@ -47,7 +47,8 @@ internal object WearSyncMerge {
         // SyncState.mergedWith: Eine STADT, die das Telefon aus dem
         // Bestand behält, darf die Uhr nicht an der neuen Schwelle
         // abweisen.
-        ownedScenes = before.ownedScenes + incoming.ownedScenes
+        ownedScenes = before.ownedScenes + incoming.ownedScenes,
+        missionsDone = maxOf(before.missionsDone, incoming.missionsDone)
     )
 
     /**

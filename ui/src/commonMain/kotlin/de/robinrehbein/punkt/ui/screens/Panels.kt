@@ -57,7 +57,17 @@ val ScoreShadowStyle: TextStyle
 // ===== Overlays =====
 
 @Composable
-fun ScoreHud(score: Int, daily: Boolean = false, banner: String = "") {
+fun ScoreHud(
+    score: Int,
+    daily: Boolean = false,
+    banner: String = "",
+    /**
+     * „NOCH 3 BIS REKORD" (ab v2.30) — leer, solange der Rekord nicht in
+     * Reichweite ist. Klein und ohne Farbe: Es soll die letzten Treffer
+     * vor dem Rekord aufladen, nicht vom Ring ablenken.
+     */
+    recordHint: String = ""
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -82,6 +92,14 @@ fun ScoreHud(score: Int, daily: Boolean = false, banner: String = "") {
                     style = ScoreShadowStyle,
                     fontSize = 18.sp,
                     color = DotBody
+                )
+            }
+            if (recordHint.isNotEmpty()) {
+                Text(
+                    text = recordHint,
+                    style = ScoreShadowStyle,
+                    fontSize = 16.sp,
+                    color = Color.White.copy(alpha = 0.9f)
                 )
             }
             // Twist-Banner direkt unter der Punktzahl statt an einer festen

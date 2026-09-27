@@ -73,6 +73,11 @@ internal enum class WearDotSkin(val id: SkinId) {
     TAGESZEIT(SkinId.TAGESZEIT),
     JAHRESZEIT(SkinId.JAHRESZEIT),
 
+    // Aufgaben — verdient am Telefon, die Zahl kommt über den Abgleich
+    STERNCHEN(SkinId.STERNCHEN),
+    ORDEN(SkinId.ORDEN),
+    POKAL(SkinId.POKAL),
+
     // Saison — nur im eigenen Monat verdienbar, dann für immer
     KUERBIS(SkinId.KUERBIS),
     ZUCKERSTANGE(SkinId.ZUCKERSTANGE),
@@ -118,6 +123,10 @@ internal enum class WearDotSkin(val id: SkinId) {
      * Welten-Leiter), wie sie über den Abgleich vom Telefon kommt. Die
      * Uhr wählt selbst keine Welt, sie prüft damit nur, welche Wahl des
      * Telefons sie übernehmen darf (WearSyncMerge.sceneToAdopt).
+     *
+     * [missionsDone] zählt die erledigten Tagesaufgaben. Aufgaben gibt es
+     * nur am Telefon, die Zahl kommt über den Abgleich — die Uhr spiegelt
+     * sie, damit STERNCHEN, ORDEN und POKAL auch hier wählbar sind.
      */
     data class Stats(
         val bestScore: Int,
@@ -129,7 +138,8 @@ internal enum class WearDotSkin(val id: SkinId) {
         val monthsPlayed: Int = 0,
         val seasonEarned: Int = 0,
         val patronOwned: Boolean = false,
-        val ownedScenes: Set<String> = emptySet()
+        val ownedScenes: Set<String> = emptySet(),
+        val missionsDone: Int = 0
     ) {
         /** Übersetzung ins Format von :core — dort liegen die Schwellen. */
         fun toSkinStats(): SkinStats = SkinStats(
@@ -142,7 +152,8 @@ internal enum class WearDotSkin(val id: SkinId) {
             monthsPlayed = monthsPlayed,
             seasonEarned = seasonEarned,
             patronOwned = patronOwned,
-            ownedScenes = ownedScenes
+            ownedScenes = ownedScenes,
+            missionsDone = missionsDone
         )
     }
 
