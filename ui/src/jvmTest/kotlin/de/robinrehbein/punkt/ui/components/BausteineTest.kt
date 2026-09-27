@@ -15,12 +15,15 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.use
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.ui.world.PanelSand
 import de.robinrehbein.punkt.ui.world.TextDark
+import de.robinrehbein.punkt.ui.world.toArgbLong
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -138,6 +141,40 @@ class BausteineTest {
             assertEquals(1, clicks[0])
             assertEquals(1, zaehler.ticks)
             assertEquals(randFarbe, s.frame().pixel(probeX, probeY), "Knopf kommt nicht zurück")
+        }
+    }
+
+    @Test
+    fun knopfflaecheHatBevelKante() {
+        // MENÜ: 120 × 40 dp, 3 dp Rand, bei Dichte 2 also 6 px Rand und
+        // 3 px Kante (UI_BEVEL_EDGE 1,5 dp). Oben und unten liegt das
+        // schmale Band (2 dp innen vom Rand), links und rechts in der
+        // Mitte das breite (direkt am Rand).
+        val licht = Color(BevelPaint.light(PanelSand.toArgbLong())).toArgb()
+        val schatten = Color(BevelPaint.dark(PanelSand.toArgbLong())).toArgb()
+        val flaeche = PanelSand.toArgb()
+        val oben = Offset(dp(60f), 7f)
+        val links = Offset(7f, dp(18f))
+        val unten = Offset(dp(60f), dp(40f) - 8f)
+        val rechts = Offset(dp(120f) - 8f, dp(18f))
+        val mitte = Offset(dp(30f), dp(20f))
+        scene(Zaehler(), IntArray(2), { false }, {}).use { s ->
+            val bild = s.frame()
+            assertEquals(licht, bild.pixel(oben.x, oben.y), "Oberkante nicht hell")
+            assertEquals(licht, bild.pixel(links.x, links.y), "linke Kante nicht hell")
+            assertEquals(schatten, bild.pixel(unten.x, unten.y), "Unterkante nicht dunkel")
+            assertEquals(schatten, bild.pixel(rechts.x, rechts.y), "rechte Kante nicht dunkel")
+            assertEquals(flaeche, bild.pixel(mitte.x, mitte.y), "Fläche nicht Sand")
+
+            // Gedrückt: um den Schatten (4 dp) versetzt, Licht umgekehrt.
+            s.press(dp(60f), dp(20f))
+            val gedrueckt = s.frame()
+            val p = dp(4f)
+            assertEquals(schatten, gedrueckt.pixel(oben.x + p, oben.y + p), "gedrückt: Oberkante nicht dunkel")
+            assertEquals(schatten, gedrueckt.pixel(links.x + p, links.y + p), "gedrückt: linke Kante nicht dunkel")
+            assertEquals(licht, gedrueckt.pixel(unten.x + p, unten.y + p), "gedrückt: Unterkante nicht hell")
+            assertEquals(licht, gedrueckt.pixel(rechts.x + p, rechts.y + p), "gedrückt: rechte Kante nicht hell")
+            s.release(dp(60f), dp(20f))
         }
     }
 

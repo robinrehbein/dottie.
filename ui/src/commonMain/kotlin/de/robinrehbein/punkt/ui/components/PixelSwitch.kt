@@ -76,6 +76,14 @@ fun PixelSwitchRow(
                     topLeft = Offset(b, b),
                     size = Size(size.width - 2f * b, size.height - 2f * b)
                 )
+                // Dieselbe Kante wie die Knöpfe darunter: Die Zeile ist
+                // selbst ein Knopf, nur einer ohne Schatten.
+                drawFaceBevel(
+                    base = PanelSand,
+                    topLeft = Offset(b, b),
+                    size = Size(size.width - 2f * b, size.height - 2f * b),
+                    edge = UI_BEVEL_EDGE.toPx()
+                )
             }
             .padding(horizontal = 12.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -130,11 +138,30 @@ private fun DrawScope.drawPixelSwitch(checked: Boolean) {
     val top = border + 2f * u
     val left = if (checked) size.width - border - 2f * u - knob else border + 2f * u
     drawRect(color = TextDark, topLeft = Offset(left, top), size = Size(knob, knob))
+    // Der Knebel bekommt die Bevel-Kante, die Bahn bleibt flach — sie ist
+    // eine Rinne, kein Knopf. An: Kante auf der weißen Fläche im Rand,
+    // dort zeigt sich nur der Schatten unten rechts. Aus: Der Knebel ist
+    // ganz dunkel, die Kante liegt auf ihm selbst, und nur das Licht oben
+    // links hebt ihn von der Bahn ab.
+    val edge = 1.5f * u
     if (checked) {
         drawRect(
             color = Color.White,
             topLeft = Offset(left + border, top + border),
             size = Size(knob - 2f * border, knob - 2f * border)
+        )
+        drawFaceBevel(
+            base = Color.White,
+            topLeft = Offset(left + border, top + border),
+            size = Size(knob - 2f * border, knob - 2f * border),
+            edge = edge
+        )
+    } else {
+        drawFaceBevel(
+            base = TextDark,
+            topLeft = Offset(left, top),
+            size = Size(knob, knob),
+            edge = edge
         )
     }
 }
