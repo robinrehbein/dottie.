@@ -74,5 +74,8 @@ internal class WearFx {
 
         /** Dauer der Bomben-Funken (TRAP_BOOM_SECONDS am Telefon). */
         const val BOOM_SECONDS = 0.45f
+
+        /** Verzögerung der Bomben-Funken nach dem Tod (TRAP_BOOM_DELAY am Telefon). */
+        const val BOOM_DELAY = 0.25f
     }
 }

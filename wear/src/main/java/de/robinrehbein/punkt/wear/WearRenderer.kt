@@ -202,7 +202,8 @@ private fun DrawScope.drawWearBurst(timeLeft: Float, cx: Float, cy: Float, radiu
 /**
  * Die Explosion beim Tippen in die Bomben, wie drawTrapBoom am Telefon:
  * zwanzig Funken, erst gelb/orange, dann rot/grau, dazu ein schrumpfender
- * heller Kern. Nur bei Todesursache TRAP, [time] = Sekunden seit dem Tod.
+ * heller Kern. Nur bei Todesursache TRAP, [time] = Sekunden seit dem Tod;
+ * die Funken beginnen [WearFx.BOOM_DELAY] danach, wenn der Blitz fast weg ist.
  */
 private fun DrawScope.drawWearTrapBoom(
     game: TimingGame,
@@ -213,10 +214,11 @@ private fun DrawScope.drawWearTrapBoom(
     cell: Float
 ) {
     if (game.lastDeathCause != DeathCause.TRAP) return
-    if (time < 0f || time >= WearFx.BOOM_SECONDS) return
+    val t = time - WearFx.BOOM_DELAY
+    if (time < 0f || t < 0f || t >= WearFx.BOOM_SECONDS) return
     val x = cx + cos(game.angle) * radius
     val y = cy + sin(game.angle) * radius
-    val q = (time / WearFx.BOOM_SECONDS).coerceIn(0f, 1f)
+    val q = (t / WearFx.BOOM_SECONDS).coerceIn(0f, 1f)
     val sparks = 20
     for (i in 0 until sparks) {
         val odd = i % 2 == 1
