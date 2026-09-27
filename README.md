@@ -650,10 +650,12 @@ braucht:
 git checkout b4ed73f -- web/
 ```
 
-Die Domain **<https://dottie.robinrehbein.de/>** bleibt bestehen, liefert
-aber nur noch die Datenschutzerklärung (`/datenschutz/`) und
-`app-ads.txt` — beides hängt am Play-Eintrag der Android-App und muss
-erreichbar bleiben.
+Die [Datenschutzerklärung](https://robinrehbein.github.io/dottie./datenschutz/)
+liegt auf der GitHub-Pages-Projektseite. Die
+[Entwickler-Website](https://robinrehbein.github.io/) und
+[app-ads.txt](https://robinrehbein.github.io/app-ads.txt) liegen auf der
+separaten GitHub-Pages-Startseite; diese Adressen sind im Play-Eintrag
+hinterlegt beziehungsweise für AdMob erforderlich.
 
 ## iOS-App
 
@@ -785,7 +787,7 @@ Welcher Workflow wann läuft:
 |---|---|---|
 | `build-apk.yml` | Push auf `main` und `claude/**` | Kotlin-Tests (`:core`, `:app` und `:ui`), Debug-Build; auf `main` zusätzlich Release-Artefakte |
 | `build-ios.yml` | Push mit Änderungen an `ios/`, `core/`, `ui/`, `parity/`; sonst manuell | XCFramework aus `:core`, Brücken-Tests im Simulator, Device- und Simulator-Build |
-| `deploy-pages.yml` | Push auf `main` mit Änderungen an `docs/` | veröffentlicht Datenschutzerklärung und `app-ads.txt` |
+| `deploy-pages.yml` | Push auf `main` mit Änderungen an `docs/` | veröffentlicht die Datenschutzerklärung auf der Projektseite und eine Kopie von `app-ads.txt` |
 
 ## Veröffentlichung
 

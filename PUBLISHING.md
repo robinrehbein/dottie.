@@ -7,7 +7,7 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.37.
 - [ ] Keystore rotieren (Anleitung unten) — **vor dem ersten Store-Upload Pflicht**
 - [x] Play-Console-Konto anlegen (25 $ einmalig, [play.google.com/console](https://play.google.com/console))
 - [x] Dottie-Service-Konto und GitHub-OIDC-Pool anlegen (Anleitung unten)
-- [ ] GitHub Pages aktivieren → Datenschutz-URL (Anleitung unten)
+- [x] GitHub Pages aktivieren → Datenschutz-URL (Anleitung unten)
 - [ ] Store-Eintrag anlegen (Texte unten in Deutsch UND Englisch, Icons liegen im Repo)
 - [x] Feature-Grafik 1024×500 px je Sprache (`store/feature-graphic.png`,
       `store/feature-graphic-en.png`, Generator daneben)
@@ -82,41 +82,25 @@ Keystore ist nur der Upload-Key und ließe sich notfalls erneut tauschen.
 
 ## Datenschutzerklärung (Pflicht fürs Listing)
 
-Liegt als statische Seite unter `docs/index.html`. Veröffentlicht wird
-sie über den Workflow `.github/workflows/deploy-pages.yml` (läuft bei
-jedem Push auf `main`, der `docs/` ändert):
+Liegt als statische Seite unter `docs/index.html`. Der Workflow
+`.github/workflows/deploy-pages.yml` veröffentlicht sie bei Änderungen
+an `docs/` oder am Workflow auf der Projektseite:
 
-- `https://dottie.robinrehbein.de/datenschutz/` → die
-  Datenschutzerklärung — **diese URL** im Play-Listing als
-  Datenschutz-URL eintragen
-- `https://dottie.robinrehbein.de/` → dieselbe Seite, damit die Domain
-  nicht mit einem 404 antwortet
-- `https://dottie.robinrehbein.de/app-ads.txt` → die
-  Verkäufer-Verifikation für AdMob (siehe unten)
+- `https://robinrehbein.github.io/dottie./datenschutz/` → Datenschutz-URL
+  im Play-Eintrag
+- `https://robinrehbein.github.io/dottie./` → Kopie der Erklärung auf
+  der Startseite des Projekts
 
-Bis v2.22 lag unter der Wurzel die Web-Version des Spiels. Sie ist mit
-der Konzentration auf die nativen Apps entfallen; die Domain und beide
-oben genannten URLs bleiben unverändert — daran hängt der Play-Eintrag.
+Die Entwickler-Website im Play-Eintrag ist
+`https://robinrehbein.github.io/`. Sie kommt aus dem separaten öffentlichen
+Repo `robinrehbein/robinrehbein.github.io` und liefert auch
+`https://robinrehbein.github.io/app-ads.txt` für AdMob. Für diese Adressen
+ist kein eigener DNS-Eintrag erforderlich. Die zuvor geplante Domain
+`dottie.robinrehbein.de` ist nicht eingerichtet.
 
-Einmalige Voraussetzungen:
-
-1. Repo → **Settings → Pages** → Source „GitHub Actions" (geht nur bei
-   öffentlichem Repo oder mit GitHub Pro).
-2. Beim DNS-Anbieter von `robinrehbein.de` einen **CNAME-Eintrag**
-   anlegen: Name `dottie`, Ziel `robinrehbein.github.io.` (mit Punkt am
-   Ende, falls der Anbieter das verlangt).
-3. Repo → **Settings → Pages → Custom domain** auf
-   `dottie.robinrehbein.de` setzen und **Enforce HTTPS** ankreuzen,
-   sobald GitHub das Zertifikat ausgestellt hat (dauert nach dem
-   DNS-Eintrag einige Minuten bis Stunden).
-
-Die Datei `_site/CNAME` schreibt der Workflow selbst — sie muss im
-veröffentlichten Verzeichnis liegen, nicht im Repo-Wurzelverzeichnis,
-weil beim Deployment über Actions ausschließlich das Artefakt
-ausgeliefert wird.
-
-Die alte Adresse `robinrehbein.github.io/dottie./` leitet nach der
-Umstellung automatisch auf die neue um.
+Bei einer Änderung der AdMob-Verkäufer-ID die Datei `docs/app-ads.txt`
+und die Datei `app-ads.txt` im Repo `robinrehbein.github.io` gemeinsam
+aktualisieren.
 
 Vorher die Kontakt-E-Mail in `docs/index.html` prüfen/anpassen — sie
 wird öffentlich sichtbar.
@@ -377,18 +361,23 @@ Die Datei beweist Anzeigen-Käufern, dass unser Werbeplatz echt ist —
 ohne sie fällt ein Teil der Nachfrage weg, weil manche Käufer
 ausschließlich auf verifiziertes Inventar bieten.
 
-Sie liegt als `docs/app-ads.txt` im Repo und wird damit unter
-`https://dottie.robinrehbein.de/app-ads.txt` ausgeliefert. Inhalt:
+Die maßgebliche Datei liegt im separaten Repo
+`robinrehbein/robinrehbein.github.io` und wird unter
+`https://robinrehbein.github.io/app-ads.txt` ausgeliefert. In diesem Repo
+liegt eine Kopie unter `docs/app-ads.txt`. Inhalt:
 
 ```
 google.com, pub-1786159152036324, DIRECT, f08c47fec0942fa0
 ```
 
-Damit Googles Crawler sie findet, muss im Play-Listing als
-**Entwickler-Website** genau `https://dottie.robinrehbein.de/`
-eingetragen sein: Gesucht wird immer im Wurzelverzeichnis dieses Hosts.
-Mit dem früheren Projekt-Pages-Pfad ging das nicht — deshalb war die
-Datei bis zur eigenen Domain nicht möglich.
+Im Play-Listing ist `https://robinrehbein.github.io/` als Website
+eingetragen. Googles Crawler sucht `app-ads.txt` im Wurzelverzeichnis
+dieses Hosts; die Kopie unter `/dottie./app-ads.txt` genügt dafür nicht.
+
+Solange die App im Play Store nur intern oder im geschlossenen Test
+verteilt wird und AdMob sie dort nicht findet, lässt sie sich in AdMob
+noch nicht mit dem Store-Eintrag verknüpfen. Die Datei ist erreichbar;
+die Verifikation in AdMob muss anschließend geprüft werden.
 
 Nach dem Eintragen prüft AdMob unter **Apps → app-ads.txt**, ob die
 Datei erkannt wurde; das dauert bis zu ein paar Tage.

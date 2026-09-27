@@ -1,5 +1,5 @@
-# Veröffentlicht die Datenschutzerklärung auf GitHub Pages unter der
-# eigenen Domain dottie.robinrehbein.de.
+# Veröffentlicht die Datenschutzerklärung unter
+# https://robinrehbein.github.io/dottie./
 # Voraussetzung: Settings → Pages → Source "GitHub Actions".
 #
 # Bis v2.22 lag hier auch die Web-Version des Spiels (web/). Die ist mit
@@ -8,9 +8,11 @@
 # und muss deshalb erreichbar bleiben:
 #
 # Site-Layout:
-#   /             -> Datenschutzerklärung (damit die Domain nicht ins Leere läuft)
+#   /             -> Datenschutzerklärung
 #   /datenschutz/ -> dieselbe Seite unter der URL, die im Play-Eintrag steht
-#   /app-ads.txt  -> Verkäufer-Verifikation für AdMob
+#   /app-ads.txt  -> Kopie für Besucher dieser Projektseite
+# Die für AdMob maßgebliche Datei liegt an der Wurzel der Entwickler-Website:
+# https://robinrehbein.github.io/app-ads.txt (Repo robinrehbein.github.io).
 name: Deploy Pages
 
 on:
@@ -53,19 +55,14 @@ jobs:
           # Die im Play-Eintrag hinterlegte URL endet auf /datenschutz/ und
           # darf sich nicht ändern — ein toter Datenschutz-Link kann den
           # Store-Eintrag kosten. Dieselbe Seite liegt zusätzlich auf der
-          # Wurzel, damit die Domain nicht mit einem 404 antwortet.
+          # Wurzel der Projektseite.
           cp docs/index.html _site/datenschutz/index.html
           cp docs/index.html _site/index.html
-          # AdMob prüft die Verkäufer-Verifikation unter der Domain, die im
-          # Play-Eintrag als Website steht.
+          # Kopie; die von AdMob geprüfte Datei liegt an der Host-Wurzel
+          # im separaten Repo robinrehbein.github.io.
           cp docs/app-ads.txt _site/app-ads.txt
           # Pages soll die Dateien 1:1 ausliefern, kein Jekyll-Build
           touch _site/.nojekyll
-          # Eigene Domain. Die Datei muss im veröffentlichten Verzeichnis
-          # liegen, nicht im Repo-Wurzelverzeichnis: Beim Deployment über
-          # Actions wird ausschließlich das Artefakt ausgeliefert, ein
-          # CNAME daneben im Repo bliebe wirkungslos.
-          echo "dottie.robinrehbein.de" > _site/CNAME
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
