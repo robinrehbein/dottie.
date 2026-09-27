@@ -1,11 +1,9 @@
 # Bevel-Look — Briefing für die Umsetzung
 
 In eine neue Claude-Code-Session mit dem Repo `robinrehbein/dottie.` geben.
-Die Bilder liegen unter `docs/bevel-mockups/`. `welt-*.png`,
-`vorher-nachher-*.png`, `alle-welten.png` und `detail-ring.png` stammen aus
-dem echten Renderer, mit dem Prototyp aus `docs/bevel-prototyp.patch`, und
-sind damit die pixelgenaue Vorlage. `dot-*.png` und
-`bevel-detail-bomben.png` sind ältere, gezeichnete Detail-Mockups.
+Die Mockups liegen unter `docs/bevel-mockups/`. Sie zeigen die Richtung,
+sind aber keine pixelgenaue Vorlage: Maßgeblich sind die Regeln unten und
+die bestehenden Sprites im Code.
 
 ```text
 Baue den Bevel-Look in Dottie ein.
@@ -14,12 +12,10 @@ Das Briefing und die Mockups liegen auf dem Branch
 claude/dotty-2-5d-graphics-3y59iu (nicht auf main). Hol ihn dir mit
 `git fetch origin claude/dotty-2-5d-graphics-3y59iu` und lies von dort
 docs/bevel-look.md komplett. Sieh dir alle Bilder in docs/bevel-mockups/ an.
-Die Zielbilder pro Welt (welt-*.png) und die Vergleiche
-(vorher-nachher-*.png) sind mit dem echten Renderer erzeugt. Sie gelten
-Pixel für Pixel als Vorlage. Die Übersicht zeigt alle-welten.png.
-Details zeigen detail-ring.png, dot-kugel.png und
-bevel-detail-bomben.png. docs/bevel-prototyp.patch ist der Prototyp, mit
-dem diese Bilder gerendert wurden (siehe Abschnitt 9).
+Das Zielbild pro Welt zeigen welt-wiese.png, welt-wueste.png,
+welt-meer.png, welt-berg.png, welt-stadt.png und welt-weltraum.png, die
+Übersicht zeigt alle-welten.png. Details zeigen dot-kugel.png,
+bevel-detail-bomben.png, welten-bloecke.png und welten-boden.png.
 
 Setze es in zwei Schritten um: Schritt 1 ist der Bevel-Look (Abschnitte
 1–7), Schritt 2 sind Bahn-Blöcke, Boden, Requisiten und Galaxien pro Welt
@@ -189,8 +185,9 @@ Galaxien in Schritt 2 (Abschnitt 8.3b).
 
 ## 8. Schritt 2: Bahn-Blöcke und Boden pro Welt
 
-Vorlage: `docs/bevel-mockups/welt-*.png` und `vorher-nachher-*.png`,
-gerendert mit dem echten Renderer.
+Vorlage: `docs/bevel-mockups/welten-bloecke.png` und
+`docs/bevel-mockups/welten-boden.png`. Auch diese Mockups zeigen die
+Richtung, sie sind keine pixelgenaue Vorlage.
 
 Heute sieht die Bahn in allen sechs Welten gleich aus, mit Sandblöcken
 auch im Weltraum. Der Boden hat überall dieselbe Form, nur in anderen
@@ -216,7 +213,7 @@ zusammen.
 
 | Welt | Normaler Block | Zonen-Motiv | Kern-Akzent |
 |---|---|---|---|
-| WIESE | Sand wie heute (`GroundSandShade` `#D3C87E`, Licht `#F1EBB5`, Schatten `#B0A55E`) | Blätter (wie heute) | Blüte rosa/gold (wie heute) |
+| WIESE | Sand wie heute (`#DED895`) | Blätter (wie heute) | Blüte rosa/gold (wie heute) |
 | WUESTE | Sandstein `#E3B26A` mit waagrechter Fuge | 2–3 weiße Kaktusstacheln | Kaktusblüte `#FF5A8A` mit gelber Mitte |
 | MEER | Treibholz-Planke `#B9844F` mit Maserungspunkten | Seerosenblatt mit Kerbe, ein Wassertropfen `#7FD8F0` | Seerose weiß mit rosa Mitte |
 | BERG | Fels `#9AA0AA`, obere Kante als Schneekappe in Weiß | Moos mit Steinchen | Edelweiß weiß mit gelber Mitte |
@@ -235,8 +232,8 @@ Boden bleibt statisch, ohne Animation.
 | Welt | Oberkante | Füllung |
 |---|---|---|
 | WIESE | Grasnarbe als Bevel-Kacheln (Form wie heute) | Sand mit ein paar Kieseln, Schattenstreifen wie heute |
-| WUESTE | Dünenkante als Pixel-Welle mit heller Oberkante | Sandstein in 3 Schichten mit versetzten Fugen. 3–4 kleine, ganze Steine (7×5, in den Farben des FELS: `#C4A87C` / `#A88860` / `#8A6A4A`), keine schwebenden Quadrate. |
-| MEER | Wellenkämme mit weißem Schaum, **nur innerhalb** des Wasserstreifens (Bodenkante bis 4 Zellen darunter). Nichts ragt über die Bodenkante, sonst verdeckt es den Fuß der Inseln. | Wasser, nach unten in 3 Stufen dunkler. 4–5 Luftblasen als runde Pixel-Ringe (5×5 Zellen, innen Wasser, ein weißes Glanzpixel oben links), darüber je eine kleine 2×2-Begleitblase. |
+| WUESTE | Dünenkante als Pixel-Welle mit heller Oberkante | Sandstein in 3 Schichten mit versetzten Fugen. 3–4 Kiesel, halb im Sand eingesunken: nur die gerundete obere Hälfte (7×3, Licht oben links) schaut heraus. Keine schwebenden Quadrate. |
+| MEER | Wellenkämme mit weißem Schaum | Wasser, nach unten in 3 Stufen dunkler. 4–5 Luftblasen als runde Pixel-Ringe (5×5, innen Wasser, ein weißes Glanzpixel oben links), darüber je eine kleine 2×2-Begleitblase. Keine einzelnen Pixel, die wirken wie Kratzer. |
 | BERG | Schneedecke mit Eiszapfen | Felsblöcke, versetzt wie eine Mauer, jeder Block bevelt |
 | STADT | Bordsteine mit Fugen | Asphalt mit gestrichelter gelber Mittellinie und einem Gully |
 | WELTRAUM | **kein Boden, wie heute** | — |
@@ -245,20 +242,23 @@ Der Weltraum bleibt bewusst die einzige Welt ohne Boden. Ein Mondboden
 mit Kratern ist im Mockup nur als Option gezeigt und wird **nicht**
 umgesetzt.
 
-### 8.3a Requisiten: Originale behalten
+### 8.3a Requisiten, die dazu passen müssen
 
-Alle Requisiten bleiben **exakt in ihrer heutigen Form**: Baum, Blume,
-Strauch, Kaktus, Fels, Palmeninsel, Welle, Nadelbaum, Hochhaus und
-Laterne. Es gibt keine neuen Formen. Sie bekommen nur die Bevel-Kante
-(Abschnitt 3), also eine Zelle Licht oben links und eine Zelle Schatten
-unten rechts, auf jeder Fläche, die mindestens 3 Zellen breit und hoch
-ist. Kleinere Teile, etwa Palmwedel oder die Sprossen der Laterne,
-bleiben flach.
+Zwei Requisiten wirken heute als Kästen und sollen zum neuen Boden passen:
 
-Am einfachsten geht das zentral in `drawOutlinedBlocks` und
-`drawBlockParts` sowie bei den Lagen von Baum, Strauch, Nadelbaum,
-Welle, Blume und Hochhaus. Stamm, Kaktus und Hochhaus haben schon eine
-Schattenhälfte, die bleibt.
+- **FELS (Wüste):** Statt gestapelter Rechtecke (`ROCK_PARTS`) ein
+  gerundeter Findling mit Outline, Licht oben links, dunkler Unterseite
+  und 1–2 Riss-Pixeln. Daneben liegt ein kleiner Kiesel (8×5). Farben wie
+  bisher: `light #C4A87C`, `body #A88860`, `dark #8A6A4A`, Riss `#6E5238`.
+- **WELLE (Meer):** Statt drei gestapelter Kästen ein Brecher mit
+  eingerollter Krone: blauer Körper (`#2E86D8`, Licht `#7FC8F0`, Schatten
+  `#1F5FA8`), weiße Schaumkante oben, 2 Gischt-Pixel vor der Krone. Der
+  Fuß sitzt sichtbar auf der Wasserlinie und wird nicht vom Boden
+  verdeckt.
+
+Beide werden am besten als Pixel-Maske gezeichnet, wie `TrapPaint.MINE`
+(Zeilen aus Zeichen in `:core`, gezeichnet vom Renderer), statt als
+Rechteck-Liste. Vorlage: `alle-welten.png`, Wüste und Meer.
 
 ### 8.3b Galaxien im Weltraum
 
@@ -275,18 +275,18 @@ oder Bildrauschen.
 Neu:
 - **Arme in drei festen, deckenden Stufen statt `alpha`:** innen
   (`t < 0.35`) die volle Armfarbe, in der Mitte (`t < 0.7`)
-  `mix(arm, Himmel, 0.2)`, außen `mix(arm, Himmel, 0.45)`. „Himmel“ ist
+  `mix(arm, Himmel, 0.35)`, außen `mix(arm, Himmel, 0.62)`. „Himmel“ ist
   die aktuelle Himmelsstufe des Weltraums, damit es auf jeder Stufe passt.
 - **Staub nur auf der inneren Hälfte** (`t < 0.5`), deckend in
   `mix(arm, Weiß, 0.6)` statt in Kernfarbe mit Transparenz.
 - **Der Kern-Schimmer** (heute das Kreuz mit `alpha = 0.5`) wird deckend in
-  `mix(arm, Himmel, 0.2)` gezeichnet, der helle Kern darüber bleibt, wie er
+  der mittleren Armstufe gezeichnet, der helle Kern darüber bleibt, wie er
   ist.
 - **Farbwerte in `:core`:** Die Mischwerte gehören zu `BevelPaint`,
   damit sie testbar sind. Ein Test prüft, dass keine der Stufen dem
   Zonengrün nahekommt (`MIN_ZONE_DISTANCE`).
 
-Vorlage: `welt-weltraum.png` und `vorher-nachher-weltraum.png`.
+Vorlage: `alle-welten.png`, Weltraum.
 
 ### 8.4 Umsetzung
 
@@ -324,25 +324,3 @@ Vorlage: `welt-weltraum.png` und `vorher-nachher-weltraum.png`.
   tippen“ erkennbar.
 - Die Bodenkante liegt in jeder Welt auf derselben Höhe wie vorher.
 - Die neuen Tests sind grün, die Golden Vectors unverändert.
-
-## 9. Der Prototyp (`docs/bevel-prototyp.patch`)
-
-Mit diesem Patch wurden die Zielbilder gerendert. Er zeigt, dass alles mit
-dem bestehenden Renderer geht, und nennt die Stellen, an denen es
-eingebaut wird. Er ist bewusst **kein** fertiger Code:
-
-- Die Farbableitung steht dort in `:ui` (`ProtoBevel.kt`). Richtig gehört
-  sie nach `:core` (`BevelPaint`, Welten-Stil in `ScenePaint`) und wird
-  dort getestet (Abschnitte 3 und 8.4).
-- Die aktive Kulisse läuft über eine globale Variable (`protoScene`).
-  Richtig wird sie als Parameter übergeben.
-- Die Galaxie verblasst gegen eine feste Himmelsfarbe. Richtig ist die
-  aktuelle Himmelsstufe.
-- Die Uhr (`:wear`) fehlt ganz.
-- `TmpWeltenShots.kt` rendert alle sechs Welten mit dem echten Renderer
-  (`SHOTS_DIR=… ./gradlew :ui:jvmTest --tests '*TmpWeltenShots*' --rerun`).
-  Damit lassen sich Vorher- und Nachher-Bilder für den PR erzeugen.
-  Nicht als Test einchecken, oder nach dem Muster von `TwistShots` sauber
-  benennen.
-
-Anwenden zum Nachsehen: `git apply docs/bevel-prototyp.patch` auf `main`.
