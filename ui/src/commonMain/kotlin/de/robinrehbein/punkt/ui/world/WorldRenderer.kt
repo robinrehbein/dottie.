@@ -1228,7 +1228,9 @@ internal fun DrawScope.drawTimingDot(
     }
 
     if (trapDeath && burstTime > 0f) {
-        drawBirdBurst(px, py, r, burstTime, h) { col, row -> Color(SkinPaint.cell(skin, col, row, state)) }
+        drawBirdBurst(px, py, r, burstTime, h) { col, row ->
+            Color(BevelPaint.kugel(col, row, SkinPaint.cell(skin, col, row, state), shineArgb))
+        }
     } else if (flip > 0f) {
         rotate(degrees = flip, pivot = Offset(px, py)) { drawBird(px, py) }
     } else {

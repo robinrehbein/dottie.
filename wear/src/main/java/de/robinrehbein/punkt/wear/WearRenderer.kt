@@ -747,7 +747,7 @@ private fun DrawScope.drawWearDot(
     }
 
     if (trapDeath && burstTime > 0f) {
-        drawWearBirdBurst(px, py, r, burstTime, size.height) { col, row -> skin.cell(col, row, state) }
+        drawWearBirdBurst(px, py, r, burstTime, size.height) { col, row -> skin.kugelCell(col, row, state, shineArgb) }
     } else if (flip > 0f) {
         rotate(degrees = flip, pivot = Offset(px, py)) { drawBird(px, py) }
     } else {
