@@ -12,7 +12,12 @@ import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.Ground
 import de.robinrehbein.punkt.game.Prop
 import de.robinrehbein.punkt.game.PropShape
+import de.robinrehbein.punkt.game.PropSprites
 import de.robinrehbein.punkt.game.BlockPart
+import de.robinrehbein.punkt.game.BlockPattern
+import de.robinrehbein.punkt.game.BevelPaint
+import de.robinrehbein.punkt.game.TrackStyle
+import de.robinrehbein.punkt.game.ZoneMotif
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
 import de.robinrehbein.punkt.game.SkinId
@@ -104,11 +109,13 @@ fun DrawScope.drawTimingWorld(
         drawScenery(game, cell, kulisse.props)
         kulisse.ground?.let { drawGroundStrip(cell, it) }
 
-        // Kreisbahn mit Zielzone, ggf. Fallen-Zone und Punkt. Sie zieht
-        // ihre Farben bewusst NICHT aus der Kulisse: Worauf getippt wird,
-        // sieht überall gleich aus — sonst wäre die Kulisse ein Vorteil.
+        // Kreisbahn mit Zielzone, ggf. Fallen-Zone und Punkt. Worauf
+        // getippt wird, sieht überall gleich aus — sonst wäre die Kulisse
+        // ein Vorteil: Zone, Kern und Minen bleiben in jeder Welt dieselben.
+        // Die Kulisse wechselt nur das Material der normalen Blöcke und ein
+        // Motiv von ein paar Pixeln auf der Zone (ScenePaint.track).
         val (cx, cy, radius) = ringGeometry(size)
-        drawTrack(game, cx, cy, radius, cell)
+        drawTrack(game, cx, cy, radius, cell, scene)
         // == AP-22 start ==
         drawStartCoach(game, fx, cx, cy, radius, cell)
         // == /AP-22 ==
@@ -205,13 +212,16 @@ internal fun DrawScope.drawProp(
         PropShape.BLUME -> drawPixelFlower(cx, groundY, s, sway, cell, dark, body, light, accent)
         PropShape.STRAUCH -> drawPixelBush(cx, groundY, s, sway, cell, dark, body, light)
         PropShape.KAKTUS -> drawPixelCactus(cx, groundY, s, sway, cell, dark, body, light, accent)
-        PropShape.WELLE -> drawPixelWave(cx, groundY, s, sway, cell, dark, body, light, accent)
+        PropShape.WELLE -> drawBreaker(prop, cx, groundY, cell)
         PropShape.NADELBAUM ->
             drawPixelFir(cx, groundY, s, sway, cell, dark, body, light, stem, stemShade, accent)
         PropShape.HOCHHAUS -> drawPixelTower(cx, groundY, s, cell, dark, body, light, accent)
-        PropShape.FELS ->
-            drawBlockParts(ScenePaint.ROCK_PARTS, cx, groundY, s, sway, cell,
-                dark, body, light, accent)
+        // Der Fels ist ein Findling aus PropSprites, keine Kastentabelle
+        // mehr. ScenePaint.ROCK_PARTS bleibt für den Paritäts-Vertrag
+        // (ParityVectors) bestehen; gezeichnet wird er nirgends mehr —
+        // die Uhr zeichnet keine Requisiten, und CardPlan/CardStyle
+        // nennen die Tabelle nur als Vorbild.
+        PropShape.FELS -> drawBoulder(prop, cx, groundY, cell)
         PropShape.LATERNE ->
             drawBlockParts(ScenePaint.LANTERN_PARTS, cx, groundY, s, sway, cell,
                 dark, body, light, accent)
@@ -233,8 +243,10 @@ internal fun DrawScope.drawOutlinedBlocks(cell: Float, blocks: List<Pair<Rect, C
             size = Size(r.w + cell * 2f, r.h + cell * 2f)
         )
     }
+    // Jede Fläche mit Bevel (Kante eine Zelle): So erben Kaktus, Insel
+    // und Palmen die Kante, ohne selbst davon zu wissen.
     blocks.forEach { (r, color) ->
-        drawRect(color = color, topLeft = Offset(r.x, r.y), size = Size(r.w, r.h))
+        bevelRect(color, Offset(r.x, r.y), Size(r.w, r.h), cell)
     }
 }
 
@@ -288,11 +300,7 @@ internal fun DrawScope.drawPixelTree(
             topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
             size = Size(lw + cell * 2f, lh + cell * 2f)
         )
-        drawRect(
-            color = color,
-            topLeft = Offset(lx - lw / 2f, layerTop),
-            size = Size(lw, lh)
-        )
+        bevelRect(color, Offset(lx - lw / 2f, layerTop), Size(lw, lh), cell)
     }
 }
 
@@ -325,11 +333,7 @@ internal fun DrawScope.drawPixelBush(
             topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
             size = Size(lw + cell * 2f, lh + cell * 2f)
         )
-        drawRect(
-            color = color,
-            topLeft = Offset(lx - lw / 2f, layerTop),
-            size = Size(lw, lh)
-        )
+        bevelRect(color, Offset(lx - lw / 2f, layerTop), Size(lw, lh), cell)
     }
 
     // Licht-Tupfer auf dem Bauch
@@ -409,7 +413,7 @@ internal fun DrawScope.drawPixelFlower(
             topLeft = Offset(x - cell, y - cell),
             size = Size(u + cell * 2f, u + cell * 2f)
         )
-        drawRect(color = color, topLeft = Offset(x, y), size = Size(u, u))
+        bevelRect(color, Offset(x, y), Size(u, u), cell)
     }
     block(bx - u / 2f, by - u * 1.5f, petal)          // oben
     block(bx - u * 1.5f, by - u / 2f, petal)          // links
@@ -478,41 +482,46 @@ internal fun DrawScope.drawPixelCactus(
 }
 
 /**
- * Welle: flacher, breiter Stapel mit Schaumtupfern. Bewusst breiter als
- * hoch — eine Welle, die wie ein Busch stünde, läse sich als Pflanze.
+ * Findling (FELS) mit Kiesel daneben, als Pixel-Maske aus
+ * [PropSprites.BOULDER] und [PropSprites.PEBBLE]: eine Zelle pro
+ * Maskenpixel. Gestapelte Rechtecke lasen sich als Kasten; die Maske
+ * bringt die runde Kuppe, Licht oben links, dunklen Fuß und den Riss.
+ * Er liegt auf der Bodenkante ([groundY] ist die Requisiten-Basis, zwei
+ * Zellen darunter) und wiegt nicht im Wind — Steine tun das nicht.
  */
-internal fun DrawScope.drawPixelWave(
-    cx: Float,
-    groundY: Float,
-    s: Float,
-    sway: Float,
-    cell: Float,
-    dark: Color,
-    body: Color,
-    light: Color,
-    foam: Color
-) {
-    val layers = listOf(
-        Triple(s * 3.0f, s * 0.30f, dark),
-        Triple(s * 2.2f, s * 0.26f, body),
-        Triple(s * 1.2f, s * 0.22f, light)
-    )
-    var layerTop = groundY
-    var lx = cx
-    layers.forEachIndexed { i, (lw, lh, color) ->
-        layerTop -= lh
-        lx = cx + sway * (0.3f + 0.4f * i)
-        drawRect(
-            color = OutlineColor,
-            topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
-            size = Size(lw + cell * 2f, lh + cell * 2f)
-        )
-        drawRect(color = color, topLeft = Offset(lx - lw / 2f, layerTop), size = Size(lw, lh))
-    }
+internal fun DrawScope.drawBoulder(prop: Prop, cx: Float, groundY: Float, cell: Float) {
+    val base = groundY - cell * 2f
+    val x = floor((cx - 8 * cell) / cell) * cell
+    propSprite(x, base - PropSprites.BOULDER.size * cell, cell, PropSprites.BOULDER, prop)
+    propSprite(x + 14 * cell, base - PropSprites.PEBBLE.size * cell, cell, PropSprites.PEBBLE, prop)
+}
 
-    val u = cell * 1.5f
-    drawRect(color = foam, topLeft = Offset(lx - s * 0.5f, layerTop), size = Size(u * 2f, u))
-    drawRect(color = foam, topLeft = Offset(lx + s * 0.2f, layerTop + u), size = Size(u, u))
+/**
+ * Brecher (WELLE) aus [PropSprites.BREAKER]: eingerollte Krone mit
+ * Schaumkante und Gischt. Der Fuß sitzt zwei Zellen über der Bodenkante,
+ * sonst verdeckten ihn die Wellenkämme des Bodens.
+ */
+internal fun DrawScope.drawBreaker(prop: Prop, cx: Float, groundY: Float, cell: Float) {
+    val base = groundY - cell * 2f
+    val x = floor((cx - 9 * cell) / cell) * cell
+    propSprite(x, base - (PropSprites.BREAKER.size + 2) * cell, cell, PropSprites.BREAKER, prop)
+}
+
+/**
+ * Zeichnet eine Requisiten-Maske aus [PropSprites]: eine Zelle pro
+ * Maskenpixel, die Farbe je Zeichen aus [PropSprites.color]. Ohne
+ * Palette und ohne Cache — kein Zustand im Renderer, nichts, was pro
+ * Frame angelegt wird.
+ */
+private fun DrawScope.propSprite(x: Float, y: Float, u: Float, rows: List<String>, prop: Prop) {
+    for (r in rows.indices) {
+        val row = rows[r]
+        for (k in row.indices) {
+            val argb = PropSprites.color(row[k], prop)
+            if (argb == 0L) continue
+            drawRect(Color(argb), Offset(x + k * u, y + r * u), Size(u, u))
+        }
+    }
 }
 
 /**
@@ -565,7 +574,7 @@ internal fun DrawScope.drawPixelFir(
             topLeft = Offset(lx - lw / 2f - cell, layerTop - cell),
             size = Size(lw + cell * 2f, lh + cell * 2f)
         )
-        drawRect(color = color, topLeft = Offset(lx - lw / 2f, layerTop), size = Size(lw, lh))
+        bevelRect(color, Offset(lx - lw / 2f, layerTop), Size(lw, lh), cell)
         // Schnee auf der Lage (BERG): ein Streifen an der Oberkante,
         // links länger, als wäre er von rechts angeweht.
         if (snow != Color.Transparent) {
@@ -610,7 +619,7 @@ internal fun DrawScope.drawPixelTower(
         topLeft = Offset(cx - w / 2f - cell, groundY - hgt - cell),
         size = Size(w + cell * 2f, hgt + cell)
     )
-    drawRect(color = body, topLeft = Offset(cx - w / 2f, groundY - hgt), size = Size(w, hgt))
+    bevelRect(body, Offset(cx - w / 2f, groundY - hgt), Size(w, hgt), cell)
     drawRect(color = dark, topLeft = Offset(cx, groundY - hgt), size = Size(w / 2f, hgt))
     drawRect(color = light, topLeft = Offset(cx - w / 2f, groundY - hgt), size = Size(w, s * 0.16f))
 
@@ -634,10 +643,11 @@ internal fun DrawScope.drawPixelTower(
 
 /**
  * Formen, die als Tabelle in :core stehen statt als Zeichencode hier —
- * Fels ([ScenePaint.ROCK_PARTS]) und Laterne ([ScenePaint.LANTERN_PARTS]).
- * Der Renderer füllt stumpf Rechtecke; welche, sagt die Tabelle. Genau
- * deshalb kann keine der beiden Formen zwischen den Ports auseinander
- * laufen, ohne dass der Paritäts-Vertrag es meldet.
+ * heute nur noch die Laterne ([ScenePaint.LANTERN_PARTS]); der Fels ist
+ * im Bevel-Look ein Findling aus [PropSprites]. Der Renderer füllt stumpf
+ * Rechtecke; welche, sagt die Tabelle. Genau deshalb kann die Form
+ * zwischen den Ports nicht auseinanderlaufen, ohne dass der
+ * Paritäts-Vertrag es meldet.
  *
  * Erst alle Konturen, dann alle Flächen — sonst schnitte die Kontur
  * eines höheren Stücks in die Fläche des darunterliegenden, und die Form
@@ -666,55 +676,27 @@ internal fun DrawScope.drawBlockParts(
         )
     }
     parts.forEach { p ->
-        drawRect(
-            color = when (p.tone) {
+        bevelRect(
+            when (p.tone) {
                 0 -> dark
                 1 -> body
                 2 -> light
                 else -> accent
             },
-            topLeft = Offset(left(p), top(p)),
-            size = Size(p.w * s, p.h * s)
+            Offset(left(p), top(p)),
+            Size(p.w * s, p.h * s),
+            cell
         )
     }
 }
 
 /**
- * Bodenstreifen: Grundfläche mit dunklerem Band, darüber die Narbe aus
- * zwei Tönen. Der statische Boden unter allem — welche Farben, sagt die
- * Kulisse; wo er beginnt, sagt ScenePaint.groundY und sonst niemand.
+ * Bodenstreifen: der statische Boden unter allem. Welches Muster und
+ * welche Farben, sagt die Kulisse (Ground.style, siehe GroundStyles.kt);
+ * wo er beginnt, sagt ScenePaint.groundY und sonst niemand.
  */
 internal fun DrawScope.drawGroundStrip(cell: Float, ground: Ground) {
-    val h = size.height
-    val w = size.width
-    val groundTop = ScenePaint.groundY(h)
-
-    drawRect(
-        color = Color(ground.sand),
-        topLeft = Offset(0f, groundTop),
-        size = Size(w, h - groundTop)
-    )
-    drawRect(
-        color = Color(ground.sandShade),
-        topLeft = Offset(0f, groundTop + cell * 8),
-        size = Size(w, cell * 2)
-    )
-    val toothW = cell * 5f
-    drawRect(
-        color = Color(ground.turfDark),
-        topLeft = Offset(0f, groundTop),
-        size = Size(w, cell * 5)
-    )
-    var x = 0f
-    while (x < w) {
-        drawRect(
-            color = Color(ground.turfLight),
-            topLeft = Offset(x, groundTop),
-            size = Size(toothW, cell * 4)
-        )
-        x += toothW * 2
-    }
-    drawRect(color = OutlineColor, topLeft = Offset(0f, groundTop - cell), size = Size(w, cell))
+    drawGroundStyle(cell, ScenePaint.groundY(size.height), ground)
 }
 
 /**
@@ -731,8 +713,10 @@ internal fun DrawScope.drawTrack(
     cx: Float,
     cy: Float,
     radius: Float,
-    cell: Float
+    cell: Float,
+    scene: SceneId
 ) {
+    val style = ScenePaint.track(scene)
     // 60 statt 72 Segmente: Die einzelnen Kettenglieder bekommen sichtbaren
     // Abstand (Perlenketten-Look), statt sich zu überlappen. Die Zonen
     // bleiben durch ihre größeren Blöcke bewusst ein durchgehendes Band.
@@ -790,19 +774,10 @@ internal fun DrawScope.drawTrack(
             mineTouchesBlock(it.x - b.centerX, it.y - b.centerY, minePx, b.outer / 2f)
         }
         if (underMine) continue
-        drawRect(
-            color = OutlineColor,
-            topLeft = Offset(b.left, b.top),
-            size = Size(b.outer, b.outer)
-        )
-        drawRect(
-            color = GroundSandShade,
-            topLeft = Offset(b.faceLeft, b.faceTop),
-            size = Size(b.inner, b.inner)
-        )
+        drawTrackBlock(b, style)
     }
 
-    for (z in zoneBlocks) drawZoneBlock(z.block, z.core, z.mirrored)
+    for (z in zoneBlocks) drawZoneBlock(z.block, z.core, z.mirrored, style.motif)
 
     // Die Minen der Falle: so viele, wie TrapPaint.count aus der
     // Grundbreite ergibt, im Takt der Blöcke über die Breite
@@ -816,6 +791,54 @@ internal fun DrawScope.drawTrack(
     }
     for ((i, mine) in mines.withIndex()) {
         drawMineBody(mineCenters[i].x, mineCenters[i].y, pxOf(mine), mine.red)
+    }
+}
+
+/**
+ * Ein normaler Block der Bahn ([b], siehe [sandBlock]) im Material der
+ * Welt ([style], aus [ScenePaint.track]): Umriss eine Rasterstufe breit
+ * wie bisher, darin die Fläche mit Bevel und darauf das Muster der Welt.
+ *
+ * Kante und Muster liegen im Raster der Bahn (Kante = [TrackBlock.unit]),
+ * genau wie Umriss und Blätter der Zone — sonst säßen sie neben den
+ * Minen in krummen Pixeln. Die Mitte `m` ist auf eine ganze Stufe
+ * abgerundet: Bei einer geraden Zahl von Stufen gibt es keine echte
+ * Mitte, und ein halbes Rasterpixel läse sich unscharf.
+ */
+internal fun DrawScope.drawTrackBlock(b: TrackBlock, style: TrackStyle) {
+    drawRect(color = OutlineColor, topLeft = Offset(b.left, b.top), size = Size(b.outer, b.outer))
+    val l = b.faceLeft
+    val t = b.faceTop
+    val s = b.inner
+    val e = b.unit
+    bevelRect(Color(style.block), Offset(l, t), Size(s, s), e, Color(style.light), Color(style.dark))
+    // GLATT hat keinen Akzent (durchsichtig) — dort bleibt die Fläche leer.
+    if (style.pattern == BlockPattern.GLATT) return
+    val accent = Color(style.accent)
+    val n = (s / e).roundToInt()
+    val m = ((n - 1) / 2) * e
+    when (style.pattern) {
+        BlockPattern.GLATT -> Unit
+        // Waagrechte Fuge durch die Mitte, links und rechts eine Stufe frei.
+        BlockPattern.FUGE -> drawRect(accent, Offset(l + e, t + m), Size(s - 2 * e, e))
+        // Zwei Maserungspunkte übereinander.
+        BlockPattern.PLANKE -> {
+            drawRect(accent, Offset(l + m, t + e), Size(e, e))
+            drawRect(accent, Offset(l + m, t + s - 2 * e), Size(e, e))
+        }
+        // Schneekappe über die ganze Oberkante, links eine Stufe tiefer
+        // (angeweht wie auf den Nadelbäumen).
+        BlockPattern.SCHNEEKAPPE -> {
+            drawRect(accent, Offset(l, t), Size(s, e))
+            drawRect(accent, Offset(l, t), Size(e, e * 2))
+        }
+        // Zwei Nieten in gegenüberliegenden Ecken.
+        BlockPattern.NIETEN -> {
+            drawRect(accent, Offset(l + e, t + e), Size(e, e))
+            drawRect(accent, Offset(l + s - 2 * e, t + s - 2 * e), Size(e, e))
+        }
+        // Ein Lämpchen in der Mitte.
+        BlockPattern.LAEMPCHEN -> drawRect(accent, Offset(l + m, t + m), Size(e, e))
     }
 }
 
@@ -962,8 +985,14 @@ internal fun zoneBlockScale(d: Float): Float =
  *
  * [mirrored] spiegelt die Spalten der Büschel, damit nicht jeder Block
  * gleich aussieht.
+ *
+ * [motif] ist das Motiv der Welt ([ScenePaint.track], vom Aufrufer schon
+ * geholt statt je Block neu): Der Körper bleibt in jeder Welt grün, denn
+ * die Zone ist das Signal. Blätter und Tupfer trägt nur
+ * die WIESE, die anderen Welten ein Motiv von ein paar Pixeln
+ * ([ScenePaint.motif]); der Kern-Akzent ist nie rot oder rosa.
  */
-internal fun DrawScope.drawZoneBlock(block: TrackBlock, core: Boolean, mirrored: Boolean) {
+internal fun DrawScope.drawZoneBlock(block: TrackBlock, core: Boolean, mirrored: Boolean, motif: ZoneMotif) {
     val unit = block.unit
     val inner = block.inner
     val left = block.faceLeft
@@ -977,19 +1006,24 @@ internal fun DrawScope.drawZoneBlock(block: TrackBlock, core: Boolean, mirrored:
         val c = if (mirrored) n - 1 - col else col
         drawRect(color = color, topLeft = Offset(left + c * unit, top + row * unit), size = Size(unit, unit))
     }
-    val f = n / 8f
-    // Blätterbüschel: ein Pixel, sein rechter Nachbar und der darüber.
-    val leaf = if (core) GrassLeafCore else GrassLight
-    for ((a, b) in ZONE_LEAVES) {
-        val col = (a * f).roundToInt()
-        val row = (b * f).roundToInt()
-        pixel(col, row, leaf)
-        pixel(col + 1, row, leaf)
-        pixel(col, row - 1, leaf)
+    // Blätter und Tupfer gehören zur Wiese. Die anderen Welten setzen ihr
+    // eigenes Motiv (unten, nach der Kante); zwei Muster übereinander
+    // machten die Fläche unruhig.
+    if (motif == ZoneMotif.WIESE) {
+        val f = n / 8f
+        // Blätterbüschel: ein Pixel, sein rechter Nachbar und der darüber.
+        val leaf = if (core) GrassLeafCore else GrassLight
+        for ((a, b) in ZONE_LEAVES) {
+            val col = (a * f).roundToInt()
+            val row = (b * f).roundToInt()
+            pixel(col, row, leaf)
+            pixel(col + 1, row, leaf)
+            pixel(col, row - 1, leaf)
+        }
+        // Dunkle Tupfer, je ein Pixel.
+        val deep = if (core) GrassDark else GrassDeep
+        for ((a, b) in ZONE_SPECKS) pixel((a * f).roundToInt(), (b * f).roundToInt(), deep)
     }
-    // Dunkle Tupfer, je ein Pixel.
-    val deep = if (core) GrassDark else GrassDeep
-    for ((a, b) in ZONE_SPECKS) pixel((a * f).roundToInt(), (b * f).roundToInt(), deep)
     // Licht-Kante wie bei den Eckknöpfen (drawSandBevel), eine Stufe breit:
     // erst der Schatten unten und rechts, dann das Licht oben und links darüber.
     val shade = if (core) GrassEdgeCore else GrassEdge
@@ -998,6 +1032,19 @@ internal fun DrawScope.drawZoneBlock(block: TrackBlock, core: Boolean, mirrored:
     drawRect(shade, Offset(left + inner - unit, top), Size(unit, inner))
     drawRect(shine, Offset(left, top), Size(inner - unit, unit))
     drawRect(shine, Offset(left, top), Size(unit, inner - unit))
+    // Das Motiv der Welt liegt über der Kante, im Raster um die Mitte der
+    // Grasfläche. Nicht gespiegelt: Es ist klein und mittig, ein
+    // gespiegeltes Motiv sähe nur wie ein anderes aus. Die WIESE liefert
+    // keine Pixel, dort bleiben die Blätter von oben.
+    val mx = (left + inner / 2f - unit / 2f).roundToInt().toFloat()
+    val my = (top + inner / 2f - unit / 2f).roundToInt().toFloat()
+    // Mit Index statt for-in: Das läuft pro Zonenblock und Frame, ein
+    // Iterator wäre jedes Mal eine Allokation.
+    val px = ScenePaint.motif(motif, core)
+    for (i in px.indices) {
+        val p = px[i]
+        drawRect(Color(p.color), Offset(mx + p.dx * unit, my + p.dy * unit), Size(unit, unit))
+    }
 }
 
 /** Lage der Blätterbüschel auf der Grasfläche, in Achteln (Spalte, Zeile). */
@@ -1098,6 +1145,12 @@ internal fun DrawScope.drawTimingDot(
         month = month
     )
 
+    // Dottie als Kugel (docs/bevel-look.md, Abschnitt 4): Jede Zelle
+    // bekommt ihre Stufe auf der Lichtachse, zum Glanz des Skins hin statt
+    // zu Weiß — so bleibt ein goldener Vogel golden. Die Glanzfarbe steht
+    // einmal pro Frame fest, nicht pro Zelle.
+    val shineArgb = SkinPaint.shine(skin, state)
+
     fun drawBird(centerX: Float, centerY: Float, alpha: Float = 1f) {
         drawPixelCircle(
             outline = OutlineColor,
@@ -1105,7 +1158,7 @@ internal fun DrawScope.drawTimingDot(
             centerY = centerY,
             radius = r,
             alpha = alpha
-        ) { col, row -> Color(SkinPaint.cell(skin, col, row, state)) }
+        ) { col, row -> Color(BevelPaint.kugel(col, row, SkinPaint.cell(skin, col, row, state), shineArgb)) }
 
         val u = (r * 2f) / GRID
         fun rect(col: Float, row: Float, cols: Float, rows: Float, color: Color) {
@@ -1128,25 +1181,32 @@ internal fun DrawScope.drawTimingDot(
         // Sie wirkte dort wie ein Kasten ums Auge. Zur Silhouette hin
         // fehlt sie immer, dort grenzt ohnehin die Kontur des Kreises an.
         val facingLeft = sin(game.angle) * game.direction > 0f
-        val shine = Color(SkinPaint.shine(skin, state))
+        val shine = Color(shineArgb)
+        // Weißer Kern im Glanzpunkt und eine halbe Zeile Schatten unter dem
+        // Augenweiß: Der Glanz liegt auf der Kugel, das Auge in ihr.
+        val eyeEdge = Color(BevelPaint.EYE_EDGE)
         val eyeOutline = SkinPaint.needsEyeOutline(skin)
         if (facingLeft) {
             rect(GRID - 4.5f, 2.5f, 2f, 2f, shine)
+            rect(GRID - 3.5f, 2.5f, 1f, 1f, Color.White)
             if (eyeOutline) {
                 rect(5.5f, 3f, 0.5f, 4f, OutlineColor)
                 rect(2f, 2.5f, 3.5f, 0.5f, OutlineColor)
                 rect(2f, 7f, 3.5f, 0.5f, OutlineColor)
             }
             rect(2f, 3f, 3.5f, 4f, Color.White)
+            rect(2f, 6.5f, 3.5f, 0.5f, eyeEdge)
             rect(2f, 4f, 1.5f, 2f, OutlineColor)
         } else {
             rect(2.5f, 2.5f, 2f, 2f, shine)
+            rect(2.5f, 2.5f, 1f, 1f, Color.White)
             if (eyeOutline) {
                 rect(7f, 3f, 0.5f, 4f, OutlineColor)
                 rect(7.5f, 2.5f, 3.5f, 0.5f, OutlineColor)
                 rect(7.5f, 7f, 3.5f, 0.5f, OutlineColor)
             }
             rect(7.5f, 3f, 3.5f, 4f, Color.White)
+            rect(7.5f, 6.5f, 3.5f, 0.5f, eyeEdge)
             rect(9.5f, 4f, 1.5f, 2f, OutlineColor)
         }
     }

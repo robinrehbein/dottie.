@@ -579,6 +579,280 @@ class ScenePaintTest {
         assertEquals(SceneId.WIESE, ScenePaint.fromName("WOLKENKUCKUCKSHEIM"))
     }
 
+    // ===== Bahn und Boden je Welt (Bevel-Look, Schritt 2) =====
+
+    /**
+     * Alle Farben, die eine Welt außerhalb der Zone neu auf den Bildschirm
+     * bringt: Blockmaterial samt Kanten und Muster, Bodenmuster und die
+     * Pixel-Masken der Requisiten. Die Motive liegen AUF der Zone und
+     * dürfen grün sein; sie prüft `die Motive bleiben klein und ohne Rot`.
+     *
+     * Die Narben-Kacheln der WIESE leiten ihre Kanten aus dem Bestandsgrün
+     * ab (BevelPaint.light / GroundPaint.turfShade) — sie sind die
+     * Grasnarbe selbst und fallen unter LEGACY_ZONE_GREENS.
+     */
+    private fun bahnUndBoden(id: SceneId): List<Long> {
+        val out = mutableListOf<Long>()
+        val track = ScenePaint.track(id)
+        out += listOf(track.block, track.light, track.dark)
+        if (track.pattern != BlockPattern.GLATT) out += track.accent
+        val ground = ScenePaint.ground(id) ?: return out
+        out += listOf(ground.sand, ground.sandShade, ground.turfDark, ground.turfLight)
+        out += when (ground.style) {
+            GroundStyle.NARBE -> listOf(GroundPaint.PEBBLE_LIGHT, GroundPaint.PEBBLE_DARK)
+            GroundStyle.DUENE -> GroundPaint.SANDSTONE_BANDS + GroundPaint.SANDSTONE_BAND_LIGHTS + listOf(
+                GroundPaint.DUNE_CREST, GroundPaint.SANDSTONE_JOINT,
+                GroundPaint.DUNE_PEBBLE_LIGHT, GroundPaint.DUNE_PEBBLE_BODY, GroundPaint.DUNE_PEBBLE_DARK
+            )
+            GroundStyle.WELLEN -> listOf(GroundPaint.WATER_MID, GroundPaint.FOAM)
+            GroundStyle.SCHNEE -> listOf(
+                GroundPaint.ROCK_JOINT, GroundPaint.ROCK, GroundPaint.ROCK_LIGHT,
+                GroundPaint.ROCK_DARK, GroundPaint.SNOW_TOP
+            )
+            GroundStyle.BORDSTEIN -> listOf(
+                GroundPaint.CURB_LIGHT, GroundPaint.CENTER_LINE, GroundPaint.CENTER_LINE_LIGHT
+            )
+        }
+        // Findling und Brecher: der Riss und der Schaumschatten sind neu.
+        ScenePaint.props(id).forEach { prop ->
+            when (prop.shape) {
+                PropShape.FELS -> out += PropSprites.crack(prop.dark)
+                PropShape.WELLE -> out += PropSprites.FOAM_SHADE
+                else -> Unit
+            }
+        }
+        return out
+    }
+
+    @Test
+    fun `jede Bahn hebt sich von jedem Himmel ihrer Welt ab`() {
+        // Die Bahn zeigt, wo der Punkt läuft. Ein Block ist Fläche UND
+        // Kontur: Vor hellen Himmeln trägt die Kontur, vor dunklen die
+        // Fläche — wie bei den Minen muss eine der beiden klar abstechen,
+        // nach demselben Maß wie die Zonensignale.
+        //
+        // Die Fläche allein reicht nicht als Maß: Schon der Bestand der
+        // WIESE (Sand vor dem Sonnenuntergang, Stufe 4) liegt bei 90, und
+        // der Sandstein der WÜSTE vor dem Sandschleier bei 23. Getragen
+        // hat dort seit jeher die Kontur.
+        SceneId.entries.forEach { id ->
+            val block = ScenePaint.track(id).block
+            ScenePaint.sky(id).forEachIndexed { stufe, himmel ->
+                val flaeche = abstand(himmel, block)
+                val kontur = abstand(himmel, BevelPaint.OUTLINE)
+                assertTrue(
+                    "$id Stufe $stufe (${hex(himmel)}): Block ${hex(block)} $flaeche, " +
+                        "Kontur $kontur — die Bahn geht im Himmel unter",
+                    maxOf(flaeche, kontur) >= ScenePaint.MIN_SKY_SIGNAL_DISTANCE
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `die Blockflaeche allein unterschreitet das Mass nur an bekannten Stufen`() {
+        // Abschnitt 8.4 verlangt die Fläche allein ≥ MIN_SKY_SIGNAL_DISTANCE.
+        // Die Blockfarben legt aber Abschnitt 0 fest (Zielbilder,
+        // Prototyp), und an diesen Stufen trägt dort die Kontur. Damit das
+        // nicht still wächst, steht jede Unterschreitung hier einzeln:
+        // Kommt eine neue hinzu, schlägt der Test an — dann die Farbe
+        // anpassen, nicht die Liste. Fällt eine weg, ebenfalls: dann die
+        // Liste kürzen.
+        val bekannt = setOf(
+            SceneId.WIESE to 4, // Sand vor dem Sonnenuntergang, Bestand von main
+            SceneId.WUESTE to 1, SceneId.WUESTE to 2,
+            SceneId.MEER to 3, SceneId.MEER to 4,
+            SceneId.BERG to 0, SceneId.BERG to 1, SceneId.BERG to 2,
+            SceneId.STADT to 0,
+        )
+        val unter = mutableSetOf<Pair<SceneId, Int>>()
+        SceneId.entries.forEach { id ->
+            val block = ScenePaint.track(id).block
+            ScenePaint.sky(id).forEachIndexed { stufe, himmel ->
+                if (abstand(himmel, block) < ScenePaint.MIN_SKY_SIGNAL_DISTANCE) unter += id to stufe
+            }
+        }
+        assertEquals("Stufen, an denen die Blockfläche allein im Himmel untergeht", bekannt, unter)
+    }
+
+    @Test
+    fun `keine Bahn- oder Bodenfarbe kommt der Zielzone nahe`() {
+        // Außerhalb der Zone gibt es kein Grün — nur die Grasnarbe der
+        // WIESE darf es tragen, wie bisher (LEGACY_ZONE_GREENS).
+        val bestandsgruen = ScenePaint.LEGACY_ZONE_GREENS.toSet()
+        SceneId.entries.forEach { id ->
+            bahnUndBoden(id).forEach { farbe ->
+                if (farbe in bestandsgruen) {
+                    assertEquals("Nur die WIESE darf das Bestandsgrün tragen", SceneId.WIESE, id)
+                    return@forEach
+                }
+                zielzone.forEach { zone ->
+                    assertTrue(
+                        "$id trägt ${hex(farbe)} — nur ${abstand(farbe, zone)} " +
+                            "vom Zielzonen-Ton ${hex(zone)} entfernt",
+                        abstand(farbe, zone) >= ScenePaint.MIN_ZONE_DISTANCE
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `Bahn und Boden sind deckend`() {
+        SceneId.entries.forEach { id ->
+            bahnUndBoden(id).forEach { farbe ->
+                assertEquals("$id: ${hex(farbe)} ist nicht deckend", 0xFFL, (farbe shr 24) and 0xFF)
+            }
+            listOf(false, true).forEach { core ->
+                ScenePaint.motif(ScenePaint.track(id).motif, core).forEach {
+                    assertEquals("$id: Motiv ${hex(it.color)} ist nicht deckend", 0xFFL, (it.color shr 24) and 0xFF)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `die WIESE behaelt ihre Bahn und ihre Zone`() {
+        // Die WIESE ist die Messlatte: Block wie bisher (GroundSandShade),
+        // kein Muster, und die Zone zeichnet der Renderer mit Blättern und
+        // Tupfern des Bestands — deshalb liefert ihr Motiv nichts.
+        val wiese = ScenePaint.track(SceneId.WIESE)
+        assertEquals(0xFFD3C87EL, wiese.block)
+        assertEquals(BlockPattern.GLATT, wiese.pattern)
+        assertEquals(ZoneMotif.WIESE, wiese.motif)
+        assertTrue(ScenePaint.motif(ZoneMotif.WIESE, core = false).isEmpty())
+        assertTrue(ScenePaint.motif(ZoneMotif.WIESE, core = true).isEmpty())
+    }
+
+    @Test
+    fun `jede Welt hat ihr eigenes Material, Muster und Motiv`() {
+        val styles = SceneId.entries.map { ScenePaint.track(it) }
+        assertEquals("Zwei Welten teilen eine Blockfarbe", 6, styles.map { it.block }.toSet().size)
+        assertEquals("Zwei Welten teilen ein Muster", 6, styles.map { it.pattern }.toSet().size)
+        assertEquals("Zwei Welten teilen ein Motiv", 6, styles.map { it.motif }.toSet().size)
+        styles.forEach {
+            assertTrue(
+                "${it.pattern}: Die Lichtkante ist nicht heller als die Fläche",
+                helligkeit(it.light) > helligkeit(it.block)
+            )
+            assertTrue(
+                "${it.pattern}: Die Schattenkante ist nicht dunkler als die Fläche",
+                helligkeit(it.dark) < helligkeit(it.block)
+            )
+        }
+    }
+
+    @Test
+    fun `die Motive bleiben klein und ohne Rot`() {
+        // Die Motive sind Schmuck auf dem Signal, nicht das Signal: Sie
+        // bleiben in einem 5×5-Feld um die Mitte. Und im Kern gibt es kein
+        // Rot und kein Rosa — main hat die rosa Blüte entfernt, weil
+        // Tester sie für eine Warnung hielten.
+        ZoneMotif.entries.filter { it != ZoneMotif.WIESE }.forEach { m ->
+            listOf(false, true).forEach { core ->
+                val pixel = ScenePaint.motif(m, core)
+                assertTrue("$m (Kern $core) ist leer", pixel.isNotEmpty())
+                assertEquals(
+                    "$m (Kern $core) setzt einen Pixel doppelt",
+                    pixel.size, pixel.map { it.dx to it.dy }.toSet().size
+                )
+                pixel.forEach {
+                    assertTrue(
+                        "$m: Pixel (${it.dx}, ${it.dy}) liegt zu weit außen",
+                        it.dx in -2..2 && it.dy in -2..2
+                    )
+                    assertFalse("$m (Kern $core) trägt Rot/Rosa ${hex(it.color)}", rotOderRosa(it.color))
+                }
+            }
+        }
+        // Gegenprobe: Die Regel erkennt, was sie ausschließen soll.
+        listOf(0xFFE53935L, 0xFFFF5A8AL, 0xFFE8607AL, 0xFFFFB0C8L).forEach {
+            assertTrue("${hex(it)} müsste als Rot/Rosa gelten", rotOderRosa(it))
+        }
+    }
+
+    @Test
+    fun `die Kern-Akzente sind die abgestimmten`() {
+        // docs/bevel-look.md, Abschnitt 0, Punkt 5.
+        val weiss = 0xFFFFFFFFL
+        val gold = 0xFFFFD847L
+        fun mitte(m: ZoneMotif) =
+            ScenePaint.motif(m, core = true).first { it.dx == 0 && it.dy == 0 }.color
+        assertEquals(weiss, mitte(ZoneMotif.KAKTUS))
+        assertTrue(
+            "Das Kreuz der WÜSTE ist gelb",
+            ScenePaint.motif(ZoneMotif.KAKTUS, true)
+                .filter { it.dx != 0 || it.dy != 0 }
+                .all { it.color == 0xFFFFE08AL }
+        )
+        assertEquals(gold, mitte(ZoneMotif.SEEROSE))
+        assertEquals(gold, mitte(ZoneMotif.EDELWEISS))
+        assertEquals("Der Stern am BERG hat acht Strahlen und eine Mitte", 9, ScenePaint.motif(ZoneMotif.EDELWEISS, true).size)
+        assertEquals("Das Go-Licht der STADT ist 3×3", 9, ScenePaint.motif(ZoneMotif.LED, true).size)
+        assertTrue(ScenePaint.motif(ZoneMotif.LED, true).all { it.color == weiss })
+        assertTrue(ScenePaint.motif(ZoneMotif.KRISTALL, true).all { it.color == weiss })
+    }
+
+    @Test
+    fun `jede Welt hat ihren Boden, die Kante bleibt`() {
+        assertEquals(0.88f, ScenePaint.GROUND_TOP, 1e-6f)
+        val erwartet = mapOf(
+            SceneId.WIESE to GroundStyle.NARBE,
+            SceneId.WUESTE to GroundStyle.DUENE,
+            SceneId.MEER to GroundStyle.WELLEN,
+            SceneId.BERG to GroundStyle.SCHNEE,
+            SceneId.STADT to GroundStyle.BORDSTEIN
+        )
+        erwartet.forEach { (id, style) -> assertEquals("$id", style, ScenePaint.ground(id)!!.style) }
+        assertNull("Der WELTRAUM bleibt ohne Boden", ScenePaint.ground(SceneId.WELTRAUM))
+        // Der Standard hält alte Aufrufe beim Bestand.
+        assertEquals(GroundStyle.NARBE, Ground(0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000).style)
+    }
+
+    @Test
+    fun `die Pixel-Masken sind rechteckig und kennen nur ihre Zeichen`() {
+        val masken = mapOf(
+            "BOULDER" to PropSprites.BOULDER,
+            "PEBBLE" to PropSprites.PEBBLE,
+            "BREAKER" to PropSprites.BREAKER,
+            "DUNE_PEBBLE" to PropSprites.DUNE_PEBBLE
+        )
+        val zeichen = setOf('.', 'O', 'L', 'B', 'D', 'K', 'W', 'F')
+        masken.forEach { (name, rows) ->
+            assertTrue("$name ist leer", rows.isNotEmpty())
+            assertEquals("$name ist nicht rechteckig", 1, rows.map { it.length }.toSet().size)
+            rows.forEach { row -> row.forEach { assertTrue("$name kennt '$it' nicht", it in zeichen) } }
+            // Der Fuß steht auf dem Boden: Die unterste Zeile ist gesetzt.
+            assertTrue("$name schwebt", rows.last().any { it != '.' })
+        }
+        assertEquals(listOf("..OOO..", ".OLLBO.", "OLBBBDO"), PropSprites.DUNE_PEBBLE)
+        assertEquals("Der Kiesel ist 8×5", listOf(8, 5), listOf(PropSprites.PEBBLE[0].length, PropSprites.PEBBLE.size))
+        assertTrue("Der Findling braucht einen Riss", PropSprites.BOULDER.any { 'K' in it })
+        assertTrue("Der Brecher braucht Schaum", PropSprites.BREAKER.any { 'W' in it })
+    }
+
+    @Test
+    fun `jedes Masken-Zeichen hat seine Farbe, der Punkt keine`() {
+        val prop = Prop(PropShape.FELS, 1f, 0f, dark = 0xFF102030, body = 0xFF405060, light = 0xFF708090)
+        assertEquals(BevelPaint.OUTLINE, PropSprites.color('O', prop))
+        assertEquals(prop.light, PropSprites.color('L', prop))
+        assertEquals(prop.body, PropSprites.color('B', prop))
+        assertEquals(prop.dark, PropSprites.color('D', prop))
+        assertEquals(PropSprites.crack(prop.dark), PropSprites.color('K', prop))
+        assertEquals(0xFFFFFFFFL, PropSprites.color('W', prop))
+        assertEquals(PropSprites.FOAM_SHADE, PropSprites.color('F', prop))
+        // Durchsichtig heißt: nicht zeichnen.
+        assertEquals(0L, PropSprites.color('.', prop))
+        assertEquals(0L, PropSprites.color('?', prop))
+    }
+
+    /** Rot oder Rosa: der Rotkanal kräftig und deutlich über Grün. Gold und Weiß bleiben draußen. */
+    private fun rotOderRosa(c: Long): Boolean {
+        val r = (c shr 16) and 0xFF
+        val g = (c shr 8) and 0xFF
+        return r >= 150 && r - g >= 60
+    }
+
     // ===== Werkzeug =====
 
     /** Abstand zweier ARGB-Farben im RGB-Raum. */

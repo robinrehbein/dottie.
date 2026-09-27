@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import de.robinrehbein.punkt.game.Backdrop
 import de.robinrehbein.punkt.game.BackdropKind
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.ScenePaint
 import kotlin.math.PI
 import kotlin.math.cos
@@ -153,11 +154,11 @@ private fun DrawScope.drawStarfield(colors: List<Long>, time: Float, cell: Float
 
     drawGalaxy(
         cx = w * 0.22f, cy = h * 0.11f, radius = w * 0.17f, turn = time * 0.06f,
-        cell = cell, core = Color(colors[3]), arm = Color(colors[4]), tilt = 0.5f
+        cell = cell, core = Color(colors[3]), arm = colors[4], tilt = 0.5f
     )
     drawGalaxy(
         cx = w * 0.76f, cy = h * 0.84f, radius = w * 0.2f, turn = -time * 0.045f + 1.3f,
-        cell = cell, core = Color(colors[3]), arm = Color(colors[5]), tilt = 0.42f
+        cell = cell, core = Color(colors[3]), arm = colors[5], tilt = 0.42f
     )
 
     val drift = time * h * 0.002f
@@ -195,7 +196,10 @@ private fun Boolean.toInt(): Int = if (this) 1 else 0
 /**
  * Spiralgalaxie aus zwei Armen, als Pixelblöcke auf dem Raster. [turn]
  * dreht sie, [tilt] staucht sie senkrecht (schräg von der Seite gesehen).
- * Die Arme werden nach außen blasser.
+ * Die Arme werden nach außen blasser — in drei deckenden Stufen zum
+ * festen Galaxienhimmel hin ([BevelPaint.galaxyTone]), nicht
+ * durchsichtig: Rosé halb durchsichtig über Dunkelblau wurde ein
+ * schmutziges Grau-Lila.
  */
 private fun DrawScope.drawGalaxy(
     cx: Float,
@@ -204,11 +208,12 @@ private fun DrawScope.drawGalaxy(
     turn: Float,
     cell: Float,
     core: Color,
-    arm: Color,
+    arm: Long,
     tilt: Float
 ) {
     val block = cell * 2f
     val steps = 40
+    val dust = Color(BevelPaint.galaxyDust(arm))
     for (a in 0 until 2) {
         for (k in 0 until steps) {
             val t = k / (steps - 1f)
@@ -216,11 +221,11 @@ private fun DrawScope.drawGalaxy(
             val r = radius * (0.1f + t * 0.9f)
             val x = snap(cx + cos(theta) * r, block)
             val y = snap(cy + sin(theta) * r * tilt, block)
-            val alpha = (1f - t) * 0.8f + 0.2f
-            drawRect(arm, Offset(x, y), Size(block, block), alpha = alpha)
-            // Staub und Sterne am Arm: versetzte Einzelzellen.
-            if (k % 3 == 0) {
-                drawRect(core, Offset(x + block, y - cell), Size(cell, cell), alpha = alpha)
+            drawRect(Color(BevelPaint.galaxyTone(arm, t)), Offset(x, y), Size(block, block))
+            // Staub und Sterne am Arm: versetzte Einzelzellen, nur auf der
+            // inneren Hälfte und deckend. Außen wirkten sie wie Bildrauschen.
+            if (k % 3 == 0 && t < 0.5f) {
+                drawRect(dust, Offset(x + block, y - cell), Size(cell, cell))
             }
         }
     }
@@ -228,9 +233,10 @@ private fun DrawScope.drawGalaxy(
     val kx = snap(cx, cell)
     val ky = snap(cy, cell)
     // Schimmer als Kreuz, nicht als Kasten: Ein Rechteck mit Deckkraft
-    // läse sich als Fenster im Himmel.
-    drawRect(arm, Offset(kx - block * 2f, ky - cell), Size(block * 5f, block * 2f), alpha = 0.5f)
-    drawRect(arm, Offset(kx - cell, ky - block * 1.5f), Size(block * 2f, block * 4f), alpha = 0.5f)
+    // läse sich als Fenster im Himmel. Deckend in der mittleren Armstufe.
+    val glow = Color(BevelPaint.galaxyGlow(arm))
+    drawRect(glow, Offset(kx - block * 2f, ky - cell), Size(block * 5f, block * 2f))
+    drawRect(glow, Offset(kx - cell, ky - block * 1.5f), Size(block * 2f, block * 4f))
     drawRect(core, Offset(kx - block, ky - cell), Size(block * 3f, block * 2f))
     drawRect(core, Offset(kx - cell, ky - block), Size(block * 2f, block * 3f))
 }
