@@ -13,7 +13,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Tagesaufgaben, Serien-Joker und die einmaligen Fragen (ab v2.30), von
+ * Tagesaufgaben, Serien-Joker und die einmaligen Fragen (ab v2.36), von
  * der Speicher-Seite aus gesehen.
  */
 class GameStoreRetentionTest {

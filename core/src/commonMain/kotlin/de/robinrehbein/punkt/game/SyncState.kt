@@ -94,7 +94,7 @@ data class SyncState(
      */
     val ownedScenes: Set<String> = emptySet(),
     /**
-     * Erledigte Tagesaufgaben insgesamt (ab v2.30). Aufgaben gibt es nur
+     * Erledigte Tagesaufgaben insgesamt (ab v2.36). Aufgaben gibt es nur
      * am Telefon; die Uhr bekommt die Zahl trotzdem, damit sie die drei
      * Aufgaben-Skins als verdient erkennt und eine Wahl des Telefons
      * übernehmen kann. Wie die Läufe keine echte Summe, sondern das

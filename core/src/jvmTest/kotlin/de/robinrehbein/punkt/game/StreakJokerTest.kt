@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Serien-Joker (ab v2.30): Ein Joker stopft genau einen verpassten Tag.
+ * Serien-Joker (ab v2.36): Ein Joker stopft genau einen verpassten Tag.
  * Reicht der Vorrat nicht für die ganze Lücke, reißt die Serie wie
  * bisher — und die Joker bleiben liegen.
  */

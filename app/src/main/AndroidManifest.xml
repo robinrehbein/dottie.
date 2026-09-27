@@ -34,7 +34,7 @@
                 android:name="com.google.android.gms.ads.APPLICATION_ID"
                 android:value="@string/admob_app_id" />
 
-        <!-- Nutzungsstatistik (ab v2.30): Firebase sammelt NICHTS, bevor
+        <!-- Nutzungsstatistik (ab v2.36): Firebase sammelt NICHTS, bevor
              die Person im Spiel zugestimmt hat — auch nicht das
              automatische first_open. GameAnalytics schaltet die Erfassung
              erst nach dem JA frei und beim Widerruf wieder ab.

@@ -6,9 +6,9 @@ import de.robinrehbein.punkt.game.Twist
 import kotlin.math.roundToLong
 
 /**
- * Ein Ereignis für die Nutzungsstatistik (ab v2.30).
+ * Ein Ereignis für die Nutzungsstatistik (ab v2.36).
  *
- * Bis v2.29 hatte das Spiel keine Messung: Ob Leute nach dem ersten Tag
+ * Bis v2.35 hatte das Spiel keine Messung: Ob Leute nach dem ersten Tag
  * wiederkommen, an welchem Twist sie aufgeben oder ob die Daily überhaupt
  * gespielt wird, war Raten. Hier stehen die Ereignisse, die diese Fragen
  * beantworten — und nur die.

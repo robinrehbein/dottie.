@@ -46,6 +46,8 @@ import de.robinrehbein.punkt.ui.components.PIXEL_SHADOW
 import de.robinrehbein.punkt.ui.components.CORNER_BUTTON_PADDING
 import de.robinrehbein.punkt.ui.components.CornerButton
 import de.robinrehbein.punkt.ui.components.pixelPressable
+import de.robinrehbein.punkt.ui.components.UI_BEVEL_EDGE
+import de.robinrehbein.punkt.ui.components.drawFaceBevel
 import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.best_score
 import de.robinrehbein.punkt.ui.resources.collection
@@ -107,7 +109,7 @@ fun ReadyOverlay(
     dailyArmed: Boolean = false,
     // Die Zielzeile fällt während der Stützräder weg (Plan 8.6 #7).
     goalHidden: Boolean = false,
-    // Offene Tagesaufgaben (ab v2.30): als Zahl am STATISTIK-Taster, in
+    // Offene Tagesaufgaben (ab v2.36): als Zahl am STATISTIK-Taster, in
     // derselben Ecke wie die Serie am DAILY-Taster. 0 = kein Abzeichen.
     missionsOpen: Int = 0
 ) {
@@ -355,6 +357,18 @@ internal fun Taster(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val border = 4.dp.toPx()
             drawRect(color = backgroundColor)
+            // Die Fläche unter Oberkante und Trennlinie bekommt dieselbe
+            // Bevel-Kante wie die Pixel-Knöpfe, gedrückt mit umgekehrtem
+            // Licht. Die Abdunklung liegt danach darüber, über Fläche und
+            // Kante zugleich — das ganze Feld sinkt eine Stufe ein.
+            val links = if (divider) border else 0f
+            drawFaceBevel(
+                base = backgroundColor,
+                topLeft = Offset(links, border),
+                size = Size(size.width - links, size.height - border),
+                edge = UI_BEVEL_EDGE.toPx(),
+                pressed = pressed
+            )
             if (pressed) drawRect(color = OutlineColor.copy(alpha = TASTER_PRESSED_SHADE))
             drawRect(color = OutlineColor, size = Size(size.width, border))
             if (divider) drawRect(color = OutlineColor, size = Size(border, size.height))

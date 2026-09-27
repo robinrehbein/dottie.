@@ -220,6 +220,72 @@ class SoundSetTest {
     }
 
     @Test
+    fun `die Trommel schlaegt bei jedem Ereignis aufs Fell`() {
+        SoundEvent.entries.forEach {
+            assertNotNull(
+                "Die TROMMEL braucht bei $it ihren Anschlag",
+                SoundBank.voice(SoundSetId.TROMMEL, it).noise
+            )
+        }
+        toene(SoundSetId.TROMMEL).forEach {
+            assertEquals("Der Kessel der TROMMEL ist ein Dreieck", Wave.DREIECK, it.wave)
+        }
+    }
+
+    @Test
+    fun `die Orgel haelt ihre Toene`() {
+        // Das Gegenteil des Ambosses: volle Pulsbreite, kaum Abklingen,
+        // kein Rauschen. Die Töne stehen, statt zu verklingen.
+        toene(SoundSetId.ORGEL).forEach {
+            assertEquals("Die ORGEL ist Rechteck", Wave.PULS, it.wave)
+            assertEquals("Die ORGEL klingt voll, nicht nasal", 0.5f, it.duty, 1e-6f)
+            assertTrue("Die ORGEL hält ihre Töne: ${it.decay}", it.decay <= 4f)
+        }
+        SoundEvent.entries.forEach {
+            assertNull("Die ORGEL rauscht nicht bei $it", SoundBank.voice(SoundSetId.ORGEL, it).noise)
+        }
+    }
+
+    @Test
+    fun `die Pfeife gleitet nach oben und nur im Tod nach unten`() {
+        SoundEvent.entries.filter { it != SoundEvent.DEATH && it != SoundEvent.THUD }.forEach { event ->
+            SoundBank.voice(SoundSetId.PFEIFE, event).tones.forEach {
+                assertTrue("PFEIFE/$event gleitet nicht nach oben", it.toHz > it.fromHz)
+                assertEquals(Wave.DREIECK, it.wave)
+            }
+        }
+        val tod = SoundBank.voice(SoundSetId.PFEIFE, SoundEvent.DEATH).tones.single()
+        assertTrue("Der Pfeife geht im Tod die Luft aus", tod.toHz < tod.fromHz)
+    }
+
+    @Test
+    fun `der Laser schiesst nach unten und explodiert nur im Tod`() {
+        toene(SoundSetId.LASER).forEach {
+            assertTrue("Ein Laser-Ton gleitet nach unten: ${it.fromHz} -> ${it.toHz}", it.toHz < it.fromHz)
+        }
+        SoundEvent.entries.forEach {
+            val rausch = SoundBank.voice(SoundSetId.LASER, it).noise
+            if (it == SoundEvent.DEATH) assertNotNull(rausch) else assertNull("LASER/$it rauscht", rausch)
+        }
+    }
+
+    @Test
+    fun `der Roboter piept duenn, kurz und oft`() {
+        toene(SoundSetId.ROBOTER).filter { it.fromHz == it.toHz }.forEach {
+            assertEquals("Der ROBOTER ist nasal", 0.125f, it.duty, 1e-6f)
+            assertTrue("Ein ROBOTER-Piep ist kurz: ${it.seconds}", it.seconds <= 0.12f)
+            assertTrue("Hoch heißt leise: ${it.volume}", it.volume <= 0.25f)
+        }
+        // Stakkato: mehr Töne als jedes andere Set.
+        SoundSetId.entries.filter { it != SoundSetId.ROBOTER }.forEach {
+            assertTrue(
+                "Der ROBOTER hat nicht mehr Töne als $it",
+                toene(SoundSetId.ROBOTER).size > toene(it).size
+            )
+        }
+    }
+
+    @Test
     fun `das KLASSIK-Set ist Ton fuer Ton der Bestand`() {
         // Die Messlatte des ganzen Umbaus: Wer die Umstellung hört, hat
         // sie falsch gemacht. Die Werte stammen aus ChipSynth.effects()
@@ -404,7 +470,7 @@ class SoundSetTest {
     @Test
     fun `jedes Set haengt an seiner eigenen Achse`() {
         // Können und Ausdauer, wie bei den Kulissen: Wer nur Rekorde
-        // jagt, bekommt trotzdem nicht beide Sets.
+        // jagt, bekommt trotzdem nicht alle Sets.
         assertTrue(SoundBank.isUnlocked(SoundSetId.GLOCKE, SkinStats(0, 20, 0)))
         assertFalse(SoundBank.isUnlocked(SoundSetId.GLOCKE, SkinStats(0, 19, 0)))
         assertTrue(

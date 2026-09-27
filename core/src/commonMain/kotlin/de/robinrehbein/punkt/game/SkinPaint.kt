@@ -43,7 +43,7 @@ enum class SkinId {
     CHAMAELEON, KOMBO, TINTE,
     THERMO, MEDAILLE, TAGESZEIT, JAHRESZEIT,
 
-    // Aufgaben — verdient mit Tagesaufgaben (ab v2.30)
+    // Aufgaben — verdient mit Tagesaufgaben (ab v2.36)
     STERNCHEN, ORDEN, POKAL,
 
     // Saison — nur im eigenen Monat verdienbar, dann für immer
@@ -112,7 +112,7 @@ data class SkinStats(
     val patronOwned: Boolean = false,
     val ownedScenes: Set<String> = emptySet(),
     /**
-     * Erledigte Tagesaufgaben insgesamt (ab v2.30, siehe DailyMissions).
+     * Erledigte Tagesaufgaben insgesamt (ab v2.36, siehe DailyMissions).
      * Eine Ausdauer-Achse wie die Läufe: Sie wächst mit jedem Tag, an dem
      * man vorbeischaut, nicht mit dem Rekord.
      */
@@ -420,7 +420,7 @@ object SkinPaint {
     /** Saison-Skin? Verdienbar nur im eigenen Monat (siehe [Season]). */
     fun isSeasonal(id: SkinId): Boolean = Season.forSkin(id) != null
 
-    /** Mit Tagesaufgaben verdienter Skin (ab v2.30)? */
+    /** Mit Tagesaufgaben verdienter Skin (ab v2.36)? */
     fun isMissionSkin(id: SkinId): Boolean = when (id) {
         SkinId.STERNCHEN, SkinId.ORDEN, SkinId.POKAL -> true
         else -> false
@@ -441,7 +441,7 @@ object SkinPaint {
      * würde aus dem Abschluss der Sammlung etwas machen, das nicht mehr
      * am Spielen hängt.
      *
-     * Aufgaben-Skins (ab v2.30) auch nicht, aus einem dritten Grund: Der
+     * Aufgaben-Skins (ab v2.36) auch nicht, aus einem dritten Grund: Der
      * Regenbogen wird nicht gespeichert, sondern bei jedem Blick berechnet.
      * Zählten drei neue Skins mit, wäre er für alle, die ihn schon haben,
      * mit dem Update wieder zu.

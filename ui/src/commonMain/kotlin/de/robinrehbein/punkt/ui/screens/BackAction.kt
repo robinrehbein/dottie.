@@ -25,7 +25,7 @@ enum class BackAction {
     /** Die einmalige Daily-Karte schließen. */
     CLOSE_DAILY_INTRO,
 
-    /** Eine Frage-Karte schließen, ohne zu antworten (ab v2.30). */
+    /** Eine Frage-Karte schließen, ohne zu antworten (ab v2.36). */
     CLOSE_PROMPT,
 
     /** Aus dem Game-Over zurück in den Startbildschirm. */

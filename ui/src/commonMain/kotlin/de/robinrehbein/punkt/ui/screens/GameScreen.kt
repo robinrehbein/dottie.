@@ -383,7 +383,7 @@ private fun GameScreenContent(
     }
     var reminderOn by remember { mutableStateOf(store.reminderEnabled) }
 
-    // ===== Wiederkehr (ab v2.30) =====
+    // ===== Wiederkehr (ab v2.36) =====
     // Nutzungsstatistik: gesendet wird nur mit Einwilligung, und nur, wenn
     // die Plattform überhaupt messen kann. Die Plattform prüft selbst noch
     // einmal — doppelt hält hier besser als einmal zu wenig.
@@ -1131,7 +1131,7 @@ private fun GameScreenContent(
             )
         }
 
-        // Höchstens eine Frage-Karte, nur im Startbildschirm (ab v2.30).
+        // Höchstens eine Frage-Karte, nur im Startbildschirm (ab v2.36).
         val offen = prompt
         if (offen != null && phase == GamePhase.READY && !showDailyIntro) {
             fun schliessen() {

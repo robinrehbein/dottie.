@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Nutzungsstatistik über Firebase Analytics (ab v2.30).
+<!-- Nutzungsstatistik über Firebase Analytics (ab v2.36).
 
      Solange google_app_id leer ist, ist die Messung komplett AUS: Das
      Spiel fragt nicht nach der Einwilligung, zeigt keinen Schalter und

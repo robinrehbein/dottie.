@@ -28,6 +28,8 @@ import de.robinrehbein.punkt.game.CardFrame
 import de.robinrehbein.punkt.game.CardStyle
 import de.robinrehbein.punkt.game.MedalId
 import de.robinrehbein.punkt.game.MedalPaint
+import de.robinrehbein.punkt.ui.components.UI_BEVEL_EDGE
+import de.robinrehbein.punkt.ui.components.drawFaceBevel
 import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.daily
 import de.robinrehbein.punkt.ui.theme.Bytesized
@@ -62,7 +64,7 @@ fun ScoreHud(
     daily: Boolean = false,
     banner: String = "",
     /**
-     * „NOCH 3 BIS REKORD" (ab v2.30) — leer, solange der Rekord nicht in
+     * „NOCH 3 BIS REKORD" (ab v2.36) — leer, solange der Rekord nicht in
      * Reichweite ist. Klein und ohne Farbe: Es soll die letzten Treffer
      * vor dem Rekord aufladen, nicht vom Ring ablenken.
      */
@@ -159,6 +161,17 @@ fun PixelPanel(frame: CardFrame = CardFrame.SCHLICHT, content: @Composable () ->
                     color = PanelSand,
                     topLeft = Offset(border, border),
                     size = Size(size.width - 2 * border, size.height - 2 * border)
+                )
+                // Die Sandfläche bekommt eine Bevel-Kante innen am Rand,
+                // eine Stufe breit wie bei den Knöpfen. Sie liegt vor dem
+                // verzierten Rahmen: Dessen Eckklötze ragen ins Innere und
+                // decken die Kante dort ab, statt unter ihr zu liegen. Der
+                // Text steht weit genug innen, er bleibt auf reinem Sand.
+                drawFaceBevel(
+                    base = PanelSand,
+                    topLeft = Offset(border, border),
+                    size = Size(size.width - 2 * border, size.height - 2 * border),
+                    edge = UI_BEVEL_EDGE.toPx()
                 )
                 if (frame == CardFrame.SCHLICHT) return@Canvas
                 // Wie viele Felder auf das Panel passen — und dann die

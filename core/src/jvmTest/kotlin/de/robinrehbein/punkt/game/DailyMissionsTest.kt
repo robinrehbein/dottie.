@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Tagesaufgaben (ab v2.30): deterministisch je Tag und Stufe, erreichbar
+ * Tagesaufgaben (ab v2.36): deterministisch je Tag und Stufe, erreichbar
  * für die Stufe, und der Fortschritt läuft nie über das Ziel hinaus.
  */
 class DailyMissionsTest {

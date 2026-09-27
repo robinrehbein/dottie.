@@ -210,6 +210,12 @@ class MineFieldTest {
 
     private fun Track.at(angle: Float): Offset = Offset(cx + cos(angle) * radius, cy + sin(angle) * radius)
 
+    /** Der Sandblock [k], wie drawTrack ihn ins Raster legt (sandBlock). */
+    private fun Track.sand(k: Int): TrackBlock {
+        val p = at(trackSlotAngle(k, segments))
+        return sandBlock(p.x, p.y, cell)
+    }
+
     /** Die Minen, wie drawTrack sie auf [t] legt. */
     private fun layout(game: TimingGame, t: Track): TrapLayout =
         trapLayout(game, segments, game.effectiveZoneHalf(), t.radius, t.cell)
@@ -228,62 +234,82 @@ class MineFieldTest {
     private fun drawnSand(game: TimingGame, t: Track, trap: TrapLayout): List<Int> {
         val centers = trap.mines.map { t.at(it.angle) }
         return sandSlots(game).filter { k ->
-            val b = t.at(trackSlotAngle(k, segments))
-            centers.none { mineTouchesBlock(it.x - b.x, it.y - b.y, trap.px, t.cell * 3f / 2f) }
+            val b = t.sand(k)
+            centers.none { mineTouchesBlock(it.x - b.centerX, it.y - b.centerY, trap.px, b.outer / 2f) }
         }
     }
 
-    /** Keine Kugel kommt einer anderen näher als eine Randbreite. */
+    /**
+     * Keine Kugel kommt einer anderen näher als eine Randbreite. Rote Minen
+     * sind größer ([TrapLayout.redPx]): Ihre Kugel darf den Rand einer
+     * schwarzen Nachbarin überdecken, aber nie deren Kugel; zwei rote
+     * Minen dürfen sich berühren.
+     */
     private fun assertMinesApart(game: TimingGame, t: Track, trap: TrapLayout = layout(game, t)) {
         val px = trap.px
         assertTrue(px in 1..minePixel(t.cell), "Pixelmaß $px")
+        assertTrue(trap.redPx == px || trap.redPx == px + 1, "Rote Minen ${trap.redPx} bei $px")
         val rim = mineRim(px).toFloat()
         val centers = trap.mines.map { t.at(it.angle) }
-        val reach = 2f * (TrapPaint.MINE_SIZE * px + 2f * rim)
-        val bodies = centers.map { bodyRects(it, px) }
-        // Zwischen zwei Kugeln bleibt mindestens eine Randbreite.
+        val red = trap.mines.map { it.red }
+        val reach = 2f * (TrapPaint.MINE_SIZE * trap.redPx + 2f * rim)
+        val bodies = centers.mapIndexed { i, c -> bodyRects(c, if (red[i]) trap.redPx else px) }
+        // Zwischen zwei schwarzen Kugeln bleibt mindestens eine Randbreite.
         val grownBodies = bodies.map { rects ->
             rects.map { Rect(it.left - rim, it.top - rim, it.right + rim, it.bottom + rim) }
         }
         for (i in bodies.indices) for (j in i + 1 until bodies.size) {
             if ((centers[i] - centers[j]).getDistance() > reach) continue
-            val box = bodies[j].reduce { a, b ->
-                Rect(minOf(a.left, b.left), minOf(a.top, b.top), maxOf(a.right, b.right), maxOf(a.bottom, b.bottom))
-            }
-            for (grown in grownBodies[i]) {
-                if (!grown.hits(box)) continue
-                for (b in bodies[j]) assertTrue(
-                    !grown.hits(b),
-                    "Minen $i/$j überdecken sich (${t.name}, cell=${t.cell}, px=$px, " +
-                        "Breite ${game.fakeZoneHalf()})"
-                )
-            }
+            if (red[i] && red[j]) continue
+            val margin = if (red[i] || red[j]) bodies[i] else grownBodies[i]
+            for (a in margin) for (b in bodies[j]) assertTrue(
+                !a.hits(b),
+                "Minen $i/$j überdecken sich (${t.name}, cell=${t.cell}, px=$px, rot=${trap.redPx}, " +
+                    "Breite ${game.fakeZoneHalf()})"
+            )
         }
     }
 
-    /** Kein gezeichneter Sandblock berührt eine Mine samt Rand. */
+    /**
+     * Kein gezeichneter Sandblock berührt die Kugel einer Mine, und der
+     * helle Rand reicht höchstens auf den dunklen Umriss des Blocks, nie
+     * auf seine Sandfläche (außen 3 Zellen minus zwei Rasterstufen, an der
+     * gerundeten Lage — wie sandBlock und drawTrack).
+     */
     private fun assertSandClear(game: TimingGame, t: Track, trap: TrapLayout = layout(game, t)) {
         val px = trap.px
         val rim = mineRim(px).toFloat()
         val blockHalf = t.cell * 3f / 2f
         val centers = trap.mines.map { t.at(it.angle) }
-        val reach = (TrapPaint.MINE_SIZE * px / 2f + rim + blockHalf) * 1.5f + 2f
+        val reach = (TrapPaint.MINE_SIZE * trap.redPx / 2f + rim + blockHalf) * 1.5f + 2f + t.cell
+        // Ein Viertelpixel Luft: Block und Mine teilen sich keinen Bildpunkt.
+        fun square(c: Offset, half: Float) =
+            Rect(c.x - half - 0.25f, c.y - half - 0.25f, c.x + half + 0.25f, c.y + half + 0.25f)
         for (k in drawnSand(game, t, trap)) {
-            val b = t.at(trackSlotAngle(k, segments))
-            // Ein Viertelpixel Luft: Block und Mine teilen sich keinen Bildpunkt.
-            val block = Rect(
-                b.x - blockHalf - 0.25f,
-                b.y - blockHalf - 0.25f,
-                b.x + blockHalf + 0.25f,
-                b.y + blockHalf + 0.25f
-            )
-            for (c in centers) {
+            val s = t.sand(k)
+            val b = Offset(s.centerX, s.centerY)
+            val block = square(b, s.outer / 2f)
+            val face = square(b, s.inner / 2f)
+            for ((i, c) in centers.withIndex()) {
                 if ((c - b).getDistance() > reach) continue
+                if (trap.mines[i].red) {
+                    // Rote Minen sind größer: Ihre Kugel darf auf den dunklen
+                    // Umriss reichen, nie auf die Sandfläche.
+                    for (m in bodyRects(c, trap.redPx)) assertTrue(
+                        !face.hits(m),
+                        "Rote Mine auf dem Sand von Block $k (${t.name}, rot=${trap.redPx})"
+                    )
+                    continue
+                }
                 for (m in bodyRects(c, px)) {
+                    assertTrue(
+                        !block.hits(m),
+                        "Sandblock $k unter einer Mine (${t.name}, px=$px, Breite ${game.fakeZoneHalf()})"
+                    )
                     val grown = Rect(m.left - rim, m.top - rim, m.right + rim, m.bottom + rim)
                     assertTrue(
-                        !block.hits(grown),
-                        "Sandblock $k unter einer Mine (${t.name}, px=$px, Breite ${game.fakeZoneHalf()})"
+                        !face.hits(grown),
+                        "Minenrand auf dem Sand von Block $k (${t.name}, px=$px)"
                     )
                 }
             }
@@ -432,6 +458,38 @@ class MineFieldTest {
                     "Mine ${TrapPaint.MINE_SIZE * px} px, Block $block px (${t.name})"
                 )
             }
+        }
+    }
+
+    @Test
+    fun `auf dem 1080x2340-Telefon ist eine Mine groesser als ein Sandblock`() {
+        // Robins Telefon: Früher schrumpften die Minen hier auf Sprite-Pixel
+        // 4 (28 px) und wirkten kleiner als der Sand (30 px). Seit der Rand
+        // auf dem Umriss des Sandblocks liegen darf, sind es 5 (35 px).
+        val t = screens.first { it.name == "1080x2340" }
+        eachTrapFrame(setOf(Twist.FAKE), seeds = 1L..10L) { game, _ ->
+            assertEquals(5, layout(game, t).px, "Sprite-Pixel der Minen")
+        }
+    }
+
+    @Test
+    fun `rote Minen sind eine Pixelstufe groesser, wo es passt`() {
+        // Das Lauflicht wechselt nicht nur die Farbe, sondern auch die
+        // Größe. Ohne PULS passt das auf den Telefonen immer; unter PULS
+        // nur, wenn die Kette nicht zu eng wird — sonst bleibt es bei px.
+        for (t in screens) {
+            var roteGesehen = false
+            eachTrapFrame(setOf(Twist.FAKE), seeds = 1L..10L) { game, _ ->
+                val trap = layout(game, t)
+                assertEquals(trap.px + 1, trap.redPx, "rote Mine ohne PULS (${t.name})")
+                if (trap.mines.any { it.red }) roteGesehen = true
+            }
+            assertTrue(roteGesehen, "kein rotes Lauflicht gesehen (${t.name})")
+        }
+        // Robins Telefon: schwarz 5, rot 6 Sprite-Pixel (35 bzw. 42 px).
+        val phone = screens.first { it.name == "1080x2340" }
+        eachTrapFrame(setOf(Twist.FAKE), seeds = 1L..5L) { game, _ ->
+            assertEquals(6, layout(game, phone).redPx)
         }
     }
 

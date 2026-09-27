@@ -2,6 +2,8 @@ package de.robinrehbein.punkt.wear
 
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.ScenePaint
+import de.robinrehbein.punkt.game.SoundBank
+import de.robinrehbein.punkt.game.SoundSetId
 import de.robinrehbein.punkt.game.SyncState
 
 /**
@@ -57,12 +59,11 @@ internal object WearSyncMerge {
      * beim Skin: Nur eine WIRKLICH neuere Wahl schlägt die bestehende, und
      * nur wenn die zusammengeführten Stände sie hergeben.
      *
-     * Die Uhr wählt selbst nie eine Kulisse (sie spiegelt nur das
-     * Telefon), trotzdem lohnt die Prüfung: Für WELTRAUM ("alle anderen
-     * Welten gesammelt") zählen dieselben Achsen wie bei den Skins, und
-     * die Uhr kennt die zusammengeführten Stände hier oft eher als die
-     * eigenen Prefs sie schon zeigen. Die Besitz-Menge beider Seiten
-     * zählt mit (Bestandsschutz der Welten-Leiter).
+     * Geprüft wird gegen die zusammengeführten Stände: Für WELTRAUM
+     * ("alle anderen Welten gesammelt") zählen dieselben Achsen wie bei
+     * den Skins, und die Uhr kennt sie hier oft eher, als die eigenen
+     * Prefs sie schon zeigen. Die Besitz-Menge beider Seiten zählt mit
+     * (Bestandsschutz der Welten-Leiter).
      */
     fun sceneToAdopt(
         before: SyncState,
@@ -73,5 +74,22 @@ internal object WearSyncMerge {
         val merged = skinStats(before, incoming, patronOwned).toSkinStats()
         val scene = ScenePaint.fromName(incoming.scene)
         return if (ScenePaint.isUnlocked(scene, merged)) scene else null
+    }
+
+    /**
+     * Welches Ton-Set applySync übernehmen soll — dieselbe Regel wie bei
+     * der Welt: nur eine wirklich neuere Wahl, und nur wenn sie mit den
+     * zusammengeführten Ständen verdient ist. null heißt: nichts
+     * übernehmen, Zeitstempel bleibt stehen.
+     */
+    fun soundToAdopt(
+        before: SyncState,
+        incoming: SyncState,
+        patronOwned: Boolean
+    ): SoundSetId? {
+        if (incoming.soundChangedAt <= before.soundChangedAt) return null
+        val merged = skinStats(before, incoming, patronOwned).toSkinStats()
+        val set = SoundBank.fromName(incoming.sound)
+        return if (SoundBank.isUnlocked(set, merged)) set else null
     }
 }

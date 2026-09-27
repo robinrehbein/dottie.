@@ -531,7 +531,7 @@ der nur in der Play Console geht:
   bleibt werbefrei. Die Werte sind absichtlich zurückhaltend: Das Spiel
   lebt vom sofortigen nächsten Versuch.
 
-## Nutzungsstatistik aktivieren (Firebase Analytics, ab v2.30)
+## Nutzungsstatistik aktivieren (Firebase Analytics, ab v2.36)
 
 Ohne diesen Schritt misst die App nichts, fragt nicht nach der
 Einwilligung und zeigt den Schalter „STATISTIK TEILEN" nicht. Der Code
@@ -616,9 +616,93 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 38` / `versionName
-"2.29"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
+(`app/build.gradle.kts`). Aktuell: `versionCode 44` / `versionName
+"2.35"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
 und committen.
+
+### Release-Notes 2.35 (Bevel-Look)
+
+Deutsch:
+
+> ▪ Menüs, Knöpfe und Schalter im neuen plastischen Pixel-Look
+> ▪ Score-Karte mit überarbeiteten Rahmen, Wolken und Weltböden
+> ▪ Nebel und Starthand grafisch verfeinert
+
+English:
+
+> ▪ Menus, buttons, and switches have a new dimensional pixel look
+> ▪ Score card refreshed with new frames, clouds, and world ground
+> ▪ Refined fog and starting hand graphics
+
+### Release-Notes 2.34 (Lebendige Welten)
+
+Deutsch:
+
+> ▪ Welten mit flüssiger Bewegung, fernen Ebenen und Tageslauf belebt
+> ▪ Neue Bewohner und überarbeitete Hintergründe
+> ▪ Bombentreffer mit Explosion und neuer Game-Over-Animation
+
+English:
+
+> ▪ Worlds come alive with smoother motion, distant layers, and a day cycle
+> ▪ New inhabitants and refreshed backgrounds
+> ▪ Bomb hits now have an explosion and a new game-over animation
+
+### Release-Notes 2.33 (Neuer Pixel-Look)
+
+Deutsch:
+
+> ▪ Neuer plastischer Pixel-Look für Dottie, Bahn, Minen und Welten
+> ▪ Böden, Wolken und Galaxien überarbeitet
+> ▪ Neue Animation beim Bombentreffer
+
+English:
+
+> ▪ Fresh dimensional pixel look for Dottie, the track, mines, and worlds
+> ▪ Refreshed ground, clouds, and galaxies
+> ▪ New animation when hitting a bomb
+
+### Release-Notes 2.32 (Nebel und Bahn)
+
+Deutsch:
+
+> ▪ Nebel passt jetzt zur jeweiligen Welt, vom Sandsturm bis zum Sternennebel
+> ▪ Bahn und Zonenblöcke liegen in einem klareren Pixelraster
+> ▪ Umrisse von Nebel, Bahn und Minen überarbeitet
+
+English:
+
+> ▪ Fog now matches each world, from sandstorms to star clouds
+> ▪ Track and zone blocks use a cleaner pixel grid
+> ▪ Refined outlines for fog, track, and mines
+
+### Release-Notes 2.31 (Zonen und Minen)
+
+Deutsch:
+
+> ▪ Grüne Zonen mit Blättern, Blüte und neuer Lichtkante
+> ▪ Zonenblöcke wachsen sanft zur Mitte hin
+> ▪ Größere Minen sind besser sichtbar; das Trefferfenster bleibt gleich
+
+English:
+
+> ▪ Green zones now feature leaves, a flower, and refined highlights
+> ▪ Zone blocks grow smoothly toward the center
+> ▪ Larger mines are easier to see; the hit window stays the same
+
+### Release-Notes 2.30 (Ton-Sets, Bedienung)
+
+Deutsch:
+
+> ▪ Fünf neue Ton-Sets: Trommel, Orgel, Pfeife, Laser und Roboter
+> ▪ Neue Freischaltungen für Läufe, Serie, Rekord, Spieltage und Gesamtpunkte
+> ▪ Eckknöpfe und Sammlungs-Reiter mit überarbeiteter Lichtkante
+
+English:
+
+> ▪ Five new sound sets: Drum, Organ, Whistle, Laser, and Robot
+> ▪ New unlocks for runs, daily streak, record, play days, and total points
+> ▪ Refined highlights on corner buttons and collection tabs
 
 ### Release-Notes 2.29 (Welten, Bomben, Bedienung)
 

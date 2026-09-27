@@ -108,7 +108,7 @@ fun DeathCauseLabel(
     bombLesson: Boolean,
     modifier: Modifier = Modifier,
     /**
-     * „KNAPP! 0,03 S" unter der Ursache (ab v2.30) — null, wenn es nichts
+     * „KNAPP! 0,03 S" unter der Ursache (ab v2.36) — null, wenn es nichts
      * zu zeigen gibt (siehe [deathMarginText]).
      */
     margin: String? = null

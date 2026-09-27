@@ -80,3 +80,57 @@ class WearSceneSyncTest {
         assertEquals(SceneId.WIESE, WearSyncMerge.sceneToAdopt(before, incoming, patronOwned = false))
     }
 }
+
+/**
+ * Welt und Ton-Set, die auf der Uhr gewählt werden, gehen über
+ * SyncState.mergedWith zum Telefon — und eine neuere Wahl des Telefons
+ * kommt nach denselben Regeln zurück (WearSyncMerge.soundToAdopt).
+ */
+class WearChoiceSyncTest {
+
+    private fun state(scene: String, sceneAt: Long, sound: String, soundAt: Long) = de.robinrehbein.punkt.game.SyncState(
+        bestScore = 100,
+        runCount = 600,
+        totalScore = 30_000,
+        bestPerfectStreak = 25,
+        dailyStreak = 40,
+        bestDailyStreak = 40,
+        daysPlayed = 40,
+        scene = scene,
+        sceneChangedAt = sceneAt,
+        sound = sound,
+        soundChangedAt = soundAt
+    )
+
+    @Test
+    fun `Eine auf der Uhr gewaehlte Welt gewinnt im Abgleich, wenn sie neuer ist`() {
+        val uhr = state("BERG", 5_000L, "KLASSIK", 0L)
+        val telefon = state("WIESE", 1_000L, "KLASSIK", 0L)
+        assertEquals("BERG", telefon.mergedWith(uhr).scene)
+        assertEquals("BERG", uhr.mergedWith(telefon).scene)
+    }
+
+    @Test
+    fun `Ein auf der Uhr gewaehltes Ton-Set gewinnt im Abgleich, wenn es neuer ist`() {
+        val uhr = state("WIESE", 0L, "GLOCKE", 5_000L)
+        val telefon = state("WIESE", 0L, "ORGEL", 1_000L)
+        assertEquals("GLOCKE", telefon.mergedWith(uhr).sound)
+        assertEquals("GLOCKE", uhr.mergedWith(telefon).sound)
+    }
+
+    @Test
+    fun `Ein neueres Ton-Set des Telefons wird uebernommen`() {
+        val uhr = state("WIESE", 0L, "KLASSIK", 1_000L)
+        val telefon = state("WIESE", 0L, "LASER", 2_000L)
+        assertEquals(de.robinrehbein.punkt.game.SoundSetId.LASER, WearSyncMerge.soundToAdopt(uhr, telefon, false))
+        assertNull(WearSyncMerge.soundToAdopt(telefon, uhr, false))
+    }
+
+    @Test
+    fun `Ein nicht verdientes Ton-Set wird nicht uebernommen`() {
+        // GLOCKE braucht eine Perfekt-Serie von 20 — hier auf beiden Seiten 0.
+        val uhr = state("WIESE", 0L, "KLASSIK", 1_000L).copy(bestPerfectStreak = 0)
+        val telefon = state("WIESE", 0L, "GLOCKE", 2_000L).copy(bestPerfectStreak = 0)
+        assertNull(WearSyncMerge.soundToAdopt(uhr, telefon, false))
+    }
+}

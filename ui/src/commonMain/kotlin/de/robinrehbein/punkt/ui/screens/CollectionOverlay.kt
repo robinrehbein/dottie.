@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.BackdropKind
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.CardFrame
 import de.robinrehbein.punkt.game.CardStyle
 import de.robinrehbein.punkt.game.CollectionAxis
@@ -81,6 +82,7 @@ import de.robinrehbein.punkt.ui.components.CORNER_BUTTON_PADDING
 import de.robinrehbein.punkt.ui.components.OverlayCloseButton
 import de.robinrehbein.punkt.ui.components.PIXEL_SHADOW
 import de.robinrehbein.punkt.ui.components.PixelButton
+import de.robinrehbein.punkt.ui.components.drawSandBevel
 import de.robinrehbein.punkt.ui.components.pixelPressable
 import de.robinrehbein.punkt.ui.data.CollectionSeen
 import de.robinrehbein.punkt.ui.data.deviceHourAndMonth
@@ -124,7 +126,7 @@ import de.robinrehbein.punkt.ui.world.OutlineColor
 import de.robinrehbein.punkt.ui.world.PanelSand
 import de.robinrehbein.punkt.ui.world.RecordRed
 import de.robinrehbein.punkt.ui.world.TextDark
-import de.robinrehbein.punkt.ui.world.drawCloud
+import de.robinrehbein.punkt.ui.world.drawClouds
 import de.robinrehbein.punkt.ui.world.drawBackdrop
 import de.robinrehbein.punkt.ui.world.drawGroundStrip
 import de.robinrehbein.punkt.ui.world.drawPixelCircle
@@ -401,13 +403,19 @@ fun CollectionOverlay(
                                         }
                                     ) {
                                         val d = size.minDimension
+                                        // Dieselbe Kugel wie im Spiel (BevelPaint.kugel):
+                                        // Wer hier einen Skin wählt, soll ihn so sehen,
+                                        // wie er dann über die Bahn fliegt.
+                                        val tileShine = SkinPaint.shine(skin, tileState)
                                         drawPixelCircle(
                                             outline = OutlineColor,
                                             centerX = size.width / 2f,
                                             centerY = size.height / 2f,
                                             radius = d / 2f,
                                             alpha = if (available) 1f else LOCKED_ALPHA
-                                        ) { col, row -> Color(SkinPaint.cell(skin, col, row, tileState)) }
+                                        ) { col, row ->
+                                            Color(BevelPaint.kugel(col, row, SkinPaint.cell(skin, col, row, tileState), tileShine))
+                                        }
                                     }
                                 }
                             }
@@ -606,12 +614,11 @@ private fun DrawScope.drawShowcase(
     val cell = (h / 110f).roundToInt().toFloat().coerceAtLeast(2f)
     val kulisse = ScenePaint.of(scene)
 
-    drawRect(color = Color(kulisse.sky[0]))
-    drawBackdrop(kulisse.backdrop, game.elapsed, cell)
+    val sky = Color(kulisse.sky[0])
+    drawRect(color = sky)
+    drawBackdrop(kulisse.backdrop, kulisse.backdrop?.colors.orEmpty(), game.elapsed, cell)
     kulisse.cloud?.let { cloud ->
-        val drift = game.elapsed * h * 0.02f
-        drawCloud(w * 0.12f - drift % (w * 1.4f) + w * 0.2f, h * 0.12f, cell, Color(cloud))
-        drawCloud(w * 0.78f - drift % (w * 1.4f) + w * 0.2f, h * 0.2f, cell, Color(cloud))
+        drawClouds(Color(cloud), game.elapsed, cell, top = h * 0.06f, bottom = h * 0.3f, speed = 2f)
     }
     drawScenery(game, cell, kulisse.props)
     kulisse.ground?.let { drawGroundStrip(cell, it) }
@@ -625,7 +632,7 @@ private fun DrawScope.drawShowcase(
     val radius = minOf((bottom - top) / 2f, h * SHOWCASE_RING_MAX)
     val cx = w / 2f
     val cy = (top + bottom) / 2f
-    drawTrack(game, cx, cy, radius, cell)
+    drawTrack(game, cx, cy, radius, cell, scene)
     val px = cx + cos(game.angle) * radius
     val py = cy + sin(game.angle) * radius
     scale(SHOWCASE_BIRD_SCALE, pivot = Offset(px, py)) {
@@ -847,7 +854,7 @@ private fun CollectionTabs(
 ) {
     // Eine Leiste im Pixel-Stil wie die Kacheln darunter: gemeinsamer
     // dunkler Rahmen, dunkle Trennstriche, der aktive Reiter sandfarben
-    // mit Glanzkante wie die Knöpfe. Seitlich bündig mit dem Raster.
+    // mit derselben Bevel-Kante wie die Eckknöpfe. Seitlich bündig mit dem Raster.
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -895,7 +902,7 @@ private fun CollectionTabs(
                     .background(if (active) PanelSand else TileBackground)
                     .drawBehind {
                         if (active) {
-                            drawRect(TabHighlight, size = Size(size.width, TAB_BORDER.toPx()))
+                            drawSandBevel(Offset.Zero, size, edge = TAB_BORDER.toPx() / 2f)
                         }
                     }
                     .pixelPressable(role = Role.Tab) { onTab(t) }
@@ -932,7 +939,6 @@ private fun CollectionTabs(
 
 private val TAB_HEIGHT = 52.dp
 private val TAB_BORDER = 3.dp
-private val TabHighlight = Color(0xFFEFE9C2)
 
 private data class TabData(val label: String, val count: Int, val total: Int, val prefix: String)
 

@@ -162,7 +162,9 @@ class CollectionProgressTest {
                 bestDailyStreak = t / 4,
                 runCount = t * 3,
                 totalScore = t * 250,
-                daysPlayed = t / 10,
+                // t / 3: bis 40 Tage, damit auch der LASER (30 Tage) und
+                // damit der volle PERLENKRANZ vorkommen.
+                daysPlayed = t / 3,
                 monthsPlayed = t / 30,
                 ownedScenes = if (t % 7 == 0) SceneId.entries.map { it.name }.toSet() else emptySet()
             )
@@ -172,7 +174,7 @@ class CollectionProgressTest {
             CardFrame.ZINNEN to 20,
             CardFrame.PRACHT to 33,
             CardFrame.KASKADE to 6,
-            CardFrame.PERLENKRANZ to 3,
+            CardFrame.PERLENKRANZ to 8,
             CardFrame.KRONE to SkinPaint.collectableCount()
         )
         staende.forEach { s ->
@@ -188,7 +190,7 @@ class CollectionProgressTest {
                 )
             }
         }
-        // Die Achsen: 10/20/33 Skins, x/6 Welten, x/3 Töne, KRONE über alle Skins.
+        // Die Achsen: 10/20/33 Skins, x/6 Welten, x/8 Töne, KRONE über alle Skins.
         assertEquals(CollectionAxis.SKIN_COLLECTION, FrameProgress.of(CardFrame.PRACHT, leer).axis)
         assertEquals(CollectionAxis.SCENE_COLLECTION, FrameProgress.of(CardFrame.KASKADE, leer).axis)
         assertEquals(CollectionAxis.SOUND_COLLECTION, FrameProgress.of(CardFrame.PERLENKRANZ, leer).axis)
@@ -205,10 +207,10 @@ class CollectionProgressTest {
 
     @Test
     fun `die Zaehler der Reiter`() {
-        // 46 bis v2.29, dazu seit v2.30 die drei Aufgaben-Skins.
+        // 46 bis v2.35, dazu seit v2.36 die drei Aufgaben-Skins.
         assertEquals(49, CollectionProgress.SKIN_TOTAL)
         assertEquals(6, CollectionProgress.SCENE_TOTAL)
-        assertEquals(3, CollectionProgress.SOUND_TOTAL)
+        assertEquals(8, CollectionProgress.SOUND_TOTAL)
         assertEquals(7, CollectionProgress.FRAME_TOTAL)
         assertEquals(1, CollectionProgress.skinCount(leer))
         assertEquals(1, CollectionProgress.sceneCount(leer))
@@ -216,7 +218,7 @@ class CollectionProgressTest {
         assertEquals(1, CollectionProgress.frameCount(leer))
         assertEquals(49, CollectionProgress.skinCount(maxStats))
         assertEquals(6, CollectionProgress.sceneCount(maxStats))
-        assertEquals(3, CollectionProgress.soundCount(maxStats))
+        assertEquals(8, CollectionProgress.soundCount(maxStats))
         assertEquals(7, CollectionProgress.frameCount(maxStats))
     }
 

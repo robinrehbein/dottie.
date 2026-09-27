@@ -28,7 +28,7 @@ enum class CollectionAxis {
     MONTHS_PLAYED,
     SEASON_DAYS,
 
-    /** Erledigte Tagesaufgaben (ab v2.30): STERNCHEN, ORDEN, POKAL. */
+    /** Erledigte Tagesaufgaben (ab v2.36): STERNCHEN, ORDEN, POKAL. */
     MISSIONS_DONE,
     SKIN_COLLECTION,
     SCENE_COLLECTION,

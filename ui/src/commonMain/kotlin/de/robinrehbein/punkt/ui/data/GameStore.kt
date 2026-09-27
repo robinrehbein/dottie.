@@ -101,7 +101,7 @@ class GameStore(private val prefs: KeyValueStore) {
         }
 
     /**
-     * Wurde schon einmal gefragt, ob die Erinnerung an soll (ab v2.30)?
+     * Wurde schon einmal gefragt, ob die Erinnerung an soll (ab v2.36)?
      * Die Frage kommt genau einmal, nach dem ersten Tageslauf — ein Nein
      * ist eine Antwort, kein Aufschub. Rein lokal, nicht im Abgleich.
      */
@@ -112,7 +112,7 @@ class GameStore(private val prefs: KeyValueStore) {
         }
 
     /**
-     * Einwilligung in die anonyme Nutzungsstatistik (ab v2.30): null = nie
+     * Einwilligung in die anonyme Nutzungsstatistik (ab v2.36): null = nie
      * gefragt, dann wird auch nichts gesendet. Die Plattform liest den
      * Wert beim Start und schaltet die Erfassung entsprechend (siehe
      * PlatformHooks.setAnalyticsConsent). Rein lokal, nicht im Abgleich:
@@ -352,11 +352,11 @@ class GameStore(private val prefs: KeyValueStore) {
      * Serie noch; liegt er länger zurück, ist sie faktisch gerissen.
      */
     fun dailyStreakPreviewFor(epochDay: Long): Int =
-        // Seit v2.30 lebt eine Serie auch über eine Lücke, die die Joker
+        // Seit v2.36 lebt eine Serie auch über eine Lücke, die die Joker
         // decken: Sie wird beim nächsten Tageslauf fortgeschrieben.
         if (DailyChallenge.isStreakAlive(dailyDay, epochDay, streakJokers)) dailyStreak else 0
 
-    // ===== Serien-Joker (ab v2.30) =====
+    // ===== Serien-Joker (ab v2.36) =====
 
     /**
      * Joker auf Vorrat (0 bis [DailyChallenge.MAX_JOKERS]). Jeder deckt
@@ -521,7 +521,7 @@ class GameStore(private val prefs: KeyValueStore) {
             0
         }
 
-    // ===== Tagesaufgaben (ab v2.30) =====
+    // ===== Tagesaufgaben (ab v2.36) =====
 
     /** Erledigte Tagesaufgaben insgesamt — die Achse der Aufgaben-Skins. */
     val missionsDone: Int
@@ -994,7 +994,7 @@ class GameStore(private val prefs: KeyValueStore) {
         const val KEY_BOMB_LESSON_SEEN = "bomb_lesson_seen"
         // == /AP-11 ==
 
-        // ===== ab v2.30: Aufgaben, Joker, Erinnerungs-Frage, Statistik =====
+        // ===== ab v2.36: Aufgaben, Joker, Erinnerungs-Frage, Statistik =====
         // Erledigte Aufgaben insgesamt — im Abgleich (Aufgaben-Skins).
         const val KEY_MISSIONS_DONE = "missions_done"
         // Der Aufgaben-Stand des laufenden Tages: Tag, Stufe, "a,b,c".

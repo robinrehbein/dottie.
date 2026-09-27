@@ -192,7 +192,7 @@ class StatsSync(
         const val KEY_OWNED_SCENES = "owned_scenes"
 
         /**
-         * Erledigte Tagesaufgaben (ab v2.30). Eine ältere Gegenseite
+         * Erledigte Tagesaufgaben (ab v2.36). Eine ältere Gegenseite
          * schickt das Feld nicht — dann 0, und das Maximum im
          * Zusammenführen nimmt ohnehin den eigenen Wert.
          */

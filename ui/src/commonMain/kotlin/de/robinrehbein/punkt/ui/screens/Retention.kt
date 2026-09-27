@@ -67,7 +67,7 @@ import de.robinrehbein.punkt.ui.world.TextDark
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
 
-// Die Oberfläche der Wiederkehr-Mechaniken (ab v2.30): Tagesaufgaben,
+// Die Oberfläche der Wiederkehr-Mechaniken (ab v2.36): Tagesaufgaben,
 // Serien-Joker samt Rettungs-Angebot, „knapp daneben" und die zwei
 // einmaligen Fragen (Erinnerung, Nutzungsstatistik). Die Regeln dazu
 // stehen in :core (DailyMissions, DailyChallenge) und im GameStore — hier

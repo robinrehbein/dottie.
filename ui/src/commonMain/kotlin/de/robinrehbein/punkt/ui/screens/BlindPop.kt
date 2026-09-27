@@ -83,5 +83,5 @@ fun blindPopAnchor(size: Size, angle: Float): Offset {
 /** Abstand des Pops vom Ringmittelpunkt, relativ zum Radius. */
 internal const val BLIND_POP_RING_SHARE = 0.5f
 
-/** Wolkenweiß mit Blaustich, zwischen FogTop und FogMid. */
+/** Wolkenweiß mit Blaustich, zwischen top und mid des Wiesennebels (FogPaint). */
 private val BlindPopColor = Color(0xFFE8F2FF)

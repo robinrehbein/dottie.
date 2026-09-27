@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Wann welche Erinnerung kommt (ab v2.30): 18 Uhr immer, solange die
+ * Wann welche Erinnerung kommt (ab v2.36): 18 Uhr immer, solange die
  * Daily offen ist; 21 Uhr nur, wenn eine echte Serie auf dem Spiel steht.
  */
 class DailyReminderDecisionTest {

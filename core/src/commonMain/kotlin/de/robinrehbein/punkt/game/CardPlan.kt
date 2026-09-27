@@ -67,7 +67,15 @@ data class CardPlaque(
  * - **Die beiden Pixelkreise** (Punkt und Münze). Die zeichnet `:ui` mit
  *   derselben Routine, mit der auch die Spielwelt ihren Vogel zeichnet —
  *   ein zweites Mal beschrieben wäre sie genau der Fehler, den dieser
- *   Bauplan verhindern soll.
+ *   Bauplan verhindern soll. Die Farben der Kugel stehen trotzdem hier
+ *   ([dotCell]): Der Kreis ist Zeichencode, seine Farben sind Daten.
+ * - **Der Boden.** Aus demselben Grund: Die Bodenmuster der Welten
+ *   zeichnet `:ui` mit der Routine des Spiels, hier steht nur, welcher
+ *   Boden und wo ([ground], [groundY]).
+ *
+ * Seit dem Bevel-Look (docs/bevel-look.md) trägt die Karte dieselben
+ * Kanten wie das Spiel: Dottie als Kugel, Wolken mit Licht und Schatten,
+ * der Boden der Welt und ein Rahmen mit Kanten auf seinen Flächen.
  *
  * Alle Maße sind so übernommen, wie die Karte sie seit ihrer Einführung
  * hatte. Wer eine Zahl hier ändert, ändert die Karte von Leuten, die
@@ -155,13 +163,19 @@ object CardPlan {
         CardRect(l, t, r - l, b - t, color)
 
     /**
-     * Himmel, Wolken und Boden der gewählten Kulisse — der Grund, auf dem
-     * alles andere liegt.
+     * Himmel und Wolken der gewählten Kulisse — der Grund, auf dem alles
+     * andere liegt.
      *
      * Dass die Kulisse überhaupt auf die Karte kommt, ist der Sinn der
      * Sache: Sonst sähe niemand außer der Besitzerin, welche sie trägt.
-     * Eine Kulisse ohne Wolken oder ohne Boden (WELTRAUM) lässt die
-     * jeweiligen Rechtecke einfach weg.
+     * Eine Kulisse ohne Wolken (WELTRAUM) lässt die Wolken einfach weg.
+     *
+     * Den Boden gibt es hier nicht als Rechtecke, sondern als [ground]:
+     * Seit dem Bevel-Look trägt jede Welt ihr eigenes Bodenmuster
+     * ([GroundStyle]), und das zeichnet `:ui` mit derselben Routine wie
+     * die Spielwelt. Eine zweite Beschreibung der fünf Böden hier liefe
+     * mit der ersten garantiert auseinander — derselbe Grund wie bei den
+     * Pixelkreisen.
      */
     fun background(scene: SceneId, score: Int): List<CardRect> {
         val kulisse = ScenePaint.of(scene)
@@ -174,27 +188,46 @@ object CardPlan {
             out += cloud(WIDTH * 0.08f, HEIGHT * 0.10f, wolke)
             out += cloud(WIDTH * 0.62f, HEIGHT * 0.17f, wolke)
         }
-        kulisse.ground?.let { boden ->
-            val oben = HEIGHT * GROUND_TOP
-            out += kante(0f, oben, WIDTH.toFloat(), HEIGHT.toFloat(), boden.sand)
-            out += kante(0f, oben, WIDTH.toFloat(), oben + CELL * 5, boden.turfDark)
-            var x = 0f
-            while (x < WIDTH) {
-                out += kante(x, oben, x + CELL * 5, oben + CELL * 4, boden.turfLight)
-                x += CELL * 10
-            }
-            out += kante(0f, oben - CELL, WIDTH.toFloat(), oben, OUTLINE)
-        }
         return out
     }
 
-    /** Blockige Retro-Wolke, wie im Spiel aus drei Rechtecken gestapelt. */
+    /**
+     * Der Boden der Kulisse — null im WELTRAUM, der keinen hat. `:ui`
+     * zeichnet ihn wie im Spiel im Muster von [Ground.style], mit [CELL]
+     * als Rasterzelle und der Oberkante bei [groundY].
+     *
+     * [CELL] ist dabei keine neue Größe: Das Spiel rechnet seine Zelle
+     * als `floor(Höhe / 220)`, und bei 1350 Pixeln Kartenhöhe sind das
+     * genau diese sechs Pixel. Der Boden der Karte ist also Pixel für
+     * Pixel der Boden, den ein gleich hohes Spielbild zeigt.
+     */
+    fun ground(scene: SceneId): Ground? = ScenePaint.of(scene).ground
+
+    /** Die Bodenkante in Kartenpixeln (siehe [GROUND_TOP]). */
+    fun groundY(): Float = HEIGHT * GROUND_TOP
+
+    /**
+     * Blockige Retro-Wolke, wie im Spiel aus drei Rechtecken gestapelt —
+     * und wie im Spiel (`drawCloud`) mit Bevel ohne Kontur: erst der
+     * kühle Schatten ([BevelPaint.cloudShade]) unten und rechts am
+     * Sockel, dann das weiße Licht auf den Oberkanten der drei Stufen und
+     * links am Sockel. Die Kante ist ein Feld breit, nicht die Wolkenzelle
+     * — breiter wirkte die Wolke wie ein Kasten mit Rahmen.
+     */
     private fun cloud(x: Float, y: Float, color: Long): List<CardRect> {
         val u = CELL * 4f
+        val e = CELL
+        val schatten = BevelPaint.cloudShade(color)
         return listOf(
             kante(x, y + u * 2, x + u * 14, y + u * 5, color),
             kante(x + u * 2, y, x + u * 9, y + u * 2, color),
-            kante(x + u * 4, y - u * 1.5f, x + u * 8, y, color)
+            kante(x + u * 4, y - u * 1.5f, x + u * 8, y, color),
+            CardRect(x, y + u * 5 - e, u * 14, e, schatten),
+            CardRect(x + u * 14 - e, y + u * 2, e, u * 3, schatten),
+            CardRect(x, y + u * 2, u * 2, e, WHITE),
+            CardRect(x + u * 2, y, u * 2, e, WHITE),
+            CardRect(x + u * 4, y - u * 1.5f, u * 4, e, WHITE),
+            CardRect(x, y + u * 2, e, u * 3 - e, WHITE)
         )
     }
 
@@ -230,8 +263,23 @@ object CardPlan {
     }
 
     /**
+     * Die Farbe einer Zelle des Punkt-Körpers: Dottie als Kugel, genau
+     * wie im Spiel (`drawTimingDot`) und in der Sammlung — die Skin-Farbe
+     * aus [SkinPaint.cell] mit ihrer Stufe auf der Lichtachse
+     * ([BevelPaint.kugel]), zum Glanz des Skins hin statt zu Weiß. Dunkle
+     * Musterzellen bleiben unberührt; das entscheidet [BevelPaint.kugel]
+     * selbst.
+     */
+    fun dotCell(skin: SkinId, state: SkinState, col: Int, row: Int): Long =
+        BevelPaint.kugel(col, row, SkinPaint.cell(skin, col, row, state), SkinPaint.shine(skin, state))
+
+    /**
      * Glanz, Auge und (wo nötig) dessen Kontur des Spiel-Punkts — alles
      * am Vogel außer seinem Körper, den der Pixelkreis malt.
+     *
+     * Wie im Spiel mit Blick nach rechts: im Glanzpunkt ein weißer Kern,
+     * unter dem Augenweiß eine halbe Zeile [BevelPaint.EYE_EDGE] — der
+     * Glanz liegt auf der Kugel, das Auge in ihr.
      *
      * Bewegte Skins stehen auf dem Bild still: Ein geteilter Screenshot
      * ist ein Standbild, also bleibt [SkinState.elapsed] bei 0. Stunde und
@@ -246,6 +294,7 @@ object CardPlan {
         )
         val out = mutableListOf<CardRect>()
         out += feld(2.5f, 2.5f, 2f, 2f, SkinPaint.shine(skin, state))
+        out += feld(2.5f, 2.5f, 1f, 1f, WHITE)
         // Kontur nur, wo das Auge auf hellem Körper sonst verschwände
         // (wie im Spiel, siehe drawTimingDot).
         if (SkinPaint.needsEyeOutline(skin)) {
@@ -254,6 +303,7 @@ object CardPlan {
             out += feld(7.5f, 7f, 3.5f, 0.5f, OUTLINE)
         }
         out += feld(7.5f, 3f, 3.5f, 4f, WHITE)
+        out += feld(7.5f, 6.5f, 3.5f, 0.5f, BevelPaint.EYE_EDGE)
         out += feld(9.5f, 4f, 1.5f, 2f, OUTLINE)
         return out
     }
@@ -298,11 +348,122 @@ object CardPlan {
 
     /**
      * Der Rahmen als Pixel-Rechtecke — [CardStyle.frameRects] mal
-     * Feldgröße, sonst nichts. Er kommt zuletzt aufs Blatt: Er liegt über
-     * Kulisse UND Schrift, damit an der Kante nichts durchscheint.
+     * Feldgröße, jedes Stück mit seiner Bevel-Kante ([partBevel]). Er
+     * kommt zuletzt aufs Blatt: Er liegt über Kulisse UND Schrift, damit
+     * an der Kante nichts durchscheint.
+     *
+     * Gebaut wird Stück für Stück ([CardStyle.parts]): erst die Fläche,
+     * dann ihre Kante, dann das nächste Stück darüber. So liegen Zähne,
+     * Perlen und Eckformen auf der Kante des Bandes darunter, wie sie auf
+     * seiner Fläche liegen — die Kante läuft unter ihnen durch, statt um
+     * jeden Zahn herum zu zacken.
+     *
+     * Die Kanten stehen nur hier und nicht in [CardStyle.frameRects]: Die
+     * Feldtabelle gehört zu den Golden Vectors und bedient auch das
+     * Game-Over-Panel und die Sammlung, deren Rahmen so klein sind, dass
+     * ein Feld keine Kante tragen kann. Ohne die Kanten ist die Liste hier
+     * genau die Feldtabelle mal [CELL], in derselben Reihenfolge.
      */
-    fun frame(frame: CardFrame): List<CardRect> =
-        CardStyle.frameRects(frame, COLS, ROWS).map {
-            CardRect(it.col * CELL, it.row * CELL, it.cols * CELL, it.rows * CELL, it.tone.argb)
+    fun frame(frame: CardFrame): List<CardRect> {
+        val out = mutableListOf<CardRect>()
+        CardStyle.parts(frame).forEach { part ->
+            val felder = CardStyle.partRects(part, COLS, ROWS)
+            felder.forEach {
+                out += CardRect(it.col * CELL, it.row * CELL, it.cols * CELL, it.rows * CELL, it.tone.argb)
+            }
+            out += partBevel(part.tone.argb, felder)
         }
+        return out
+    }
+
+    /**
+     * Die Bevel-Kante eines Rahmenstücks, ein Feld breit (docs/bevel-look.md,
+     * Abschnitt 0): helle Kante oben und links ([BevelPaint.light]),
+     * dunkle unten und rechts ([BevelPaint.dark]).
+     *
+     * Gerechnet wird auf der Form des ganzen Stücks, nicht je Rechteck:
+     * Ein Band besteht aus vier Rechtecken, die sich an den Ecken
+     * überlappen, eine Perle oder Raute aus Zeilen. Je Rechteck gebevelt
+     * zögen sich Kanten quer durch die Ecken und über jede Zeile. So
+     * bekommt die Form ihre Kante genau an ihrem Umriss:
+     *
+     * - Fehlt oben oder links der Nachbar, ist das Feld Lichtkante; sonst,
+     *   wenn er rechts oder unten fehlt, Schattenkante. Das Licht gewinnt,
+     *   wo beides zutrifft — dieselbe Reihenfolge wie `bevelRect` (erst
+     *   dunkel, dann hell darüber). Ein Band wird so ein erhabener Ring:
+     *   außen oben und links hell, innen oben und links dunkel.
+     * - Flächen unter drei Feldern bleiben flach: Ein Feld bekommt nur
+     *   dann eine Kante, wenn die Form waagrecht UND senkrecht mindestens
+     *   drei Felder am Stück durch es hindurch läuft. Die zwei Felder
+     *   starken Bänder, Zähne und kleinen Nieten bleiben, wie sie sind.
+     * - Die Kontur bekommt keine Kante, sie IST die Grenze zwischen den
+     *   Flächen. Dasselbe gilt für jede andere dunkle Farbe
+     *   ([BevelPaint.isDarkCell]).
+     *
+     * Die Kanten stehen als waagrechte Läufe gleicher Farbe, nicht als
+     * einzelne Felder — sonst würde ein Rahmen zu ein paar tausend
+     * Rechtecken.
+     */
+    private fun partBevel(tone: Long, felder: List<FrameRect>): List<CardRect> {
+        if (felder.isEmpty() || BevelPaint.isDarkCell(tone)) return emptyList()
+        val form = BooleanArray(COLS * ROWS)
+        felder.forEach { f ->
+            for (r in f.row until f.row + f.rows) {
+                for (c in f.col until f.col + f.cols) form[r * COLS + c] = true
+            }
+        }
+        fun drin(c: Int, r: Int): Boolean = c in 0 until COLS && r in 0 until ROWS && form[r * COLS + c]
+
+        // Wie weit die Form durch jedes Feld läuft, waagrecht und senkrecht.
+        val waag = IntArray(COLS * ROWS)
+        val senk = IntArray(COLS * ROWS)
+        for (r in 0 until ROWS) {
+            var c = 0
+            while (c < COLS) {
+                if (!form[r * COLS + c]) { c++; continue }
+                var e = c
+                while (e < COLS && form[r * COLS + e]) e++
+                for (k in c until e) waag[r * COLS + k] = e - c
+                c = e
+            }
+        }
+        for (c in 0 until COLS) {
+            var r = 0
+            while (r < ROWS) {
+                if (!form[r * COLS + c]) { r++; continue }
+                var e = r
+                while (e < ROWS && form[e * COLS + c]) e++
+                for (k in r until e) senk[k * COLS + c] = e - r
+                r = e
+            }
+        }
+
+        val hell = BevelPaint.light(tone)
+        val dunkel = BevelPaint.dark(tone)
+        // 0 heißt: keine Kante. Die Kantentöne sind deckend, also nie 0.
+        fun kante(c: Int, r: Int): Long {
+            if (!form[r * COLS + c]) return 0L
+            if (waag[r * COLS + c] < 3 || senk[r * COLS + c] < 3) return 0L
+            return when {
+                !drin(c, r - 1) || !drin(c - 1, r) -> hell
+                !drin(c + 1, r) || !drin(c, r + 1) -> dunkel
+                else -> 0L
+            }
+        }
+
+        val out = mutableListOf<CardRect>()
+        val zeile = LongArray(COLS)
+        for (r in 0 until ROWS) {
+            for (c in 0 until COLS) zeile[c] = kante(c, r)
+            var c = 0
+            while (c < COLS) {
+                val k = zeile[c]
+                var e = c + 1
+                while (e < COLS && zeile[e] == k) e++
+                if (k != 0L) out += CardRect(c * CELL, r * CELL, (e - c) * CELL, CELL, k)
+                c = e
+            }
+        }
+        return out
+    }
 }

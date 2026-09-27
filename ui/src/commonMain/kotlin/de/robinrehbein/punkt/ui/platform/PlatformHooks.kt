@@ -51,7 +51,7 @@ class PlatformHooks(
     val onWatchAdFor: (SkinId, onEarned: () -> Unit) -> Unit = { _, _ -> },
 
     /**
-     * Spot für einen Serien-Joker zeigen (ab v2.30) — das Rettungs-Angebot,
+     * Spot für einen Serien-Joker zeigen (ab v2.36) — das Rettungs-Angebot,
      * wenn die Daily-Serie sonst reißen würde. Wie beim Tagespass kommt der
      * Rückruf nur bei bestätigtem Spot.
      */
@@ -102,7 +102,7 @@ class PlatformHooks(
      */
     val setReminder: (wanted: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _ -> },
 
-    // ===== Nutzungsstatistik (ab v2.30) =====
+    // ===== Nutzungsstatistik (ab v2.36) =====
 
     /**
      * Kann die Plattform überhaupt messen? Auf Android nur, wenn in

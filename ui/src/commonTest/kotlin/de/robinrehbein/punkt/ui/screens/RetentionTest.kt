@@ -6,7 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/** Die reinen Entscheidungen hinter der Wiederkehr-Oberfläche (ab v2.30). */
+/** Die reinen Entscheidungen hinter der Wiederkehr-Oberfläche (ab v2.36). */
 class RetentionTest {
 
     @Test

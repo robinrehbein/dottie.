@@ -85,7 +85,35 @@ enum class BackdropKind {
      * drehende Galaxien, ab und zu eine Sternschnuppe. Farben: Stern
      * weiß, Stern warm, Stern kühl, Galaxienkern, Arm eins, Arm zwei.
      */
-    STERNENHIMMEL
+    STERNENHIMMEL,
+
+    /**
+     * Zwei Reihen sanfter Hügel, die hintere heller (Dunst), auf der
+     * vorderen ein paar runde Baumkronen. Farben: ferne Hügel, ihre
+     * Lichtkante, nahe Hügel, ihre Lichtkante, Baumkronen.
+     */
+    HUEGEL,
+
+    /**
+     * Tafelberge mit Gesteinsschichten, davor eine Reihe flacher Dünen.
+     * Farben: Fels, Schattenseite, helle Schicht, Düne, Dünenkamm.
+     */
+    TAFELBERGE,
+
+    /**
+     * Das offene Meer bis zum Horizont mit Glitzern, darauf eine ferne
+     * Insel mit Leuchtturm. Farben: Meer, Glitzern, Insel, Inselschatten,
+     * Turm weiß, Turm rot, Lampe.
+     */
+    HORIZONT,
+
+    /**
+     * Zwei Reihen Hochhäuser als Silhouette, die hintere im Dunst. Nachts
+     * gehen Fenster an, auf dem höchsten Dach blinkt ein Licht. Farben:
+     * ferne Häuser, ihre Fenster am Tag, nahe Häuser, ihre Schattenseite,
+     * Fenster bei Nacht, Dachlicht.
+     */
+    SKYLINE
 }
 
 /**
@@ -146,27 +174,330 @@ data class Prop(
  * Der Bodenstreifen: Grundfläche mit einem dunkleren Band darin, darüber
  * eine Narbe aus zwei Farben (durchgehend dunkel, davor helle Zähne).
  * WELTRAUM hat keinen — dort ist [Scene.ground] null.
+ *
+ * [style] sagt dem Renderer, welches Bodenmuster er aus diesen Farben
+ * baut (siehe [GroundStyle]). Es steht am Ende und hat einen Standard,
+ * damit bestehende Aufrufe unverändert bleiben.
  */
 data class Ground(
     val sand: Long,
     val sandShade: Long,
     val turfDark: Long,
-    val turfLight: Long
+    val turfLight: Long,
+    val style: GroundStyle = GroundStyle.NARBE
+)
+
+/**
+ * Das Bodenmuster einer Welt (Bevel-Look, Schritt 2). Oberkante und
+ * Füllung gehören fest zusammen — eine Dünenkante über Asphalt ergäbe
+ * keinen Sinn —, deshalb ein Stil für beides statt zweier Achsen.
+ *
+ * Die Farben kommen aus [Ground], die zusätzlichen Musterfarben aus
+ * [GroundPaint]. Die Bodenkante [ScenePaint.GROUND_TOP] ist für jeden
+ * Stil dieselbe: Wellenkämme und Dünen dürfen darüber hinausragen, die
+ * Linie selbst verschiebt kein Muster.
+ */
+enum class GroundStyle {
+    /** WIESE: Grasnarbe als Bevel-Kacheln, Sand mit Kieseln. */
+    NARBE,
+
+    /** WÜSTE: Dünenkante, drei Sandsteinschichten mit Fugen, halb eingesunkene Kiesel. */
+    DUENE,
+
+    /** MEER: Wellenkämme mit Schaum, Wasserstufen, Luftblasen-Ringe. */
+    WELLEN,
+
+    /** BERG: Schneedecke mit Eiszapfen über einer bevelten Felsmauer. */
+    SCHNEE,
+
+    /** STADT: Bordsteine, Asphalt mit gelber Mittellinie und Gully. */
+    BORDSTEIN
+}
+
+/**
+ * Das Muster eines normalen Bahn-Blocks. Es liegt auf der Fläche mit
+ * Bevel; die Farbe des Musters ist [TrackStyle.accent].
+ */
+enum class BlockPattern {
+    /** Nur Fläche mit Kante (WIESE, wie bisher). */
+    GLATT,
+
+    /** Waagrechte Fuge durch die Mitte (Sandstein). */
+    FUGE,
+
+    /** Zwei Maserungspunkte übereinander (Treibholz-Planke). */
+    PLANKE,
+
+    /** Obere Kante als Schneekappe, links eine Stufe tiefer (Fels). */
+    SCHNEEKAPPE,
+
+    /** Zwei Nieten in gegenüberliegenden Ecken (Betonplatte). */
+    NIETEN,
+
+    /** Ein Lämpchen in der Mitte (Metallpanel). */
+    LAEMPCHEN
+}
+
+/**
+ * Das Motiv, das eine Welt auf ihre Zonenblöcke setzt. Der Blockkörper
+ * bleibt in jeder Welt grün (die Zone ist das Signal, nicht das
+ * Material); nur ein paar Pixel darauf wechseln.
+ */
+enum class ZoneMotif {
+    /** Blätter und Tupfer des Bestands — der Renderer zeichnet sie wie bisher. */
+    WIESE,
+
+    /** Weiße Kaktusstacheln. */
+    KAKTUS,
+
+    /** Seerosenblatt mit Stiel und ein Wassertropfen. */
+    SEEROSE,
+
+    /** Moos mit Steinchen. */
+    EDELWEISS,
+
+    /** LED-Kachel: vier hellgrüne Punkte. */
+    LED,
+
+    /** Hellgrüne Kristall-Facette als Diagonale. */
+    KRISTALL
+}
+
+/**
+ * Die Bahn einer Welt: Blockfläche [block] mit ihren Kanten [light] und
+ * [dark] (von Hand gesetzt, nicht abgeleitet — so stehen sie in den
+ * Zielbildern), das Muster [pattern] in [accent] und das Zonen-Motiv
+ * [motif]. Bei [BlockPattern.GLATT] ist [accent] durchsichtig (0) und
+ * wird nicht gezeichnet.
+ */
+data class TrackStyle(
+    val block: Long,
+    val light: Long,
+    val dark: Long,
+    val pattern: BlockPattern,
+    val accent: Long,
+    val motif: ZoneMotif
+)
+
+/**
+ * Ein Pixel eines Zonen-Motivs. [dx] und [dy] zählen in Rasterstufen
+ * (`unit` des Blocks) um die Mitte der Grasfläche, positiv nach rechts
+ * und nach unten.
+ */
+data class MotifPixel(val dx: Int, val dy: Int, val color: Long)
+
+/**
+ * Zusätzliche Farben der Bodenmuster ([GroundStyle]). Was sich aus
+ * [Ground] und [BevelPaint] ergibt, steht hier nicht noch einmal; hier
+ * stehen nur die Töne, die ein Muster zusätzlich braucht. Werte wie im
+ * Prototyp (docs/bevel-prototyp.patch, drawProtoGround).
+ */
+object GroundPaint {
+
+    // --- NARBE (WIESE) ---
+
+    /** Sand der WIESE, aus dem die Kiesel abgeleitet sind. */
+    private const val WIESE_SAND: Long = 0xFFDED895
+
+    /** Lichtpixel eines Kiesels im Sand. */
+    val PEBBLE_LIGHT: Long = BevelPaint.light(WIESE_SAND)
+
+    /** Körper eines Kiesels: nur ein Fünftel zur Kontur, sonst wird er ein Loch. */
+    val PEBBLE_DARK: Long = BevelPaint.mix(WIESE_SAND, BevelPaint.OUTLINE, 0.2f)
+
+    /**
+     * Schattenkante der Narben-Kacheln. Schwächer als [BevelPaint.dark]:
+     * Die Kacheln sind nur vier Zellen hoch, eine volle Kante machte aus
+     * der Narbe ein Gitter. Die Lichtkante ist [BevelPaint.light].
+     */
+    fun turfShade(turf: Long): Long = BevelPaint.mix(turf, BevelPaint.OUTLINE, 0.2f)
+
+    // --- DUENE (WÜSTE) ---
+
+    /** Helle Oberkante der Dünenwelle. */
+    const val DUNE_CREST: Long = 0xFFFFF0C8
+
+    /** Die drei Sandsteinschichten, von oben nach unten dunkler. */
+    val SANDSTONE_BANDS: List<Long> = listOf(0xFFD9B377, 0xFFCFA466, 0xFFC4955A)
+
+    /** Lichtkante auf jeder Schicht, in derselben Reihenfolge. */
+    val SANDSTONE_BAND_LIGHTS: List<Long> =
+        SANDSTONE_BANDS.map { BevelPaint.mix(it, 0xFFFFFFFF, 0.3f) }
+
+    /** Senkrechte Fugen in den Schichten. */
+    const val SANDSTONE_JOINT: Long = 0xFFB88A52
+
+    /** Halb eingesunkene Kiesel ([PropSprites.DUNE_PEBBLE]): Licht, Körper, Schatten. */
+    const val DUNE_PEBBLE_LIGHT: Long = 0xFFE3BE82
+    const val DUNE_PEBBLE_BODY: Long = 0xFFC79A55
+    const val DUNE_PEBBLE_DARK: Long = 0xFFA57C42
+
+    // --- WELLEN (MEER) ---
+
+    /** Die mittlere Wasserstufe zwischen Oberfläche und Tiefe. */
+    const val WATER_MID: Long = 0xFF2A78B6
+
+    /** Schaum auf den Wellenkämmen. */
+    const val FOAM: Long = 0xFFFFFFFF
+
+    // --- SCHNEE (BERG) ---
+
+    /** Die Fugen der Felsmauer (die Fläche hinter den Blöcken). */
+    const val ROCK_JOINT: Long = 0xFF6B707C
+
+    /** Ein Felsblock der Mauer mit Licht- und Schattenkante. */
+    const val ROCK: Long = 0xFF9AA0AA
+    const val ROCK_LIGHT: Long = 0xFFC4C9D1
+    const val ROCK_DARK: Long = 0xFF7A808A
+
+    /** Die oberste Zeile der Schneedecke. */
+    const val SNOW_TOP: Long = 0xFFFFFFFF
+
+    // --- BORDSTEIN (STADT) ---
+
+    /** Lichtkante der Bordsteine. */
+    const val CURB_LIGHT: Long = 0xFFC4BECC
+
+    /** Gestrichelte Mittellinie und ihre Lichtkante. */
+    const val CENTER_LINE: Long = 0xFFF2C94C
+    const val CENTER_LINE_LIGHT: Long = 0xFFFFE08A
+}
+
+/**
+ * Requisiten als Pixel-Masken, gezeichnet wie [TrapPaint.MINE]: eine
+ * Zelle pro Zeichen, `.` bleibt frei. Zwei Formen lasen sich als
+ * gestapelte Kästen (Fels und Welle); als Maske bekommen sie eine runde
+ * Kante, die aus Rechtecken nicht zu haben ist.
+ *
+ * Zeichen: `O` Kontur ([BevelPaint.OUTLINE]), `L` hell, `B` Körper,
+ * `D` dunkel (die drei Farblagen der Requisite), `K` Riss ([crack]),
+ * `W` Weiß, `F` Schaumschatten ([FOAM_SHADE]).
+ */
+object PropSprites {
+
+    /** Der Findling (FELS): Kuppe links, Riss rechts der Mitte, dunkler Fuß. */
+    val BOULDER: List<String> = listOf(
+        "....OOOOOOO.....",
+        "..OOLLLLLLBOO...",
+        ".OLLLLBBBBBBDO..",
+        ".OLLBBBBBBBBBDO.",
+        "OLLBBBBBBKBBBDO.",
+        "OLBBBBBBBBKBBDDO",
+        "OLBBBBBBBBBBBDDO",
+        "OBBBBBBBBBBBDDDO",
+        "ODDBBBBBBBBDDDDO",
+        "OOOOOOOOOOOOOOOO"
+    )
+
+    /** Der Kiesel neben dem Findling, 8×5. */
+    val PEBBLE: List<String> = listOf(
+        "..OOOO..",
+        ".OLLBBO.",
+        "OLLBBBDO",
+        "OBBBBDDO",
+        "OOOOOOOO"
+    )
+
+    /** Die WELLE als Brecher: eingerollte Krone, Schaumkante, zwei Gischt-Pixel. */
+    val BREAKER: List<String> = listOf(
+        ".......OOOOO.......",
+        ".....OOFWWWWOO.....",
+        "....OFWWLLLLWWO....",
+        "...OLLLBBBBBLWWO...",
+        "..OLBBBBOOOOBBWO.W.",
+        ".OLBBBBO....OBWO..W",
+        ".OLBBBO......OO....",
+        "OLBBBBO............",
+        "OBBBBBDO...........",
+        "OBBBBBDDOOOOOOOOOOO"
+    )
+
+    /**
+     * Kiesel im Wüstenboden, 7×3: nur die gerundete obere Hälfte schaut
+     * aus dem Sand. Farben aus [GroundPaint] (DUNE_PEBBLE_*).
+     */
+    val DUNE_PEBBLE: List<String> = listOf(
+        "..OOO..",
+        ".OLLBO.",
+        "OLBBBDO"
+    )
+
+    /** Schaumschatten in der Krone des Brechers (`F`). */
+    const val FOAM_SHADE: Long = 0xFFDFF4FF
+
+    /** Rissfarbe (`K`): die dunkle Lage noch ein Stück zur Kontur. */
+    fun crack(dark: Long): Long = BevelPaint.mix(dark, BevelPaint.OUTLINE, 0.35f)
+
+    /**
+     * Farbe des Masken-Zeichens [ch] für die Requisite [prop], 0 (durch-
+     * sichtig) für `.` und Unbekanntes: Dort wird nicht gezeichnet. Direkt
+     * per `when` statt über eine Palette: Die Renderer fragen das in jedem
+     * Frame je Maskenpixel, und so entsteht weder eine Map noch ein Cache.
+     */
+    fun color(ch: Char, prop: Prop): Long = when (ch) {
+        'O' -> BevelPaint.OUTLINE
+        'L' -> prop.light
+        'B' -> prop.body
+        'D' -> prop.dark
+        'K' -> crack(prop.dark)
+        'W' -> 0xFFFFFFFF
+        'F' -> FOAM_SHADE
+        else -> 0L
+    }
+}
+
+/** Form der Partikel im Nebel (siehe [FogPaint.speck]). */
+enum class FogSpeck {
+    /** Ein einzelnes Korn: Pollen, Staub, Gischt, Ruß, Stern. */
+    DOT,
+
+    /** Ein kleines Kreuz: Schneeflocke. Kreuze halten Abstand zueinander. */
+    CROSS
+}
+
+/**
+ * Der Nebel der Kulisse (Twist NEBEL): dieselbe Wolkenform in jeder
+ * Welt, aber Farbe und Partikel der Welt — Sandsturm in der Wüste,
+ * Sternennebel im Weltraum. Die Form muss überall gleich bleiben, weil
+ * sie den Vogel verdecken muss; nur das Aussehen darf wechseln.
+ *
+ * Die fünf Töne gehen von unten nach oben: [bottom] die Schattenkante
+ * (unten und rechts), [low] die frühere zweite Reihe darüber, [top] die
+ * Lichtkante (oben und links), [inner] die Fläche, [mid] die
+ * eingestreuten Tupfer darin. [speck] ist die Partikelfarbe, [speckShape]
+ * ihre Form. [crown] setzt die obersten zwei Reihen weiß (Schaumkrone am
+ * MEER). Welcher Ton auf welche Zelle kommt, entscheidet
+ * [BevelPaint.fogTone]; [low] zeichnet seit dem Bevel-Look niemand mehr
+ * (eine Kante ist eine Stufe breit), er bleibt für die Golden Vectors.
+ */
+data class FogPaint(
+    val bottom: Long,
+    val low: Long,
+    val mid: Long,
+    val top: Long,
+    val inner: Long,
+    val speck: Long,
+    val speckShape: FogSpeck = FogSpeck.DOT,
+    val crown: Boolean = false
 )
 
 /**
  * Eine komplette Kulisse. [cloud] und [ground] sind optional: Im Vakuum
  * gibt es weder Wolken noch Boden, und beides fehlt dort mit Absicht,
  * statt in Grau ausgeblendet zu werden. [backdrop] ist die Ebene hinter
- * allem (Gebirge, Sternenhimmel), null heißt: nur Himmel. [props] darf
- * leer sein — im WELTRAUM treibt nichts vor den Sternen.
+ * allem (Hügel, Tafelberge, Horizont, Gebirge, Skyline, Sternenhimmel),
+ * null heißt: nur Himmel. [props] darf leer sein — im WELTRAUM treibt
+ * nichts vor den Sternen. [life] sind die Bewohner der Welt ([LifeKind]);
+ * wie sie sich mit der Tageszeit verändert, sagt [DayCycle].
  */
 class Scene(
     val sky: List<Long>,
     val cloud: Long?,
     val ground: Ground?,
     val props: List<Prop>,
-    val backdrop: Backdrop?
+    val backdrop: Backdrop?,
+    val fog: FogPaint,
+    val life: List<Life> = emptyList()
 )
 
 object ScenePaint {
@@ -262,10 +593,11 @@ object ScenePaint {
      * ist — ein Körper, der sie unterbietet, kehrte das Verhältnis um
      * und ließe die Kontur wie einen Lichtsaum aussehen.
      *
-     * Drittens: **Sie erfindet kein Zeichenmittel.** Kein Lichtschein,
-     * kein Halo, kein weicher Verlauf. Das Spiel kennt genau ein
-     * Grundelement — den gefüllten Block mit Kontur. Die Laterne
-     * leuchtet, indem ein Block hell ist.
+     * Drittens: **Sie erfindet kein Zeichenmittel.** Kein weicher
+     * Verlauf. Das Spiel kennt genau ein Grundelement — den gefüllten
+     * Block mit Kontur. Am Tag leuchtet die Laterne, indem ein Block hell
+     * ist. Nachts (DayCycle) kommt ein Lichtkegel dazu, aber ebenfalls aus
+     * Blöcken: vier harte Stufen, jede breiter, bis auf die Straße.
      */
     val LANTERN_PARTS: List<BlockPart> = listOf(
         BlockPart(-0.55f, 0.00f, 1.10f, 0.16f, 0), // Fußplatte, breitester Teil
@@ -372,12 +704,22 @@ object ScenePaint {
             0xFF2A2640  // 30+ Nacht
         ),
         cloud = 0xFFE9FCFD,
-        backdrop = null,
+        // Nebel: weiße Wolke mit Blütenpollen.
+        fog = FogPaint(0xFFA0BEDA, 0xFFBED4EA, 0xFFD6E5F4, 0xFFFFFFFF, 0xFFF4F8FD, speck = 0xFFFFE89A),
+        backdrop = Backdrop(
+            BackdropKind.HUEGEL,
+            listOf(
+                0xFF96D2AA, 0xFFB2E0C2, // ferne Hügel, im Dunst
+                0xFF60A88C, 0xFF7CBE9E, // nahe Hügel
+                0xFF468A6E              // Baumkronen
+            )
+        ),
         ground = Ground(
             sand = 0xFFDED895,
             sandShade = 0xFFD3C87E,
             turfDark = 0xFF74BF2E,
-            turfLight = 0xFF9DE85A
+            turfLight = 0xFF9DE85A,
+            style = GroundStyle.NARBE
         ),
         props = listOf(
             Prop(
@@ -401,6 +743,10 @@ object ScenePaint {
                 PropShape.STRAUCH, 0.026f, 0.4f,
                 dark = 0xFF5AA82C, body = 0xFF71C837, light = 0xFF9DE85A
             )
+        ),
+        life = listOf(
+            Life(LifeKind.SCHWARM, listOf(0xFF3B4658)),
+            Life(LifeKind.GLUEHWUERMCHEN, listOf(0xFFFFF27A, 0xFFFFE08A))
         )
     )
 
@@ -415,12 +761,21 @@ object ScenePaint {
             0xFF8E3B47, 0xFF4A2C4E, 0xFF241C33
         ),
         cloud = 0xFFF7E9C8,
-        backdrop = null,
+        // Nebel: Sandsturm mit Staubkörnern.
+        fog = FogPaint(0xFFB8894E, 0xFFC9A064, 0xFFD4AE6E, 0xFFF0DDB0, 0xFFE8C88A, speck = 0xFF9C7A4A),
+        backdrop = Backdrop(
+            BackdropKind.TAFELBERGE,
+            listOf(
+                0xFFD9946A, 0xFFBF7A55, 0xFFE8B088, // Fels, Schatten, Schicht
+                0xFFE0A874, 0xFFF0C896              // Dünen, Dünenkamm
+            )
+        ),
         ground = Ground(
             sand = 0xFFE8C88A,
             sandShade = 0xFFD4AE6E,
             turfDark = 0xFFC79A55,
-            turfLight = 0xFFEFD7A0
+            turfLight = 0xFFEFD7A0,
+            style = GroundStyle.DUENE
         ),
         props = listOf(
             Prop(
@@ -441,6 +796,10 @@ object ScenePaint {
                 PropShape.FELS, 0.026f, 0f,
                 dark = 0xFF8A6A4A, body = 0xFFA88860, light = 0xFFC4A87C
             )
+        ),
+        life = listOf(
+            Life(LifeKind.GEIER, listOf(0xFF3E3238, 0xFF2A2226, 0xFFD9B8A0)),
+            Life(LifeKind.STEPPENLAEUFER, listOf(0xFFB08552, 0xFF8A6238, 0xFFD2AD74))
         )
     )
 
@@ -456,12 +815,22 @@ object ScenePaint {
             0xFFE09A4A, 0xFF35447F, 0xFF1B2138
         ),
         cloud = 0xFFDFF4FF,
-        backdrop = null,
+        // Nebel: Seenebel mit Schaumkrone und Gischt.
+        fog = FogPaint(0xFF1F7A96, 0xFF3FA0B8, 0xFF6CC4D2, 0xFFE8FAFC, 0xFF9ED8E0, speck = 0xFFFFFFFF, crown = true),
+        backdrop = Backdrop(
+            BackdropKind.HORIZONT,
+            listOf(
+                0xFF3A96CC, 0xFFBFE6F8,             // Meer, Glitzern
+                0xFF4E8C7C, 0xFF3F7668,             // Insel, Schatten
+                0xFFF4F4F0, 0xFFD9544A, 0xFFFFE27A  // Turm weiß, rot, Lampe
+            )
+        ),
         ground = Ground(
             sand = 0xFF2F86C8,
             sandShade = 0xFF24699E,
             turfDark = 0xFF4FC3DE,
-            turfLight = 0xFFBFE9FF
+            turfLight = 0xFFBFE9FF,
+            style = GroundStyle.WELLEN
         ),
         props = listOf(
             Prop(
@@ -486,6 +855,11 @@ object ScenePaint {
                 dark = 0xFF1F5FA8, body = 0xFF2E86D8, light = 0xFF7FC8F0,
                 accents = listOf(0xFFFFFFFF, 0xFFDFF4FF)
             )
+        ),
+        life = listOf(
+            Life(LifeKind.MOEWEN, listOf(0xFFFFFFFF, 0xFF5A6470, 0xFFF2B33C)),
+            Life(LifeKind.SEGELBOOT, listOf(0xFFFFFFFF, 0xFFD2E0EA, 0xFFC0504A, 0xFF8A3A36, 0xFFFFE27A)),
+            Life(LifeKind.DELFIN, listOf(0xFF5E86A8, 0xFFB8D4E6, 0xFF46688A, 0xFFFFFFFF))
         )
     )
 
@@ -500,6 +874,8 @@ object ScenePaint {
             0xFFD08A5A, 0xFF3E4A78, 0xFF1E2438
         ),
         cloud = 0xFFF2FAFF,
+        // Nebel: graue Nebelwand mit Schneeflocken.
+        fog = FogPaint(0xFF5F6B7A, 0xFF7C8898, 0xFF98A3B1, 0xFFD7DEE6, 0xFFB4BDC8, speck = 0xFFFFFFFF, speckShape = FogSpeck.CROSS),
         backdrop = Backdrop(
             BackdropKind.GEBIRGE,
             listOf(
@@ -512,7 +888,8 @@ object ScenePaint {
             sand = 0xFFE4EDF4,
             sandShade = 0xFFCBD8E4,
             turfDark = 0xFFA8B8C8,
-            turfLight = 0xFFFFFFFF
+            turfLight = 0xFFFFFFFF,
+            style = GroundStyle.SCHNEE
         ),
         props = listOf(
             Prop(
@@ -539,6 +916,9 @@ object ScenePaint {
                 stem = 0xFF5C4130, stemShade = 0xFF46311F,
                 accents = listOf(0xFFF4F8FC)
             )
+        ),
+        life = listOf(
+            Life(LifeKind.SCHNEEFALL, listOf(0xFFFFFFFF, 0xFFE4EEF6))
         )
     )
 
@@ -553,12 +933,22 @@ object ScenePaint {
             0xFFE8963C, 0xFF3A3F6E, 0xFF1A1A2E
         ),
         cloud = 0xFFE4E8F0,
-        backdrop = null,
+        // Nebel: Smog mit Ruß.
+        fog = FogPaint(0xFF7E828C, 0xFF969AA3, 0xFFADB0B8, 0xFFD6D8DC, 0xFFC4C6CC, speck = 0xFF5E616A),
+        backdrop = Backdrop(
+            BackdropKind.SKYLINE,
+            listOf(
+                0xFF8FA9C2, 0xFFA8BED2, // ferne Häuser, Fenster am Tag
+                0xFF6F86A2, 0xFF607592, // nahe Häuser, Schattenseite
+                0xFFFFE08A, 0xFFE8524A  // Fenster bei Nacht, Dachlicht
+            )
+        ),
         ground = Ground(
             sand = 0xFF4A4550,
             sandShade = 0xFF383340,
             turfDark = 0xFF6E6878,
-            turfLight = 0xFF9A93A4
+            turfLight = 0xFF9A93A4,
+            style = GroundStyle.BORDSTEIN
         ),
         props = listOf(
             Prop(
@@ -587,6 +977,16 @@ object ScenePaint {
                 dark = 0xFF3A3446, body = 0xFF4C4560, light = 0xFF766E8C,
                 accents = listOf(0xFFFFD847)
             )
+        ),
+        life = listOf(
+            Life(LifeKind.FLUGZEUG, listOf(0xFFF4F6FA, 0xFFC4CCD8, 0xFF4A90D9, 0xFFE8524A, 0xFF5CD6B0)),
+            Life(
+                LifeKind.AUTO,
+                listOf(
+                    0xFFE0524A, 0xFFA83A36, 0xFF4A86D0, 0xFF30609E, // rot, blau
+                    0xFFBFE3F2, 0xFF2A2630, 0xFFFFF2B0, 0xFFFF5A4A  // Scheibe, Reifen, Licht vorn, hinten
+                )
+            )
         )
     )
 
@@ -607,6 +1007,8 @@ object ScenePaint {
             0xFF8A2C4A, 0xFF3A1A3E, 0xFF0A0716
         ),
         cloud = null,
+        // Nebel: Sternennebel.
+        fog = FogPaint(0xFF5B3A7A, 0xFF7A4E9A, 0xFFB06FB8, 0xFFF2C4E8, 0xFFD69AD6, speck = 0xFFFFFFFF),
         backdrop = Backdrop(
             BackdropKind.STERNENHIMMEL,
             listOf(
@@ -616,7 +1018,14 @@ object ScenePaint {
             )
         ),
         ground = null,
-        props = emptyList()
+        props = emptyList(),
+        life = listOf(
+            Life(
+                LifeKind.PLANET,
+                listOf(0xFFE8B07A, 0xFFC4885A, 0xFFF4D2A4, 0xFFD8C4A0, 0xFFA8946E, 0xFFB8BCC8)
+            ),
+            Life(LifeKind.SATELLIT, listOf(0xFFD0D4DC, 0xFF3A5A9A, 0xFF6A8AC8, 0xFFE8524A))
+        )
     )
 
     /**
@@ -648,6 +1057,112 @@ object ScenePaint {
     fun ground(id: SceneId): Ground? = of(id).ground
 
     fun props(id: SceneId): List<Prop> = of(id).props
+
+    // ===== Bahn je Welt (Bevel-Look, Schritt 2) =====
+
+    // Die Bahn gehört weiter nicht zur Kulisse im Sinne des Verkaufs: Zone,
+    // Perfekt-Kern und Minen sehen in jeder Welt gleich aus. Was wechselt,
+    // ist nur das Material der normalen Blöcke und ein Motiv von ein paar
+    // Pixeln auf der grünen Zone. Werte wie im Prototyp
+    // (docs/bevel-prototyp.patch, trackLook), der die Zielbilder gerendert hat.
+
+    /**
+     * Die WIESE behält ihre Bahn: Fläche wie bisher (GroundSandShade), nur
+     * mit Kante. Kein Muster, deshalb kein Akzent.
+     */
+    private val TRACK_WIESE = TrackStyle(
+        block = 0xFFD3C87E, light = 0xFFF1EBB5, dark = 0xFFB0A55E,
+        pattern = BlockPattern.GLATT, accent = 0x00000000, motif = ZoneMotif.WIESE
+    )
+
+    /** Sandstein mit waagrechter Fuge in der Schattenfarbe. */
+    private val TRACK_WUESTE = TrackStyle(
+        block = 0xFFE3B26A, light = 0xFFF6D59A, dark = 0xFFB07A3A,
+        pattern = BlockPattern.FUGE, accent = 0xFFB07A3A, motif = ZoneMotif.KAKTUS
+    )
+
+    /** Treibholz-Planke mit zwei Maserungspunkten. */
+    private val TRACK_MEER = TrackStyle(
+        block = 0xFFB9844F, light = 0xFFD9A873, dark = 0xFF7E5530,
+        pattern = BlockPattern.PLANKE, accent = 0xFF8E6038, motif = ZoneMotif.SEEROSE
+    )
+
+    /** Fels mit Schneekappe. */
+    private val TRACK_BERG = TrackStyle(
+        block = 0xFF9AA0AA, light = 0xFFC4C9D1, dark = 0xFF6B707C,
+        pattern = BlockPattern.SCHNEEKAPPE, accent = 0xFFFFFFFF, motif = ZoneMotif.EDELWEISS
+    )
+
+    /** Betonplatte mit zwei Nieten. */
+    private val TRACK_STADT = TrackStyle(
+        block = 0xFFB9BCC4, light = 0xFFDDE0E6, dark = 0xFF7E828C,
+        pattern = BlockPattern.NIETEN, accent = 0xFF7E828C, motif = ZoneMotif.LED
+    )
+
+    /** Metallpanel mit blauem Lämpchen. */
+    private val TRACK_WELTRAUM = TrackStyle(
+        block = 0xFFC9D2E2, light = 0xFFF0F4FA, dark = 0xFF8490A8,
+        pattern = BlockPattern.LAEMPCHEN, accent = 0xFF7FD4FF, motif = ZoneMotif.KRISTALL
+    )
+
+    /** Die Bahn einer Welt. */
+    fun track(id: SceneId): TrackStyle = when (id) {
+        SceneId.WIESE -> TRACK_WIESE
+        SceneId.WUESTE -> TRACK_WUESTE
+        SceneId.MEER -> TRACK_MEER
+        SceneId.BERG -> TRACK_BERG
+        SceneId.STADT -> TRACK_STADT
+        SceneId.WELTRAUM -> TRACK_WELTRAUM
+    }
+
+    // Motivfarben. Die Zonentöne stehen hier als Werte, weil :core die
+    // Palette aus :ui (Palette.kt) nicht kennt; die Kommentare nennen den
+    // Namen dort.
+    private const val WHITE: Long = 0xFFFFFFFF
+    private const val GOLD: Long = 0xFFFFD847          // DotBody
+    private const val CACTUS_BLOSSOM: Long = 0xFFFFE08A
+    private const val LEAF_STEM: Long = 0xFF579A1F     // GrassEdge
+    private const val DROP: Long = 0xFF7FD8F0
+    private const val PEBBLE: Long = 0xFFA8ACB4
+    private const val MOSS_LIGHT: Long = 0xFF9DE85A    // GrassLight
+    private const val MOSS_DEEP: Long = 0xFF5AA82C     // GrassDeep
+    private const val LED_GREEN: Long = 0xFFC8FF9A
+
+    private fun px(color: Long, vararg at: Pair<Int, Int>): List<MotifPixel> =
+        at.map { (dx, dy) -> MotifPixel(dx, dy, color) }
+
+    private val PLUS = arrayOf(0 to -1, -1 to 0, 1 to 0, 0 to 1)
+    private val DIAGONALS = arrayOf(-1 to -1, 1 to 1, 1 to -1, -1 to 1)
+
+    // Die Kern-Akzente tragen kein Rot und kein Rosa: main hat die rosa
+    // Blüte aus dem Kern entfernt, weil Tester sie für eine Warnung
+    // hielten. Weiß und Gold lesen sich als "genau hier", nicht als
+    // "Vorsicht" (docs/bevel-look.md, Abschnitt 0, Punkt 5).
+    private val MOTIF_KAKTUS = px(WHITE, -1 to -1, 1 to 0, -1 to 1)
+    private val MOTIF_KAKTUS_CORE = px(CACTUS_BLOSSOM, *PLUS) + px(WHITE, 0 to 0)
+    private val MOTIF_SEEROSE = px(LEAF_STEM, 0 to -1, 0 to -2) + px(DROP, -1 to 1)
+    private val MOTIF_SEEROSE_CORE = px(WHITE, *PLUS) + px(GOLD, 0 to 0)
+    private val MOTIF_EDELWEISS = px(PEBBLE, -1 to 0) + px(MOSS_LIGHT, 1 to -1) + px(MOSS_DEEP, 0 to 1)
+    private val MOTIF_EDELWEISS_CORE = px(WHITE, *PLUS, *DIAGONALS) + px(GOLD, 0 to 0)
+    private val MOTIF_LED = px(LED_GREEN, -1 to -1, 1 to -1, -1 to 1, 1 to 1)
+    private val MOTIF_LED_CORE = px(WHITE, *Array(9) { (it % 3 - 1) to (it / 3 - 1) })
+    private val MOTIF_KRISTALL = px(LED_GREEN, *Array(4) { i -> (i - 1) to (-(i - 1) + 1) })
+    private val MOTIF_KRISTALL_CORE = px(WHITE, *Array(5) { i -> (i - 2) to -(i - 2) }) + px(WHITE, -1 to -1)
+
+    /**
+     * Die Pixel eines Zonen-Motivs, um die Mitte der Grasfläche; [core]
+     * wählt den Akzent des Perfekt-Kerns. Die WIESE liefert eine leere
+     * Liste — dort zeichnet der Renderer Blätter und Tupfer wie bisher.
+     * Die Listen stehen fest, damit pro Frame nichts angelegt wird.
+     */
+    fun motif(m: ZoneMotif, core: Boolean): List<MotifPixel> = when (m) {
+        ZoneMotif.WIESE -> emptyList()
+        ZoneMotif.KAKTUS -> if (core) MOTIF_KAKTUS_CORE else MOTIF_KAKTUS
+        ZoneMotif.SEEROSE -> if (core) MOTIF_SEEROSE_CORE else MOTIF_SEEROSE
+        ZoneMotif.EDELWEISS -> if (core) MOTIF_EDELWEISS_CORE else MOTIF_EDELWEISS
+        ZoneMotif.LED -> if (core) MOTIF_LED_CORE else MOTIF_LED
+        ZoneMotif.KRISTALL -> if (core) MOTIF_KRISTALL_CORE else MOTIF_KRISTALL
+    }
 
     /**
      * Drei Farben für Vorschau-Kacheln: Tageshimmel, Boden (im Weltraum

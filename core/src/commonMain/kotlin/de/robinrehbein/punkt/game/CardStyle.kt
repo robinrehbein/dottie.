@@ -540,16 +540,30 @@ object CardStyle {
      */
     fun frameRects(frame: CardFrame, cols: Int, rows: Int): List<FrameRect> {
         val out = mutableListOf<FrameRect>()
-        parts(frame).forEach { part ->
-            when (part.shape) {
-                FrameShape.BAND -> band(out, cols, rows, part)
-                FrameShape.ZAEHNE -> takt(out, cols, rows, part, rund = false)
-                FrameShape.PERLEN -> takt(out, cols, rows, part, rund = true)
-                FrameShape.ECKBLOCK -> ecken(out, cols, rows, part, rund = false)
-                FrameShape.ECKRAUTE -> ecken(out, cols, rows, part, rund = true)
-            }
-        }
+        parts(frame).forEach { part -> ausrollen(out, cols, rows, part) }
         return out
+    }
+
+    /**
+     * Ein einzelnes Stück Rahmen, ausgerollt — dieselben Rechtecke, die
+     * es in [frameRects] beiträgt. Die Score-Karte braucht die Stücke
+     * einzeln, weil sie jedes mit seiner eigenen Bevel-Kante versieht,
+     * bevor das nächste darüber kommt (siehe [CardPlan.frame]).
+     */
+    fun partRects(part: FramePart, cols: Int, rows: Int): List<FrameRect> {
+        val out = mutableListOf<FrameRect>()
+        ausrollen(out, cols, rows, part)
+        return out
+    }
+
+    private fun ausrollen(out: MutableList<FrameRect>, cols: Int, rows: Int, part: FramePart) {
+        when (part.shape) {
+            FrameShape.BAND -> band(out, cols, rows, part)
+            FrameShape.ZAEHNE -> takt(out, cols, rows, part, rund = false)
+            FrameShape.PERLEN -> takt(out, cols, rows, part, rund = true)
+            FrameShape.ECKBLOCK -> ecken(out, cols, rows, part, rund = false)
+            FrameShape.ECKRAUTE -> ecken(out, cols, rows, part, rund = true)
+        }
     }
 
     /** Ein umlaufendes Band: oben, unten, links, rechts. */

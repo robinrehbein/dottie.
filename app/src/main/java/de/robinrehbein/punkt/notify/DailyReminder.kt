@@ -32,10 +32,10 @@ import java.util.concurrent.TimeUnit
  * Server-Kontakt: Ein WorkManager-Job feuert einmal am Tag gegen 18 Uhr
  * und zeigt nur dann eine Notification, wenn die heutige Daily noch
  * nicht gespielt wurde. Opt-in über den Schalter in den Einstellungen
- * (und seit v2.30 über die einmalige Frage nach dem ersten Tageslauf);
+ * (und seit v2.36 über die einmalige Frage nach dem ersten Tageslauf);
  * ab Android 13 zusätzlich hinter der Notification-Permission.
  *
- * Seit v2.30 gibt es einen zweiten Blick um 21 Uhr: Steht dann eine
+ * Seit v2.36 gibt es einen zweiten Blick um 21 Uhr: Steht dann eine
  * Serie von mindestens [RISK_MIN_STREAK] Tagen auf dem Spiel und ist die
  * Daily immer noch offen, kommt „SERIE IN GEFAHR". Der späte Termin ist
  * Absicht — um 18 Uhr ist der Tag noch zu retten, ohne dass es drängt; um
@@ -52,7 +52,7 @@ object DailyReminder {
     /** Uhrzeit der Erinnerung — abends, wenn der Tag noch zu retten ist. */
     private val REMINDER_TIME: LocalTime = LocalTime.of(18, 0)
 
-    /** Die letzte Gelegenheit des Tages (ab v2.30). */
+    /** Die letzte Gelegenheit des Tages (ab v2.36). */
     private val RISK_TIME: LocalTime = LocalTime.of(21, 0)
 
     /** Ab dieser Serie lohnt die zweite Erinnerung. */

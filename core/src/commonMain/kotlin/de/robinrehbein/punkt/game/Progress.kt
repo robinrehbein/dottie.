@@ -35,7 +35,7 @@ enum class GoalAxis {
     /** Tage mit Lauf im laufenden Saison-Fenster (siehe [Season]). */
     SEASON_DAYS,
 
-    /** Erledigte Tagesaufgaben insgesamt (ab v2.30, siehe DailyMissions). */
+    /** Erledigte Tagesaufgaben insgesamt (ab v2.36, siehe DailyMissions). */
     MISSIONS_DONE,
 
     /** Gesammelte Skins — die Bedingung des REGENBOGEN. */
@@ -171,14 +171,19 @@ object Progress {
     /**
      * Und dieselbe für die Ton-Sets (siehe [SoundBank.isUnlocked]).
      *
-     * Beide Schwellen liegen bewusst auf Zahlen, die sonst nirgends
+     * Alle Schwellen liegen bewusst auf Zahlen, die sonst nirgends
      * vorkommen: Fiele ein Ton-Set zusammen mit einem Skin oder einer
      * Kulisse, hörte niemand das neue Set — er sähe den neuen Vogel und
      * hielte den Klang für dessen Beiwerk.
      */
     internal val SOUND_THRESHOLDS: List<Triple<SoundSetId, GoalAxis, Int>> = listOf(
         Triple(SoundSetId.GLOCKE, GoalAxis.PERFECT_STREAK, 20),
-        Triple(SoundSetId.AMBOSS, GoalAxis.TOTAL_SCORE, 25_000)
+        Triple(SoundSetId.AMBOSS, GoalAxis.TOTAL_SCORE, 25_000),
+        Triple(SoundSetId.TROMMEL, GoalAxis.RUN_COUNT, 150),
+        Triple(SoundSetId.ORGEL, GoalAxis.DAILY_STREAK, 10),
+        Triple(SoundSetId.PFEIFE, GoalAxis.BEST_SCORE, 90),
+        Triple(SoundSetId.LASER, GoalAxis.DAYS_PLAYED, 30),
+        Triple(SoundSetId.ROBOTER, GoalAxis.TOTAL_SCORE, 10_000)
     )
 
     /**
@@ -241,8 +246,8 @@ object Progress {
         }
 
         // Die Ton-Sets haben keinen Abschluss wie REGENBOGEN und
-        // WELTRAUM: Drei Sets sind zu wenig für ein Sammel-Ziel, und ein
-        // Set, das nur auf zwei andere wartet, wäre kein eigener Weg.
+        // WELTRAUM: Jedes Set hat seinen eigenen Weg, und ein Set, das
+        // nur auf die anderen wartet, wäre keiner.
         SOUND_THRESHOLDS.forEach { (id, axis, target) ->
             if (!SoundBank.isUnlocked(id, stats)) {
                 open += goal(sound = id, axis = axis, stats = stats, target = target)

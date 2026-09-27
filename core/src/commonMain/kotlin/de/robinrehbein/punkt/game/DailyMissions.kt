@@ -3,7 +3,7 @@ package de.robinrehbein.punkt.game
 import kotlin.random.Random
 
 /**
- * Tagesaufgaben (ab v2.30): drei kleine Ziele, die jeden Tag wechseln.
+ * Tagesaufgaben (ab v2.36): drei kleine Ziele, die jeden Tag wechseln.
  *
  * Alle anderen Ziele im Spiel sind Summen, die über Wochen wachsen —
  * Läufe, Punkte, Rekord. Wer bei Rekord 60 steht, sieht als nächstes

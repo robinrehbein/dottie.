@@ -7,7 +7,7 @@ import org.junit.Test
 import kotlin.random.Random
 
 /**
- * „Knapp daneben" (ab v2.30): Die Engine hält fest, um wie viele Sekunden
+ * „Knapp daneben" (ab v2.36): Die Engine hält fest, um wie viele Sekunden
  * ein tödlicher Tap danebenlag ([TimingGame.lastMissSeconds]). Die Zahl
  * muss ehrlich sein — wer „0,02 S ZU FRÜH" liest, hätte mit 0,02 s später
  * wirklich getroffen.

@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.floor
 import kotlin.math.roundToInt
 
 /**
@@ -28,6 +29,13 @@ import kotlin.math.roundToInt
  * Compose rastern Text nicht Pixel für Pixel gleich, und eine Zusage,
  * die niemand halten kann, wäre schlimmer als keine. Geprüft ist, was
  * prüfbar ist — Geometrie, Farben und Raster.
+ *
+ * Seit dem Bevel-Look hat sich die Karte mit Absicht verändert: Die
+ * Wolken tragen Kanten wie im Spiel, der Punkt ist die Kugel mit weißem
+ * Glanzkern und Augenkante, der Boden ist der Weltboden des Spiels (er
+ * steht darum nicht mehr in [CardPlan.background]) und der Rahmen hat
+ * Kanten auf seinen breiten Flächen. Der Bestand unten ist an genau
+ * diesen Stellen ergänzt und so markiert; alles andere ist unverändert.
  */
 class CardPlanTest {
 
@@ -55,26 +63,29 @@ class CardPlanTest {
             out += bestandWolke(W * 0.08f, H * 0.10f, cloud)
             out += bestandWolke(W * 0.62f, H * 0.17f, cloud)
         }
-        val groundTop = H * 0.86f
-        kulisse.ground?.let { ground ->
-            out += rect(0f, groundTop, W.toFloat(), H.toFloat(), ground.sand)
-            out += rect(0f, groundTop, W.toFloat(), groundTop + CELL * 5, ground.turfDark)
-            var x = 0f
-            while (x < W) {
-                out += rect(x, groundTop, x + CELL * 5, groundTop + CELL * 4, ground.turfLight)
-                x += CELL * 10
-            }
-            out += rect(0f, groundTop - CELL, W.toFloat(), groundTop, OUTLINE)
-        }
+        // Der Boden steht seit dem Bevel-Look nicht mehr in dieser Liste,
+        // siehe den Test zu CardPlan.ground.
         return out
     }
 
+    /**
+     * Die Wolke des Bestands, dazu die Kanten, die die Spielwolke
+     * (drawCloud) seit dem Bevel-Look traegt — mit einem Feld als Kante.
+     */
     private fun bestandWolke(x: Float, y: Float, color: Long): List<CardRect> {
         val u = CELL * 4f
+        val e = CELL
+        val schatten = BevelPaint.cloudShade(color)
         return listOf(
             rect(x, y + u * 2, x + u * 14, y + u * 5, color),
             rect(x + u * 2, y, x + u * 9, y + u * 2, color),
-            rect(x + u * 4, y - u * 1.5f, x + u * 8, y, color)
+            rect(x + u * 4, y - u * 1.5f, x + u * 8, y, color),
+            CardRect(x, y + u * 5 - e, u * 14, e, schatten),
+            CardRect(x + u * 14 - e, y + u * 2, e, u * 3, schatten),
+            CardRect(x, y + u * 2, u * 2, e, WHITE),
+            CardRect(x + u * 2, y, u * 2, e, WHITE),
+            CardRect(x + u * 4, y - u * 1.5f, u * 4, e, WHITE),
+            CardRect(x, y + u * 2, e, u * 3 - e, WHITE)
         )
     }
 
@@ -101,12 +112,16 @@ class CardPlanTest {
             )
         }
         cellRect(2.5f, 2.5f, 2f, 2f, SkinPaint.shine(skin, state))
+        // Bevel-Look: weisser Kern im Glanz, wie im Spiel.
+        cellRect(2.5f, 2.5f, 1f, 1f, WHITE)
         if (SkinPaint.needsEyeOutline(skin)) {
             cellRect(7f, 3f, 0.5f, 4f, OUTLINE)
             cellRect(7.5f, 2.5f, 3.5f, 0.5f, OUTLINE)
             cellRect(7.5f, 7f, 3.5f, 0.5f, OUTLINE)
         }
         cellRect(7.5f, 3f, 3.5f, 4f, WHITE)
+        // Bevel-Look: halbe Zeile Augenkante unter dem Augenweiss.
+        cellRect(7.5f, 6.5f, 3.5f, 0.5f, 0xFFD5DEE2L)
         cellRect(9.5f, 4f, 1.5f, 2f, OUTLINE)
         return out
     }
@@ -175,7 +190,7 @@ class CardPlanTest {
     }
 
     @Test
-    fun `Himmel, Wolken und Boden stehen wie im Bestand`() {
+    fun `Himmel und Wolken stehen wie im Bestand, die Wolken mit Kante`() {
         SceneId.entries.forEach { scene ->
             // Mehrere Scores, weil die Himmelsstufe am Score haengt.
             listOf(0, 7, 13, 22, 41).forEach { score ->
@@ -189,15 +204,34 @@ class CardPlanTest {
     }
 
     @Test
-    fun `der Boden traegt achtzehn helle Zaehne`() {
+    fun `die Wolkenkante kommt aus BevelPaint`() {
         // Die Gegenprobe zur Schleife oben: Waere sie leer, ginge der
         // Vergleich beidseitig durch, ohne etwas zu sichern.
-        val boden = CardPlan.background(SceneId.WIESE, 0)
-            .filter { it.color == ScenePaint.of(SceneId.WIESE).ground!!.turfLight }
-        assertEquals(18, boden.size)
-        assertEquals(0f, boden.first().x, 0f)
-        assertEquals(1020f, boden.last().x, 0f)
-        assertEquals(30f, boden.last().w, 0f)
+        val wolke = ScenePaint.of(SceneId.WIESE).cloud!!
+        val schatten = BevelPaint.cloudShade(wolke)
+        val hg = CardPlan.background(SceneId.WIESE, 0)
+        assertEquals(1 + 2 * 9, hg.size)
+        assertEquals(4, hg.count { it.color == schatten })
+        assertEquals(8, hg.count { it.color == WHITE })
+        // Die Kante ist ein Feld breit.
+        hg.filter { it.color == WHITE || it.color == schatten }.forEach {
+            assertTrue("Kante nicht ein Feld breit: $it", it.w == CELL || it.h == CELL)
+        }
+        // Der Weltraum hat keine Wolken, also nur den Himmel.
+        assertEquals(1, CardPlan.background(SceneId.WELTRAUM, 0).size)
+    }
+
+    @Test
+    fun `der Boden ist der Boden der Kulisse`() {
+        SceneId.entries.forEach { scene ->
+            assertEquals("$scene", ScenePaint.of(scene).ground, CardPlan.ground(scene))
+        }
+        assertNull(CardPlan.ground(SceneId.WELTRAUM))
+        assertEquals(1161f, CardPlan.groundY(), 0f)
+        // Die Zelle der Karte ist die Zelle, die das Spiel bei dieser
+        // Hoehe rechnet (floor(h / 220)) — sonst waere der Boden der
+        // Karte ein anderer als der im Spiel.
+        assertEquals(floor(H / 220f), CardPlan.CELL, 0f)
     }
 
     @Test
@@ -235,7 +269,7 @@ class CardPlanTest {
     }
 
     @Test
-    fun `Glanz, Auge und Kontur des Punkts stehen wie im Bestand`() {
+    fun `Glanz, Auge und Kontur des Punkts stehen wie im Spiel`() {
         val zustand = SkinState(hour = 14, month = 7)
         SkinPaint.ORDER.forEach { skin ->
             CardFrame.entries.forEach { frame ->
@@ -247,6 +281,26 @@ class CardPlanTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun `der Punkt ist die Kugel aus dem Spiel`() {
+        val zustand = SkinState(hour = 14, month = 7)
+        SkinPaint.ORDER.forEach { skin ->
+            val glanz = SkinPaint.shine(skin, zustand)
+            for (row in 0 until 13) for (col in 0 until 13) {
+                val basis = SkinPaint.cell(skin, col, row, zustand)
+                val ist = CardPlan.dotCell(skin, zustand, col, row)
+                assertEquals("$skin ($col, $row)", BevelPaint.kugel(col, row, basis, glanz), ist)
+                // Dunkle Musterzellen (Bienenstreifen, Pupillen) bleiben.
+                if (BevelPaint.isDarkCell(basis)) assertEquals("$skin ($col, $row) dunkel", basis, ist)
+            }
+        }
+        // Und die Stufen sind wirklich da: oben links anders als unten rechts.
+        val oben = CardPlan.dotCell(SkinId.KLASSIK, zustand, 2, 2)
+        val unten = CardPlan.dotCell(SkinId.KLASSIK, zustand, 10, 10)
+        val mitte = SkinPaint.cell(SkinId.KLASSIK, 6, 6, zustand)
+        assertTrue(oben != mitte && unten != mitte && oben != unten)
     }
 
     @Test
@@ -273,14 +327,39 @@ class CardPlanTest {
         }
     }
 
+    /**
+     * Ein Rechteck der Karte auf das Feldraster gemalt (0 = frei). Alles
+     * am Rahmen liegt auf ganzen Feldern, das prueft der Maler gleich mit.
+     */
+    private fun malen(raster: Array<LongArray>, x: Float, y: Float, w: Float, h: Float, color: Long) {
+        listOf(x, y, w, h).forEach { assertEquals("krumme Kante: $x $y $w $h", 0f, it % CELL, 0f) }
+        for (r in (y / CELL).toInt() until ((y + h) / CELL).toInt()) {
+            for (c in (x / CELL).toInt() until ((x + w) / CELL).toInt()) raster[r][c] = color
+        }
+    }
+
+    private fun tabelle(frame: CardFrame): Array<LongArray> {
+        val out = Array(CardPlan.ROWS) { LongArray(CardPlan.COLS) }
+        CardStyle.frameRects(frame, CardPlan.COLS, CardPlan.ROWS).forEach {
+            malen(out, it.col * CELL, it.row * CELL, it.cols * CELL, it.rows * CELL, it.tone.argb)
+        }
+        return out
+    }
+
+    private fun karte(frame: CardFrame): Array<LongArray> {
+        val out = Array(CardPlan.ROWS) { LongArray(CardPlan.COLS) }
+        CardPlan.frame(frame).forEach { malen(out, it.x, it.y, it.w, it.h, it.color) }
+        return out
+    }
+
     @Test
-    fun `der Rahmen ist die Feldtabelle mal sechs`() {
+    fun `ohne Kanten ist der Rahmen die Feldtabelle mal sechs`() {
         CardFrame.entries.forEach { frame ->
             val felder = CardStyle.frameRects(frame, CardPlan.COLS, CardPlan.ROWS)
-            val pixel = CardPlan.frame(frame)
-            assertEquals("$frame: andere Anzahl", felder.size, pixel.size)
+            val flaechen = CardPlan.frame(frame).filter { r -> FrameTone.entries.any { it.argb == r.color } }
+            assertEquals("$frame: andere Anzahl", felder.size, flaechen.size)
             felder.forEachIndexed { i, f ->
-                val p = pixel[i]
+                val p = flaechen[i]
                 assertEquals("$frame #$i x", f.col * CELL, p.x, 0f)
                 assertEquals("$frame #$i y", f.row * CELL, p.y, 0f)
                 assertEquals("$frame #$i Breite", f.cols * CELL, p.w, 0f)
@@ -289,9 +368,60 @@ class CardPlanTest {
             }
             assertTrue(
                 "$frame liegt nicht im Blatt",
-                pixel.all { it.x >= 0f && it.y >= 0f && it.x + it.w <= W && it.y + it.h <= H }
+                CardPlan.frame(frame).all { it.x >= 0f && it.y >= 0f && it.x + it.w <= W && it.y + it.h <= H }
             )
         }
+    }
+
+    @Test
+    fun `die Rahmenkanten liegen auf ihren Flaechen, ein Feld breit`() {
+        CardFrame.entries.forEach { frame ->
+            val soll = tabelle(frame)
+            val ist = karte(frame)
+            var kanten = 0
+            for (r in 0 until CardPlan.ROWS) for (c in 0 until CardPlan.COLS) {
+                val t = soll[r][c]
+                val k = ist[r][c]
+                if (k == t) continue
+                kanten++
+                // Nichts ragt ueber den Rahmen hinaus, die Kontur bekommt
+                // nie eine Kante, und jede Kante ist hell oder dunkel zu
+                // genau der Flaeche, die sichtbar darunter liegt.
+                assertTrue("$frame: Kante ohne Flaeche bei ($c, $r)", t != 0L)
+                assertTrue("$frame: Kante auf der Kontur bei ($c, $r)", t != OUTLINE)
+                assertTrue(
+                    "$frame: fremde Kantenfarbe bei ($c, $r)",
+                    k == BevelPaint.light(t) || k == BevelPaint.dark(t)
+                )
+            }
+            if (frame == CardFrame.SCHLICHT) assertEquals(0, kanten)
+            else assertTrue("$frame: keine Kanten", kanten > 0)
+        }
+    }
+
+    @Test
+    fun `schmale Flaechen bleiben flach, breite bekommen Licht oben links`() {
+        assertTrue(CardPlan.frame(CardFrame.SCHLICHT).isEmpty())
+        // DOPPELLINIE: nur zwei Felder starke Baender — flach. Kanten gibt
+        // es nur auf den Eckquadraten (10 und 6 Felder).
+        val doppel = karte(CardFrame.DOPPELLINIE)
+        val doppelSoll = tabelle(CardFrame.DOPPELLINIE)
+        for (r in 0 until CardPlan.ROWS) for (c in 0 until CardPlan.COLS) {
+            if (doppel[r][c] == doppelSoll[r][c]) continue
+            val ecke = (r < 10 || r >= CardPlan.ROWS - 10) && (c < 10 || c >= CardPlan.COLS - 10)
+            assertTrue("Kante auf schmalem Band bei ($c, $r)", ecke)
+        }
+        // KASKADE: Das Tuerkis-Band (sechs Felder, ab Feld 2) ist ein
+        // erhabener Ring — oben aussen Licht, an seiner Unterkante
+        // (Feld 7) Schatten. Spalte 90 liegt in Zeile 2 und 7 zwischen
+        // den Perlen.
+        val kaskade = karte(CardFrame.KASKADE)
+        val inlay = FrameTone.INLAY.argb
+        assertEquals(BevelPaint.light(inlay), kaskade[2][90])
+        assertEquals(BevelPaint.dark(inlay), kaskade[7][90])
+        // Unten ist es umgekehrt: innen Licht, aussen Schatten.
+        assertEquals(BevelPaint.light(inlay), kaskade[CardPlan.ROWS - 8][90])
+        assertEquals(BevelPaint.dark(inlay), kaskade[CardPlan.ROWS - 3][90])
     }
 
     @Test

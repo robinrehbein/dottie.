@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.DeathCause
 import de.robinrehbein.punkt.game.TimingGame
 import de.robinrehbein.punkt.game.TrapPaint
@@ -32,8 +33,15 @@ import kotlin.math.sqrt
 /** Dauer der Explosion in Sekunden. */
 internal const val TRAP_BOOM_SECONDS = 0.45f
 
+/**
+ * Sekunden vom Tod bis zur Explosion: das Ende des Todes-Freeze, also
+ * genau dann, wenn auch der Vogel platzt (drawBirdBurst). Vorher klingt
+ * der weiße Blitz ab, der Vogel steht im Rahmen.
+ */
+internal const val TRAP_BOOM_DELAY = TimingGame.DEATH_FREEZE_SECONDS
+
 /** Zahl der Funken der Explosion. */
-internal const val TRAP_BOOM_SPARKS = 12
+internal const val TRAP_BOOM_SPARKS = 20
 
 /**
  * Pixelmaß einer Mine: ein Sprite-Pixel ist 0,6 Bahnzellen breit, ganzzahlig
@@ -69,20 +77,24 @@ private const val SQRT2 = 1.4142135f
 /**
  * Wie weit (Bildpunkte, beliebige Richtung) die Mitte einer Mine mit
  * Sprite-Pixeln [px] von der Mitte eines Sandblocks der halben Kante
- * [blockHalf] mindestens entfernt sein muss, damit Mine samt Rand den
+ * [blockHalf] mindestens entfernt sein muss, damit die Kugel der Mine den
  * Block nicht berührt.
  *
  * Die Mine ist ein 5×5-Kern mit je einem Zacken oben, unten, links und
- * rechts, jeder Pixel mit Rand. Mit dem Block zusammen ergibt das drei
- * Rechtecke um die Minenmitte (Kern, senkrechter und waagrechter Zacken),
- * die die Blockmitte nicht treffen darf — in welcher Richtung auch immer
- * der Block liegt. Ein Bildpunkt Luft für das Runden auf ganze Pixel.
+ * rechts. Mit dem Block zusammen ergibt das drei Rechtecke um die
+ * Minenmitte (Kern, senkrechter und waagrechter Zacken), die die
+ * Blockmitte nicht treffen darf — in welcher Richtung auch immer der
+ * Block liegt. Ein Bildpunkt Luft für das Runden auf ganze Pixel.
+ *
+ * Der helle Rand der Mine zählt hier bewusst nicht mit: Er darf auf dem
+ * dunklen Umriss des Sandblocks liegen (Umriss eine halbe Zelle, siehe
+ * `trackUnit`; Rand höchstens 0,36 Zellen breit), nur die Kugel nie. Mit Rand schrumpften die Minen
+ * auf einem 1080×2340-Telefon auf 28 px und wirkten kleiner als der Sand.
  */
 internal fun mineBlockDistance(px: Int, blockHalf: Float): Float {
-    val rim = mineRim(px)
-    val core = 2.5f * px + rim + blockHalf + 1f
-    val thin = 0.5f * px + rim + blockHalf + 1f
-    val long = 3.5f * px + rim + blockHalf + 1f
+    val core = 2.5f * px + blockHalf + 1f
+    val thin = 0.5f * px + blockHalf + 1f
+    val long = 3.5f * px + blockHalf + 1f
     return max(SQRT2 * core, sqrt(thin * thin + long * long))
 }
 
@@ -199,16 +211,16 @@ internal fun trapChain(
 }
 
 /**
- * Berührt eine Mine mit Sprite-Pixeln [px] einen Sandblock der halben
- * Kante [blockHalf], dessen Mitte um ([dx], [dy]) Bildpunkte neben der
- * Minenmitte liegt? Dieselben drei Rechtecke wie in [mineBlockDistance],
- * hier für die tatsächliche Lage statt für jede Richtung.
+ * Berührt die Kugel einer Mine mit Sprite-Pixeln [px] einen Sandblock der
+ * halben Kante [blockHalf], dessen Mitte um ([dx], [dy]) Bildpunkte neben
+ * der Minenmitte liegt? Dieselben drei Rechtecke wie in
+ * [mineBlockDistance], hier für die tatsächliche Lage statt für jede
+ * Richtung; der Rand zählt auch hier nicht.
  */
 internal fun mineTouchesBlock(dx: Float, dy: Float, px: Int, blockHalf: Float): Boolean {
-    val rim = mineRim(px)
-    val core = 2.5f * px + rim + blockHalf + 1f
-    val thin = 0.5f * px + rim + blockHalf + 1f
-    val long = 3.5f * px + rim + blockHalf + 1f
+    val core = 2.5f * px + blockHalf + 1f
+    val thin = 0.5f * px + blockHalf + 1f
+    val long = 3.5f * px + blockHalf + 1f
     val x = abs(dx)
     val y = abs(dy)
     return (x < core && y < core) || (x < thin && y < long) || (x < long && y < thin)
@@ -230,7 +242,7 @@ internal fun trapEndGap(px: Int, radius: Float, cell: Float, segments: Int): Flo
 /**
  * Sprite-Pixelmaß der Minen der aktuellen Falle (Plan 3.4: Mine in
  * Blockgröße). Höchstens [minePixel] ([cell]), und so klein, dass sich
- * weder zwei Minen ([minesFit]) noch Mine und Sandblock
+ * weder zwei Minen ([minesFit]) noch Kugel und Sandblock
  * ([mineBlockDistance]) je berühren, auch nicht an der engsten Stelle
  * unter PULS. Geprüft wird die Kette ([trapChain]) über alle Breiten, die
  * die Falle in dieser Runde annehmen kann; so bleibt die Größe beim Atmen
@@ -271,11 +283,72 @@ private fun trapMineFit(game: TimingGame, segments: Int, radius: Float, cell: Fl
     return px to (px > 1 || fits(1))
 }
 
+/**
+ * Wie groß eine rote Mine gezeichnet wird: eine Pixelstufe größer als die
+ * übrigen ([px] + 1), damit das Lauflicht nicht nur die Farbe, sondern
+ * auch die Größe wechselt und die Falle unter PULS nicht untergeht.
+ *
+ * Nur wenn es passt, geprüft wie [trapMineFit] über alle Breiten der
+ * Runde (die Größe bleibt beim Atmen stehen):
+ * - Die rote Kugel hält einen Bildpunkt Abstand zu jeder schwarzen Kugel
+ *   daneben ([redBlackDistance]). Ränder dürfen sich überdecken, und zwei
+ *   rote Minen nebeneinander dürfen sich berühren — dann liest sich der
+ *   rote Block als eine Warnung.
+ * - Die rote Kugel reicht höchstens auf den dunklen Umriss des Sandblocks
+ *   daneben, nie auf seine Sandfläche ([faceHalf]).
+ * Passt es nicht, bleibt die rote Mine so groß wie die anderen.
+ */
+private fun trapRedPixel(
+    game: TimingGame,
+    segments: Int,
+    radius: Float,
+    cell: Float,
+    px: Int,
+    fits: Boolean
+): Int {
+    if (!fits) return px
+    val slot = 2f * PI.toFloat() / segments
+    val count = TrapPaint.count(game.zoneHalfWidth, slot)
+    val halves = if (Twist.PULSE in game.activeTwists) {
+        val narrowest = min(game.fakeZoneHalf(), game.zoneHalfWidth * TimingGame.PULSE_MIN_SHARE)
+        List(PULSE_SAMPLES + 1) { j ->
+            narrowest + (game.zoneHalfWidth - narrowest) * j / PULSE_SAMPLES
+        } + game.fakeZoneHalf()
+    } else {
+        listOf(game.fakeZoneHalf())
+    }
+    fun chord(slots: Float): Float = 2f * radius * sin(abs(slots) * slot / 2f)
+    val red = px + 1
+    val faceHalf = sandBlock(0f, 0f, cell).inner / 2f
+    val sandDistance = mineBlockDistance(red, faceHalf)
+    val endGap = trapEndGap(px, radius, cell, segments)
+    val ok = halves.all { half ->
+        val chain = trapChain(game.fakeZoneCenter, half, count, segments, endGap)
+        val at = chain.at
+        val pitchOk = (1 until at.size).all { chord(at[it] - at[it - 1]) >= redBlackDistance(px) }
+        val sandOk = chain.before == null || chain.after == null ||
+            (chord(at.first() - chain.before) >= sandDistance &&
+                chord(chain.after - at.last()) >= sandDistance)
+        pitchOk && sandOk
+    }
+    return if (ok) red else px
+}
+
+/**
+ * Kleinster Abstand zwischen einer roten Mine ([px] + 1) und einer
+ * schwarzen ([px]), bei dem sich ihre Kugeln nicht berühren: schräg die
+ * beiden Kerne, längs der Achsen die Zacken, dazu ein Bildpunkt Luft.
+ */
+internal fun redBlackDistance(px: Int): Float {
+    val sum = (px + 1) + px
+    return max(SQRT2 * 2.5f * sum, 3.5f * sum) + 1f
+}
+
 /** Stützstellen über die Atembreite der Falle unter PULS. */
 private const val PULSE_SAMPLES = 16
 
 /** Was `drawTrack` von der Falle zeichnet: die Minen und ihr Pixelmaß. */
-internal class TrapLayout(val mines: List<TrapMine>, val px: Int)
+internal class TrapLayout(val mines: List<TrapMine>, val px: Int, val redPx: Int = px)
 
 /**
  * Die Minen der Falle so, wie `drawTrack` sie auf die Bahn mit Radius
@@ -294,7 +367,8 @@ internal fun trapLayout(
     val (px, fits) = trapMineFit(game, segments, radius, cell)
     val minPitch = if (fits) 0f else chordToSlots(mineMineDistance(px) + 0.25f, radius, segments)
     val endGap = trapEndGap(px, radius, cell, segments)
-    return TrapLayout(trapMines(game, segments, zoneHalf, endGap, minPitch), px)
+    val redPx = trapRedPixel(game, segments, radius, cell, px, fits)
+    return TrapLayout(trapMines(game, segments, zoneHalf, endGap, minPitch), px, redPx)
 }
 
 /**
@@ -338,13 +412,17 @@ internal fun DrawScope.drawMineRim(cx: Float, cy: Float, px: Int) {
     }
 }
 
-/** Kugel und Glanz einer Mine, ohne Rand (siehe [drawMineRim]). */
+/**
+ * Kugel und Glanz einer Mine, ohne Rand (siehe [drawMineRim]). Die Kugel
+ * hat eine Kante wie alles im Bevel-Look: an der Lichtseite heller, an der
+ * Schattenseite dunkler ([BevelPaint.mineEdge], vorberechnet aus [BevelPaint.mineCell]). Die Form bleibt exakt
+ * [TrapPaint.MINE]; nur die Randpixel wechseln die Farbe.
+ */
 internal fun DrawScope.drawMineBody(cx: Float, cy: Float, px: Int, red: Boolean) {
     val u = px.toFloat()
     val size = TrapPaint.MINE_SIZE
     val ox = mineOrigin(cx, u)
     val oy = mineOrigin(cy, u)
-    val ball = Color(if (red) TrapPaint.RED else TrapPaint.BALL)
     val gloss = Color(TrapPaint.GLOSS)
     for (r in 0 until size) {
         val row = TrapPaint.MINE[r]
@@ -352,7 +430,7 @@ internal fun DrawScope.drawMineBody(cx: Float, cy: Float, px: Int, red: Boolean)
             val ch = row[k]
             if (ch == '.') continue
             drawRect(
-                color = if (ch == 'W') gloss else ball,
+                color = if (ch == 'W') gloss else Color(BevelPaint.mineEdge(r, k, red)),
                 topLeft = Offset(ox + k * u, oy + r * u),
                 size = Size(u, u)
             )
@@ -413,13 +491,14 @@ internal fun trapMines(
 }
 
 /**
- * Die Explosion beim Hineintippen in die Falle: 12 Pixel-Funken, erst
+ * Die Explosion beim Hineintippen in die Falle: 20 Pixel-Funken, erst
  * gelb/orange, dann rot/grau, über [TRAP_BOOM_SECONDS], dazu ein kleiner
  * heller Kern, der schrumpft.
  *
  * Nur bei [TimingGame.lastDeathCause] == TRAP. Ohne eigenen Blitz: Jeder
  * Tod setzt schon `flashAlpha = 1` (Plan 8.7), ein zweiter wäre doppelt.
- * [time] ist die Zeit seit dem Tod (`FxState.deathTime`), negativ = kein Tod.
+ * [time] ist die Zeit seit dem Tod (`FxState.deathTime`), negativ = kein Tod;
+ * die Explosion beginnt [TRAP_BOOM_DELAY] danach.
  */
 internal fun DrawScope.drawTrapBoom(
     game: TimingGame,
@@ -430,10 +509,11 @@ internal fun DrawScope.drawTrapBoom(
     cell: Float
 ) {
     if (game.lastDeathCause != DeathCause.TRAP) return
-    if (time < 0f || time >= TRAP_BOOM_SECONDS) return
+    val t = time - TRAP_BOOM_DELAY
+    if (time < 0f || t < 0f || t >= TRAP_BOOM_SECONDS) return
     val x = cx + cos(game.angle) * radius
     val y = cy + sin(game.angle) * radius
-    val q = (time / TRAP_BOOM_SECONDS).coerceIn(0f, 1f)
+    val q = (t / TRAP_BOOM_SECONDS).coerceIn(0f, 1f)
     for (i in 0 until TRAP_BOOM_SPARKS) {
         val odd = i % 2 == 1
         val a = i.toFloat() / TRAP_BOOM_SPARKS * (2f * PI.toFloat()) + (if (odd) 0.2f else 0f)

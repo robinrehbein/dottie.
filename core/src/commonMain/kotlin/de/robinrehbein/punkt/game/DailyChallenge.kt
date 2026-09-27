@@ -29,7 +29,7 @@ object DailyChallenge {
     fun nextStreak(lastPlayedEpochDay: Long, currentStreak: Int, todayEpochDay: Long): Int =
         nextStreak(lastPlayedEpochDay, currentStreak, todayEpochDay, jokers = 0).streak
 
-    // ===== Serien-Joker (ab v2.30) =====
+    // ===== Serien-Joker (ab v2.36) =====
 
     /**
      * Höchstens so viele Joker liegen auf Vorrat. Zwei decken ein

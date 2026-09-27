@@ -10,11 +10,9 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
+import de.robinrehbein.punkt.game.BevelPaint
 import de.robinrehbein.punkt.game.GamePhase
 import de.robinrehbein.punkt.game.TimingGame
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.sin
@@ -30,8 +28,6 @@ import kotlin.math.sin
  *   im Grün ist, und lässt los, wenn er draußen ist. Beim Drücken läuft
  *   ein Echo an der Fingerspitze. Nur in READY und nur während der
  *   Stützräder ([START_COACH_RUNS]).
- * - Die Zone leuchtet, solange der Punkt drin ist, in READY und RUNNING,
- *   ebenfalls nur während der Stützräder ([drawZoneGlow]).
  * - Jeder freie Tap hinterlässt ein Tipp-Echo, einen wachsenden Umriss,
  *   in allen Phasen und für alle Spieler ([drawTapEchoes]).
  * - Ein Tap daneben in READY zeigt „NOCH NICHT“ im Ring über der Hand und
@@ -101,6 +97,7 @@ fun notYetWobble(notYetTime: Float, unit: Float): Float =
 /**
  * Pixel-Hand (16×17), Zeigefinger nach oben, wie `HAND` in
  * docs/feedback-check.html. O = Kontur, W = Haut, S = Schatten, Y = Ärmel.
+ * Die Bevel-Kanten darauf stehen in [HAND_EDGES].
  */
 internal val HAND = listOf(
     "....OO..........",
@@ -132,8 +129,58 @@ internal val HandSleeve = Color(0xFFFFD847)
 /** Die Fingerspitze beim Drücken (feedback-check.html:825). */
 internal val HandPressedTip = Color(0xFFFFE9A8)
 
-/** Schlagschatten: Kontur #543847 mit 35 % Deckkraft. */
-internal val HandDropShadow = Color(0x59543847)
+/**
+ * Zu welcher Fläche ein Hand-Pixel gehört: 1 = Haut (W, S), 2 = Ärmel
+ * (Y), 0 = keine (Kontur und frei). Die Kanten laufen je Fläche — die
+ * Haut bekommt über dem Ärmel ihre Unterkante wie über der Kontur.
+ */
+internal fun handSurface(ch: Char): Int = when (ch) {
+    'W', 'S' -> 1
+    'Y' -> 2
+    else -> 0
+}
+
+/**
+ * Die Kante jedes Hand-Pixels (Bevel-Look, docs/bevel-look.md Abschnitt 0),
+ * einmal vorberechnet wie die Minenkanten: Sie hängt nur an der Maske.
+ * Licht oben und links, Schatten unten und rechts, je Fläche
+ * ([handSurface]). Die Finger sind zwei Zellen breit und der Ärmel eine
+ * Zeile hoch — beides bleibt nach der Drei-Stufen-Regel flach, die
+ * Kante trägt der Handballen.
+ */
+internal val HAND_EDGES: List<List<BevelPaint.Edge>> = HAND.indices.map { row ->
+    (0 until HAND_COLUMNS).map { col ->
+        val surface = handSurface(HAND[row][col])
+        if (surface == 0) {
+            BevelPaint.Edge.FLAT
+        } else {
+            BevelPaint.maskEdge(col, row) { c, r ->
+                r in HAND.indices && c in 0 until HAND_COLUMNS && handSurface(HAND[r][c]) == surface
+            }
+        }
+    }
+}
+
+/**
+ * Farbe jedes Hand-Pixels mit Kante, ARGB, 0 = frei. Einmal vorberechnet
+ * statt im Frame gemischt: Die Hand steht auf dem Startbildschirm in
+ * jedem Frame, die Töne ändern sich aber nur mit dem Drücken.
+ */
+private fun handTones(pressed: Boolean): List<LongArray> = HAND.indices.map { row ->
+    LongArray(HAND_COLUMNS) { col ->
+        val base = when (HAND[row][col]) {
+            'O' -> OutlineColor
+            'W' -> if (pressed && row < 4) HandPressedTip else HandSkin
+            'S' -> HandShade
+            'Y' -> HandSleeve
+            else -> return@LongArray 0L
+        }
+        BevelPaint.edgeTone(base.toArgbLong(), HAND_EDGES[row][col])
+    }
+}
+
+internal val HAND_TONES: List<LongArray> = handTones(pressed = false)
+internal val HAND_TONES_PRESSED: List<LongArray> = handTones(pressed = true)
 
 /** Ein Hand-Pixel für einen Ringradius: wie im Mockup (R = 0,34 W, u = W/90), auf ganze Pixel. */
 internal fun handUnit(radius: Float): Float = max(1f, floor(radius / 30.6f))
@@ -167,27 +214,14 @@ fun DrawScope.drawStartHand(
     val origin = handOrigin(tipX, tipY, u)
     val ox = origin.x
     val oy = origin.y
+    // Kein Schlagschatten mehr (Bevel-Look: keine Schlagschatten, kein
+    // 2.5D) — die Tiefe trägt jetzt die Kante auf dem Handballen.
+    val tones = if (pressed) HAND_TONES_PRESSED else HAND_TONES
     for (row in HAND.indices) {
         for (col in 0 until HAND_COLUMNS) {
-            if (HAND[row][col] == '.') continue
-            drawRect(
-                color = HandDropShadow,
-                topLeft = Offset(ox + (col + 1) * u, oy + (row + 1) * u),
-                size = Size(u, u)
-            )
-        }
-    }
-    for (row in HAND.indices) {
-        for (col in 0 until HAND_COLUMNS) {
-            val ch = HAND[row][col]
-            val color = when (ch) {
-                'O' -> OutlineColor
-                'W' -> if (pressed && row < 4) HandPressedTip else HandSkin
-                'S' -> HandShade
-                'Y' -> HandSleeve
-                else -> continue
-            }
-            drawRect(color = color, topLeft = Offset(ox + col * u, oy + row * u), size = Size(u, u))
+            val tone = tones[row][col]
+            if (tone == 0L) continue
+            drawRect(color = Color(tone), topLeft = Offset(ox + col * u, oy + row * u), size = Size(u, u))
         }
     }
     val t = fx.handEchoTime
@@ -204,8 +238,8 @@ fun DrawScope.drawStartHand(
 }
 
 /**
- * Was vom Startbildschirm in die Welt gehört: Leuchten der Zone und die
- * Hand. Aufgerufen aus [drawTimingWorld] nach der Bahn und vor dem Vogel.
+ * Was vom Startbildschirm in die Welt gehört: die Hand. Aufgerufen aus
+ * [drawTimingWorld] nach der Bahn und vor dem Vogel.
  */
 fun DrawScope.drawStartCoach(
     game: TimingGame,
@@ -216,8 +250,10 @@ fun DrawScope.drawStartCoach(
     cell: Float
 ) {
     if (!fx.trainingWheels) return
-    val playing = game.phase == GamePhase.READY || game.phase == GamePhase.RUNNING
-    if (playing && game.isInZone) drawZoneGlow(game, cx, cy, radius, cell)
+    // Früher leuchtete hier zusätzlich die Zone, solange der Punkt drin
+    // war. Seit die Zone selbst Blätter, Licht-Kante und goldenen Saum
+    // trägt, überdeckte das Leuchten genau diese Details mit flachen
+    // Quadraten; den Einstieg erklären Hand und Tipp-Echos.
     if (game.phase == GamePhase.READY) {
         drawStartHand(fx, cx, cy, radius, notYetWobble(fx.notYetTime, 1.dp.toPx()))
     }
@@ -308,44 +344,3 @@ fun ringExtent(size: Size): Rect {
     return Rect(ring.cx - reach, ring.cy - reach, ring.cx + reach, ring.cy + reach)
 }
 
-/** Das Leuchten der Zone während der Stützräder (feedback-check.html:589-595). */
-internal val GlowCore = Color(0xFFE4FFC4)
-internal val GlowZone = Color(0xFFB8F27A)
-internal val GlowEdge = Color(0xFFFFFFFF)
-
-/**
- * Die Zone leuchtet (Plan 3.1): dieselben Blöcke wie in [drawTrack],
- * heller gefüllt und mit weißer Kontur. Nur als Stützräder, solange der
- * Punkt im Grün ist (siehe drawStartCoach). Liegt die Falle auf der
- * Zone, gewinnt wie in [drawTrack] die Zone.
- */
-internal fun DrawScope.drawZoneGlow(
-    game: TimingGame,
-    cx: Float,
-    cy: Float,
-    radius: Float,
-    cell: Float
-) {
-    val segments = 60
-    val zoneHalf = game.effectiveZoneHalf()
-    val coreHalf = game.perfectHalf()
-    val outer = cell * 5f
-    val inner = cell * 3.4f
-    for (k in 0 until segments) {
-        val a = k.toFloat() / segments * (2f * PI.toFloat())
-        val relativeZone = abs(TimingGame.wrapToPi(a - game.zoneCenter))
-        if (relativeZone > zoneHalf) continue
-        val px = cx + cos(a) * radius
-        val py = cy + sin(a) * radius
-        drawRect(
-            color = GlowEdge,
-            topLeft = Offset(px - outer / 2f, py - outer / 2f),
-            size = Size(outer, outer)
-        )
-        drawRect(
-            color = if (relativeZone <= coreHalf) GlowCore else GlowZone,
-            topLeft = Offset(px - inner / 2f, py - inner / 2f),
-            size = Size(inner, inner)
-        )
-    }
-}

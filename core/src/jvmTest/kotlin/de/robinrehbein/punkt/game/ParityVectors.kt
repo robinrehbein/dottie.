@@ -466,6 +466,25 @@ object ParityVectors {
                     arrayOf(b.kind.name) + b.colors.map { argb(it) }.toTypedArray()
                 } ?: arrayOf("-")
             )
+            // Bewohner (LifeKind): je Bewohner eine Zeile, Art und Farben.
+            scene.life.forEachIndexed { k, l ->
+                line("scene.life.${id.name}.$k", l.kind.name, *l.colors.map { argb(it) }.toTypedArray())
+            }
+            // Nebel (Twist NEBEL): die fünf Töne bottom, low, mid, top,
+            // inner, dann Partikelfarbe, Partikelform und Schaumkrone
+            // (1 = ja). Die Form der Wolke steht nicht hier — sie ist in
+            // jeder Welt gleich und gehört dem Renderer.
+            line(
+                "scene.fog.${id.name}",
+                argb(scene.fog.bottom),
+                argb(scene.fog.low),
+                argb(scene.fog.mid),
+                argb(scene.fog.top),
+                argb(scene.fog.inner),
+                argb(scene.fog.speck),
+                scene.fog.speckShape.name,
+                if (scene.fog.crown) "1" else "0"
+            )
             // Requisiten: Form, Größe, Schwingen und die drei Farbstufen.
             // Der Stiel und die Akzente hängen daran, dass ein Renderer sie
             // überhaupt kennt — deshalb stehen sie mit in der Zeile.

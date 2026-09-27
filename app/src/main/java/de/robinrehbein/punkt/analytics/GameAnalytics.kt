@@ -9,7 +9,7 @@ import de.robinrehbein.punkt.ui.data.GameStore
 import de.robinrehbein.punkt.ui.platform.AnalyticsEvent
 
 /**
- * Die Nutzungsstatistik auf Android (ab v2.30): eine dünne Hülle um
+ * Die Nutzungsstatistik auf Android (ab v2.36): eine dünne Hülle um
  * Firebase Analytics.
  *
  * Zwei Schalter entscheiden, ob überhaupt etwas passiert, und beide

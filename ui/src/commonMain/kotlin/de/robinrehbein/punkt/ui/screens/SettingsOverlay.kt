@@ -76,7 +76,7 @@ internal fun SettingsOverlay(
     // Ohne Tages-Erinnerung (iOS) faellt die Zeile ganz weg. Ein
     // Schalter, der nichts schaltet, ist schlimmer als keiner.
     reminderSupported: Boolean = true,
-    // Nutzungsstatistik (ab v2.30): nur, wenn die Plattform messen kann.
+    // Nutzungsstatistik (ab v2.36): nur, wenn die Plattform messen kann.
     // Der Schalter ist der dauerhafte Weg zurück aus der Einwilligung.
     analyticsSupported: Boolean = false,
     analyticsOn: Boolean = false,

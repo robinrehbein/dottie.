@@ -51,4 +51,39 @@
         <item>AGAIN!</item>
         <item>DON\'T GIVE UP!</item>
     </string-array>
+
+    <!-- Rückmeldung im Lauf, Texte wie am Phone (composeResources). -->
+    <string name="perfect_plus">PERFECT! +%1$d</string>
+    <string name="blind_plus">BLIND! +%1$d</string>
+    <string name="banner_chain">ONE MORE!</string>
+    <string name="death_early">TOO EARLY</string>
+    <string name="death_late">TOO LATE</string>
+    <string name="death_missed">MISSED</string>
+    <string name="death_trap">BOOM!</string>
+
+    <!-- Twist-Erklärung im Game-Over, einmal je Twist. Kurzfassung der
+         Phone-Zeilen (twist_learned_*), damit sie in eine Zeile passt. -->
+    <string name="lesson_pulse">NEW: PULSE - ZONE BREATHES</string>
+    <string name="lesson_drift">NEW: DRIFT - ZONE WANDERS</string>
+    <string name="lesson_ghost">NEW: FOG - HIT BLIND +1</string>
+    <string name="lesson_fake">BOMB = NEVER TAP</string>
+    <string name="lesson_chain">NEW: CHAIN - 2 ZONES</string>
+
+    <!-- Welt- und Ton-Wähler: Kopfzeile mit Sammlungsstand, Namen wie am Phone. -->
+    <string name="worlds">WORLDS %1$d/%2$d</string>
+    <string name="sounds">SOUNDS %1$d/%2$d</string>
+    <string name="scene_wiese">MEADOW</string>
+    <string name="scene_wueste">DESERT</string>
+    <string name="scene_meer">SEA</string>
+    <string name="scene_berg">MOUNTAIN</string>
+    <string name="scene_stadt">CITY</string>
+    <string name="scene_weltraum">SPACE</string>
+    <string name="sound_klassik">CLASSIC</string>
+    <string name="sound_glocke">BELL</string>
+    <string name="sound_amboss">ANVIL</string>
+    <string name="sound_trommel">DRUM</string>
+    <string name="sound_orgel">ORGAN</string>
+    <string name="sound_pfeife">WHISTLE</string>
+    <string name="sound_laser">LASER</string>
+    <string name="sound_roboter">ROBOT</string>
 </resources>

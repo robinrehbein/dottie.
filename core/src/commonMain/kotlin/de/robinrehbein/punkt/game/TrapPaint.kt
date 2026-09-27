@@ -50,6 +50,23 @@ object TrapPaint {
     /** Kugelfarbe einer Mine, über die gerade das Lauflicht läuft. */
     const val RED: Long = 0xFFE53935
 
+    // Die Kante der Kugel (Bevel-Look, siehe BevelPaint.mineCell). Von
+    // Hand gesetzt statt abgeleitet: Die schwarze Kugel liegt unter der
+    // Dunkel-Grenze, eine abgeleitete helle Kante wäre dort grau, eine
+    // dunkle gar nicht zu sehen. Das Sprite selbst bleibt unverändert.
+
+    /** Lichtkante der schwarzen Kugel, oben und links. */
+    const val BALL_LIGHT: Long = 0xFF4E4656
+
+    /** Schattenkante der schwarzen Kugel, unten und rechts. */
+    const val BALL_DARK: Long = 0xFF0A080C
+
+    /** Lichtkante der roten Kugel im Lauflicht. */
+    const val RED_LIGHT: Long = 0xFFFF8A7E
+
+    /** Schattenkante der roten Kugel im Lauflicht. */
+    const val RED_DARK: Long = 0xFF9E1F1C
+
     /** Takt des Lauflichts: alle so viele Sekunden ein Schritt. */
     const val LIGHT_STEP_SECONDS = 0.09f
 
