@@ -197,6 +197,12 @@ jobs:
         with:
           name: punkt-release-mapping
 
+      - name: Download Wear AAB
+        if: steps.latest.outputs.current == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: punkt-wear-release-aab
+
       - name: In Google Play veröffentlichen
         if: steps.latest.outputs.current == 'true'
         uses: r0adkll/upload-google-play@v1
@@ -209,3 +215,15 @@ jobs:
           changesNotSentForReview: false
           whatsNewDirectory: store/whatsnew
           mappingFile: mapping.txt
+
+      - name: Wear OS im internen Test veröffentlichen
+        if: steps.latest.outputs.current == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: de.robinrehbein.pointless
+          releaseFiles: wear-release.aab
+          tracks: wear:qa
+          status: completed
+          changesNotSentForReview: false
+          whatsNewDirectory: store/whatsnew

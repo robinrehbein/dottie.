@@ -6,6 +6,9 @@
     <uses-feature android:name="android.hardware.type.watch" />
 
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Die Play-Erklärung zur Werbe-ID gilt für alle aktiven Artefakte
+         derselben Paket-ID, einschließlich des Wear-OS-Tracks. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
     <!-- Gleiches Launcher-Icon wie die Phone-App (Mipmaps aus :app
          kopiert): Als Adaptive Icon wird es vom Wear-Launcher automatisch

@@ -25,8 +25,9 @@ android {
         // beiden Zähler nie.
         // 100005 ging bereits als Build 110 raus (Augen-Kontur), der
         // Uhr-Abgleich bekommt deshalb 100006.
-        versionCode = 100011
-        versionName = "0.2.9-wear"
+        val ciRunNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        versionCode = ciRunNumber?.let { 100000 + it } ?: 100011
+        versionName = ciRunNumber?.let { "0.2.9-wear.$it" } ?: "0.2.9-wear"
     }
 
     signingConfigs {
