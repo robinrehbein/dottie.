@@ -590,10 +590,11 @@ object ScenePaint {
      * ist — ein Körper, der sie unterbietet, kehrte das Verhältnis um
      * und ließe die Kontur wie einen Lichtsaum aussehen.
      *
-     * Drittens: **Sie erfindet kein Zeichenmittel.** Kein Lichtschein,
-     * kein Halo, kein weicher Verlauf. Das Spiel kennt genau ein
-     * Grundelement — den gefüllten Block mit Kontur. Die Laterne
-     * leuchtet, indem ein Block hell ist.
+     * Drittens: **Sie erfindet kein Zeichenmittel.** Kein weicher
+     * Verlauf. Das Spiel kennt genau ein Grundelement — den gefüllten
+     * Block mit Kontur. Am Tag leuchtet die Laterne, indem ein Block hell
+     * ist. Nachts (DayCycle) kommt ein Lichtkegel dazu, aber ebenfalls aus
+     * Blöcken: vier harte Stufen, jede breiter, bis auf die Straße.
      */
     val LANTERN_PARTS: List<BlockPart> = listOf(
         BlockPart(-0.55f, 0.00f, 1.10f, 0.16f, 0), // Fußplatte, breitester Teil
