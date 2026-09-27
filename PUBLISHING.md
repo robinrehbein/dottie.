@@ -560,9 +560,23 @@ vorher auf echter Hardware getestet sein.
 ## Versionierung für Store-Uploads
 
 Jeder Play-Upload braucht einen höheren `versionCode`
-(`app/build.gradle.kts`). Aktuell: `versionCode 41` / `versionName
-"2.32"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
+(`app/build.gradle.kts`). Aktuell: `versionCode 42` / `versionName
+"2.33"` (Uhr: `100011` / `"0.2.9-wear"`). Vor jedem Store-Upload beides anheben
 und committen.
+
+### Release-Notes 2.33 (Neuer Pixel-Look)
+
+Deutsch:
+
+> ▪ Neuer plastischer Pixel-Look für Dottie, Bahn, Minen und Welten
+> ▪ Böden, Wolken und Galaxien überarbeitet
+> ▪ Neue Animation beim Bombentreffer
+
+English:
+
+> ▪ Fresh dimensional pixel look for Dottie, the track, mines, and worlds
+> ▪ Refreshed ground, clouds, and galaxies
+> ▪ New animation when hitting a bomb
 
 ### Release-Notes 2.32 (Nebel und Bahn)
 
