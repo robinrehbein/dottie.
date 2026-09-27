@@ -46,6 +46,20 @@ gemischt werden (maximal zwei gleichzeitig):
 | NEBEL | 15 | Vor der Zone liegt eine Nebelbank, der Punkt fliegt darin unsichtbar weiter |
 | BOMBEN | 20 | Eine Kette aus Bomben neben der Zone: nie hineintippen |
 | KETTE | 25 | Zwei Zonen nacheinander in gleicher Richtung |
+| SPIEGEL | 35 | Nach dem Treffer keine Wende, die nächste Zone liegt gegenüber — weiße Pfeile hinter der Zone kündigen es an |
+| TEMPO | 45 | Vor der Zone wird der Punkt schneller (orange Pfeile) oder langsamer (blaue Striche); in der Zone fliegt er normal |
+
+**Späte Twists (ab v2.36):** Ab etwa 40 Treffern ist das Tempo am
+Anschlag, ab 50 die Zone am schmalsten — bis v2.35 kam danach nichts
+Neues mehr. SPIEGEL und TEMPO greifen genau dort an, wo sich Muskel-
+gedächtnis eingeschliffen hat: an der Wende nach dem Treffer und am
+Rhythmus. Beide stehen vor dem Treffer auf der Bahn (`TrackMarks` in
+`:core`, gezeichnet in `LateTwistMarks.kt`; die Uhr zeigt nur die
+Farbe). TEMPO würfelt nur, wenn es gezogen wurde, und SPIEGEL braucht
+dieselbe eine Zufallszahl wie jede Zone: **Läufe unter Score 35 — und
+damit jede Daily bis dorthin — bleiben Zahl für Zahl gleich**, die
+Paritäts-Vektoren belegen es. Neu verboten: NEBEL + TEMPO (Tempowechsel
+im Unsichtbaren) und KETTE + SPIEGEL (die Kette läuft ohnehin weiter).
 
 **Nebel (ab v2.28):** Bis v2.27 blinkte der Punkt unter diesem Twist hart weg.
 Seit v2.28 hängt die Sichtbarkeit an der Bahn,

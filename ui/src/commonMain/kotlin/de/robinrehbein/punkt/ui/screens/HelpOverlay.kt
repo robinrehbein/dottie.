@@ -38,6 +38,12 @@ import de.robinrehbein.punkt.ui.resources.help_max_twists
 import de.robinrehbein.punkt.ui.resources.help_title
 import de.robinrehbein.punkt.ui.resources.help_twists
 import de.robinrehbein.punkt.ui.resources.twist_chain_text
+import de.robinrehbein.punkt.ui.resources.twist_mirror_text
+import de.robinrehbein.punkt.ui.resources.twist_mirror_title
+import de.robinrehbein.punkt.ui.resources.twist_tempo_text
+import de.robinrehbein.punkt.ui.resources.twist_tempo_title
+import de.robinrehbein.punkt.game.TrackMark
+import de.robinrehbein.punkt.game.TrackMarks
 import de.robinrehbein.punkt.ui.resources.twist_chain_title
 import de.robinrehbein.punkt.ui.resources.twist_drift_text
 import de.robinrehbein.punkt.ui.resources.twist_drift_title
@@ -144,6 +150,17 @@ private fun StopHelpContent() {
         Color(0xFFFF8A3C),
         stringResource(Res.string.twist_chain_title),
         stringResource(Res.string.twist_chain_text)
+    )
+    // Die späten Twists (ab v2.36) in den Farben ihrer Bahn-Markierung.
+    TwistHelpRow(
+        Color(TrackMarks.face(TrackMark.ONWARD)),
+        stringResource(Res.string.twist_mirror_title),
+        stringResource(Res.string.twist_mirror_text)
+    )
+    TwistHelpRow(
+        Color(TrackMarks.face(TrackMark.FAST)),
+        stringResource(Res.string.twist_tempo_title),
+        stringResource(Res.string.twist_tempo_text)
     )
 
     Spacer(modifier = Modifier.height(10.dp))

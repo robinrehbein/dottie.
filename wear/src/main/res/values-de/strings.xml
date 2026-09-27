@@ -67,6 +67,8 @@
     <string name="lesson_ghost">NEU: NEBEL - BLIND +1</string>
     <string name="lesson_fake">BOMBE = NIE TIPPEN</string>
     <string name="lesson_chain">NEU: KETTE - 2 ZONEN</string>
+    <string name="lesson_mirror">NEU: SPIEGEL - KEINE WENDE</string>
+    <string name="lesson_tempo">NEU: TEMPO - AUF DAS BAND</string>
 
     <!-- Welt- und Ton-Wähler: Kopfzeile mit Sammlungsstand, Namen wie am Phone. -->
     <string name="worlds">WELTEN %1$d/%2$d</string>

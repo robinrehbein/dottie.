@@ -18,6 +18,7 @@ import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.game.SoundBank
 import de.robinrehbein.punkt.game.SoundSetId
 import de.robinrehbein.punkt.game.TimingGame
+import de.robinrehbein.punkt.game.TrackMarks
 import de.robinrehbein.punkt.game.TrapPaint
 import de.robinrehbein.punkt.game.Twist
 import kotlin.math.PI
@@ -331,7 +332,21 @@ private fun DrawScope.drawWearTrack(
                 size = Size(inner, inner)
             )
         } else {
-            wearBevelRect(trackBlock, innerTopLeft, Size(inner, inner), trackEdge, trackLight, trackDark)
+            // SPIEGEL und TEMPO (ab v2.36): Auf der Uhr trägt der Block nur
+            // die Farbe der Markierung — für Pfeil oder Pause-Striche ist
+            // die Fläche mit rund acht Pixeln zu klein. Welche Farbe, sagt
+            // TrackMarks in :core, wie am Telefon.
+            val mark = TrackMarks.at(game, a, segments)
+            if (mark != null) {
+                val face = Color(TrackMarks.face(mark))
+                wearBevelRect(
+                    face, innerTopLeft, Size(inner, inner), trackEdge,
+                    Color(BevelPaint.light(TrackMarks.face(mark))),
+                    Color(BevelPaint.dark(TrackMarks.face(mark)))
+                )
+            } else {
+                wearBevelRect(trackBlock, innerTopLeft, Size(inner, inner), trackEdge, trackLight, trackDark)
+            }
         }
     }
 

@@ -68,6 +68,8 @@
     <string name="lesson_ghost">NEW: FOG - HIT BLIND +1</string>
     <string name="lesson_fake">BOMB = NEVER TAP</string>
     <string name="lesson_chain">NEW: CHAIN - 2 ZONES</string>
+    <string name="lesson_mirror">NEW: MIRROR - NO TURN</string>
+    <string name="lesson_tempo">NEW: TEMPO - WATCH SPEED</string>
 
     <!-- Welt- und Ton-Wähler: Kopfzeile mit Sammlungsstand, Namen wie am Phone. -->
     <string name="worlds">WORLDS %1$d/%2$d</string>

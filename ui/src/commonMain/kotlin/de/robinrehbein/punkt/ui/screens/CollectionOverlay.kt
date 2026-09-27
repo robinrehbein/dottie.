@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -571,8 +572,15 @@ private val SHOWCASE_LABEL_TOP = 6.dp
  */
 private val SHOWCASE_LABEL_BAND = 36.dp
 
-/** Luft zwischen Ring und unterer Rahmenkante. */
-private val SHOWCASE_RING_BOTTOM = 6.dp
+/** Luft zwischen Ring und Bodenkante (bzw. unterer Rahmenkante). */
+private val SHOWCASE_RING_BOTTOM = 10.dp
+
+/**
+ * Wo im Schaufenster die Bodenkante liegt, als Anteil der Höhe. Darunter
+ * bleibt ein Fünftel für Boden und Grasnarbe — genug, dass die Welt
+ * steht, statt am unteren Rand abgeschnitten zu wirken.
+ */
+private const val SHOWCASE_GROUND_SHARE = 0.8f
 
 /** Größter Ring im Schaufenster, als Anteil der Höhe. */
 private const val SHOWCASE_RING_MAX = 0.27f
@@ -616,19 +624,37 @@ private fun DrawScope.drawShowcase(
 
     val sky = Color(kulisse.sky[0])
     drawRect(color = sky)
-    drawBackdrop(kulisse.backdrop, kulisse.backdrop?.colors.orEmpty(), game.elapsed, cell)
     kulisse.cloud?.let { cloud ->
         drawClouds(Color(cloud), game.elapsed, cell, top = h * 0.06f, bottom = h * 0.3f, speed = 2f)
     }
-    drawScenery(game, cell, kulisse.props)
-    kulisse.ground?.let { drawGroundStrip(cell, it) }
+
+    // Die Welt rechnet in Anteilen der Bildhöhe (Bodenkante bei 88 %,
+    // Requisiten und Hintergrund-Ebenen als Anteil davon) — gebaut für das
+    // hohe Spielbild. Im flachen Schaufenster blieb davon nur ein
+    // schmaler Streifen: Boden abgeschnitten, Bäume winzig, der Ring
+    // mitten in der Grasnarbe. Deshalb wird sie auf eine höhere,
+    // gedachte Fläche gezeichnet und davon das untere Stück gezeigt —
+    // so, dass die Bodenkante bei SHOWCASE_GROUND_SHARE der Höhe liegt.
+    val groundShare = ScenePaint.groundY(1f)
+    val virtualHeight = h * (1f - SHOWCASE_GROUND_SHARE) / (1f - groundShare)
+    val shift = h - virtualHeight
+    val boxSize = drawContext.size
+    translate(top = shift) {
+        drawContext.size = Size(w, virtualHeight)
+        drawBackdrop(kulisse.backdrop, kulisse.backdrop?.colors.orEmpty(), game.elapsed, cell)
+        drawScenery(game, cell, kulisse.props)
+        kulisse.ground?.let { drawGroundStrip(cell, it) }
+        drawContext.size = boxSize
+    }
+    val groundLine = ScenePaint.groundY(virtualHeight) + shift
 
     // Die Bahn als Ring, der Vogel darauf größer als im Spiel: Im
     // Schaufenster soll man sein Muster erkennen. Der Ring bleibt
-    // innerhalb der Rahmenkante und unter dem Band, das oben dem
-    // Schriftzug „VORSCHAU · GESPERRT“ gehört.
+    // innerhalb der Rahmenkante, unter dem Band, das oben dem Schriftzug
+    // „VORSCHAU · GESPERRT“ gehört, und über der Bodenkante — wie im
+    // Spiel, wo die Bahn nie den Boden berührt.
     val top = frameDepth + SHOWCASE_LABEL_BAND.toPx()
-    val bottom = h - frameDepth - SHOWCASE_RING_BOTTOM.toPx()
+    val bottom = minOf(h - frameDepth, groundLine) - SHOWCASE_RING_BOTTOM.toPx()
     val radius = minOf((bottom - top) / 2f, h * SHOWCASE_RING_MAX)
     val cx = w / 2f
     val cy = (top + bottom) / 2f

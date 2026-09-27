@@ -84,6 +84,8 @@
     <!-- == AP-12 bomben == -->
     <!-- == /AP-12 == -->
     <string name="twist_learned_chain">NEW THIS RUN: CHAIN — TWO ZONES IN A ROW</string>
+    <string name="twist_learned_mirror">NEW THIS RUN: MIRROR — NO TURN AFTER THE HIT</string>
+    <string name="twist_learned_tempo">NEW THIS RUN: TEMPO — ORANGE FASTER, BLUE SLOWER</string>
     <string name="tap_retry">TAP = RETRY</string>
     <string name="share">SHARE</string>
     <string name="menu">MENU</string>
@@ -138,6 +140,10 @@
     <string name="twist_fake_text">A CHAIN OF BOMBS NEXT TO THE ZONE: NEVER TAP INTO IT!</string>
     <string name="twist_chain_title">CHAIN (AT 25)</string>
     <string name="twist_chain_text">TWO ZONES IN A ROW — SAME DIRECTION.</string>
+    <string name="twist_mirror_title">MIRROR (AT 35)</string>
+    <string name="twist_mirror_text">WHITE ARROWS BEHIND THE ZONE: NO TURN AFTER THE HIT — THE NEXT ZONE IS ACROSS THE RING.</string>
+    <string name="twist_tempo_title">TEMPO (AT 45)</string>
+    <string name="twist_tempo_text">BEFORE THE ZONE THE DOT CHANGES SPEED: ORANGE ARROWS FASTER, BLUE BARS SLOWER.</string>
     <string name="help_max_twists">AT MOST TWO TWISTS AT ONCE — RANDOMLY MIXED.</string>
     <string name="skin_selected">SELECTED</string>
     <string name="skin_family_einfarbig">SOLID</string>
