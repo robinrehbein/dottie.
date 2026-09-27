@@ -60,3 +60,17 @@ internal fun DrawScope.wearBevelRect(
     drawRect(light, topLeft, Size(size.width - e, e), alpha = alpha)
     drawRect(light, topLeft, Size(e, size.height - e), alpha = alpha)
 }
+
+/**
+ * Die Lichtkante einer Wolkenfläche, wie `drawCloud` am Telefon: oben
+ * über die ganze Breite, links bis über die Unterkante — dort bleibt der
+ * Schatten stehen, den der Aufrufer vorher gezeichnet hat. Für Flächen,
+ * die sich zu einem Band überlappen (Nebelband): Erst alle Schatten,
+ * dann alle Lichtkanten, dann das Innere darüber.
+ */
+internal fun DrawScope.wearCloudLight(light: Color, topLeft: Offset, size: Size, edge: Float) {
+    if (!wearBevelFits(size.width, size.height, edge)) return
+    val e = wearBevelEdge(edge)
+    drawRect(light, topLeft, Size(size.width, e))
+    drawRect(light, topLeft, Size(e, size.height - e))
+}

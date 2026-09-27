@@ -1,6 +1,5 @@
 package de.robinrehbein.punkt.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
@@ -9,12 +8,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.game.Twist
 import de.robinrehbein.punkt.ui.components.MineIcon
+import de.robinrehbein.punkt.ui.components.UI_BEVEL_EDGE
+import de.robinrehbein.punkt.ui.components.drawFaceBevel
 import de.robinrehbein.punkt.ui.text.twistLesson
 import de.robinrehbein.punkt.ui.theme.Bytesized
 import de.robinrehbein.punkt.ui.world.OutlineColor
@@ -40,7 +43,20 @@ internal fun TwistLessonShield(twist: Twist) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .padding(horizontal = 20.dp)
-            .background(OutlineColor)
+            .drawBehind {
+                // Das Schild als Fläche mit Bevel-Kante. Die dunkle Kante
+                // mischt zur Kontur hin und ist auf der Kontur selbst
+                // unsichtbar; es bleibt die helle oben und links, und die
+                // hebt das Schild vom Scrim ab, ohne den gelben Text zu
+                // berühren.
+                drawRect(OutlineColor)
+                drawFaceBevel(
+                    base = OutlineColor,
+                    topLeft = Offset.Zero,
+                    size = size,
+                    edge = UI_BEVEL_EDGE.toPx()
+                )
+            }
             .padding(horizontal = 12.dp, vertical = 7.dp)
     ) {
         if (twist == Twist.FAKE) {

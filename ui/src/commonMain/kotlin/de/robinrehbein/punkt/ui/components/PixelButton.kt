@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.robinrehbein.punkt.ui.theme.Bytesized
+import kotlin.math.roundToInt
 
 /**
  * Ein Text-Knopf im Pixel-Stil mit gestuftem Rand.
@@ -84,6 +86,15 @@ fun PixelButton(
                     backgroundColor = backgroundColor,
                     borderColor = borderColor,
                     borderWidth = borderWidth.toPx()
+                )
+                // Die Fläche im Rahmen bekommt die Bevel-Kante; gedrückt
+                // kehrt sich das Licht um. Schatten und Einsinken bleiben,
+                // wie sie sind: Sie zeigen das Drücken, die Kante die Form.
+                drawPixelButtonBevel(
+                    backgroundColor = backgroundColor,
+                    borderWidth = borderWidth.toPx(),
+                    edge = UI_BEVEL_EDGE.toPx(),
+                    pressed = pressed
                 )
             }
         }
@@ -196,6 +207,13 @@ fun PixelIconButton(
                     borderColor = borderColor,
                     borderWidth = borderWidth.toPx()
                 )
+                // Dieselbe Kante wie beim Text-Knopf.
+                drawPixelButtonBevel(
+                    backgroundColor = backgroundColor,
+                    borderWidth = borderWidth.toPx(),
+                    edge = UI_BEVEL_EDGE.toPx(),
+                    pressed = pressed
+                )
                 if (highlightColor != null) {
                     val border = borderWidth.toPx()
                     drawRect(
@@ -307,6 +325,38 @@ private fun DrawScope.drawPixelBorder(
     
     // Draw right stepped border
     drawRightSteppedBorder(borderColor, pixelSize, width, height)
+}
+
+/**
+ * Die Bevel-Kante auf der Innenfläche des gestuften Rands aus
+ * [drawPixelBorder]: drei Bänder, oben und unten um eine Randstufe
+ * schmaler als in der Mitte — dieselbe Rechnung wie die Treppe links
+ * und rechts. Auf ganze Pixel gerundet, damit die Kante hart bleibt.
+ */
+internal fun DrawScope.drawPixelButtonBevel(
+    backgroundColor: Color,
+    borderWidth: Float,
+    edge: Float,
+    pressed: Boolean
+) {
+    val steps = ((size.height - 2 * borderWidth) / borderWidth).toInt()
+    if (steps <= 0) return
+    val stepHeight = (size.height - 2 * borderWidth) / steps
+    fun px(v: Float) = v.roundToInt().toFloat()
+    val oben = px(borderWidth)
+    val mitteOben = px(borderWidth + (steps / 4) * stepHeight)
+    val mitteUnten = px(borderWidth + (steps * 3 / 4) * stepHeight)
+    val unten = px(size.height - borderWidth)
+    val schmalL = px(borderWidth * 2)
+    val schmalR = px(size.width - borderWidth * 2)
+    val breitL = px(borderWidth)
+    val breitR = px(size.width - borderWidth)
+    val bands = listOf(
+        Rect(schmalL, oben, schmalR, mitteOben),
+        Rect(breitL, mitteOben, breitR, mitteUnten),
+        Rect(schmalL, mitteUnten, schmalR, unten)
+    ).filter { it.height > 0f && it.width > 0f }
+    drawBandBevel(backgroundColor, bands, edge, pressed)
 }
 
 /**

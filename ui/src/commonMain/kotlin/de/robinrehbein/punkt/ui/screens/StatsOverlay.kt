@@ -42,6 +42,8 @@ import de.robinrehbein.punkt.game.SkinStats
 import de.robinrehbein.punkt.game.SoundBank
 import de.robinrehbein.punkt.game.SoundSetId
 import de.robinrehbein.punkt.ui.components.PixelButton
+import de.robinrehbein.punkt.ui.components.UI_BEVEL_EDGE
+import de.robinrehbein.punkt.ui.components.drawFaceBevel
 import de.robinrehbein.punkt.ui.resources.Res
 import de.robinrehbein.punkt.ui.resources.goal_axis_days
 import de.robinrehbein.punkt.ui.resources.goal_axis_months
@@ -326,6 +328,15 @@ fun GoalBar(
                 color = DotBody,
                 topLeft = Offset(border, border),
                 size = Size(unit * filled, innerH)
+            )
+            // Die gefüllten Blöcke als eine Fläche mit Bevel-Kante; das
+            // Sandbett bleibt flach, es ist die Rinne, in der sie liegen.
+            // Ein Füllstand unter drei Stufen bleibt flach (drawFaceBevel).
+            drawFaceBevel(
+                base = DotBody,
+                topLeft = Offset(border, border),
+                size = Size(unit * filled, innerH),
+                edge = UI_BEVEL_EDGE.toPx()
             )
         }
     }

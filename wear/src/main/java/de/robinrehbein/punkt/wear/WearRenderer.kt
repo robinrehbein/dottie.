@@ -551,9 +551,9 @@ internal fun wearFogAngles(game: TimingGame, step: Float): List<Float> {
  * [dotRadius] ist der Vogelradius in Bildpunkten.
  *
  * Farben und Partikel sind die des Nebels der gewählten Welt ([fog], aus
- * ScenePaint): Rand = Unterkante der Telefon-Wolke, darin die Tupfer-
- * und die Flächenfarbe — in der WIESE Pixel für Pixel das bisherige
- * Band. Die Partikel (Pollen, Staub, Gischt, Schneekreuze, Ruß, Sterne)
+ * ScenePaint): Rand mit Bevel wie die Telefon-Wolke (oben und links
+ * deren Lichtkante, unten und rechts ihre Unterkante), darin die Tupfer-
+ * und die Flächenfarbe. Die Partikel (Pollen, Staub, Gischt, Schneekreuze, Ruß, Sterne)
  * liegen verstreut im Kern, ihre Lage hängt an der Zone ([wearFogSpecks]).
  */
 private fun DrawScope.drawFogBand(
@@ -573,8 +573,17 @@ private fun DrawScope.drawFogBand(
     // Blöcke im Abstand eines halben Blocks: Das Band hat keine Lücken.
     val angles = wearFogAngles(game, step = (outer / 2f) / radius)
     if (angles.isEmpty()) return
+    // Der Rand trägt den Bevel wie die Nebelbank am Telefon: erst alle
+    // Blöcke in der Schattenfarbe, dann oben und links die Lichtkante —
+    // links endet sie über der Unterkante, wie in drawCloud. Die Töne
+    // wählt BevelPaint.fogTone. Was davon im Innern des Bandes liegt,
+    // decken die mittleren Blöcke danach wieder zu; übrig bleibt der
+    // Rand, oben und links hell, unten und rechts dunkel.
+    val dark = Color(BevelPaint.fogTone(fog, BevelPaint.Edge.DARK, nearTop = false, speckle = false))
+    val light = Color(BevelPaint.fogTone(fog, BevelPaint.Edge.LIGHT, nearTop = false, speckle = false))
+    val lit = wearBevelFits(outer, outer, edge)
     val layers = listOf(
-        outer to Color(fog.bottom),
+        outer to dark,
         mid to Color(fog.mid),
         core to Color(fog.inner)
     )
@@ -588,6 +597,13 @@ private fun DrawScope.drawFogBand(
                 topLeft = Offset(px - extent / 2f, py - extent / 2f),
                 size = Size(extent, extent)
             )
+        }
+        if (extent == outer && lit) {
+            for (a in angles) {
+                val px = round(cx + cos(a) * radius)
+                val py = round(cy + sin(a) * radius)
+                wearCloudLight(light, Offset(px - outer / 2f, py - outer / 2f), Size(outer, outer), edge)
+            }
         }
     }
     // Partikel: im Kern, damit sie nie über den Rand ragen.

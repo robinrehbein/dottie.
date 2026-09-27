@@ -24,9 +24,9 @@ import de.robinrehbein.punkt.game.FrameTone
 import de.robinrehbein.punkt.game.MedalPaint
 import de.robinrehbein.punkt.game.SceneId
 import de.robinrehbein.punkt.game.SkinId
-import de.robinrehbein.punkt.game.SkinPaint
 import de.robinrehbein.punkt.game.SkinState
 import de.robinrehbein.punkt.ui.world.OutlineColor
+import de.robinrehbein.punkt.ui.world.drawGroundStyle
 import de.robinrehbein.punkt.ui.world.drawPixelCircle
 
 /**
@@ -118,8 +118,11 @@ private fun DrawScope.drawScoreCard(
     val hoehe = CardPlan.HEIGHT.toFloat()
 
     // Himmel, Wolken und Boden aus der gewählten Kulisse — sonst sähe
-    // niemand außer der Besitzerin, welche sie trägt.
+    // niemand außer der Besitzerin, welche sie trägt. Der Boden ist der
+    // Boden des Spiels, mit derselben Routine gezeichnet (siehe
+    // CardPlan.ground): Die Karte zeigt die Welt, wie man sie spielt.
     fuellen(CardPlan.background(content.scene, content.score))
+    CardPlan.ground(content.scene)?.let { drawGroundStyle(CardPlan.CELL, CardPlan.groundY(), it) }
 
     zeile(measurer, font, "DOTTIE.", hoehe * layout.title, layout.titleSize, Color.White)
 
@@ -142,7 +145,8 @@ private fun DrawScope.drawScoreCard(
         setzen(mass, schild.baseline, GOLD)
     }
 
-    // Punkt im gewählten Skin, mittig über dem Score.
+    // Punkt im gewählten Skin, mittig über dem Score — als Kugel, wie
+    // er über die Bahn fliegt (CardPlan.dotCell).
     val kleid = SkinState(hour = content.hour, month = content.month)
     val dotY = hoehe * layout.dot
     drawPixelCircle(
@@ -150,7 +154,7 @@ private fun DrawScope.drawScoreCard(
         centerX = CardPlan.CENTER_X,
         centerY = dotY,
         radius = layout.dotRadius
-    ) { col, row -> Color(SkinPaint.cell(content.skin, col, row, kleid)) }
+    ) { col, row -> Color(CardPlan.dotCell(content.skin, kleid, col, row)) }
     fuellen(CardPlan.dotDetails(content.skin, kleid, dotY, layout.dotRadius))
 
     zeile(

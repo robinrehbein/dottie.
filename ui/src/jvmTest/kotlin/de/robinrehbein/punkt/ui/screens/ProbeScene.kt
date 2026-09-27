@@ -124,6 +124,24 @@ internal class ProbeScene(
         step(0.05)
     }
 
+    /** Nur drücken und halten, etwa für Bilder eines gedrückten Knopfs. */
+    fun press(label: String) {
+        val node = find(label) ?: error("nichts zum Drücken: „$label“ in ${labels()}")
+        pressed = node.boundsInRoot.center
+        scene.sendPointerEvent(PointerEventType.Press, node.boundsInRoot.center)
+        step(0.05)
+    }
+
+    /** Den mit [press] gehaltenen Finger wieder heben. */
+    fun release() {
+        val at = pressed ?: return
+        scene.sendPointerEvent(PointerEventType.Release, at)
+        pressed = null
+        step(0.05)
+    }
+
+    private var pressed: Offset? = null
+
     fun scroll(position: Offset, dy: Float, times: Int) {
         repeat(times) {
             scene.sendPointerEvent(PointerEventType.Scroll, position, scrollDelta = Offset(0f, dy))
