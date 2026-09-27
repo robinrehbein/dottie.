@@ -6,7 +6,7 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.37.
 
 - [ ] Keystore rotieren (Anleitung unten) — **vor dem ersten Store-Upload Pflicht**
 - [x] Play-Console-Konto anlegen (25 $ einmalig, [play.google.com/console](https://play.google.com/console))
-- [ ] Play-API-Service-Konto anlegen → Secret `PLAY_SERVICE_ACCOUNT_JSON` (Anleitung unten)
+- [x] Dottie-Service-Konto und GitHub-OIDC-Pool anlegen (Anleitung unten)
 - [ ] GitHub Pages aktivieren → Datenschutz-URL (Anleitung unten)
 - [ ] Store-Eintrag anlegen (Texte unten in Deutsch UND Englisch, Icons liegen im Repo)
 - [x] Feature-Grafik 1024×500 px je Sprache (`store/feature-graphic.png`,
@@ -24,7 +24,7 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.37.
 - [ ] Optional: Nutzungsstatistik (Firebase Analytics) einrichten und
       Data-Safety-Formular ergänzen (Abschnitt „Nutzungsstatistik")
 - [x] `app-release.aab` in den **geschlossenen Test** hochladen (manuell
-      oder per CI-Job `play-internal`, siehe unten) — interner und
+      oder per CI-Job `play-release`, siehe unten) — interner und
       geschlossener Test laufen bereits
 - [ ] Optional: Wear-App mitverteilen — Formfaktor Wear OS aktivieren und
       `wear-release.aab` mit hochladen (Anleitung unten)
@@ -262,10 +262,11 @@ im Listing.
 ## Automatische Play-Releases nach jedem Merge
 
 Der Workflow `.github/workflows/build-apk.yml` testet und baut bei jedem
-Push auf `main` ein signiertes Phone-AAB. Seine Workflow-Nummer ist der
-eindeutige `versionCode`; der sichtbare Versionsname erhält dieselbe
-Nummer als letzte Komponente. Nach erfolgreichem Build veröffentlicht
-`play-release` das AAB in `internal` und `alpha`. Vor dem Upload prüft
+Push auf `main` signierte Phone- und Wear-AABs. Seine Workflow-Nummer ist
+der eindeutige Phone-`versionCode`; Wear verwendet `100000` plus diese
+Nummer. Nach erfolgreichem Build veröffentlicht `play-release` das
+Phone-AAB in `internal` und `alpha` sowie das Wear-AAB in `wear:qa`.
+Vor dem Upload prüft
 der Job noch einmal `origin/main` und überspringt überholte Builds.
 Beide Tracks erhalten ein vollständiges Release, Alpha durchläuft
 anschließend gegebenenfalls Googles Prüfung. Die generischen DE/EN-
@@ -282,10 +283,12 @@ Der Publish-Job ist bis zur einmaligen Einrichtung deaktiviert:
    Service-Konto nur für Dottie. einladen und ihm die Berechtigung
    zur Veröffentlichung in Test-Tracks geben. Für `production` sind
    später zusätzliche Rechte und Produktionszugriff nötig.
-3. Für das Service-Konto einen JSON-Key erzeugen. Den **gesamten**
-   JSON-Inhalt als GitHub-Actions-Secret `PLAY_SERVICE_ACCOUNT_JSON`
-   speichern. Die Key-Datei nie committen und nach dem Einrichten
-   sicher entfernen.
+3. GitHub Actions über Workload Identity Federation mit dem Service-Konto
+   verbinden. Das Projekt `dottie-play-publishing` nutzt den Pool
+   `dottie-github-publishing` und Anbieter `github-dottie`; dessen
+   Bedingung lässt nur die Dottie-Repository-ID `1088958940`, Eigentümer-ID
+   `4692134` und `refs/heads/main` zu. Der Job erhält ein kurzlebiges
+   Token; ein GitHub-Secret mit dauerhaftem JSON-Schlüssel ist nicht nötig.
 4. GitHub-Actions-Variable `PLAY_PUBLISH_ENABLED` auf `true` setzen.
    Optional `PLAY_TRACKS` auf eine kommagetrennte Liste setzen;
    Standard ist `internal,alpha`. `beta` (offener Test) und
@@ -294,7 +297,7 @@ Der Publish-Job ist bis zur einmaligen Einrichtung deaktiviert:
    Play-Status, AAB-Version sowie Release-Hinweise prüfen. Danach
    erfolgt derselbe Upload bei jedem Merge automatisch.
 
-Fehlt das Secret oder schlägt Googles Prüfung fehl, bricht der
+Schlägt die Anmeldung oder Googles Prüfung fehl, bricht der
 Publish-Job sichtbar ab. Der erfolgreiche Build und sein AAB bleiben
 als GitHub-Artefakte erhalten. Die Play-API kann fehlenden
 Produktionszugriff nicht umgehen.
@@ -632,8 +635,9 @@ vorher auf echter Hardware getestet sein.
 Jeder Play-Upload braucht einen höheren `versionCode`
 (`app/build.gradle.kts`). Lokal ist die nächste Version `46` / `"2.37"`
 (Uhr: `100011` / `"0.2.9-wear"`). Main-Builds aus GitHub Actions
-verwenden stattdessen die eindeutige Workflow-Nummer als `versionCode`
-und `2.37.<Workflow-Nummer>` als `versionName`. So bekommt jeder Merge
+verwenden stattdessen die eindeutige Workflow-Nummer als Phone-`versionCode`
+und `2.37.<Workflow-Nummer>` als `versionName`; Wear verwendet
+`100000 + Workflow-Nummer`. So bekommt jeder Merge
 einen neuen Play-Build. Bei einem späteren Wechsel der Hauptversion
 den Präfix `2.37` in `app/build.gradle.kts` anpassen.
 

@@ -149,6 +149,9 @@ jobs:
     if: github.ref == 'refs/heads/main' && vars.PLAY_PUBLISH_ENABLED == 'true'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     concurrency:
       group: dottie-play-release
       cancel-in-progress: false
@@ -169,21 +172,20 @@ jobs:
       - name: Check Play-Upload-Voraussetzungen
         if: steps.latest.outputs.current == 'true'
         env:
-          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           KEYSTORE: ${{ secrets.PUNKT_KEYSTORE_BASE64 }}
         run: |
-          if [ -z "$PLAY_JSON" ]; then
-            echo "::error::Secret PLAY_SERVICE_ACCOUNT_JSON fehlt — siehe PUBLISHING.md."
-            exit 1
-          fi
           if [ -z "$KEYSTORE" ]; then
             echo "::error::Keystore nicht rotiert (PUNKT_KEYSTORE_BASE64 fehlt) — der Test-Keystore darf nie in den Play Store."
             exit 1
           fi
-          if ! printf '%s' "$PLAY_JSON" | jq -e '.type == "service_account" and (.client_email | type == "string")' > /dev/null; then
-            echo "::error::PLAY_SERVICE_ACCOUNT_JSON ist kein gültiges Servicekonto-JSON."
-            exit 1
-          fi
+
+      - name: Bei Google Cloud anmelden
+        id: auth
+        if: steps.latest.outputs.current == 'true'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/632961826833/locations/global/workloadIdentityPools/dottie-github-publishing/providers/github-dottie
+          service_account: dottie-play-publisher@dottie-play-publishing.iam.gserviceaccount.com
 
       - name: Download AAB
         if: steps.latest.outputs.current == 'true'
@@ -207,7 +209,7 @@ jobs:
         if: steps.latest.outputs.current == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
           packageName: de.robinrehbein.pointless
           releaseFiles: app-release.aab
           tracks: ${{ vars.PLAY_TRACKS || 'internal,alpha' }}
@@ -220,7 +222,7 @@ jobs:
         if: steps.latest.outputs.current == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
           packageName: de.robinrehbein.pointless
           releaseFiles: wear-release.aab
           tracks: wear:qa
