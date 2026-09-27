@@ -399,6 +399,23 @@ object PropSprites {
 
     /** Rissfarbe (`K`): die dunkle Lage noch ein Stück zur Kontur. */
     fun crack(dark: Long): Long = BevelPaint.mix(dark, BevelPaint.OUTLINE, 0.35f)
+
+    /**
+     * Farbe des Masken-Zeichens [ch] für die Requisite [prop], 0 (durch-
+     * sichtig) für `.` und Unbekanntes: Dort wird nicht gezeichnet. Direkt
+     * per `when` statt über eine Palette: Die Renderer fragen das in jedem
+     * Frame je Maskenpixel, und so entsteht weder eine Map noch ein Cache.
+     */
+    fun color(ch: Char, prop: Prop): Long = when (ch) {
+        'O' -> BevelPaint.OUTLINE
+        'L' -> prop.light
+        'B' -> prop.body
+        'D' -> prop.dark
+        'K' -> crack(prop.dark)
+        'W' -> 0xFFFFFFFF
+        'F' -> FOAM_SHADE
+        else -> 0L
+    }
 }
 
 /** Form der Partikel im Nebel (siehe [FogPaint.speck]). */

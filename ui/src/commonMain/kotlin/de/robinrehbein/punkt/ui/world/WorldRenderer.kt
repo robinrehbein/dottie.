@@ -216,8 +216,10 @@ internal fun DrawScope.drawProp(
             drawPixelFir(cx, groundY, s, sway, cell, dark, body, light, stem, stemShade, accent)
         PropShape.HOCHHAUS -> drawPixelTower(cx, groundY, s, cell, dark, body, light, accent)
         // Der Fels ist ein Findling aus PropSprites, keine Kastentabelle
-        // mehr. ScenePaint.ROCK_PARTS bleibt für die Uhr und den
-        // Paritäts-Vertrag bestehen, das Telefon zeichnet ihn nicht mehr.
+        // mehr. ScenePaint.ROCK_PARTS bleibt für den Paritäts-Vertrag
+        // (ParityVectors) bestehen; gezeichnet wird er nirgends mehr —
+        // die Uhr zeichnet keine Requisiten, und CardPlan/CardStyle
+        // nennen die Tabelle nur als Vorbild.
         PropShape.FELS -> drawBoulder(prop, cx, groundY, cell)
         PropShape.LATERNE ->
             drawBlockParts(ScenePaint.LANTERN_PARTS, cx, groundY, s, sway, cell,
@@ -487,11 +489,10 @@ internal fun DrawScope.drawPixelCactus(
  * Zellen darunter) und wiegt nicht im Wind — Steine tun das nicht.
  */
 internal fun DrawScope.drawBoulder(prop: Prop, cx: Float, groundY: Float, cell: Float) {
-    val pal = spritePalette(prop)
     val base = groundY - cell * 2f
     val x = floor((cx - 8 * cell) / cell) * cell
-    pixelMap(x, base - PropSprites.BOULDER.size * cell, cell, PropSprites.BOULDER, pal)
-    pixelMap(x + 14 * cell, base - PropSprites.PEBBLE.size * cell, cell, PropSprites.PEBBLE, pal)
+    propSprite(x, base - PropSprites.BOULDER.size * cell, cell, PropSprites.BOULDER, prop)
+    propSprite(x + 14 * cell, base - PropSprites.PEBBLE.size * cell, cell, PropSprites.PEBBLE, prop)
 }
 
 /**
@@ -502,27 +503,25 @@ internal fun DrawScope.drawBoulder(prop: Prop, cx: Float, groundY: Float, cell: 
 internal fun DrawScope.drawBreaker(prop: Prop, cx: Float, groundY: Float, cell: Float) {
     val base = groundY - cell * 2f
     val x = floor((cx - 9 * cell) / cell) * cell
-    pixelMap(x, base - (PropSprites.BREAKER.size + 2) * cell, cell, PropSprites.BREAKER, spritePalette(prop))
+    propSprite(x, base - (PropSprites.BREAKER.size + 2) * cell, cell, PropSprites.BREAKER, prop)
 }
 
 /**
- * Farben der Masken-Zeichen für eine Requisite (siehe [PropSprites]).
- * Die Kulissen sind feste Daten; die Palette wird deshalb je Requisite
- * einmal angelegt und nicht in jedem Frame neu.
+ * Zeichnet eine Requisiten-Maske aus [PropSprites]: eine Zelle pro
+ * Maskenpixel, die Farbe je Zeichen aus [PropSprites.color]. Ohne
+ * Palette und ohne Cache — kein Zustand im Renderer, nichts, was pro
+ * Frame angelegt wird.
  */
-private fun spritePalette(prop: Prop): Map<Char, Color> = spritePalettes.getOrPut(prop) {
-    mapOf(
-        'O' to OutlineColor,
-        'L' to Color(prop.light),
-        'B' to Color(prop.body),
-        'D' to Color(prop.dark),
-        'K' to Color(PropSprites.crack(prop.dark)),
-        'W' to Color.White,
-        'F' to Color(PropSprites.FOAM_SHADE)
-    )
+private fun DrawScope.propSprite(x: Float, y: Float, u: Float, rows: List<String>, prop: Prop) {
+    for (r in rows.indices) {
+        val row = rows[r]
+        for (k in row.indices) {
+            val argb = PropSprites.color(row[k], prop)
+            if (argb == 0L) continue
+            drawRect(Color(argb), Offset(x + k * u, y + r * u), Size(u, u))
+        }
+    }
 }
-
-private val spritePalettes = HashMap<Prop, Map<Char, Color>>()
 
 /**
  * Nadelbaum: schmaler Stamm, drei spitze Lagen, helle Spitze obendrauf.
@@ -643,10 +642,11 @@ internal fun DrawScope.drawPixelTower(
 
 /**
  * Formen, die als Tabelle in :core stehen statt als Zeichencode hier —
- * Fels ([ScenePaint.ROCK_PARTS]) und Laterne ([ScenePaint.LANTERN_PARTS]).
- * Der Renderer füllt stumpf Rechtecke; welche, sagt die Tabelle. Genau
- * deshalb kann keine der beiden Formen zwischen den Ports auseinander
- * laufen, ohne dass der Paritäts-Vertrag es meldet.
+ * heute nur noch die Laterne ([ScenePaint.LANTERN_PARTS]); der Fels ist
+ * im Bevel-Look ein Findling aus [PropSprites]. Der Renderer füllt stumpf
+ * Rechtecke; welche, sagt die Tabelle. Genau deshalb kann die Form
+ * zwischen den Ports nicht auseinanderlaufen, ohne dass der
+ * Paritäts-Vertrag es meldet.
  *
  * Erst alle Konturen, dann alle Flächen — sonst schnitte die Kontur
  * eines höheren Stücks in die Fläche des darunterliegenden, und die Form
@@ -776,7 +776,7 @@ internal fun DrawScope.drawTrack(
         drawTrackBlock(b, style)
     }
 
-    for (z in zoneBlocks) drawZoneBlock(z.block, z.core, z.mirrored, scene)
+    for (z in zoneBlocks) drawZoneBlock(z.block, z.core, z.mirrored, style.motif)
 
     // Die Minen der Falle: so viele, wie TrapPaint.count aus der
     // Grundbreite ergibt, im Takt der Blöcke über die Breite
@@ -983,13 +983,13 @@ internal fun zoneBlockScale(d: Float): Float =
  * [mirrored] spiegelt die Spalten der Büschel, damit nicht jeder Block
  * gleich aussieht.
  *
- * [scene] wählt das Motiv ([ScenePaint.track]): Der Körper bleibt in jeder
- * Welt grün, denn die Zone ist das Signal. Blätter und Tupfer trägt nur
+ * [motif] ist das Motiv der Welt ([ScenePaint.track], vom Aufrufer schon
+ * geholt statt je Block neu): Der Körper bleibt in jeder Welt grün, denn
+ * die Zone ist das Signal. Blätter und Tupfer trägt nur
  * die WIESE, die anderen Welten ein Motiv von ein paar Pixeln
  * ([ScenePaint.motif]); der Kern-Akzent ist nie rot oder rosa.
  */
-internal fun DrawScope.drawZoneBlock(block: TrackBlock, core: Boolean, mirrored: Boolean, scene: SceneId) {
-    val motif = ScenePaint.track(scene).motif
+internal fun DrawScope.drawZoneBlock(block: TrackBlock, core: Boolean, mirrored: Boolean, motif: ZoneMotif) {
     val unit = block.unit
     val inner = block.inner
     val left = block.faceLeft
@@ -1035,7 +1035,11 @@ internal fun DrawScope.drawZoneBlock(block: TrackBlock, core: Boolean, mirrored:
     // keine Pixel, dort bleiben die Blätter von oben.
     val mx = (left + inner / 2f - unit / 2f).roundToInt().toFloat()
     val my = (top + inner / 2f - unit / 2f).roundToInt().toFloat()
-    for (p in ScenePaint.motif(motif, core)) {
+    // Mit Index statt for-in: Das läuft pro Zonenblock und Frame, ein
+    // Iterator wäre jedes Mal eine Allokation.
+    val px = ScenePaint.motif(motif, core)
+    for (i in px.indices) {
+        val p = px[i]
         drawRect(Color(p.color), Offset(mx + p.dx * unit, my + p.dy * unit), Size(unit, unit))
     }
 }

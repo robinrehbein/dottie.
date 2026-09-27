@@ -46,13 +46,6 @@ internal val WearGrassLight = Color(0xFF9DE85A)
 internal val WearGrassDark = Color(0xFF74BF2E)
 
 /**
- * Standard-Segmentfarbe außerhalb jeder Zone (Sand-Ton aus
- * ui/.../world/Palette.kt). Die Bahn selbst nimmt ihre Farben inzwischen
- * aus [ScenePaint.track]; in der WIESE ist das genau dieser Ton.
- */
-internal val WearTrackDefaultColor = Color(0xFFD3C87E)
-
-/**
  * Gold-Akzent (DotBody am Phone) für Overlay-Texte und der Glanzton der
  * Medaillen-Münze. Der Vogel selbst zeichnet nicht mehr mit diesen
  * Konstanten, sondern mit dem gewählten Skin (WearDotSkin) — KLASSIK
@@ -147,7 +140,7 @@ internal fun DrawScope.drawWearWorld(
         // Radius proportional zu minDimension statt zur Bildhöhe wie am Phone —
         // auf der Uhr sind Breite und Höhe (fast) identisch, aber minDimension
         // ist robust gegenüber eckigen/ovalen Displays.
-        val radius = d * 0.38f
+        val radius = d * WEAR_TRACK_RADIUS_SHARE
         val dotRadius = d * WEAR_DOT_RADIUS_SHARE
         val cell = wearCell(d)
         val trackOuter = radius + round(2f * PI.toFloat() * radius / WEAR_TRACK_SEGMENTS * WEAR_SEG_ZONE) / 2f
@@ -281,10 +274,10 @@ private fun DrawScope.drawWearTrack(
     val segments = WEAR_TRACK_SEGMENTS
     // Abstand zwischen zwei Segment-Mittelpunkten. Auf ganze Pixel
     // gerundet, damit die Blöcke ihre harten Kanten behalten.
-    val spacing = 2f * Math.PI.toFloat() * radius / segments
-    val neutralOuter = round(spacing * WEAR_SEG_NEUTRAL).coerceAtLeast(2f)
+    val spacing = wearTrackSpacing(radius)
     val zoneOuter = round(spacing * WEAR_SEG_ZONE).coerceAtLeast(4f)
-    val neutralInner = round(neutralOuter * WEAR_CORE_NEUTRAL).coerceAtLeast(1f)
+    val neutralOuter = wearNeutralOuter(radius)
+    val neutralInner = wearNeutralInner(radius)
     val zoneInner = round(zoneOuter * WEAR_CORE_ZONE).coerceAtLeast(2f)
     val track = ScenePaint.track(scene)
     val trackBlock = Color(track.block)
@@ -360,6 +353,25 @@ private fun DrawScope.drawWearTrack(
  * bliebe.
  */
 internal fun wearTrackEdge(inner: Float): Float = wearBevelEdge(inner / 4f)
+
+/** Radius der Bahn im Verhältnis zur kürzeren Displayseite. */
+internal const val WEAR_TRACK_RADIUS_SHARE = 0.38f
+
+/** Abstand zweier Segment-Mittelpunkte auf der Bahn mit [radius]. */
+internal fun wearTrackSpacing(radius: Float): Float = 2f * Math.PI.toFloat() * radius / WEAR_TRACK_SEGMENTS
+
+/**
+ * Farbfläche eines Sandblocks außerhalb der Zone, auf ganze Pixel
+ * gerundet. Eine Funktion statt einer Rechnung in [drawWearTrack], damit
+ * der Test genau das prüft, was gezeichnet wird: Mit nachgerechneten
+ * Literalen bliebe er grün, wenn sich eine Konstante ändert.
+ */
+internal fun wearNeutralInner(radius: Float): Float =
+    round(wearNeutralOuter(radius) * WEAR_CORE_NEUTRAL).coerceAtLeast(1f)
+
+/** Ganzer Sandblock außerhalb der Zone, samt Kontur (siehe [wearNeutralInner]). */
+internal fun wearNeutralOuter(radius: Float): Float =
+    round(wearTrackSpacing(radius) * WEAR_SEG_NEUTRAL).coerceAtLeast(2f)
 
 // ===== Minen der Falle (Plan 3.4) =====
 
@@ -471,7 +483,7 @@ internal fun wearBlockHitsMine(
  * der helle Rand um jeden gesetzten Pixel, sonst Kugel und Glanz. [red]:
  * Das Lauflicht steht gerade auf dieser Mine.
  *
- * Die Kugel-Pixel bekommen ihre Kante aus [BevelPaint.mineCell] — hell
+ * Die Kugel-Pixel bekommen ihre Kante aus [BevelPaint.mineEdge] (vorberechnet) — hell
  * oben links, dunkel unten rechts, wie am Telefon. Das Sprite selbst,
  * Rand, Glanz und Lauflicht bleiben unverändert.
  */
@@ -496,7 +508,7 @@ private fun DrawScope.drawWearMine(cx: Float, cy: Float, px: Int, rimOnly: Boole
                 )
             } else {
                 drawRect(
-                    color = if (ch == 'W') gloss else Color(BevelPaint.mineCell(r, k, red)),
+                    color = if (ch == 'W') gloss else Color(BevelPaint.mineEdge(r, k, red)),
                     topLeft = Offset(ox + k * u, oy + r * u),
                     size = Size(u, u)
                 )

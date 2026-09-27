@@ -94,8 +94,6 @@ internal enum class WearDotSkin(val id: SkinId) {
     fun cell(col: Int, row: Int, state: SkinState = SkinState()): Color =
         Color(SkinPaint.cell(id, col, row, state))
 
-    fun shineColor(state: SkinState = SkinState()): Color = Color(SkinPaint.shine(id, state))
-
     /** Glanzfarbe als ARGB-Long, für [kugelCell]. Einmal je Bild holen, nicht je Feld. */
     fun shineArgb(state: SkinState = SkinState()): Long = SkinPaint.shine(id, state)
 

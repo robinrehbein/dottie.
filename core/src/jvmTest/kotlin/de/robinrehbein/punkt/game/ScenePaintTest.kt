@@ -650,6 +650,32 @@ class ScenePaintTest {
     }
 
     @Test
+    fun `die Blockflaeche allein unterschreitet das Mass nur an bekannten Stufen`() {
+        // Abschnitt 8.4 verlangt die Fläche allein ≥ MIN_SKY_SIGNAL_DISTANCE.
+        // Die Blockfarben legt aber Abschnitt 0 fest (Zielbilder,
+        // Prototyp), und an diesen Stufen trägt dort die Kontur. Damit das
+        // nicht still wächst, steht jede Unterschreitung hier einzeln:
+        // Kommt eine neue hinzu, schlägt der Test an — dann die Farbe
+        // anpassen, nicht die Liste. Fällt eine weg, ebenfalls: dann die
+        // Liste kürzen.
+        val bekannt = setOf(
+            SceneId.WIESE to 4, // Sand vor dem Sonnenuntergang, Bestand von main
+            SceneId.WUESTE to 1, SceneId.WUESTE to 2,
+            SceneId.MEER to 3, SceneId.MEER to 4,
+            SceneId.BERG to 0, SceneId.BERG to 1, SceneId.BERG to 2,
+            SceneId.STADT to 0,
+        )
+        val unter = mutableSetOf<Pair<SceneId, Int>>()
+        SceneId.entries.forEach { id ->
+            val block = ScenePaint.track(id).block
+            ScenePaint.sky(id).forEachIndexed { stufe, himmel ->
+                if (abstand(himmel, block) < ScenePaint.MIN_SKY_SIGNAL_DISTANCE) unter += id to stufe
+            }
+        }
+        assertEquals("Stufen, an denen die Blockfläche allein im Himmel untergeht", bekannt, unter)
+    }
+
+    @Test
     fun `keine Bahn- oder Bodenfarbe kommt der Zielzone nahe`() {
         // Außerhalb der Zone gibt es kein Grün — nur die Grasnarbe der
         // WIESE darf es tragen, wie bisher (LEGACY_ZONE_GREENS).
@@ -803,6 +829,21 @@ class ScenePaintTest {
         assertEquals("Der Kiesel ist 8×5", listOf(8, 5), listOf(PropSprites.PEBBLE[0].length, PropSprites.PEBBLE.size))
         assertTrue("Der Findling braucht einen Riss", PropSprites.BOULDER.any { 'K' in it })
         assertTrue("Der Brecher braucht Schaum", PropSprites.BREAKER.any { 'W' in it })
+    }
+
+    @Test
+    fun `jedes Masken-Zeichen hat seine Farbe, der Punkt keine`() {
+        val prop = Prop(PropShape.FELS, 1f, 0f, dark = 0xFF102030, body = 0xFF405060, light = 0xFF708090)
+        assertEquals(BevelPaint.OUTLINE, PropSprites.color('O', prop))
+        assertEquals(prop.light, PropSprites.color('L', prop))
+        assertEquals(prop.body, PropSprites.color('B', prop))
+        assertEquals(prop.dark, PropSprites.color('D', prop))
+        assertEquals(PropSprites.crack(prop.dark), PropSprites.color('K', prop))
+        assertEquals(0xFFFFFFFFL, PropSprites.color('W', prop))
+        assertEquals(PropSprites.FOAM_SHADE, PropSprites.color('F', prop))
+        // Durchsichtig heißt: nicht zeichnen.
+        assertEquals(0L, PropSprites.color('.', prop))
+        assertEquals(0L, PropSprites.color('?', prop))
     }
 
     /** Rot oder Rosa: der Rotkanal kräftig und deutlich über Grün. Gold und Weiß bleiben draußen. */

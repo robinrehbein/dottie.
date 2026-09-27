@@ -8,7 +8,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.math.PI
 import kotlin.math.round
 
 /**
@@ -36,13 +35,10 @@ class WearBevelTest {
 
     @Test
     fun `Die Sandbloecke tragen auf jeder Uhr eine Kante`() {
-        // Dieselbe Rechnung wie drawWearTrack: Ohne Kante sähe die Bahn
+        // Dieselbe Rechnung wie drawWearTrack (wearNeutralInner): Ohne Kante sähe die Bahn
         // der Uhr wieder aus wie vor dem Bevel-Look.
         for (d in displays) {
-            val radius = d * 0.38f
-            val spacing = 2f * PI.toFloat() * radius / WEAR_TRACK_SEGMENTS
-            val outer = round(spacing * 0.74f).coerceAtLeast(2f)
-            val inner = round(outer * 0.6f).coerceAtLeast(1f)
+            val inner = wearNeutralInner(d * WEAR_TRACK_RADIUS_SHARE)
             val edge = wearTrackEdge(inner)
             assertTrue("d=$d inner=$inner edge=$edge", wearBevelFits(inner, inner, edge))
             assertTrue("d=$d: Kante ganze Pixel", edge == round(edge) && edge >= 1f)

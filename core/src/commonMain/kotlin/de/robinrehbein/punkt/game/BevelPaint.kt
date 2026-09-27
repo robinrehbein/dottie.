@@ -48,34 +48,37 @@ object BevelPaint {
         val from = toOklab(a)
         val to = toOklab(b)
         // Wie androidx.compose.ui.util.lerp: (1 − t) · a + t · b.
-        fun lerp(x: Float, y: Float) = (1f - t) * x + t * y
-        return fromOklab(
-            half(lerp(from[0], to[0])),
-            half(lerp(from[1], to[1])),
-            half(lerp(from[2], to[2])),
-        )
+        fun lerp(shift: Int): Float {
+            val x = halfToFloat(((from shr shift) and 0xFFFF).toInt())
+            val y = halfToFloat(((to shr shift) and 0xFFFF).toInt())
+            return half((1f - t) * x + t * y)
+        }
+        return fromOklab(lerp(32), lerp(16), lerp(0))
     }
 
     /**
      * sRGB → Oklab wie Compose: Kanal linearisieren, über XYZ (D50, der
      * Verbindungsraum von Compose) in den LMS-Raum, Kubikwurzel, dann
-     * nach Lab. Jede Komponente wird als Half-Float gespeichert.
+     * nach Lab. Jede Komponente wird als Half-Float gespeichert, wie in
+     * Compose — und genau deshalb passen alle drei in einen Long (L in
+     * den Bits 32–47, a in 16–31, b in 0–15). Das hält [mix] frei von
+     * Allokationen: Es läuft in jedem Frame für Kugel, Kanten und
+     * Galaxien.
      */
-    private fun toOklab(c: Long): FloatArray {
-        val r = eotf(((c shr 16) and 0xFF).toFloat() / 255f)
-        val g = eotf(((c shr 8) and 0xFF).toFloat() / 255f)
-        val b = eotf((c and 0xFF).toFloat() / 255f)
+    private fun toOklab(c: Long): Long {
+        val r = EOTF[((c shr 16) and 0xFF).toInt()]
+        val g = EOTF[((c shr 8) and 0xFF).toInt()]
+        val b = EOTF[(c and 0xFF).toInt()]
         val x = mul(SRGB_TO_XYZ, 0, r, g, b)
         val y = mul(SRGB_TO_XYZ, 1, r, g, b)
         val z = mul(SRGB_TO_XYZ, 2, r, g, b)
         val l = fastCbrt(mul(XYZ_TO_LMS, 0, x, y, z))
         val m = fastCbrt(mul(XYZ_TO_LMS, 1, x, y, z))
         val s = fastCbrt(mul(XYZ_TO_LMS, 2, x, y, z))
-        return floatArrayOf(
-            half(mul(LMS_TO_LAB, 0, l, m, s).coerceIn(0f, 1f)),
-            half(mul(LMS_TO_LAB, 1, l, m, s).coerceIn(-0.5f, 0.5f)),
-            half(mul(LMS_TO_LAB, 2, l, m, s).coerceIn(-0.5f, 0.5f)),
-        )
+        val hl = halfBits(mul(LMS_TO_LAB, 0, l, m, s).coerceIn(0f, 1f)).toLong()
+        val ha = halfBits(mul(LMS_TO_LAB, 1, l, m, s).coerceIn(-0.5f, 0.5f)).toLong()
+        val hb = halfBits(mul(LMS_TO_LAB, 2, l, m, s).coerceIn(-0.5f, 0.5f)).toLong()
+        return (hl shl 32) or (ha shl 16) or hb
     }
 
     /** Oklab → sRGB wie Compose: geklemmt, zurück über LMS und XYZ, auf 8 Bit gerundet. */
@@ -107,6 +110,12 @@ object BevelPaint {
     private fun mul(m: FloatArray, row: Int, v0: Float, v1: Float, v2: Float): Float =
         m[row] * v0 + m[row + 3] * v1 + m[row + 6] * v2
 
+    /**
+     * [eotf] für alle 256 Kanalwerte, einmal vorberechnet: Ein 8-Bit-Kanal
+     * kann nur diese Werte haben, und so spart jede Mischung sechs pow.
+     */
+    private val EOTF = FloatArray(256) { eotf(it.toFloat() / 255f) }
+
     /** sRGB-Kurve rückwärts (Kanal → linear), in Double wie in Compose. */
     private fun eotf(v: Float): Float {
         val x = v.toDouble().coerceIn(0.0, 1.0)
@@ -134,11 +143,14 @@ object BevelPaint {
         return y
     }
 
+    /** Rundet auf ein Half-Float und zurück (siehe [halfBits]). */
+    private fun half(v: Float): Float = halfToFloat(halfBits(v))
+
     /**
-     * Rundet auf ein Half-Float und zurück, genau wie der Farb-Konstruktor
-     * von Compose: 10 Bit Mantisse, halbe Stufen runden nach oben.
+     * Die Bits des Half-Floats zu [v], genau wie der Farb-Konstruktor von
+     * Compose sie bildet: 10 Bit Mantisse, halbe Stufen runden nach oben.
      */
-    private fun half(v: Float): Float {
+    private fun halfBits(v: Float): Int {
         val bits = v.toRawBits()
         val sign = bits ushr 31
         var e = (bits ushr 23) and 0xFF
@@ -169,7 +181,7 @@ object BevelPaint {
                 if (mant and 0x1000 != 0) h = ((outE shl 10) or outM) + 1 or (sign shl 15)
             }
         }
-        return halfToFloat(h and 0xFFFF)
+        return h and 0xFFFF
     }
 
     private fun halfToFloat(h: Int): Float {
@@ -304,6 +316,25 @@ object BevelPaint {
             else -> if (red) TrapPaint.RED else TrapPaint.BALL
         }
     }
+
+    /**
+     * [mineCell] für jedes Pixel der Mine, einmal vorberechnet: Das
+     * Ergebnis hängt nur an Zeile, Spalte und [red], und die Renderer
+     * fragen es in jedem Frame für jede Mine der Kette ab — auf der Uhr
+     * genauso. Die Nachbarsuche im String-Sprite läuft so nur einmal.
+     * Für `.` steht 0 (nicht gezeichnet); `W` bekommt den Wert eines
+     * Kugelpixels, der Renderer nimmt dort [TrapPaint.GLOSS].
+     */
+    fun mineEdge(row: Int, col: Int, red: Boolean): Long =
+        (if (red) MINE_EDGE_RED else MINE_EDGE)[row][col]
+
+    private fun mineTable(red: Boolean): Array<LongArray> = Array(TrapPaint.MINE.size) { r ->
+        val row = TrapPaint.MINE[r]
+        LongArray(row.length) { c -> if (row[c] == '.') 0L else mineCell(r, c, red) }
+    }
+
+    private val MINE_EDGE: Array<LongArray> = mineTable(red = false)
+    private val MINE_EDGE_RED: Array<LongArray> = mineTable(red = true)
 
     // ===== Wolken und Galaxien =====
 

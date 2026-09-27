@@ -133,6 +133,15 @@ class BevelPaintTest {
     }
 
     @Test
+    fun `die Minentabelle ist mineCell, einmal vorberechnet`() {
+        val m = TrapPaint.MINE
+        for (red in listOf(false, true)) for (r in m.indices) for (c in m[r].indices) {
+            val erwartet = if (m[r][c] == '.') 0L else BevelPaint.mineCell(r, c, red)
+            assertEquals("Pixel ($r, $c) rot=$red", erwartet, BevelPaint.mineEdge(r, c, red))
+        }
+    }
+
+    @Test
     fun `die Minenkanten bleiben bei den abgestimmten Werten`() {
         assertEquals(0xFF4E4656L, TrapPaint.BALL_LIGHT)
         assertEquals(0xFF0A080CL, TrapPaint.BALL_DARK)

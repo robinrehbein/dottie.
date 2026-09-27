@@ -346,7 +346,7 @@ internal fun DrawScope.drawMineRim(cx: Float, cy: Float, px: Int) {
 /**
  * Kugel und Glanz einer Mine, ohne Rand (siehe [drawMineRim]). Die Kugel
  * hat eine Kante wie alles im Bevel-Look: an der Lichtseite heller, an der
- * Schattenseite dunkler ([BevelPaint.mineCell]). Die Form bleibt exakt
+ * Schattenseite dunkler ([BevelPaint.mineEdge], vorberechnet aus [BevelPaint.mineCell]). Die Form bleibt exakt
  * [TrapPaint.MINE]; nur die Randpixel wechseln die Farbe.
  */
 internal fun DrawScope.drawMineBody(cx: Float, cy: Float, px: Int, red: Boolean) {
@@ -361,7 +361,7 @@ internal fun DrawScope.drawMineBody(cx: Float, cy: Float, px: Int, red: Boolean)
             val ch = row[k]
             if (ch == '.') continue
             drawRect(
-                color = if (ch == 'W') gloss else Color(BevelPaint.mineCell(r, k, red)),
+                color = if (ch == 'W') gloss else Color(BevelPaint.mineEdge(r, k, red)),
                 topLeft = Offset(ox + k * u, oy + r * u),
                 size = Size(u, u)
             )

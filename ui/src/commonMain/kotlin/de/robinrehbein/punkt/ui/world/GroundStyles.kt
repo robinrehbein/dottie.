@@ -63,13 +63,18 @@ private fun DrawScope.drawTurfGround(c: Float, top: Float, ground: Ground) {
     val toothW = c * 5f
     val turfLight = Color(ground.turfLight)
     val turfDark = Color(ground.turfDark)
-    val lightEdges = Color(BevelPaint.light(ground.turfLight)) to Color(GroundPaint.turfShade(ground.turfLight))
-    val darkEdges = Color(BevelPaint.light(ground.turfDark)) to Color(GroundPaint.turfShade(ground.turfDark))
+    // Vier einzelne Farben statt zweier Paare: Der Boden läuft in jedem
+    // Frame, und ein Pair wäre jedes Mal ein Objekt.
+    val lightEdgeLight = Color(BevelPaint.light(ground.turfLight))
+    val lightEdgeDark = Color(GroundPaint.turfShade(ground.turfLight))
+    val darkEdgeLight = Color(BevelPaint.light(ground.turfDark))
+    val darkEdgeDark = Color(GroundPaint.turfShade(ground.turfDark))
     var x = 0f
     var k = 0
     while (x < w) {
         val even = k % 2 == 0
-        val (edgeLight, edgeDark) = if (even) lightEdges else darkEdges
+        val edgeLight = if (even) lightEdgeLight else darkEdgeLight
+        val edgeDark = if (even) lightEdgeDark else darkEdgeDark
         bevelRect(
             if (even) turfLight else turfDark,
             Offset(x, top),
@@ -95,8 +100,14 @@ private val DunePebblePalette: Map<Char, Color> = mapOf(
     'D' to Color(GroundPaint.DUNE_PEBBLE_DARK)
 )
 
-/** Plätze der Wüstenkiesel: Anteil der Breite und Zellen unter der Bodenkante. */
-private val DunePebbleSpots = listOf(0.16f to 6, 0.2f to 7, 0.53f to 6, 0.82f to 7)
+/**
+ * Plätze der Wüstenkiesel: Anteil der Breite ([DunePebbleX]) und Zellen
+ * unter der Bodenkante ([DunePebbleY]), Stelle für Stelle. Zwei Arrays
+ * statt einer Liste von Paaren: kein Iterator und kein Auspacken
+ * geboxter Zahlen in jedem Frame.
+ */
+private val DunePebbleX = floatArrayOf(0.16f, 0.2f, 0.53f, 0.82f)
+private val DunePebbleY = intArrayOf(6, 7, 6, 7)
 
 /**
  * WÜSTE: drei Sandsteinschichten mit versetzten Fugen, darüber eine
@@ -134,13 +145,14 @@ private fun DrawScope.drawDuneGround(c: Float, top: Float, ground: Ground) {
     }
     drawRect(Color(ground.sandShade), Offset(0f, top + c * 4), Size(w, c))
 
-    for ((fx, dy) in DunePebbleSpots) {
-        pixelMap(snap(fx * w, c), top + c * dy, c, PropSprites.DUNE_PEBBLE, DunePebblePalette)
+    for (i in DunePebbleX.indices) {
+        pixelMap(snap(DunePebbleX[i] * w, c), top + c * DunePebbleY[i], c, PropSprites.DUNE_PEBBLE, DunePebblePalette)
     }
 }
 
-/** Luftblasen im MEER: Anteil der Breite und Zellen unter der Bodenkante. */
-private val BubbleSpots = listOf(0.13f to 25, 0.33f to 13, 0.57f to 28, 0.78f to 16)
+/** Luftblasen im MEER: Anteil der Breite und Zellen unter der Bodenkante, wie [DunePebbleX]. */
+private val BubbleX = floatArrayOf(0.13f, 0.33f, 0.57f, 0.78f)
+private val BubbleY = intArrayOf(25, 13, 28, 16)
 
 /**
  * MEER: Wellenkämme mit Schaum, die bis drei Zellen über die Bodenkante
@@ -172,9 +184,9 @@ private fun DrawScope.drawWaveGround(c: Float, top: Float, ground: Ground) {
     }
     drawRect(waterMid, Offset(0f, top + c * 4), Size(w, c))
 
-    for ((fx, dy) in BubbleSpots) {
-        val bx = snap(fx * w, c)
-        val by = top + c * dy
+    for (i in BubbleX.indices) {
+        val bx = snap(BubbleX[i] * w, c)
+        val by = top + c * BubbleY[i]
         for (yy in -2..2) for (xx in -2..2) {
             val d = hypot(xx.toFloat(), yy.toFloat())
             if (d in 1.5f..2.4f) drawRect(spray, Offset(bx + xx * c, by + yy * c), Size(c, c))
