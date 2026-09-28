@@ -47,7 +47,7 @@ class WearZoneTest {
     @Test
     fun `Blöcke liegen im Raster und haben mindestens vier Stufen`() {
         val game = running()
-        val slots = wearZoneSlots(game, size / 2f, size / 2f, radius, spacing, zoneOuter)
+        val slots = wearZoneSlots(game, size / 2f, size / 2f, radius, game.perfectHalf(), spacing, zoneOuter)
         assertTrue(slots.isNotEmpty())
         for (z in slots) {
             val b = z.block
@@ -62,7 +62,8 @@ class WearZoneTest {
 
     @Test
     fun `kleine Blöcke zuerst, damit die großen oben liegen`() {
-        val slots = wearZoneSlots(running(), size / 2f, size / 2f, radius, spacing, zoneOuter)
+        val game = running()
+        val slots = wearZoneSlots(game, size / 2f, size / 2f, radius, game.perfectHalf(), spacing, zoneOuter)
         for (i in 1 until slots.size) assertTrue(slots[i - 1].scale <= slots[i].scale)
         // Der größte Block liegt in der Mitte und ist Kern.
         assertTrue(slots.last().core)
@@ -71,7 +72,7 @@ class WearZoneTest {
     @Test
     fun `Kern und Zonenbreite kommen aus der Engine`() {
         val game = running()
-        val slots = wearZoneSlots(game, 0f, 0f, radius, spacing, zoneOuter)
+        val slots = wearZoneSlots(game, 0f, 0f, radius, game.perfectHalf(), spacing, zoneOuter)
         val coreSlots = (0 until WEAR_TRACK_SEGMENTS).count { k ->
             val a = k.toFloat() / WEAR_TRACK_SEGMENTS * (2f * Math.PI.toFloat())
             abs(TimingGame.wrapToPi(a - game.zoneCenter)) <= game.perfectHalf()

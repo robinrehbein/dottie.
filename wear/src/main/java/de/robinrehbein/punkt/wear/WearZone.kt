@@ -80,6 +80,8 @@ internal fun wearZoneBlock(x: Float, y: Float, unit: Int, fullUnits: Int, scale:
  * Die Blöcke der Zone in Zeichenreihenfolge, kleine zuerst, damit die
  * größeren oben liegen — wie zoneSlots am Telefon. Kern und Breite kommen
  * aus der Engine: Was leuchtet, ist das Fenster, das der Tap wertet.
+ * [coreHalf] reicht der Renderer aus [TimingGame.perfectHalf] durch —
+ * dort prüft RendererSourceTest, dass niemand den Kern selbst rechnet.
  * [spacing] ist der Segmentabstand ([wearTrackSpacing]), die volle
  * Blockgröße [zoneOuter] dieselbe wie bisher, nur ins Raster gelegt.
  */
@@ -88,6 +90,7 @@ internal fun wearZoneSlots(
     cx: Float,
     cy: Float,
     radius: Float,
+    coreHalf: Float,
     spacing: Float,
     zoneOuter: Float
 ): List<WearZoneSlot> {
@@ -107,7 +110,7 @@ internal fun wearZoneSlots(
         slots += WearZoneSlot(
             block = wearZoneBlock(cx + cos(a) * radius, cy + sin(a) * radius, unit, fullUnits, scale),
             scale = scale,
-            core = rel <= game.perfectHalf(),
+            core = rel <= coreHalf,
             mirrored = k % 2 == 1
         )
     }

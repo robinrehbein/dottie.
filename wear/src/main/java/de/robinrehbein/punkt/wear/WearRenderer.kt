@@ -286,8 +286,9 @@ private fun DrawScope.drawWearTrack(
     val trackEdge = wearTrackEdge(neutralInner)
 
     val zoneHalf = game.effectiveZoneHalf()
-    // Die Fallenbreite kommt aus der Engine (fakeZoneHalf()), die Minen
-    // verteilen sich darüber. Den Kern misst wearZoneSlots.
+    // Kern und Fallenbreite kommen aus der Engine — siehe perfectHalf()
+    // und fakeZoneHalf(). Die Minen verteilen sich über fakeZoneHalf().
+    val coreHalf = game.perfectHalf()
     val fakeHalf = game.fakeZoneHalf()
     val mines = wearTrapMines(game, segments, zoneHalf)
     val minePx = wearMinePixel(wearMineDistance(game, segments, radius), zoneOuter)
@@ -341,7 +342,7 @@ private fun DrawScope.drawWearTrack(
 
     // Die Zone wie am Telefon: im Raster der Bahn, zur Mitte hin größer,
     // goldener Saum um den Kern, Kante und das Motiv der Welt (WearZone.kt).
-    drawWearZone(wearZoneSlots(game, cx, cy, radius, spacing, zoneOuter), track.motif)
+    drawWearZone(wearZoneSlots(game, cx, cy, radius, coreHalf, spacing, zoneOuter), track.motif)
 
     // Erst alle Ränder, dann alle Kugeln: Benachbarte Minen teilen sich
     // ihren Rand, die Kugeln berühren sich nie (wearMinePixel).
