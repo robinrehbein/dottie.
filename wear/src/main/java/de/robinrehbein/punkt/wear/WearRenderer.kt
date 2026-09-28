@@ -96,9 +96,8 @@ internal const val WEAR_TRACK_SEGMENTS = 60
 private const val WEAR_SEG_NEUTRAL = 0.74f
 private const val WEAR_SEG_ZONE = 1.23f
 
-/** Farbkern im Verhältnis zum Block — am Phone 1.8/3 bzw. 3.4/5. */
+/** Farbkern eines Sandblocks im Verhältnis zum Block — am Phone 1.8/3. */
 private const val WEAR_CORE_NEUTRAL = 0.6f
-private const val WEAR_CORE_ZONE = 0.68f
 
 /**
  * Zeichnet die komplette Spielwelt für das runde Wear-Display: Himmel je
@@ -280,7 +279,6 @@ private fun DrawScope.drawWearTrack(
     val zoneOuter = round(spacing * WEAR_SEG_ZONE).coerceAtLeast(4f)
     val neutralOuter = wearNeutralOuter(radius)
     val neutralInner = wearNeutralInner(radius)
-    val zoneInner = round(zoneOuter * WEAR_CORE_ZONE).coerceAtLeast(2f)
     val track = ScenePaint.track(scene)
     val trackBlock = Color(track.block)
     val trackLight = Color(track.light)
@@ -288,9 +286,8 @@ private fun DrawScope.drawWearTrack(
     val trackEdge = wearTrackEdge(neutralInner)
 
     val zoneHalf = game.effectiveZoneHalf()
-    // Kern und Fallenbreite kommen aus der Engine — siehe perfectHalf()
-    // und fakeZoneHalf(). Die Minen verteilen sich über fakeZoneHalf().
-    val coreHalf = game.perfectHalf()
+    // Die Fallenbreite kommt aus der Engine (fakeZoneHalf()), die Minen
+    // verteilen sich darüber. Den Kern misst wearZoneSlots.
     val fakeHalf = game.fakeZoneHalf()
     val mines = wearTrapMines(game, segments, zoneHalf)
     val minePx = wearMinePixel(wearMineDistance(game, segments, radius), zoneOuter)
@@ -302,21 +299,22 @@ private fun DrawScope.drawWearTrack(
         val px = cx + cos(a) * radius
         val py = cy + sin(a) * radius
 
-        val relativeZone = TimingGame.wrapToPi(a - game.zoneCenter)
-        val inZone = abs(relativeZone) <= zoneHalf
-        val inPerfectCore = abs(relativeZone) <= coreHalf
+        // Die Zonenblöcke kommen nach der Schleife (wearZoneSlots) und
+        // liegen damit über dem Sand daneben — wie am Telefon.
+        val inZone = abs(TimingGame.wrapToPi(a - game.zoneCenter)) <= zoneHalf
+        if (inZone) continue
 
         val inFake = game.hasFakeZone &&
             abs(TimingGame.wrapToPi(a - game.fakeZoneCenter)) <= fakeHalf
         // Auf der Falle liegen die Minen statt der Blöcke. Liegt sie auf
         // der Zone, gewinnt die Zone: Grün bleibt Grün.
-        if (inFake && !inZone) continue
+        if (inFake) continue
 
-        val outer = if (inZone) zoneOuter else neutralOuter
+        val outer = neutralOuter
         // Die Minen liegen nicht auf dem Segment-Raster: Ein Sandblock,
         // den eine Mine berühren würde, bleibt ebenfalls frei.
-        if (!inZone && wearBlockHitsMine(px, py, outer / 2f, mineCenters, mineHalf)) continue
-        val inner = if (inZone) zoneInner else neutralInner
+        if (wearBlockHitsMine(px, py, outer / 2f, mineCenters, mineHalf)) continue
+        val inner = neutralInner
 
         drawRect(
             color = WearOutlineColor,
@@ -324,30 +322,26 @@ private fun DrawScope.drawWearTrack(
             size = Size(outer, outer)
         )
         val innerTopLeft = Offset(px - inner / 2f, py - inner / 2f)
-        if (inZone) {
-            drawRect(
-                color = if (inPerfectCore) WearGrassLight else WearGrassDark,
-                topLeft = innerTopLeft,
-                size = Size(inner, inner)
+        // SPIEGEL und TEMPO (ab v2.36): Auf der Uhr trägt der Block nur
+        // die Farbe der Markierung — für Pfeil oder Pause-Striche ist
+        // die Fläche mit rund acht Pixeln zu klein. Welche Farbe, sagt
+        // TrackMarks in :core, wie am Telefon.
+        val mark = TrackMarks.at(game, a, segments)
+        if (mark != null) {
+            val face = Color(TrackMarks.face(mark))
+            wearBevelRect(
+                face, innerTopLeft, Size(inner, inner), trackEdge,
+                Color(BevelPaint.light(TrackMarks.face(mark))),
+                Color(BevelPaint.dark(TrackMarks.face(mark)))
             )
         } else {
-            // SPIEGEL und TEMPO (ab v2.36): Auf der Uhr trägt der Block nur
-            // die Farbe der Markierung — für Pfeil oder Pause-Striche ist
-            // die Fläche mit rund acht Pixeln zu klein. Welche Farbe, sagt
-            // TrackMarks in :core, wie am Telefon.
-            val mark = TrackMarks.at(game, a, segments)
-            if (mark != null) {
-                val face = Color(TrackMarks.face(mark))
-                wearBevelRect(
-                    face, innerTopLeft, Size(inner, inner), trackEdge,
-                    Color(BevelPaint.light(TrackMarks.face(mark))),
-                    Color(BevelPaint.dark(TrackMarks.face(mark)))
-                )
-            } else {
-                wearBevelRect(trackBlock, innerTopLeft, Size(inner, inner), trackEdge, trackLight, trackDark)
-            }
+            wearBevelRect(trackBlock, innerTopLeft, Size(inner, inner), trackEdge, trackLight, trackDark)
         }
     }
+
+    // Die Zone wie am Telefon: im Raster der Bahn, zur Mitte hin größer,
+    // goldener Saum um den Kern, Kante und das Motiv der Welt (WearZone.kt).
+    drawWearZone(wearZoneSlots(game, cx, cy, radius, spacing, zoneOuter), track.motif)
 
     // Erst alle Ränder, dann alle Kugeln: Benachbarte Minen teilen sich
     // ihren Rand, die Kugeln berühren sich nie (wearMinePixel).

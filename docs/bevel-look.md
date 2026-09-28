@@ -90,7 +90,11 @@ Die Entscheidungen:
     nach 8.4. Ein Screenshot-Werkzeug nach dem Muster von `TwistShots`
     (z. B. `BevelShots`) rendert die Welt-×-Twist-Matrix.
 12. **Uhr (`:wear`):** Dottie als Kugel, Minen mit Kante, Blockfarben pro
-    Welt, ohne Muster und Motive. Die Uhr hat eigene Szenerie
+    Welt, auf den Sandblöcken ohne Muster. Die **Zone** zeichnet die Uhr
+    seit dem Nachzug genau wie das Telefon (`WearZone.kt`): im Raster der
+    Bahn, zur Mitte hin größer, goldener Saum um den Kern, Kante in den
+    Grastönen, Blätter in der WIESE und das Motiv der Welt samt
+    Kern-Akzent in den anderen. Die Uhr hat eigene Szenerie
     (`WearScenery.kt`): Requisiten dort bekommen Bevel, wo sie groß genug
     sind. Seit dem Nachzug der Menüs (`WearTaster.kt`) tragen auch die
     Bedienflächen der Uhr den Look der Telefon-Menüs: Symbol-Taster der
@@ -373,9 +377,9 @@ Vorlage: `alle-welten.png`, Weltraum.
 - **Renderer:** `drawTrack` und `drawZoneBlock` bekommen den Stil der
   aktiven Kulisse und zeichnen danach, ebenso `drawGroundStrip`.
   Telefon und iOS sind derselbe Code.
-- **Uhr (`WearRenderer`):** nur die Blockfarbe pro Welt übernehmen, keine
-  Muster und keine Motive, weil die Fläche zu klein ist. Die Uhr hat
-  keinen Bodenstreifen.
+- **Uhr (`WearRenderer`):** auf den Sandblöcken nur die Blockfarbe pro
+  Welt, keine Muster, weil die Fläche zu klein ist. Die Zone dagegen wie
+  am Telefon, mit Motiv (`WearZone.kt`, siehe Abschnitt 0 Punkt 12).
 - **Sammlung:** Die Kulissen-Vorschau in `CollectionOverlay` zeigt die
   neuen Blöcke und Böden mit. Kulissen sind das, was dort verkauft wird.
 - **Tests in `:core` (`ScenePaintTest`) erweitern:**
