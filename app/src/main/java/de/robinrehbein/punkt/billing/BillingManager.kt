@@ -142,14 +142,17 @@ class BillingManager(
             )
             .build()
         try {
-            billing.queryProductDetailsAsync(params) { result, details ->
+            billing.queryProductDetailsAsync(params) { result, queryResult ->
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                    val details = queryResult.productDetailsList
                     val found = details.firstOrNull { it.productId == PRODUCT_ID }
-                    productDetails = found
-                    priceLabel = found?.oneTimePurchaseOfferDetails?.formattedPrice
+                    val offer = found?.oneTimePurchaseOfferDetailsList?.firstOrNull()
+                    productDetails = if (offer != null) found else null
+                    priceLabel = offer?.formattedPrice
                     val patron = details.firstOrNull { it.productId == PATRON_ID }
-                    patronDetails = patron
-                    patronPriceLabel = patron?.oneTimePurchaseOfferDetails?.formattedPrice
+                    val patronOffer = patron?.oneTimePurchaseOfferDetailsList?.firstOrNull()
+                    patronDetails = if (patronOffer != null) patron else null
+                    patronPriceLabel = patronOffer?.formattedPrice
                     status = when {
                         found == null -> "Produkt $PRODUCT_ID nicht in der Antwort"
                         priceLabel == null -> "Produkt da, aber ohne Preis"
@@ -204,12 +207,14 @@ class BillingManager(
     private fun launchFlow(activity: Activity, details: ProductDetails?) {
         val billing = client ?: return
         if (details == null) return
+        val offer = details.oneTimePurchaseOfferDetailsList?.firstOrNull() ?: return
         try {
             val flowParams = BillingFlowParams.newBuilder()
                 .setProductDetailsParamsList(
                     listOf(
                         BillingFlowParams.ProductDetailsParams.newBuilder()
                             .setProductDetails(details)
+                            .apply { offer.offerToken?.let { setOfferToken(it) } }
                             .build()
                     )
                 )

@@ -129,7 +129,7 @@ dependencies {
     // res/values/ads.xml echte IDs stehen (siehe PUBLISHING.md).
     implementation(libs.play.services.ads)
     implementation(libs.ump)
-    implementation(libs.billing.ktx)
+    implementation(libs.billing)
     // Nutzungsstatistik (Firebase Analytics, ab v2.30) — inaktiv, bis in
     // res/values/analytics.xml ein Projekt steht, und dann nur mit
     // Einwilligung (siehe analytics/GameAnalytics.kt, PUBLISHING.md).

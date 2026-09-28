@@ -100,7 +100,7 @@ dependencies {
     // Phone-APK teilen sich die Paket-ID — die Uhr fragt ihn deshalb
     // selbst ab, statt sich ein faelschbares Flag schicken zu lassen.
     // Gleiche Version wie in :app (libs.versions.toml).
-    implementation(libs.billing.ktx)
+    implementation(libs.billing)
 
     testImplementation(libs.junit)
 }
