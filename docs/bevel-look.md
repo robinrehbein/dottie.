@@ -92,7 +92,12 @@ Die Entscheidungen:
 12. **Uhr (`:wear`):** Dottie als Kugel, Minen mit Kante, Blockfarben pro
     Welt, ohne Muster und Motive. Die Uhr hat eigene Szenerie
     (`WearScenery.kt`): Requisiten dort bekommen Bevel, wo sie groß genug
-    sind.
+    sind. Seit dem Nachzug der Menüs (`WearTaster.kt`) tragen auch die
+    Bedienflächen der Uhr den Look der Telefon-Menüs: Symbol-Taster der
+    Startzeile (sinken beim Drücken ein), der Modus-Schalter als
+    Kippschalter, das Game-Over-Panel, die gewählte Zeile im Wähler und
+    TON: AN/AUS — Sand im Pixelrahmen, Schatten, Kante aus `BevelPaint`,
+    verkleinert auf 1,5 dp Rand, 2 dp Schatten, 1 dp Kante.
 
 ## 1. Ziel
 
