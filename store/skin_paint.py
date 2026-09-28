@@ -18,7 +18,8 @@ Geprueft wird das nicht per Augenmass: `store/check_skin_paint.py` haelt
 alle 42 Skins Feld fuer Feld gegen einen Abzug der Kotlin-Quelle.
 
 Reiner Rechenteil, keine Pillow-Abhaengigkeit — gezeichnet wird in
-`store/pixel_dot.py`.
+`store/generate_wear_screenshots.py`. Die Telefon-Bilder brauchen diese
+Portierung nicht mehr: Sie kommen aus dem echten Spiel (`StoreShots`).
 """
 
 import math

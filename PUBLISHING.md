@@ -10,10 +10,9 @@ Fahrplan und Anleitungen für die Veröffentlichung. Stand: v2.37.
 - [x] GitHub Pages aktivieren → Datenschutz-URL (Anleitung unten)
 - [ ] Store-Eintrag anlegen (Texte unten in Deutsch UND Englisch, Icons liegen im Repo)
 - [x] Feature-Grafik 1024×500 px je Sprache (`store/feature-graphic.png`,
-      `store/feature-graphic-en.png`, Generator daneben)
-- [x] Screenshots 1080×1920: je 6 in DE und EN unter `store/screenshots/`
-      (Generator: `python3 store/generate_screenshots.py`, Skin-Prüfung:
-      `python3 store/check_skin_paint.py`)
+      `store/feature-graphic-en.png`) und Screenshots 1080×1920, je 7 in DE
+      und EN unter `store/screenshots/` — aus dem echten Spiel gerendert,
+      siehe „Assets“ unten
 - [ ] Optional: Play Games Services einrichten → Bestenlisten (Anleitung unten)
 - [x] AdMob-IDs eingetragen — **Werbung ist aktiv** (Abschnitt unten)
 - [x] In-App-Kauf „remove_ads" in der Play Console anlegen (Abschnitt unten)
@@ -200,46 +199,51 @@ wird öffentlich sichtbar.
 
 **Assets:**
 
+- **Alles kommt aus dem echten Spiel.** `StoreShots`
+  (`ui/src/jvmTest/.../screens/StoreShots.kt`) rendert den echten
+  `GameScreen` headless, ein Bot spielt ihn bis zum Motiv — in Deutsch
+  und Englisch. `store/compose_store_assets.py` legt danach nur die
+  Werbe-Zeile darüber und setzt das Bild als Karte auf den Himmel des
+  Motivs. Neu erzeugen nach jeder sichtbaren Änderung:
+
+  ```sh
+  SHOTS_DIR=$PWD/build/store-shots ./gradlew :ui:jvmTest --tests '*StoreShots*' --rerun
+  python3 store/compose_store_assets.py build/store-shots/store
+  ```
+
 - Feature-Grafik 1024×500, je Sprache eine: `store/feature-graphic.png`
-  (deutsch) und `store/feature-graphic-en.png` (englisch). Beide zeigen
-  seit v2.20 unter der Tagline eine Reihe echter Skins.
-  (Generator: `python3 store/generate_feature_graphic.py`)
-- Screenshots 1080×1920 (9:16): je 6 Motive in Deutsch und Englisch
-  unter `store/screenshots/de/` und `store/screenshots/en/`
-  (Generator: `python3 store/generate_screenshots.py`):
+  (deutsch) und `store/feature-graphic-en.png` (englisch) — Logo,
+  Tagline, Ring und Boden aus dem Gameplay-Motiv.
+- Screenshots 1080×1920 (9:16): je 7 Motive in Deutsch und Englisch
+  unter `store/screenshots/de/` und `store/screenshots/en/`:
 
   | Datei | Motiv |
   |---|---|
-  | `01-gameplay` | Startbildschirm: Punkt im Grün, Hand drückt, Hinweis — der erste Tap zählt (seit v2.28) |
-  | `02-twists` | Bomben mit rotem Lauflicht am Abendhimmel, „BOMBE = NIE TIPPEN“ |
-  | `03-daily` | Daily Challenge samt Tages-Serie, Nebelbank vor der Zone |
-  | `04-sammlung` | Sammlung mit Reitern VOGEL/WELT/TON/RAHMEN und Kachel-Raster (seit v2.28) |
-  | `05-gallery` | **alle 42 Skins** in ihren sechs Familien |
-  | `06-collect` | Ausdauer-Achsen (Läufe, Punkte, Tage, Monate) und die vier Saison-Skins |
+  | `01-gameplay` | WIESE am Tag, Punkt fliegt auf die Zone zu — „EIN TAP. PERFEKT ODER VORBEI.“ |
+  | `02-bomben` | BOMBEN in der nächtlichen WÜSTE |
+  | `03-nebel` | NEBEL am BERG: Der Vogel gleitet in die Wolke |
+  | `04-knapp` | ZU FRÜH · KNAPP! in der STADT — der Moment, der „noch mal“ auslöst |
+  | `05-daily` | Tageslauf am MEER |
+  | `06-tempo` | TEMPO-Pfeile im WELTRAUM |
+  | `07-sammlung` | Sammlung, Reiter VOGEL |
 
-  Gern zusätzlich echte Geräte-Screenshots ergänzen.
-- Die Skins auf diesen Bildern sind keine Nachmalerei: `store/skin_paint.py`
-  ist eine Portierung von `SkinPaint.kt` und liefert jedem der 13×13
-  Rasterfelder dieselbe Farbe wie das Spiel; `store/pixel_dot.py`
-  zeichnet daraus den Vogel wie `drawTimingDot`. Auch die Beschriftungen
-  in der Sammlung kommen aus den echten String-Ressourcen der App
-  (`ui/src/commonMain/composeResources`). Mine, Start-Hand und
-  Nebelfarben liest `store/twist_paint.py` aus `TrapPaint.kt`,
-  `StartCoach.kt` und `FogRenderer.kt`.
-  `python3 store/check_skin_paint.py` übersetzt `SkinPaint.kt` mit dem
-  Kotlin-Compiler aus dem Gradle-Cache und vergleicht alle 42 Skins Feld
-  für Feld gegen die Portierung — vor jeder Neuauslieferung einmal laufen
-  lassen, sonst behaupten die Bilder etwas, das die App nicht zeigt.
-- Werbe-Zeilen auf den Bildern bleiben ohne **M**: Der Bytesized-Font
-  rendert es wie ein N („SAMMELN" liest sich als „SANNELN"). In den
-  Zeilen, die das Spiel selbst zeigt (Skin-Hinweise), steht dagegen der
-  echte Text — genau so sieht ihn auch, wer die App öffnet.
+  Die Zahlen in den Werbe-Zeilen (Vögel ohne Gönner-Skins, Welten,
+  Klangwelten, Twists) schreibt `StoreShots` aus dem Code nach
+  `counts.json` — sie können nicht veralten.
+- Werbe-Zeilen stehen in **Silkscreen Bold** (SIL OFL, `store/fonts/`),
+  nicht in Bytesized: Bytesized rendert M wie N und W wie V („WENN“
+  liest sich als „VENN“, „NEUER“ als „NEVER“). Im Spiel selbst ändert sich
+  dadurch nichts; das Logo DOTTIE. bleibt Bytesized.
+- Die Uhr-Bilder (`store/screenshots/wear/`) erzeugt weiterhin
+  `python3 store/generate_wear_screenshots.py` als Nachbau — die Uhr hat
+  einen eigenen Renderer, den `:ui` nicht zeichnen kann. Vor dem Neubau
+  `python3 store/check_skin_paint.py` laufen lassen.
 
 **Was Play verlangt** (von den Generatoren eingehalten): Screenshots
 zwischen 320 px und 3840 px Kantenlänge, Seitenverhältnis höchstens 2:1
 (hier 9:16), Feature-Grafik exakt 1024×500 — alles PNG (oder JPEG) ohne
 Alphakanal, ohne Geräterahmen und ohne Store-Abzeichen. Play zeigt
-mindestens 2, höchstens 8 Screenshots je Sprache; die sechs Motive
+mindestens 2, höchstens 8 Screenshots je Sprache; die sieben Motive
 passen also in einen Eintrag, und ihre Reihenfolge ist die Reihenfolge
 im Listing.
 
