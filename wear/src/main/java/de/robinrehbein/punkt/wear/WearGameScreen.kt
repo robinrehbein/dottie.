@@ -10,18 +10,25 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,6 +64,39 @@ private const val BANNER_FADE_SECONDS = 0.4f
  * bleibt als Kontext sichtbar, die Namen bleiben trotzdem lesbar.
  */
 private val WearScrim = Color(0xF00E1018)
+
+/**
+ * Taster-Maße der Uhr (siehe WearTaster.kt): Randstufe, Schatten und
+ * Bevel-Kante, verkleinert gegenüber PixelButton am Telefon (4 dp Rand,
+ * 4 dp Schatten, 1,5 dp Kante) — auf 1,4 Zoll trägt der Rahmen sonst
+ * mehr als die Fläche.
+ */
+private val TASTER_BORDER = 1.5.dp
+private val TASTER_SHADOW = 2.dp
+private val TASTER_EDGE = 1.dp
+
+/** Kantenlänge eines Symbol-Tasters der Startzeile, ohne Schatten. */
+private val ICON_TASTER = 24.dp
+
+/** Breite je Hälfte des Modus-Schalters: KLASSIK/CLASSIC passt hinein. */
+private val MODE_HALF = 56.dp
+
+/** Die Todesursache auf Sand: das Banner-Orange wäre dort zu hell. */
+private val WearCauseOnSand = Color(0xFFC0572E)
+
+@Composable
+private fun rememberTasterMetrics(): WearTasterMetrics {
+    val density = LocalDensity.current
+    return remember(density) {
+        with(density) {
+            WearTasterMetrics(
+                border = TASTER_BORDER.toPx(),
+                shadow = TASTER_SHADOW.toPx(),
+                edge = TASTER_EDGE.toPx()
+            )
+        }
+    }
+}
 
 /**
  * Wear-OS-Version von "STOPP": Classic- und Daily-Modus aus :core, alle
@@ -206,17 +246,27 @@ internal fun WearGameScreen(controller: WearGameController) {
                     // dort Platz für Vogel, Welt und Ton nebeneinander ist.
                     extraTop = 1,
                     top = {
-                        Text(
-                            text = stringResource(if (controller.soundOn) R.string.sound_on else R.string.sound_off),
-                            color = WearDotBody,
-                            fontSize = 14.sp,
-                            fontFamily = WearBytesized,
+                        // TON: AN/AUS als Taster wie am Telefon: Sand,
+                        // Rahmen, Schatten — die Zeilen darunter sind Wahl,
+                        // dieser eine ist ein Schalter.
+                        val m = rememberTasterMetrics()
+                        Box(
                             modifier = Modifier
                                 .pointerInput(Unit) {
                                     detectTapGestures(onTap = { controller.toggleSound() })
                                 }
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                        )
+                                .padding(vertical = 4.dp)
+                                .drawBehind { drawWearTaster(m, pressed = false) }
+                                .padding(end = TASTER_SHADOW, bottom = TASTER_SHADOW)
+                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = stringResource(if (controller.soundOn) R.string.sound_on else R.string.sound_off),
+                                color = WearTextDark,
+                                fontSize = 14.sp,
+                                fontFamily = WearBytesized
+                            )
+                        }
                     },
                     onClose = { controller.closePicker() }
                 ) { entry, isSelected ->
@@ -308,8 +358,9 @@ private fun <T> WearPickerList(
 
 /**
  * Eine Zeile eines Wählers: Vorschau plus Name. Der gewählte Eintrag
- * steht in Gold, das reicht als Marke und spart ein Häkchen-Symbol auf
- * einer ohnehin schmalen Zeile.
+ * liegt auf einem Sand-Panel mit Kante — wie die gewählte Kachel der
+ * Sammlung am Telefon —, das reicht als Marke und spart ein
+ * Häkchen-Symbol auf einer ohnehin schmalen Zeile.
  */
 @Composable
 private fun WearPickerRow(
@@ -318,6 +369,7 @@ private fun WearPickerRow(
     onPick: () -> Unit,
     preview: DrawScope.() -> Unit
 ) {
+    val m = rememberTasterMetrics()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -327,13 +379,16 @@ private fun WearPickerRow(
             .pointerInput(label) {
                 detectTapGestures(onTap = { onPick() })
             }
-            .padding(horizontal = 16.dp, vertical = 7.dp)
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .then(if (selected) Modifier.drawBehind { drawWearPanel(m) } else Modifier)
+            .padding(end = TASTER_SHADOW, bottom = TASTER_SHADOW)
+            .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
         Canvas(modifier = Modifier.size(18.dp)) { preview() }
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = label,
-            color = if (selected) WearDotBody else Color.White,
+            color = if (selected) WearTextDark else Color.White,
             fontSize = 14.sp,
             fontFamily = WearBytesized
         )
@@ -504,6 +559,7 @@ private fun WearReadyOverlay(
             }
             Spacer(modifier = Modifier.height(6.dp))
             WearModeSwitch(dailyMode = dailyMode, onToggle = onToggleMode)
+            Spacer(modifier = Modifier.height(4.dp))
             // Untere Zeile: die kleine Sammlung — Vogel, Welt, Ton. Jeder
             // Knopf hat einen eigenen Tap-Handler: detectTapGestures
             // verbraucht das Aufsetzen, dadurch startet der ganzflächige
@@ -520,55 +576,89 @@ private fun WearReadyOverlay(
                     drawWearSceneCoin(scene)
                 }
                 WearIconButton(onTap = { onOpen(WearPickerKind.SOUND) }) {
-                    drawWearSpeaker(muted = !soundOn, color = Color.White.copy(alpha = 0.8f))
+                    drawWearSpeaker(muted = !soundOn, color = WearTextDark)
                 }
             }
         }
     }
 }
 
-/** Ein kleiner Symbol-Knopf der Startzeile: 16 dp Bild, 6 dp Tap-Polster ringsum. */
+/**
+ * Ein Symbol-Taster der Startzeile wie der Eckknopf am Telefon: Sand im
+ * Pixelrahmen, Schatten unten rechts, beim Drücken sinkt er samt Symbol
+ * in den Schatten ein. 3 dp Tap-Polster ringsum, das Polster liegt im
+ * pointerInput-Knoten und zählt mit.
+ */
 @Composable
 private fun WearIconButton(onTap: () -> Unit, icon: DrawScope.() -> Unit) {
+    val m = rememberTasterMetrics()
+    var pressed by remember { mutableStateOf(false) }
+    val sink = if (pressed) TASTER_SHADOW else 0.dp
     Box(
         modifier = Modifier
             .pointerInput(Unit) {
-                detectTapGestures(onTap = { onTap() })
+                detectTapGestures(
+                    onPress = {
+                        pressed = true
+                        tryAwaitRelease()
+                        pressed = false
+                    },
+                    onTap = { onTap() }
+                )
             }
-            .padding(6.dp)
+            .padding(3.dp)
     ) {
-        Canvas(modifier = Modifier.size(16.dp)) { icon() }
+        Canvas(modifier = Modifier.size(ICON_TASTER + TASTER_SHADOW)) {
+            drawWearTaster(m, pressed)
+        }
+        Box(
+            modifier = Modifier
+                .size(ICON_TASTER)
+                .offset(x = sink, y = sink),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.size(14.dp)) { icon() }
+        }
     }
 }
 
 /**
- * Modus-Umschalter CLASSIC/DAILY als eine tappbare Zeile — der aktive
- * Modus leuchtet gold, der andere liegt gedimmt daneben, ein Tap wechselt.
- * Nur zwei Modi, darum reicht ein gemeinsames Tap-Ziel für die ganze
- * Zeile (größer und damit treffsicherer als zwei einzelne Wörter).
+ * Modus-Umschalter CLASSIC/DAILY als Kippschalter: ein Taster mit zwei
+ * Hälften, die aktive steht erhaben in Sand, die andere liegt
+ * eingedrückt und dunkler daneben (drawWearModeSwitch). Nur zwei Modi,
+ * darum reicht ein gemeinsames Tap-Ziel für den ganzen Schalter
+ * (größer und damit treffsicherer als zwei einzelne Wörter).
  */
 @Composable
 private fun WearModeSwitch(dailyMode: Boolean, onToggle: () -> Unit) {
+    val m = rememberTasterMetrics()
     Row(
         modifier = Modifier
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { onToggle() })
             }
-            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .padding(horizontal = 4.dp, vertical = 2.dp)
+            .drawBehind { drawWearModeSwitch(m, activeRight = dailyMode) }
+            .padding(end = TASTER_SHADOW, bottom = TASTER_SHADOW)
     ) {
-        Text(
-            text = stringResource(R.string.classic),
-            color = if (dailyMode) Color.White.copy(alpha = 0.35f) else WearDotBody,
-            fontSize = 13.sp,
-            fontFamily = WearBytesized
-        )
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = stringResource(R.string.daily),
-            color = if (dailyMode) WearDotBody else Color.White.copy(alpha = 0.35f),
-            fontSize = 13.sp,
-            fontFamily = WearBytesized
-        )
+        listOf(
+            stringResource(R.string.classic) to !dailyMode,
+            stringResource(R.string.daily) to dailyMode
+        ).forEach { (label, active) ->
+            Box(
+                modifier = Modifier
+                    .width(MODE_HALF)
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    color = WearTextDark.copy(alpha = if (active) 1f else 0.5f),
+                    fontSize = 12.sp,
+                    fontFamily = WearBytesized
+                )
+            }
+        }
     }
 }
 
@@ -662,50 +752,61 @@ private fun WearOverOverlay(
     dailyStreak: Int,
     onToggleMode: () -> Unit
 ) {
+    val m = rememberTasterMetrics()
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = score.toString(),
-                color = Color.White,
-                fontSize = 40.sp,
-                fontFamily = WearBytesized
-            )
-            // Warum es vorbei ist, klein unter dem Score — wie am Telefon
-            // unter dem Titel des Game-Overs.
-            deathCauseRes(deathCause)?.let { cause ->
+            // Score, Ursache, Medaille und Rekord liegen auf einem
+            // Sand-Panel wie die Game-Over-Karte am Telefon; Spott, TIPP
+            // und Schalter stehen darunter frei auf der Welt.
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .drawBehind { drawWearPanel(m) }
+                    .padding(end = TASTER_SHADOW, bottom = TASTER_SHADOW)
+                    .padding(horizontal = 14.dp, vertical = 3.dp)
+            ) {
                 Text(
-                    text = stringResource(cause),
-                    color = WearBannerOrange,
-                    fontSize = 12.sp,
+                    text = score.toString(),
+                    color = WearTextDark,
+                    fontSize = 34.sp,
                     fontFamily = WearBytesized
                 )
-            }
-            // Medaillen-Zeile ab Bronze: Münze plus Stufen-Name in der
-            // Medaillen-Farbe — klein unter dem Score, der bleibt der Star.
-            WearMedalTier.forScore(score)?.let { tier ->
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    WearMedalCoin(tier = tier, coinSize = 14.dp)
-                    Spacer(modifier = Modifier.width(5.dp))
+                // Warum es vorbei ist, klein unter dem Score — wie am Telefon
+                // unter dem Titel des Game-Overs.
+                deathCauseRes(deathCause)?.let { cause ->
                     Text(
-                        text = stringResource(tier.nameRes),
-                        color = tier.body,
-                        fontSize = 13.sp,
+                        text = stringResource(cause),
+                        color = WearCauseOnSand,
+                        fontSize = 12.sp,
                         fontFamily = WearBytesized
                     )
                 }
-                Spacer(modifier = Modifier.height(2.dp))
+                // Medaillen-Zeile ab Bronze: Münze plus Stufen-Name — klein
+                // unter dem Score, der bleibt der Star. Der Name steht in
+                // Dunkel: Die Medaillenfarben verschwinden auf Sand.
+                WearMedalTier.forScore(score)?.let { tier ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        WearMedalCoin(tier = tier, coinSize = 14.dp)
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = stringResource(tier.nameRes),
+                            color = WearTextDark,
+                            fontSize = 12.sp,
+                            fontFamily = WearBytesized
+                        )
+                    }
+                }
+                Text(
+                    text = stringResource(R.string.best, bestScore),
+                    color = if (isNewRecord) WearRecordRed else WearTextDark,
+                    fontSize = 15.sp,
+                    fontFamily = WearBytesized
+                )
             }
-            Text(
-                text = stringResource(R.string.best, bestScore),
-                color = if (isNewRecord) WearRecordRed else Color.White,
-                fontSize = 18.sp,
-                fontFamily = WearBytesized
-            )
             // Bei neuem Rekord gewinnt die Feier, danach die Erklärung
             // eines neuen Twists (einmal je Twist, siehe WearLessons), sonst
             // der Spott — eine Zeile, mehr trägt das runde Display nicht.
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = when {
                     isNewRecord -> stringResource(R.string.new_record)
