@@ -52,7 +52,8 @@ class BillingManager(
     private val activity: Activity?,
     private val store: GameStore,
     private val onAdsRemoved: () -> Unit,
-    private val onPatronOwned: () -> Unit = {}
+    private val onPatronOwned: () -> Unit = {},
+    private val onAdsRestored: () -> Unit = {}
 ) {
 
     private var client: BillingClient? = null
@@ -180,7 +181,13 @@ class BillingManager(
 
     /**
      * Wiederherstellung: Was Google als gekauft kennt, gilt — auch nach
-     * Geräte- oder Neuinstallation.
+     * Geräte- oder Neuinstallation. Und umgekehrt: Was Google NICHT mehr
+     * kennt (erstattet, storniert), wird auch lokal zurückgenommen. Der
+     * Spiegel in [GameStore] ist nur ein Cache; ohne diesen Abgleich
+     * bliebe eine erstattete App für immer werbefrei.
+     *
+     * Zurückgenommen wird nur auf eine erfolgreiche Antwort hin — ein
+     * Netz- oder Dienstfehler darf einen echten Kauf nicht löschen.
      */
     private fun queryPurchases() {
         val billing = client ?: return
@@ -191,10 +198,35 @@ class BillingManager(
             billing.queryPurchasesAsync(params) { result, purchases ->
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                     purchases.forEach { handlePurchase(it) }
+                    revokeMissing(purchases)
                 }
             }
         } catch (t: Throwable) {
             Log.w(TAG, "Kaufabfrage fehlgeschlagen", t)
+        }
+    }
+
+    /**
+     * Setzt lokale Freischaltungen zurück, zu denen Play keinen gültigen
+     * Kauf mehr liefert. Das Gönner-Paket enthält "Werbung entfernen" —
+     * die Werbung kommt also nur zurück, wenn KEINES von beiden besteht.
+     */
+    private fun revokeMissing(purchases: List<Purchase>) {
+        val owned = purchases
+            .filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
+            .flatMap { it.products }
+            .toSet()
+        val patron = PATRON_ID in owned
+        val removeAds = patron || PRODUCT_ID in owned
+
+        if (!patron && store.patronOwned) {
+            Log.i(TAG, "Gönner-Paket nicht mehr gekauft — zurückgenommen")
+            store.patronOwned = false
+        }
+        if (!removeAds && store.adsRemoved) {
+            Log.i(TAG, "Werbung entfernen nicht mehr gekauft — zurückgenommen")
+            store.adsRemoved = false
+            onAdsRestored()
         }
     }
 
