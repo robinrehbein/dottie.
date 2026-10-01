@@ -64,7 +64,8 @@ fun TimingGameScreen(modifier: Modifier = Modifier, openedFromReminder: String? 
             activity = activity,
             store = store,
             onAdsRemoved = { ads.disableAfterPurchase() },
-            onPatronOwned = {}
+            onPatronOwned = {},
+            onAdsRestored = { ads.enableAfterRevocation() }
         )
     }
     // Nutzungsstatistik: ohne Firebase-Projekt komplett inaktiv, mit

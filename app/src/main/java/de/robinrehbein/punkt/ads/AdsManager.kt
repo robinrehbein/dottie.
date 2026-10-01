@@ -382,6 +382,17 @@ class AdsManager(
         interstitial = null
     }
 
+    /**
+     * Gegenstück zu [disableAfterPurchase]: Der Kauf wurde erstattet oder
+     * storniert (siehe BillingManager.revokeMissing). Werbung darf wieder
+     * laufen — sofern überhaupt IDs hinterlegt sind.
+     */
+    fun enableAfterRevocation() {
+        if (!configured) return
+        enabled = true
+        start()
+    }
+
     private companion object {
         const val TAG = "AdsManager"
     }
