@@ -1,0 +1,77 @@
+# Nimmt einen TEST-Kauf (Lizenztester, "Test:" in der Bestellverwaltung)
+# wieder vom Google-Konto. Eine Erstattung in der Play Console ohne
+# "Berechtigung entziehen" lässt den Kauf beim Konto stehen; die App
+# bleibt dann werbefrei, und der Erstatten-Knopf ist danach ausgegraut.
+#
+# Ablauf: Play Console → Bestellverwaltung → Bestellung öffnen →
+# "Kauftoken kopieren", dann hier "Run workflow" mit Produkt und Token.
+#
+# Der Workflow liest den Kauf zuerst und verbraucht ihn NUR, wenn Google
+# ihn als Testkauf ausweist (purchaseType 0). Echte Käufe bleiben
+# unangetastet, auch bei einem vertauschten Token.
+#
+# Voraussetzung: Das Servicekonto braucht in der Play Console die
+# Berechtigung "Bestellungen und Abos verwalten" für die App.
+name: Testkauf zurücknehmen
+
+on:
+  workflow_dispatch:
+    inputs:
+      product_id:
+        description: Produkt
+        type: choice
+        options:
+          - remove_ads
+          - patron_pack
+      purchase_token:
+        description: Kauftoken (Bestellverwaltung → "Kauftoken kopieren")
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  revoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Token maskieren
+        env:
+          TOKEN: ${{ inputs.purchase_token }}
+        run: echo "::add-mask::$TOKEN"
+
+      - name: Bei Google Cloud anmelden
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/632961826833/locations/global/workloadIdentityPools/dottie-github-publishing/providers/github-dottie
+          service_account: dottie-play-publisher@dottie-play-publishing.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+
+      - name: Kauf prüfen und verbrauchen
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PRODUCT: ${{ inputs.product_id }}
+          TOKEN: ${{ inputs.purchase_token }}
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/de.robinrehbein.pointless/purchases/products/$PRODUCT/tokens/$TOKEN"
+          auth="Authorization: Bearer $ACCESS_TOKEN"
+
+          purchase=$(curl -sS --fail-with-body -H "$auth" "$base")
+          # Nur die Felder ausgeben, die für die Entscheidung zählen.
+          echo "$purchase" | jq '{orderId, purchaseState, consumptionState, purchaseType}'
+
+          # purchaseType fehlt bei echten Käufen ganz; 0 heißt Testkauf.
+          if [ "$(echo "$purchase" | jq -r '.purchaseType // "none"')" != "0" ]; then
+            echo "::error::Kein Testkauf — echte Käufe werden hier nicht angefasst."
+            exit 1
+          fi
+          if [ "$(echo "$purchase" | jq -r '.consumptionState')" = "1" ]; then
+            echo "Schon verbraucht — nichts zu tun."
+            exit 0
+          fi
+
+          curl -sS --fail-with-body -X POST -H "$auth" "$base:consume"
+          echo "Verbraucht. Nach einem App-Neustart ist der Kauf weg."
