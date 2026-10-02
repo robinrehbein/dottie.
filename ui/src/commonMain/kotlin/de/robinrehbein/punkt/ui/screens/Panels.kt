@@ -88,14 +88,6 @@ fun ScoreHud(
                 color = Color.White,
                 textAlign = TextAlign.Center
             )
-            if (daily) {
-                Text(
-                    text = stringResource(Res.string.daily),
-                    style = ScoreShadowStyle,
-                    fontSize = 18.sp,
-                    color = DotBody
-                )
-            }
             if (recordHint.isNotEmpty()) {
                 Text(
                     text = recordHint,
@@ -117,6 +109,19 @@ fun ScoreHud(
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
             }
+        }
+        // Modus-Hinweis in der Ecke statt in der Spalte: Eine Zeile mehr
+        // unter dem Score schob das Banner („NEUE STUFE!“) in den Ring.
+        if (daily) {
+            Text(
+                text = stringResource(Res.string.daily),
+                style = ScoreShadowStyle,
+                fontSize = 18.sp,
+                color = DotBody,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 12.dp, end = 16.dp)
+            )
         }
     }
 }
