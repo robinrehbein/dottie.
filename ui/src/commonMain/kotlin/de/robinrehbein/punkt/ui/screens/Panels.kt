@@ -119,8 +119,8 @@ fun ScoreHud(
                 fontSize = 18.sp,
                 color = DotBody,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 12.dp, end = 16.dp)
+                    .align(Alignment.TopStart)
+                    .padding(top = 12.dp, start = 16.dp)
             )
         }
     }
