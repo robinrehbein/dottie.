@@ -35,10 +35,17 @@ jobs:
   revoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Token maskieren
-        env:
-          TOKEN: ${{ inputs.purchase_token }}
-        run: echo "::add-mask::$TOKEN"
+      # Das Token kommt aus der Event-Datei statt über env: Ein env-Block
+      # stünde mitsamt Wert im Log, bevor die Maske greift.
+      - name: Token prüfen und maskieren
+        run: |
+          token=$(jq -r '.inputs.purchase_token' "$GITHUB_EVENT_PATH")
+          echo "::add-mask::$token"
+          case "$token" in
+            GPA.*)
+              echo "::error::Das ist die Bestell-ID. Gebraucht wird das Kauftoken (Bestellung öffnen → \"Kauftoken kopieren\")."
+              exit 1 ;;
+          esac
 
       - name: Bei Google Cloud anmelden
         id: auth
@@ -53,13 +60,19 @@ jobs:
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           PRODUCT: ${{ inputs.product_id }}
-          TOKEN: ${{ inputs.purchase_token }}
         run: |
           set -euo pipefail
+          TOKEN=$(jq -r '.inputs.purchase_token' "$GITHUB_EVENT_PATH")
           base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/de.robinrehbein.pointless/purchases/products/$PRODUCT/tokens/$TOKEN"
           auth="Authorization: Bearer $ACCESS_TOKEN"
 
-          purchase=$(curl -sS --fail-with-body -H "$auth" "$base")
+          # Fehlertext von Google mit ausgeben: 401 heißt hier meist, dass
+          # dem Servicekonto die Berechtigung "Bestellungen und Abos
+          # verwalten" fehlt oder noch nicht greift (kann Stunden dauern).
+          if ! purchase=$(curl -sS --fail-with-body -H "$auth" "$base"); then
+            echo "$purchase" | jq -r '.error.message // .' >&2
+            exit 1
+          fi
           # Nur die Felder ausgeben, die für die Entscheidung zählen.
           echo "$purchase" | jq '{orderId, purchaseState, consumptionState, purchaseType}'
 
