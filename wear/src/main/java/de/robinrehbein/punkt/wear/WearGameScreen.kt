@@ -2,6 +2,8 @@ package de.robinrehbein.punkt.wear
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +27,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.layout
@@ -127,6 +131,17 @@ internal fun WearGameScreen(controller: WearGameController) {
         }
     }
 
+    // Schwellen statt Rohwerte: phaseElapsed und notYetTimeLeft ändern
+    // sich in jedem Frame. Direkt im Body gelesen, setzte das den ganzen
+    // Screen 60-mal pro Sekunde neu zusammen; derivedStateOf meldet nur
+    // den Wechsel der Schwelle.
+    val tapHintVisible by remember(controller) {
+        derivedStateOf { controller.phaseElapsed >= TimingGame.RESTART_LOCK_SECONDS }
+    }
+    val notYetVisible by remember(controller) {
+        derivedStateOf { controller.notYetTimeLeft > 0f }
+    }
+
     MaterialTheme {
         Box(
             modifier = Modifier
@@ -135,12 +150,27 @@ internal fun WearGameScreen(controller: WearGameController) {
                     // Ganzflächiger Tap-Handler: TimingGame regelt READY/
                     // RUNNING/OVER (inkl. RESTART_LOCK) selbst — hier reicht
                     // es, den Tap durchzureichen. Gezählt wird beim
-                    // AUFSETZEN des Fingers (onPress), wie am Telefon und
-                    // wie bei den Hardware-Tasten: onTap käme erst beim
-                    // Loslassen, also je nach Finger 50-150 ms zu spät.
+                    // AUFSETZEN des Fingers, wie am Telefon und wie bei den
+                    // Hardware-Tasten: onTap käme erst beim Loslassen, also
+                    // je nach Finger 50-150 ms zu spät.
+                    //
+                    // Bewusst awaitFirstDown statt detectTapGestures(onPress):
+                    // onPress startet dort per launch{} eine eigene
+                    // Coroutine, die erst mit der nächsten Runde des
+                    // UI-Dispatchers läuft — oft ein ganzer Frame später.
+                    // Dann wertete TimingGame den Tap an einer Stelle, an der
+                    // der Punkt schon weitergeflogen ist. Hier läuft tap()
+                    // synchron im Touch-Event selbst.
+                    //
                     // Die Knöpfe der Overlays verbrauchen ihr Aufsetzen
-                    // selbst, dort startet also kein Lauf mit.
-                    detectTapGestures(onPress = { controller.tap() })
+                    // selbst (Main-Pass: Kinder vor Eltern), awaitFirstDown
+                    // überspringt verbrauchte Downs — dort startet also
+                    // weiterhin kein Lauf mit.
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        controller.tap()
+                        down.consume()
+                    }
                 }
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -158,7 +188,7 @@ internal fun WearGameScreen(controller: WearGameController) {
 
             when (controller.phase) {
                 GamePhase.READY -> WearReadyOverlay(
-                    notYet = controller.notYetTimeLeft > 0f,
+                    notYet = notYetVisible,
                     bestScore = controller.bestScore,
                     soundOn = controller.soundOn,
                     dailyMode = controller.dailyMode,
@@ -176,11 +206,16 @@ internal fun WearGameScreen(controller: WearGameController) {
                         score = controller.score,
                         daily = controller.dailyMode,
                         // Banner nur im Lauf — während der Todes-Animation
-                        // gehört die Bühne dem fallenden Vogel.
-                        recordBannerTimeLeft = if (controller.phase == GamePhase.RUNNING)
-                            controller.recordBannerTimeLeft else 0f,
-                        chainBannerTimeLeft = if (controller.phase == GamePhase.RUNNING)
-                            controller.chainBannerTimeLeft else 0f,
+                        // gehört die Bühne dem fallenden Vogel. Als Lambdas
+                        // übergeben: Die Restzeiten laufen jeden Frame ab und
+                        // werden erst dort gelesen, wo sie gebraucht werden
+                        // (siehe WearRunningOverlay).
+                        recordBannerTimeLeft = {
+                            if (controller.phase == GamePhase.RUNNING) controller.recordBannerTimeLeft else 0f
+                        },
+                        chainBannerTimeLeft = {
+                            if (controller.phase == GamePhase.RUNNING) controller.chainBannerTimeLeft else 0f
+                        },
                         perfectPoints = controller.perfectPoints,
                         deathCause = if (controller.phase == GamePhase.DYING)
                             controller.deathCause else DeathCause.NONE
@@ -192,7 +227,7 @@ internal fun WearGameScreen(controller: WearGameController) {
                     taunt = controller.taunt,
                     deathCause = controller.deathCause,
                     lesson = controller.lesson,
-                    tapHintVisible = controller.phaseElapsed >= TimingGame.RESTART_LOCK_SECONDS,
+                    tapHintVisible = tapHintVisible,
                     dailyMode = controller.dailyMode,
                     dailyBestToday = controller.dailyBestToday,
                     dailyStreak = controller.dailyStreak,
@@ -666,8 +701,8 @@ private fun WearModeSwitch(dailyMode: Boolean, onToggle: () -> Unit) {
 private fun WearRunningOverlay(
     score: Int,
     daily: Boolean,
-    recordBannerTimeLeft: Float,
-    chainBannerTimeLeft: Float,
+    recordBannerTimeLeft: () -> Float,
+    chainBannerTimeLeft: () -> Float,
     perfectPoints: Int,
     deathCause: DeathCause
 ) {
@@ -717,22 +752,33 @@ private fun WearRunningOverlay(
         // Phone) — blendet am Ende weich aus statt hart zu verschwinden.
         // „NOCH EINE!“ (KETTE) steht an derselben Stelle; der Rekord hat
         // Vorrang, wie am Telefon (Priorität 2 gegen 1).
-        val banner = when {
-            recordBannerTimeLeft > 0f -> R.string.banner_record to recordBannerTimeLeft
-            chainBannerTimeLeft > 0f -> R.string.banner_chain to chainBannerTimeLeft
-            else -> null
+        //
+        // Welches Banner steht, entscheidet derivedStateOf — das ändert
+        // sich nur beim Ein- und Ausblenden. Die Restzeit selbst liest
+        // erst graphicsLayer: Das Ausblenden kostet so je Frame nur eine
+        // Layer-Eigenschaft statt Recomposition plus Text-Neuzeichnen.
+        val bannerRes by remember {
+            derivedStateOf {
+                when {
+                    recordBannerTimeLeft() > 0f -> R.string.banner_record
+                    chainBannerTimeLeft() > 0f -> R.string.banner_chain
+                    else -> null
+                }
+            }
         }
-        if (banner != null) {
+        bannerRes?.let { res ->
             Text(
-                text = stringResource(banner.first),
-                color = WearBannerOrange.copy(
-                    alpha = (banner.second / BANNER_FADE_SECONDS).coerceAtMost(1f)
-                ),
+                text = stringResource(res),
+                color = WearBannerOrange,
                 fontSize = 14.sp,
                 fontFamily = WearBytesized,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 28.dp)
+                    .graphicsLayer {
+                        val left = if (res == R.string.banner_record) recordBannerTimeLeft() else chainBannerTimeLeft()
+                        alpha = (left / BANNER_FADE_SECONDS).coerceIn(0f, 1f)
+                    }
             )
         }
     }
