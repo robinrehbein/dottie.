@@ -352,6 +352,12 @@ internal class WearGameController(context: Context) {
         // der Lauf beginnt nicht.
         if (WearNotYet.startsRun(game)) prepareRun()
         game.tap()
+        // Feedback sofort statt erst im nächsten Frame: update(0f) leert
+        // nur den Event-Puffer (Haptik, Ton, Score, Phase) und lässt Winkel
+        // und Uhren stehen. Gewertet hat game.tap() oben ohnehin schon —
+        // so kommen Vibration und Ton noch im selben Touch-Event, nicht
+        // 16-33 ms später, und der nächste Frame zeigt den neuen Stand.
+        update(0f)
     }
 
     /**

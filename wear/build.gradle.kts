@@ -59,11 +59,21 @@ android {
 
     buildTypes {
         release {
-            // Bewusst ohne Minify: Der Wear-Prototyp ist nie mit R8 getestet
-            // worden, und auf der Uhr zählt Verlässlichkeit mehr als die
-            // paar hundert KB — erst aktivieren, wenn es auf echter Hardware
-            // geprüft werden kann.
-            isMinifyEnabled = false
+            // R8 ist für Compose kein Größen-, sondern ein Tempo-Thema:
+            // Compose kommt als Bibliothek mit, nicht mit dem System, und
+            // ohne R8 läuft jeder Frame durch ungekürzte Lambdas,
+            // Debug-Prüfungen und Composer-Aufrufe. Google nennt R8 plus
+            // Release-Build deshalb als ersten Schritt gegen Ruckeln.
+            // Bewusst OHNE ein Keep auf androidx.compose.** (wie es in
+            // :app steht) — das nähme R8 genau die Optimierung wieder weg.
+            // Behalten werden nur die eigenen Klassen: Enum-Namen und
+            // Sync-Felder müssen zwischen Uhr und Telefon gleich heißen.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = signingConfigs.getByName("release")
         }
     }
